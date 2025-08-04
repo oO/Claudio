@@ -1,19 +1,19 @@
 [package]
-name = "claudia"
+name = "claudio"
 version = "0.1.0"
-description = "GUI app and Toolkit for Claude Code"
-authors = ["mufeedvh", "123vviekr"]
+description = "Claude Code Native Agent Manager - A visual interface for managing Claude Code's native subagent system"
+authors = ["oO"]
 license = "AGPL-3.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [[bin]]
-name = "claudia"
+name = "claudio"
 path = "src/main.rs"
 
 [lib]
-name = "claudia_lib"
+name = "claudio_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [build-dependencies]

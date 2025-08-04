@@ -1,18 +1,18 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Claudia",
+  "productName": "Claudio",
   "version": "0.1.0",
-  "identifier": "claudia.asterisk.so",
+  "identifier": "claudio.oO.dev",
   "build": {
-    "beforeDevCommand": "bun run dev",
+    "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "bun run build",
+    "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist"
   },
   "app": {
     "windows": [
       {
-        "title": "Claudia",
+        "title": "Claudio",
         "width": 800,
         "height": 600
       }
@@ -65,10 +65,10 @@
     ],
     "resources": [],
     "externalBin": [],
-    "copyright": "© 2025 Asterisk. All rights reserved.",
+    "copyright": "© 2025 oO. All rights reserved.",
     "category": "DeveloperTool",
-    "shortDescription": "GUI app and Toolkit for Claude Code",
-    "longDescription": "Claudia is a comprehensive GUI application and toolkit for working with Claude Code, providing an intuitive interface for AI-assisted development.",
+    "shortDescription": "Claude Code Native Agent Manager",
+    "longDescription": "Claudio is a visual interface for managing Claude Code's native subagent system, providing file-based agent storage and native Task tool integration.",
     "linux": {
       "appimage": {
         "bundleMediaFramework": true
