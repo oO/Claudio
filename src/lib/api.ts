@@ -1745,24 +1745,28 @@ export const api = {
   },
 
   /**
-   * Saves a setting to the app_settings table (insert or update)
+   * Gets a setting from the consolidated Claudio settings file
+   * @param key - The setting key
+   * @returns Promise resolving to the setting value, or null if not found
+   */
+  async getSetting(key: string): Promise<string | null> {
+    try {
+      return await invoke<string | null>("get_setting", { key });
+    } catch (error) {
+      console.error(`Failed to get setting ${key}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Saves a setting to the consolidated Claudio settings file
    * @param key - The setting key
    * @param value - The setting value
    * @returns Promise resolving when the setting is saved
    */
   async saveSetting(key: string, value: string): Promise<void> {
     try {
-      // Try to update first
-      try {
-        await this.storageUpdateRow(
-          'app_settings',
-          { key },
-          { value }
-        );
-      } catch (updateError) {
-        // If update fails (row doesn't exist), insert new row
-        await this.storageInsertRow('app_settings', { key, value });
-      }
+      await invoke<void>("save_setting", { key, value });
     } catch (error) {
       console.error(`Failed to save setting ${key}:`, error);
       throw error;

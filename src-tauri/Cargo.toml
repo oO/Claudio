@@ -1,6 +1,6 @@
 [package]
 name = "claudio"
-version = "0.1.0"
+version = "0.2.1"
 description = "Claude Code Native Agent Manager - A visual interface for managing Claude Code's native subagent system"
 authors = ["oO"]
 license = "AGPL-3.0"

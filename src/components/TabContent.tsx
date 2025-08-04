@@ -96,7 +96,7 @@ const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
             <div className="container mx-auto p-6">
               {/* Header */}
               <div className="mb-6">
-                <h1 className="text-3xl font-bold tracking-tight">CC Projects</h1>
+                <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Browse your Claude Code sessions
                 </p>
@@ -217,7 +217,7 @@ const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
               // Go back to projects view in the same tab
               updateTab(tab.id, {
                 type: 'projects',
-                title: 'CC Projects',
+                title: 'Projects',
               });
             }}
           />
@@ -249,11 +249,29 @@ const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
       
       case 'claude-file':
         if (!tab.claudeFileId) {
-          return <div className="p-4">No Claude file ID specified</div>;
+          return <div className="p-4">No Claude file path specified</div>;
         }
-        // Note: We need to get the actual file object for ClaudeFileEditor
-        // For now, returning a placeholder
-        return <div className="p-4">Claude file editor not yet implemented in tabs</div>;
+        // Create a ClaudeMdFile object from the stored file path
+        const file = {
+          absolute_path: tab.claudeFileId,
+          relative_path: tab.title,
+          size: 0,
+          modified: 0
+        };
+        // Import ClaudeFileEditor dynamically to avoid circular imports
+        const ClaudeFileEditor = lazy(() => import('@/components/ClaudeFileEditor').then(m => ({ default: m.ClaudeFileEditor })));
+        return (
+          <ClaudeFileEditor
+            file={file}
+            onBack={() => {
+              // Go back to projects view in the same tab
+              updateTab(tab.id, {
+                type: 'projects',
+                title: 'Projects',
+              });
+            }}
+          />
+        );
       
       case 'agent-execution':
         if (!tab.agentData) {
@@ -342,7 +360,9 @@ export const TabContent: React.FC = () => {
 
     const handleOpenClaudeFile = (event: CustomEvent) => {
       const { file } = event.detail;
-      createClaudeFileTab(file.id, file.name || 'CLAUDE.md');
+      // Use absolute_path as the file identifier and extract filename from relative_path
+      const fileName = file.relative_path.split('/').pop() || 'CLAUDE.md';
+      createClaudeFileTab(file.absolute_path, fileName);
     };
 
     const handleOpenAgentExecution = (event: CustomEvent) => {

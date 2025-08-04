@@ -134,12 +134,18 @@ fn find_claude_binary(app_handle: &AppHandle) -> Result<String, String> {
 }
 
 /// Gets the path to the ~/.claude directory
-fn get_claude_dir() -> Result<PathBuf> {
-    dirs::home_dir()
+pub fn get_claude_dir() -> Result<PathBuf> {
+    let claude_dir = dirs::home_dir()
         .context("Could not find home directory")?
-        .join(".claude")
-        .canonicalize()
-        .context("Could not find ~/.claude directory")
+        .join(".claude");
+    
+    // Create the directory if it doesn't exist
+    if !claude_dir.exists() {
+        std::fs::create_dir_all(&claude_dir)
+            .context("Failed to create ~/.claude directory")?;
+    }
+    
+    Ok(claude_dir)
 }
 
 /// Gets the actual project path by reading the cwd from the first JSONL entry
@@ -312,6 +318,12 @@ pub async fn list_projects() -> Result<Vec<Project>, String> {
                 .file_name()
                 .and_then(|n| n.to_str())
                 .ok_or_else(|| "Invalid directory name".to_string())?;
+
+            // Skip hidden directories (starting with .)
+            if dir_name.starts_with('.') {
+                log::debug!("Skipping hidden directory: {}", dir_name);
+                continue;
+            }
 
             // Get directory creation time
             let metadata = fs::metadata(&path)

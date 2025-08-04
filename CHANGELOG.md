@@ -5,7 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.1] - 2025-01-04
+
+### Fixed
+- CLAUDE.md file editing error caused by interface mismatch (pre-existing bug in original Claudia)
+- Settings save errors by completing migration from SQLite to file-based storage
+- Claude binary path functions now use file-based storage instead of SQLite
+- Hidden directories (starting with .) no longer appear in projects list
+
+### Changed
+- Consolidated all Claudio-specific settings into single claudio-settings.json file
+- Updated terminology from "CC Projects" to "Projects" throughout UI
+- Removed problematic Storage tab from Settings UI
 
 ## [0.2.0] - 2025-01-04
 

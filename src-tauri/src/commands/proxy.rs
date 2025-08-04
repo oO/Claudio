@@ -1,8 +1,6 @@
 use serde::{Deserialize, Serialize};
-use tauri::State;
-use rusqlite::params;
-
-use crate::commands::agents::AgentDb;
+use std::fs;
+use crate::commands::claude::get_claude_dir;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ProxySettings {
@@ -11,6 +9,24 @@ pub struct ProxySettings {
     pub no_proxy: Option<String>,
     pub all_proxy: Option<String>,
     pub enabled: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ThemeSettings {
+    pub theme_mode: Option<String>,
+    pub custom_colors: Option<String>, // JSON string of custom colors
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ClaudioSettings {
+    #[serde(default)]
+    pub proxy: ProxySettings,
+    #[serde(default)]
+    pub claude_binary_path: Option<String>,
+    #[serde(default)]
+    pub theme: ThemeSettings,
+    // Future Claudio-specific settings can be added here
+    // pub analytics: AnalyticsSettings,
 }
 
 impl Default for ProxySettings {
@@ -25,69 +41,167 @@ impl Default for ProxySettings {
     }
 }
 
-/// Get proxy settings from the database
-#[tauri::command]
-pub async fn get_proxy_settings(db: State<'_, AgentDb>) -> Result<ProxySettings, String> {
-    let conn = db.0.lock().map_err(|e| e.to_string())?;
-    
-    let mut settings = ProxySettings::default();
-    
-    // Query each proxy setting
-    let keys = vec![
-        ("proxy_enabled", "enabled"),
-        ("proxy_http", "http_proxy"),
-        ("proxy_https", "https_proxy"),
-        ("proxy_no", "no_proxy"),
-        ("proxy_all", "all_proxy"),
-    ];
-    
-    for (db_key, field) in keys {
-        if let Ok(value) = conn.query_row(
-            "SELECT value FROM app_settings WHERE key = ?1",
-            params![db_key],
-            |row| row.get::<_, String>(0),
-        ) {
-            match field {
-                "enabled" => settings.enabled = value == "true",
-                "http_proxy" => settings.http_proxy = Some(value).filter(|s| !s.is_empty()),
-                "https_proxy" => settings.https_proxy = Some(value).filter(|s| !s.is_empty()),
-                "no_proxy" => settings.no_proxy = Some(value).filter(|s| !s.is_empty()),
-                "all_proxy" => settings.all_proxy = Some(value).filter(|s| !s.is_empty()),
-                _ => {}
-            }
+impl Default for ThemeSettings {
+    fn default() -> Self {
+        Self {
+            theme_mode: None,
+            custom_colors: None,
         }
     }
+}
+
+impl Default for ClaudioSettings {
+    fn default() -> Self {
+        Self {
+            proxy: ProxySettings::default(),
+            claude_binary_path: None,
+            theme: ThemeSettings::default(),
+        }
+    }
+}
+
+/// Get proxy settings from the consolidated Claudio settings file
+#[tauri::command]
+pub async fn get_proxy_settings() -> Result<ProxySettings, String> {
+    let claudio_settings = get_claudio_settings().await?;
+    Ok(claudio_settings.proxy)
+}
+
+/// Get all Claudio settings from the file
+pub async fn get_claudio_settings() -> Result<ClaudioSettings, String> {
+    let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
+    let claudio_file = claude_dir.join("claudio-settings.json");
+    
+    if !claudio_file.exists() {
+        log::info!("Claudio settings file not found, returning default settings");
+        return Ok(ClaudioSettings::default());
+    }
+    
+    let content = fs::read_to_string(&claudio_file)
+        .map_err(|e| format!("Failed to read Claudio settings file: {}", e))?;
+    
+    let settings: ClaudioSettings = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse Claudio settings JSON: {}", e))?;
     
     Ok(settings)
 }
 
-/// Save proxy settings to the database
+/// Save proxy settings to the consolidated Claudio settings file
 #[tauri::command]
-pub async fn save_proxy_settings(
-    db: State<'_, AgentDb>,
-    settings: ProxySettings,
-) -> Result<(), String> {
-    let conn = db.0.lock().map_err(|e| e.to_string())?;
+pub async fn save_proxy_settings(settings: ProxySettings) -> Result<(), String> {
+    log::info!("=== SAVE PROXY SETTINGS DEBUG START ===");
+    log::info!("Received settings: {:?}", settings);
     
-    // Save each setting
-    let values = vec![
-        ("proxy_enabled", settings.enabled.to_string()),
-        ("proxy_http", settings.http_proxy.clone().unwrap_or_default()),
-        ("proxy_https", settings.https_proxy.clone().unwrap_or_default()),
-        ("proxy_no", settings.no_proxy.clone().unwrap_or_default()),
-        ("proxy_all", settings.all_proxy.clone().unwrap_or_default()),
-    ];
+    // Load existing Claudio settings
+    log::info!("Loading existing Claudio settings...");
+    let mut claudio_settings = match get_claudio_settings().await {
+        Ok(s) => {
+            log::info!("Successfully loaded existing settings: {:?}", s);
+            s
+        }
+        Err(e) => {
+            log::warn!("Failed to load existing settings, using default: {}", e);
+            ClaudioSettings::default()
+        }
+    };
     
-    for (key, value) in values {
-        conn.execute(
-            "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?1, ?2)",
-            params![key, value],
-        ).map_err(|e| format!("Failed to save {}: {}", key, e))?;
+    // Update proxy settings
+    log::info!("Updating proxy settings in consolidated settings...");
+    claudio_settings.proxy = settings.clone();
+    
+    // Save the consolidated settings
+    log::info!("Saving consolidated settings...");
+    match save_claudio_settings(claudio_settings).await {
+        Ok(_) => log::info!("Successfully saved consolidated settings"),
+        Err(e) => {
+            log::error!("Failed to save consolidated settings: {}", e);
+            return Err(format!("Failed to save settings: {}", e));
+        }
     }
     
     // Apply the proxy settings immediately to the current process
+    log::info!("Applying proxy settings to current process...");
     apply_proxy_settings(&settings);
     
+    log::info!("=== SAVE PROXY SETTINGS DEBUG END ===");
+    Ok(())
+}
+
+/// Save all Claudio settings to the file
+pub async fn save_claudio_settings(settings: ClaudioSettings) -> Result<(), String> {
+    log::info!("Getting claude directory...");
+    let claude_dir = match get_claude_dir() {
+        Ok(dir) => {
+            log::info!("Claude directory: {:?}", dir);
+            dir
+        }
+        Err(e) => {
+            log::error!("Failed to get claude directory: {}", e);
+            return Err(e.to_string());
+        }
+    };
+    
+    let claudio_file = claude_dir.join("claudio-settings.json");
+    log::info!("Target file path: {:?}", claudio_file);
+    
+    // Pretty print the JSON with 2-space indentation
+    log::info!("Serializing settings to JSON...");
+    let json_string = match serde_json::to_string_pretty(&settings) {
+        Ok(json) => {
+            log::info!("JSON serialized successfully, length: {}", json.len());
+            json
+        }
+        Err(e) => {
+            log::error!("Failed to serialize settings: {}", e);
+            return Err(format!("Failed to serialize Claudio settings: {}", e));
+        }
+    };
+    
+    log::info!("Writing file to disk...");
+    match fs::write(&claudio_file, &json_string) {
+        Ok(_) => {
+            log::info!("File written successfully");
+        }
+        Err(e) => {
+            log::error!("Failed to write file: {}", e);
+            return Err(format!("Failed to write Claudio settings file: {}", e));
+        }
+    }
+    
+    log::info!("Claudio settings saved to {:?}", claudio_file);
+    Ok(())
+}
+
+/// Get a specific setting from Claudio settings
+#[tauri::command]
+pub async fn get_setting(key: String) -> Result<Option<String>, String> {
+    let settings = get_claudio_settings().await.unwrap_or_default();
+    
+    match key.as_str() {
+        "theme_preference" => Ok(settings.theme.theme_mode),
+        "theme_custom_colors" => Ok(settings.theme.custom_colors),
+        _ => Ok(None)
+    }
+}
+
+/// Save a specific setting to Claudio settings
+#[tauri::command]
+pub async fn save_setting(key: String, value: String) -> Result<(), String> {
+    let mut settings = get_claudio_settings().await.unwrap_or_default();
+    
+    match key.as_str() {
+        "theme_preference" => {
+            settings.theme.theme_mode = Some(value);
+        }
+        "theme_custom_colors" => {
+            settings.theme.custom_colors = Some(value);
+        }
+        _ => {
+            return Err(format!("Unknown setting key: {}", key));
+        }
+    }
+    
+    save_claudio_settings(settings).await?;
     Ok(())
 }
 

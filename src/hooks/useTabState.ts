@@ -20,7 +20,7 @@ interface UseTabStateReturn {
   createMCPTab: () => string | null;
   createSettingsTab: () => string | null;
   createClaudeMdTab: () => string | null;
-  createClaudeFileTab: (fileId: string, fileName: string) => string;
+  createClaudeFileTab: (filePath: string, fileName: string) => string;
   createCreateAgentTab: () => string;
   createImportAgentTab: () => string;
   closeTab: (id: string, force?: boolean) => Promise<boolean>;
@@ -100,7 +100,7 @@ export const useTabState = (): UseTabStateReturn => {
 
     return addTab({
       type: 'projects',
-      title: 'CC Projects',
+      title: 'Projects',
       status: 'idle',
       hasUnsavedChanges: false,
       icon: 'folder'
@@ -175,9 +175,9 @@ export const useTabState = (): UseTabStateReturn => {
     });
   }, [addTab, tabs, setActiveTab]);
 
-  const createClaudeFileTab = useCallback((fileId: string, fileName: string): string => {
+  const createClaudeFileTab = useCallback((filePath: string, fileName: string): string => {
     // Check if tab already exists for this file
-    const existingTab = tabs.find(tab => tab.type === 'claude-file' && tab.claudeFileId === fileId);
+    const existingTab = tabs.find(tab => tab.type === 'claude-file' && tab.claudeFileId === filePath);
     if (existingTab) {
       setActiveTab(existingTab.id);
       return existingTab.id;
@@ -186,7 +186,7 @@ export const useTabState = (): UseTabStateReturn => {
     return addTab({
       type: 'claude-file',
       title: fileName,
-      claudeFileId: fileId,
+      claudeFileId: filePath,
       status: 'idle',
       hasUnsavedChanges: false,
       icon: 'file-text'
