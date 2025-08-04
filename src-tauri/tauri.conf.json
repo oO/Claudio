@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Claudio",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "identifier": "claudio.oO.dev",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -17,6 +17,7 @@
         "height": 600
       }
     ],
+    "withGlobalTauri": false,
     "security": {
       "csp": "default-src 'self'; img-src 'self' asset: https://asset.localhost blob: data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-eval' https://app.posthog.com https://*.posthog.com https://*.i.posthog.com https://*.assets.i.posthog.com; connect-src 'self' ipc: https://ipc.localhost https://app.posthog.com https://*.posthog.com https://*.i.posthog.com",
       "assetProtocol": {

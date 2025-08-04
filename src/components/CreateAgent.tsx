@@ -8,7 +8,7 @@ import { Toast, ToastContainer } from "@/components/ui/toast";
 import { api, type Agent } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import MDEditor from "@uiw/react-md-editor";
-import { type AgentIconName } from "./CCAgents";
+// import { type AgentIconName } from "./CCAgents";
 
 // Available agent colors
 const AGENT_COLORS = [

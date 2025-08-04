@@ -721,7 +721,7 @@ export const api = {
    * @returns Promise resolving to the updated agent
    */
   async updateAgent(
-    id: number, 
+    _id: number, 
     name: string, 
     system_prompt: string, 
     default_task?: string, 
@@ -1726,23 +1726,6 @@ export const api = {
   },
 
   // Theme settings helpers
-
-  /**
-   * Gets a setting from the app_settings table
-   * @param key - The setting key to retrieve
-   * @returns Promise resolving to the setting value or null if not found
-   */
-  async getSetting(key: string): Promise<string | null> {
-    try {
-      // Use storageReadTable to safely query the app_settings table
-      const result = await this.storageReadTable('app_settings', 1, 1000);
-      const setting = result?.data?.find((row: any) => row.key === key);
-      return setting?.value || null;
-    } catch (error) {
-      console.error(`Failed to get setting ${key}:`, error);
-      return null;
-    }
-  },
 
   /**
    * Gets a setting from the consolidated Claudio settings file

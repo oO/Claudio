@@ -374,7 +374,7 @@ export const TabContent: React.FC = () => {
       createCreateAgentTab();
     };
     const handleCreateEditAgentTab = (event: CustomEvent) => {
-      const { agent, tabId } = event.detail;
+      const { agent } = event.detail;
       // Create a create-agent tab but with agent data for editing
       const newTabId = createCreateAgentTab();
       updateTab(newTabId, {

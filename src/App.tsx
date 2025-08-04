@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Loader2, Bot, FolderCode } from "lucide-react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { api, type Project, type Session, type ClaudeMdFile } from "@/lib/api";
 import { OutputCacheProvider } from "@/lib/outputCache";
 import { TabProvider } from "@/contexts/TabContext";
@@ -67,9 +68,20 @@ function AppContent() {
   useAppLifecycle();
   const trackEvent = useTrackEvent();
   
-  // Set window title with version
+  // Set window title with version using Tauri API
   useEffect(() => {
-    document.title = `Claudio v${__APP_VERSION__}`;
+    const setWindowTitle = async () => {
+      try {
+        const window = getCurrentWindow();
+        await window.setTitle(`Claudio v${__APP_VERSION__}`);
+      } catch (error) {
+        console.error('Failed to set Tauri window title:', error);
+        // Fallback to document.title
+        document.title = `Claudio v${__APP_VERSION__}`;
+      }
+    };
+    
+    setWindowTitle();
   }, []);
   
   // Track user journey milestones
