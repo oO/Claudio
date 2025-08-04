@@ -29,85 +29,131 @@ Claudio Desktop App
 │   ├── Project Discovery (Scan for .claude dirs)
 │   └── Agent Execution (Native subagent delegation)
 │
-└── Storage
-    ├── .claude/agents/*.md (Agent definitions)
+└── Storage (Dual-Level Agent Discovery)
+    ├── ~/.claude/agents/*.md (User-level agents - global)
+    ├── <project>/.claude/agents/*.md (Project-level agents)
     ├── .claude/settings.json (Project config)
-    └── No database (file-based only)
+    └── No database (file-based only, native Claude Code integration)
 ```
 
 ## Agent File Format Specification
 
-### Standard Agent .md Structure
+**UPDATED**: Based on research of Claude Code's native agent system, the actual format uses YAML frontmatter, not markdown headers.
+
+### Actual Claude Code Agent Format
 ```markdown
-# Agent Name
+---
+name: agent-name
+description: Brief description of when to use this agent with usage examples
+tools: Task, Bash, Edit, MultiEdit, Write, Read, Grep, LS, etc.
+model: inherit|sonnet|opus|haiku
+color: blue|green|purple|red|yellow|etc.
+icon: 👩‍💻 (optional emoji)
+---
 
-Brief description of when to use this agent.
+System prompt content here...
 
-## Tools
-- Read
-- Write  
-- Bash
-- Grep
-
-## System Prompt
 You are a specialized agent for [specific task].
 Your role is to [specific instructions].
 
 Always [specific guidelines].
-
-## Examples
-Optional examples of usage patterns.
 ```
 
-### Metadata Extraction
-- **Name**: First H1 heading
-- **Description**: First paragraph after title
-- **Tools**: Bullet list under "## Tools" section
-- **System Prompt**: Content under "## System Prompt" section
+### Metadata Extraction (Updated)
+- **Name**: `name` field in YAML frontmatter (kebab-case)
+- **Description**: `description` field in YAML frontmatter (includes usage examples)
+- **Tools**: `tools` field - comma-separated list of Claude Code tools
+- **Model**: `model` field - inherit, sonnet, opus, haiku, etc.
+- **Color**: `color` field - UI color theme for the agent
+- **Icon**: `icon` field - optional emoji icon
+- **System Prompt**: All content after the YAML frontmatter delimiter
+
+## Claude Code Agent Discovery System
+
+**CRITICAL**: Based on research, Claude Code uses a dual-level agent discovery system that Claudio must respect:
+
+### User-Level Agents (`~/.claude/agents/*.md`)
+- **Global agents** available across all projects
+- Stored in user's home directory: `~/.claude/agents/`
+- Examples: `architecture-designer.md`, `software-engineer.md`, etc.
+- Shared across all Claude Code projects
+
+### Project-Level Agents (`<project>/.claude/agents/*.md`)
+- **Project-specific agents** for local use
+- Stored in each project's `.claude/agents/` directory
+- Can override user-level agents with same name
+- Project-specific customizations and workflows
+
+### Agent Resolution Priority
+1. Project-level agents take precedence over user-level agents
+2. Agent names must be unique within each level
+3. Claude Code automatically discovers and merges both levels
+4. Claudio must implement same discovery logic for consistency
+
+### Integration with Claude Code Task Tool
+- Agents are invoked via `subagent_type: "agent-name"` parameter
+- Tool lists in frontmatter determine available tools for that agent
+- Model preference from frontmatter is respected
+- No external process spawning - native Claude Code integration
 
 ## Implementation Plan
 
-### Phase 1: File-Based Agent Management
-**Priority: HIGH**
+### Phase 1: Dual-Level Agent Management
+**Priority: HIGH** *(Updated based on Claude Code research)*
 
-1. **Agent File Parser** (`src-tauri/src/commands/agents.rs`)
-   - Parse `.md` files to extract agent metadata
-   - Validate agent file format
-   - Handle malformed files gracefully
+1. **Agent File Parser** (`src-tauri/src/commands/agents.rs`) ✅ *COMPLETED*
+   - ✅ Parse YAML frontmatter + markdown content
+   - ✅ Extract metadata: name, description, tools, model, color, icon
+   - ✅ Handle malformed files gracefully with proper error messages
+   - ✅ Generate properly formatted agent files
 
-2. **Agent CRUD Operations**
-   - `list_agents()` - Scan `.claude/agents/*.md` files
-   - `create_agent()` - Generate .md from AgentData
-   - `update_agent()` - Modify existing .md files
-   - `delete_agent()` - Remove .md files
-   - `get_agent()` - Load specific agent details
+2. **Dual-Level Agent Discovery** *(Updated)*
+   - ✅ `list_agents()` - Scan both user-level (`~/.claude/agents/`) and project-level (`.claude/agents/`)
+   - ✅ Merge agents with project-level precedence
+   - ✅ Handle agent name conflicts correctly
+   - ✅ Return categorized agent lists (user vs project)
 
-3. **Project Discovery** (`src-tauri/src/commands/claude_integration.rs`)
-   - Scan filesystem for `.claude/` directories
-   - Identify Claude Code projects
-   - Count agents per project
+3. **Agent CRUD Operations** ✅ *COMPLETED*
+   - ✅ `create_agent()` - Generate .md files with YAML frontmatter
+   - ✅ `update_agent()` - Modify existing .md files
+   - ✅ `delete_agent()` - Remove .md files safely
+   - ✅ `get_agent()` - Load specific agent details
+   - ✅ Support both user-level and project-level locations
 
-### Phase 2: Claude Code Integration  
-**Priority: HIGH**
+4. **Agent Import/Export** ✅ *COMPLETED*
+   - ✅ Export agents to JSON format for sharing
+   - ✅ Import agents from JSON with conflict resolution
+   - ✅ File-based import/export functionality
 
-1. **Task Tool Integration**
-   - Research Claude Code SDK/API
-   - Implement native Task tool execution
-   - Handle subagent_type parameter correctly
-   - Capture execution results and errors
+### Phase 2: Claude Code Task Tool Integration  
+**Priority: HIGH** *(Updated based on research)*
 
-2. **Agent Execution Flow**
+1. **Native Task Tool Integration** 🚧 *IN PROGRESS*
+   - 🔄 Research Claude Code's internal Task tool implementation
+   - 🔄 Implement `execute_agent()` using `subagent_type` parameter
+   - 🔄 Handle tool restrictions based on agent's `tools` frontmatter field
+   - 🔄 Respect model preferences from agent metadata
+   - 🔄 No external process spawning - use Claude Code's native agent system
+
+2. **Agent Validation & Tool Management**
+   - 🔄 Validate tool lists against Claude Code's available tools
+   - 🔄 Implement tool compatibility checking
+   - 🔄 Handle model selection (inherit, sonnet, opus, haiku)
+   - 🔄 Validate agent names for Task tool compatibility
+
+3. **Enhanced Agent Execution Flow** *(Updated)*
    ```rust
-   // Simplified execution flow
+   // Native Claude Code integration
    async fn execute_agent_task(
        project_path: String,
        agent_name: String, 
        task_description: String
    ) -> Result<TaskResult> {
-       // 1. Validate agent exists
-       // 2. Call Claude Code Task tool with subagent_type
-       // 3. Monitor execution status
-       // 4. Return results/errors
+       // 1. Discover agent from dual-level system
+       // 2. Validate agent tools and model
+       // 3. Use Claude Code Task tool with subagent_type: agent_name
+       // 4. Maintain session context and conversation history
+       // 5. Return results through Claude Code's native system
    }
    ```
 

@@ -90,7 +90,9 @@ export const CCAgents: React.FC<CCAgentsProps> = ({ onBack, className }) => {
     try {
       setLoading(true);
       setError(null);
+      console.log("Loading agents...");
       const agentsList = await api.listAgents();
+      console.log("Agents loaded:", agentsList);
       setAgents(agentsList);
     } catch (err) {
       console.error("Failed to load agents:", err);
@@ -205,7 +207,7 @@ export const CCAgents: React.FC<CCAgentsProps> = ({ onBack, className }) => {
       
       // Export the agent to the selected file
       await invoke('export_agent_to_file', { 
-        id: agent.id!,
+        name: agent.name,
         filePath 
       });
       
@@ -308,9 +310,9 @@ export const CCAgents: React.FC<CCAgentsProps> = ({ onBack, className }) => {
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <div>
-                <h1 className="text-2xl font-bold">CC Agents</h1>
+                <h1 className="text-2xl font-bold">Personal Agents</h1>
                 <p className="text-sm text-muted-foreground">
-                  Manage your Claude Code agents
+                  Manage your personal Claude Code agents (~/.claude/agents)
                 </p>
               </div>
             </div>
@@ -344,7 +346,7 @@ export const CCAgents: React.FC<CCAgentsProps> = ({ onBack, className }) => {
                 className="flex items-center gap-2"
               >
                 <Plus className="h-4 w-4" />
-                Create CC Agent
+                Create Personal Agent
               </Button>
             </div>
           </div>
@@ -381,13 +383,13 @@ export const CCAgents: React.FC<CCAgentsProps> = ({ onBack, className }) => {
                 ) : agents.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-64 text-center">
                     <Bot className="h-16 w-16 text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No agents yet</h3>
+                    <h3 className="text-lg font-medium mb-2">No personal agents yet</h3>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Create your first CC Agent to get started
+                      Create your first personal agent to get started
                     </p>
                     <Button onClick={() => setView("create")} size="default">
                       <Plus className="h-4 w-4 mr-2" />
-                      Create CC Agent
+                      Create Personal Agent
                     </Button>
                   </div>
                 ) : (

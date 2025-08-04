@@ -117,9 +117,15 @@ export interface Agent {
   system_prompt: string;
   default_task?: string;
   model: string;
+  enable_file_read: boolean;
+  enable_file_write: boolean;
+  enable_network: boolean;
   hooks?: string; // JSON string of HooksConfiguration
   created_at: string;
   updated_at: string;
+  description?: string;
+  tools?: string;
+  color?: string;
 }
 
 export interface AgentExport {
@@ -649,12 +655,13 @@ export const api = {
   // Agent API methods
   
   /**
-   * Lists all CC agents
+   * Lists all global agents from ~/.claude/agents/
    * @returns Promise resolving to an array of agents
    */
   async listAgents(): Promise<Agent[]> {
     try {
-      return await invoke<Agent[]>('list_agents');
+      // For global agents, we don't need to pass a project path
+      return await invoke<Agent[]>('list_agents', {});
     } catch (error) {
       console.error("Failed to list agents:", error);
       throw error;
@@ -673,20 +680,28 @@ export const api = {
    */
   async createAgent(
     name: string, 
-    icon: string, 
     system_prompt: string, 
     default_task?: string, 
     model?: string,
+    description?: string,
+    tools?: string,
+    color?: string,
     hooks?: string
   ): Promise<Agent> {
     try {
       return await invoke<Agent>('create_agent', { 
         name, 
-        icon, 
+        icon: "🤖", // Temporary default for backend compatibility
         systemPrompt: system_prompt,
         defaultTask: default_task,
-        model,
-        hooks
+        model: model || 'inherit',
+        enableFileRead: true,
+        enableFileWrite: true,
+        enableNetwork: false,
+        hooks,
+        description: description || null,
+        tools: tools || null,
+        color: color || null
       });
     } catch (error) {
       console.error("Failed to create agent:", error);
@@ -708,21 +723,28 @@ export const api = {
   async updateAgent(
     id: number, 
     name: string, 
-    icon: string, 
     system_prompt: string, 
     default_task?: string, 
     model?: string,
+    description?: string,
+    tools?: string,
+    color?: string,
     hooks?: string
   ): Promise<Agent> {
     try {
       return await invoke<Agent>('update_agent', { 
-        id, 
         name, 
-        icon, 
+        icon: "🤖", // Temporary default for backend compatibility
         systemPrompt: system_prompt,
         defaultTask: default_task,
-        model,
-        hooks
+        model: model || 'inherit',
+        enableFileRead: true,
+        enableFileWrite: true,
+        enableNetwork: false,
+        hooks,
+        description: description || null,
+        tools: tools || null,
+        color: color || null
       });
     } catch (error) {
       console.error("Failed to update agent:", error);
@@ -737,7 +759,13 @@ export const api = {
    */
   async deleteAgent(id: number): Promise<void> {
     try {
-      return await invoke('delete_agent', { id });
+      // For file-based agents, we need to get the agent name first
+      const agents = await this.listAgents();
+      const agent = agents.find(a => a.id === id);
+      if (!agent) {
+        throw new Error('Agent not found');
+      }
+      return await invoke('delete_agent', { name: agent.name });
     } catch (error) {
       console.error("Failed to delete agent:", error);
       throw error;
@@ -751,7 +779,13 @@ export const api = {
    */
   async getAgent(id: number): Promise<Agent> {
     try {
-      return await invoke<Agent>('get_agent', { id });
+      // For file-based agents, we need to get the agent by name
+      const agents = await this.listAgents();
+      const agent = agents.find(a => a.id === id);
+      if (!agent) {
+        throw new Error('Agent not found');
+      }
+      return await invoke<Agent>('get_agent', { name: agent.name });
     } catch (error) {
       console.error("Failed to get agent:", error);
       throw error;
@@ -765,7 +799,13 @@ export const api = {
    */
   async exportAgent(id: number): Promise<string> {
     try {
-      return await invoke<string>('export_agent', { id });
+      // For file-based agents, we need to export by name
+      const agents = await this.listAgents();
+      const agent = agents.find(a => a.id === id);
+      if (!agent) {
+        throw new Error('Agent not found');
+      }
+      return await invoke<string>('export_agent', { name: agent.name });
     } catch (error) {
       console.error("Failed to export agent:", error);
       throw error;

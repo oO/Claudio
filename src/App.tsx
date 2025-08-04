@@ -67,6 +67,11 @@ function AppContent() {
   useAppLifecycle();
   const trackEvent = useTrackEvent();
   
+  // Set window title with version
+  useEffect(() => {
+    document.title = `Claudio v${__APP_VERSION__}`;
+  }, []);
+  
   // Track user journey milestones
   const [hasTrackedFirstChat] = useState(false);
   // const [hasTrackedFirstAgent] = useState(false);
@@ -264,7 +269,7 @@ function AppContent() {
                   >
                     <div className="h-full flex flex-col items-center justify-center p-8">
                       <Bot className="h-16 w-16 mb-4 text-primary" />
-                      <h2 className="text-xl font-semibold">CC Agents</h2>
+                      <h2 className="text-xl font-semibold">Personal Agents</h2>
                     </div>
                   </Card>
                 </motion.div>

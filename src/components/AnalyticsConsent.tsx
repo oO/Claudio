@@ -27,6 +27,9 @@ export const AnalyticsConsent: React.FC<AnalyticsConsentProps> = ({
   useEffect(() => {
     // Check if we should show the consent dialog
     const checkConsent = async () => {
+      // DISABLED: Analytics consent popup disabled for now
+      return;
+      
       await analytics.initialize();
       const settings = analytics.getSettings();
       
@@ -155,6 +158,9 @@ export const AnalyticsConsentBanner: React.FC<AnalyticsConsentBannerProps> = ({
   
   useEffect(() => {
     const checkConsent = async () => {
+      // DISABLED: Analytics consent banner disabled for now
+      return;
+      
       if (hasChecked) return;
       
       await analytics.initialize();

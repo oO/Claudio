@@ -269,8 +269,9 @@ const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
       case 'create-agent':
         return (
           <CreateAgent
+            agent={tab.agentData} // Pass agent data for editing if available
             onAgentCreated={() => {
-              // Close this tab after agent is created
+              // Close this tab after agent is created/updated
               window.dispatchEvent(new CustomEvent('close-tab', { detail: { tabId: tab.id } }));
             }}
             onBack={() => {
@@ -352,6 +353,15 @@ export const TabContent: React.FC = () => {
     const handleOpenCreateAgentTab = () => {
       createCreateAgentTab();
     };
+    const handleCreateEditAgentTab = (event: CustomEvent) => {
+      const { agent, tabId } = event.detail;
+      // Create a create-agent tab but with agent data for editing
+      const newTabId = createCreateAgentTab();
+      updateTab(newTabId, {
+        agentData: agent,
+        title: `Edit ${agent.name}`
+      });
+    };
 
     const handleOpenImportAgentTab = () => {
       createImportAgentTab();
@@ -386,6 +396,7 @@ export const TabContent: React.FC = () => {
     window.addEventListener('open-claude-file', handleOpenClaudeFile as EventListener);
     window.addEventListener('open-agent-execution', handleOpenAgentExecution as EventListener);
     window.addEventListener('open-create-agent-tab', handleOpenCreateAgentTab);
+    window.addEventListener('create-edit-agent-tab', handleCreateEditAgentTab as EventListener);
     window.addEventListener('open-import-agent-tab', handleOpenImportAgentTab);
     window.addEventListener('close-tab', handleCloseTab as EventListener);
     window.addEventListener('claude-session-selected', handleClaudeSessionSelected as EventListener);
@@ -394,6 +405,7 @@ export const TabContent: React.FC = () => {
       window.removeEventListener('open-claude-file', handleOpenClaudeFile as EventListener);
       window.removeEventListener('open-agent-execution', handleOpenAgentExecution as EventListener);
       window.removeEventListener('open-create-agent-tab', handleOpenCreateAgentTab);
+      window.removeEventListener('create-edit-agent-tab', handleCreateEditAgentTab as EventListener);
       window.removeEventListener('open-import-agent-tab', handleOpenImportAgentTab);
       window.removeEventListener('close-tab', handleCloseTab as EventListener);
       window.removeEventListener('claude-session-selected', handleClaudeSessionSelected as EventListener);

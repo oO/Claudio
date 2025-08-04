@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, Plus, Loader2, Play, Clock, CheckCircle, XCircle, Trash2, Import, ChevronDown, FileJson, Globe, Download } from 'lucide-react';
+import { Bot, Plus, Loader2, Play, Clock, CheckCircle, XCircle, Trash2, Import, ChevronDown, FileJson, Globe, Download, Edit } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -21,10 +21,23 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Toast } from '@/components/ui/toast';
 import { api, type Agent, type AgentRunWithMetrics } from '@/lib/api';
 import { useTabState } from '@/hooks/useTabState';
+import { cn } from '@/lib/utils';
 import { formatISOTimestamp } from '@/lib/date-utils';
 import { open as openDialog, save } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
 import { GitHubAgentBrowser } from '@/components/GitHubAgentBrowser';
+
+// Available agent colors - same as CreateAgent component
+const AGENT_COLORS = [
+  { name: "Red", value: "Red", bgClass: "bg-red-500", hoverClass: "hover:bg-red-600" },
+  { name: "Blue", value: "Blue", bgClass: "bg-blue-500", hoverClass: "hover:bg-blue-600" },
+  { name: "Green", value: "Green", bgClass: "bg-green-500", hoverClass: "hover:bg-green-600" },
+  { name: "Yellow", value: "Yellow", bgClass: "bg-yellow-500", hoverClass: "hover:bg-yellow-600" },
+  { name: "Purple", value: "Purple", bgClass: "bg-purple-500", hoverClass: "hover:bg-purple-600" },
+  { name: "Orange", value: "Orange", bgClass: "bg-orange-500", hoverClass: "hover:bg-orange-600" },
+  { name: "Pink", value: "Pink", bgClass: "bg-pink-500", hoverClass: "hover:bg-pink-600" },
+  { name: "Cyan", value: "Cyan", bgClass: "bg-cyan-500", hoverClass: "hover:bg-cyan-600" },
+] as const;
 
 interface AgentsModalProps {
   open: boolean;
@@ -106,6 +119,17 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ open, onOpenChange }) 
     }));
   };
 
+  const handleEditAgent = (agent: Agent) => {
+    // Close modal and open edit tab with agent data
+    onOpenChange(false);
+    
+    // Create create-agent tab but with agent data for editing
+    const tabId = `edit-agent-${agent.name}-${Date.now()}`;
+    window.dispatchEvent(new CustomEvent('create-edit-agent-tab', { 
+      detail: { agent, tabId } 
+    }));
+  };
+
   const handleDeleteAgent = async (agent: Agent) => {
     setAgentToDelete(agent);
     setShowDeleteDialog(true);
@@ -162,17 +186,21 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ open, onOpenChange }) 
 
   const handleExportAgent = async (agent: Agent) => {
     try {
-      const exportData = await api.exportAgent(agent.id!);
+      // Show native save dialog for .md file
       const filePath = await save({
-        defaultPath: `${agent.name.toLowerCase().replace(/\s+/g, '-')}.json`,
+        defaultPath: `${agent.name.toLowerCase().replace(/\s+/g, '-')}.md`,
         filters: [{
-          name: 'JSON',
-          extensions: ['json']
+          name: 'Markdown Agent File',
+          extensions: ['md']
         }]
       });
       
       if (filePath) {
-        await invoke('write_file', { path: filePath, content: JSON.stringify(exportData, null, 2) });
+        // Use the backend to export the agent as .md file
+        await invoke('export_agent_to_file', { 
+          name: agent.name,
+          filePath 
+        });
         setToast({ message: "Agent exported successfully", type: "success" });
       }
     } catch (error) {
@@ -278,19 +306,24 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ open, onOpenChange }) 
                         animate={{ opacity: 1, y: 0 }}
                         className="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
                       >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h3 className="font-medium flex items-center gap-2">
-                              <Bot className="w-4 h-4" />
-                              {agent.name}
-                            </h3>
-                            {agent.default_task && (
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {agent.default_task}
-                              </p>
-                            )}
-                          </div>
+                        <div className="flex items-start justify-between mb-2">
+                          <h3 className="font-medium flex items-center gap-2">
+                            <span className={cn(
+                              agent.color && (() => {
+                                const colorData = AGENT_COLORS.find(c => c.value === agent.color);
+                                return colorData ? cn("px-2 py-1 rounded text-white text-sm", colorData.bgClass) : '';
+                              })()
+                            )}>{agent.name}</span>
+                          </h3>
                           <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleEditAgent(agent)}
+                            >
+                              <Edit className="w-3 h-3 mr-1" />
+                              Edit
+                            </Button>
                             <Button
                               size="sm"
                               variant="ghost"
@@ -317,6 +350,16 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ open, onOpenChange }) 
                             </Button>
                           </div>
                         </div>
+                        {agent.description && (
+                          <p className="text-sm text-muted-foreground">
+                            {(() => {
+                              const text = agent.description || '';
+                              // Extract first sentence (up to first period followed by space or end)
+                              const match = text.match(/^[^.]+\./);
+                              return match ? match[0] : text;
+                            })()}
+                          </p>
+                        )}
                       </motion.div>
                     ))}
                   </div>
