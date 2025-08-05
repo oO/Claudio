@@ -156,7 +156,8 @@ export const SessionList: React.FC<SessionListProps> = ({
     
     setIsDeleting(true);
     try {
-      await api.deleteSession(sessionToDelete.project_id, sessionToDelete.id);
+      const result = await api.deleteSession(sessionToDelete.project_id, sessionToDelete.id);
+      console.log(`Deleted session with ${result.todos_deleted} todos, ${result.timelines_deleted} timelines (${result.size_kb.toFixed(2)} KB)`);
       onSessionDeleted?.(sessionToDelete.id);
       setDeleteDialogOpen(false);
       setSessionToDelete(null);

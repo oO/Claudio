@@ -126,7 +126,8 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     
     setIsDeleting(true);
     try {
-      await api.deleteClaudeProject(projectToDelete.id);
+      const result = await api.deleteClaudeProject(projectToDelete.id);
+      console.log(`Deleted project with ${result.sessions_deleted} sessions, ${result.todos_deleted} todos, ${result.timelines_deleted} timelines (${result.size_mb.toFixed(2)} MB)`);
       // Always call the callback to remove from UI - even if backend had issues
       onProjectDeleted?.(projectToDelete.id);
       setDeleteDialogOpen(false);

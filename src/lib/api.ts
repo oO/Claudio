@@ -1940,7 +1940,7 @@ export const api = {
   // ===== PROJECT AND SESSION MANAGEMENT =====
 
   /**
-   * Deletes a Claude project and all its sessions
+   * Deletes a Claude project and all its associated data including todos and timelines
    * @param projectId - The project ID (encoded directory name)
    * @returns Promise resolving to deletion summary
    */
@@ -1948,6 +1948,8 @@ export const api = {
     success: boolean;
     project_id: string;
     sessions_deleted: number;
+    todos_deleted: number;
+    timelines_deleted: number;
     size_mb: number;
     message: string;
   }> {
@@ -1960,7 +1962,7 @@ export const api = {
   },
 
   /**
-   * Deletes a specific session from a project
+   * Deletes a specific session from a project and all associated data
    * @param projectId - The project ID (encoded directory name)
    * @param sessionId - The session ID (UUID)
    * @returns Promise resolving to deletion summary
@@ -1969,6 +1971,8 @@ export const api = {
     success: boolean;
     session_id: string;
     project_id: string;
+    todos_deleted: number;
+    timelines_deleted: number;
     size_kb: number;
     message: string;
   }> {

@@ -2229,7 +2229,7 @@ pub async fn validate_hook_command(command: String) -> Result<serde_json::Value,
 
 // ===== PROJECT AND SESSION MANAGEMENT FUNCTIONS =====
 
-/// Deletes a Claude project and all its sessions
+/// Deletes a Claude project and all its associated data including todos and timelines
 #[tauri::command]
 pub async fn delete_claude_project(project_id: String) -> Result<serde_json::Value, String> {
     log::info!("Deleting Claude project: {}", project_id);
@@ -2241,42 +2241,81 @@ pub async fn delete_claude_project(project_id: String) -> Result<serde_json::Val
         return Err(format!("Project '{}' not found", project_id));
     }
     
-    // Count sessions before deletion for reporting
-    let session_count = fs::read_dir(&project_dir)
-        .map_err(|e| format!("Failed to read project directory: {}", e))?
-        .filter_map(|entry| {
-            if let Ok(e) = entry {
-                let path = e.path();
-                if let Some(ext) = path.extension().and_then(|ext| ext.to_str()) {
-                    if ext == "jsonl" {
-                        return Some(1);
+    // Collect all session IDs before deletion for cleanup
+    let mut session_ids = Vec::new();
+    let mut session_count = 0;
+    
+    if let Ok(entries) = fs::read_dir(&project_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if let Some(ext) = path.extension().and_then(|ext| ext.to_str()) {
+                if ext == "jsonl" {
+                    if let Some(session_id) = path.file_stem().and_then(|s| s.to_str()) {
+                        session_ids.push(session_id.to_string());
+                        session_count += 1;
                     }
                 }
             }
-            None
-        })
-        .sum::<usize>();
+        }
+    }
     
     // Calculate total size before deletion
     let total_size = calculate_directory_size(&project_dir)?;
     
-    // Delete the entire project directory
+    // Clean up associated files for each session
+    let todos_dir = claude_dir.join("todos");
+    let mut todos_deleted = 0;
+    let mut timelines_deleted = 0;
+    
+    for session_id in &session_ids {
+        // Delete all agent todo files for this session (pattern: {session-id}-agent-*.json)
+        if todos_dir.exists() {
+            if let Ok(todo_entries) = fs::read_dir(&todos_dir) {
+                for todo_entry in todo_entries.flatten() {
+                    let file_name = todo_entry.file_name().to_string_lossy().to_string();
+                    if file_name.starts_with(&format!("{}-agent-", session_id)) && file_name.ends_with(".json") {
+                        if let Err(e) = fs::remove_file(todo_entry.path()) {
+                            log::warn!("Failed to delete todo file '{}': {}", file_name, e);
+                        } else {
+                            todos_deleted += 1;
+                            log::debug!("Deleted todo file: {}", file_name);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Delete timeline directory for this session
+        let timeline_dir = project_dir.join(".timelines").join(session_id);
+        if timeline_dir.exists() {
+            if let Err(e) = fs::remove_dir_all(&timeline_dir) {
+                log::warn!("Failed to delete timeline directory for session '{}': {}", session_id, e);
+            } else {
+                timelines_deleted += 1;
+                log::debug!("Deleted timeline directory for session: {}", session_id);
+            }
+        }
+    }
+    
+    // Delete the entire project directory (this removes sessions, timelines directory, etc.)
     fs::remove_dir_all(&project_dir)
         .map_err(|e| format!("Failed to delete project directory: {}", e))?;
     
-    log::info!("Successfully deleted project '{}' with {} sessions ({:.2} MB)", 
-               project_id, session_count, total_size as f64 / 1024.0 / 1024.0);
+    log::info!("Successfully deleted project '{}' with {} sessions, {} todo files, {} timelines ({:.2} MB)", 
+               project_id, session_count, todos_deleted, timelines_deleted, total_size as f64 / 1024.0 / 1024.0);
     
     Ok(serde_json::json!({
         "success": true,
         "project_id": project_id,
         "sessions_deleted": session_count,
+        "todos_deleted": todos_deleted,
+        "timelines_deleted": timelines_deleted,
         "size_mb": total_size as f64 / 1024.0 / 1024.0,
-        "message": format!("Deleted project with {} sessions", session_count)
+        "message": format!("Deleted project with {} sessions, {} todos, {} timelines", session_count, todos_deleted, timelines_deleted)
     }))
 }
 
-/// Deletes a specific session from a project
+/// Deletes a specific session from a project and all associated data
 #[tauri::command]
 pub async fn delete_session(project_id: String, session_id: String) -> Result<serde_json::Value, String> {
     log::info!("Deleting session '{}' from project '{}'", session_id, project_id);
@@ -2298,37 +2337,53 @@ pub async fn delete_session(project_id: String, session_id: String) -> Result<se
     fs::remove_file(&session_file)
         .map_err(|e| format!("Failed to delete session file: {}", e))?;
     
-    // Also delete associated todo file if it exists
+    // Clean up associated files
     let todos_dir = claude_dir.join("todos");
-    let todo_file = todos_dir.join(format!("{}.json", session_id));
-    if todo_file.exists() {
-        if let Err(e) = fs::remove_file(&todo_file) {
-            log::warn!("Failed to delete todo file for session '{}': {}", session_id, e);
-        } else {
-            log::info!("Also deleted associated todo file for session '{}'", session_id);
+    let mut todos_deleted = 0;
+    let mut timelines_deleted = 0;
+    
+    // Delete all agent todo files for this session (pattern: {session-id}-agent-*.json)
+    if todos_dir.exists() {
+        if let Ok(todo_entries) = fs::read_dir(&todos_dir) {
+            for todo_entry in todo_entries.flatten() {
+                let file_name = todo_entry.file_name().to_string_lossy().to_string();
+                if file_name.starts_with(&format!("{}-agent-", session_id)) && file_name.ends_with(".json") {
+                    if let Err(e) = fs::remove_file(todo_entry.path()) {
+                        log::warn!("Failed to delete todo file '{}': {}", file_name, e);
+                    } else {
+                        todos_deleted += 1;
+                        log::debug!("Deleted todo file: {}", file_name);
+                    }
+                }
+            }
         }
     }
     
-    // Also delete associated statsig file if it exists
-    let statsig_dir = claude_dir.join("statsig");
-    let statsig_file = statsig_dir.join(format!("{}.json", session_id));
-    if statsig_file.exists() {
-        if let Err(e) = fs::remove_file(&statsig_file) {
-            log::warn!("Failed to delete statsig file for session '{}': {}", session_id, e);
+    // Delete timeline directory for this session
+    let timeline_dir = project_dir.join(".timelines").join(&session_id);
+    if timeline_dir.exists() {
+        if let Err(e) = fs::remove_dir_all(&timeline_dir) {
+            log::warn!("Failed to delete timeline directory for session '{}': {}", session_id, e);
         } else {
-            log::info!("Also deleted associated statsig file for session '{}'", session_id);
+            timelines_deleted = 1;
+            log::debug!("Deleted timeline directory for session: {}", session_id);
         }
     }
     
-    log::info!("Successfully deleted session '{}' ({:.2} KB)", 
-               session_id, file_size as f64 / 1024.0);
+    // Note: Statsig files don't appear to be session-specific based on file structure analysis
+    // They seem to be global cache files, so we don't delete them
+    
+    log::info!("Successfully deleted session '{}' with {} todos, {} timelines ({:.2} KB)", 
+               session_id, todos_deleted, timelines_deleted, file_size as f64 / 1024.0);
     
     Ok(serde_json::json!({
         "success": true,
         "session_id": session_id,
         "project_id": project_id,
+        "todos_deleted": todos_deleted,
+        "timelines_deleted": timelines_deleted,
         "size_kb": file_size as f64 / 1024.0,
-        "message": format!("Deleted session {}", session_id)
+        "message": format!("Deleted session {} with {} todos, {} timelines", session_id, todos_deleted, timelines_deleted)
     }))
 }
 
