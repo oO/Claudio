@@ -1,7 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Claudio",
-  "version": "0.2.2",
   "identifier": "claudio.oO.dev",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -13,8 +12,8 @@
     "windows": [
       {
         "title": "Claudio",
-        "width": 800,
-        "height": 600
+        "width": 1200,
+        "height": 800
       }
     ],
     "withGlobalTauri": false,

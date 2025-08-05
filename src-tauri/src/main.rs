@@ -27,6 +27,7 @@ use commands::claude::{
     save_claude_md_file, save_claude_settings, save_system_prompt, search_files,
     track_checkpoint_message, track_session_messages, update_checkpoint_settings,
     get_hooks_config, update_hooks_config, validate_hook_command,
+    delete_claude_project, delete_session, prune_old_sessions,
     ClaudeProcessState,
 };
 use commands::mcp::{
@@ -57,7 +58,7 @@ fn main() {
         .plugin(tauri_plugin_shell::init())
         .setup(|app| {
             // Initialize agents database
-            let conn = init_database(&app.handle()).expect("Failed to initialize agents database");
+            let _conn = init_database(&app.handle()).expect("Failed to initialize agents database");
             
             // Load and apply proxy settings from consolidated Claudio settings file
             {
@@ -147,6 +148,9 @@ fn main() {
             get_hooks_config,
             update_hooks_config,
             validate_hook_command,
+            delete_claude_project,
+            delete_session,
+            prune_old_sessions,
             
             // Checkpoint Management
             create_checkpoint,

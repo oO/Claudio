@@ -1,5 +1,95 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TodoCounts {
+    /// Number of open todos (pending + in_progress)
+    pub open: u32,
+    /// Number of completed todos
+    pub completed: u32,
+    /// Total number of todos
+    pub total: u32,
+}
+
+/// Parse todos from a single agent todo file
+fn parse_agent_todo_file(file_path: &PathBuf) -> Result<Vec<serde_json::Value>, String> {
+    let content = fs::read_to_string(file_path)
+        .map_err(|e| format!("Failed to read todo file: {}", e))?;
+    
+    serde_json::from_str::<Vec<serde_json::Value>>(&content)
+        .map_err(|e| format!("Failed to parse todo file: {}", e))
+}
+
+/// Count todos by status from a list of parsed todos
+fn count_todos_by_status(todos: &[serde_json::Value]) -> TodoCounts {
+    let mut open_count = 0u32;
+    let mut completed_count = 0u32;
+    let total_count = todos.len() as u32;
+    
+    for todo in todos {
+        if let Some(status) = todo.get("status").and_then(|s| s.as_str()) {
+            match status {
+                "pending" | "in_progress" => open_count += 1,
+                "completed" => completed_count += 1,
+                _ => {} // Unknown status, don't count
+            }
+        }
+    }
+    
+    TodoCounts { open: open_count, completed: completed_count, total: total_count }
+}
+
+/// Count local agents in a project's .claude/agents directory
+fn count_project_agents(project_path: &str) -> Option<u32> {
+    let agents_dir = PathBuf::from(project_path).join(".claude").join("agents");
+    
+    if !agents_dir.exists() {
+        return None;
+    }
+    
+    match fs::read_dir(&agents_dir) {
+        Ok(entries) => {
+            let count = entries
+                .flatten()
+                .filter(|entry| {
+                    entry.path().is_file() && 
+                    entry.path().extension().and_then(|s| s.to_str()) == Some("md")
+                })
+                .count() as u32;
+            
+            if count > 0 { Some(count) } else { None }
+        }
+        Err(_) => None,
+    }
+}
+
+/// Aggregate todo counts from all agent executions for a session
+fn aggregate_session_todos(claude_dir: &PathBuf, session_id: &str) -> Option<TodoCounts> {
+    let todos_dir = claude_dir.join("todos");
+    let pattern = format!("{}-agent-", session_id);
+    
+    let mut all_todos = Vec::new();
+    
+    // Find all agent todo files for this session
+    if let Ok(entries) = fs::read_dir(&todos_dir) {
+        for entry in entries.flatten() {
+            let file_name = entry.file_name().to_string_lossy().to_string();
+            
+            // Check if this is an agent todo file for our session
+            if file_name.starts_with(&pattern) && file_name.ends_with(".json") {
+                if let Ok(todos) = parse_agent_todo_file(&entry.path()) {
+                    all_todos.extend(todos);
+                }
+            }
+        }
+    }
+    
+    if !all_todos.is_empty() {
+        Some(count_todos_by_status(&all_todos))
+    } else {
+        None
+    }
+}
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
@@ -35,6 +125,16 @@ pub struct Project {
     pub sessions: Vec<String>,
     /// Unix timestamp when the project directory was created
     pub created_at: u64,
+    /// Total size of all project files in bytes
+    pub total_size_bytes: Option<u64>,
+    /// Last activity timestamp (most recent session)
+    pub last_active: Option<u64>,
+    /// Total token count across all sessions
+    pub total_tokens: Option<u64>,
+    /// Estimated total cost in USD
+    pub total_cost_usd: Option<f64>,
+    /// Number of local project agents in .claude/agents/
+    pub agent_count: Option<u32>,
 }
 
 /// Represents a session with its metadata
@@ -46,14 +146,24 @@ pub struct Session {
     pub project_id: String,
     /// The project path
     pub project_path: String,
-    /// Optional todo data associated with this session
+    /// Optional todo data associated with this session  
     pub todo_data: Option<serde_json::Value>,
+    /// Aggregated todo counts from all agent executions in this session
+    pub todo_counts: Option<TodoCounts>,
     /// Unix timestamp when the session file was created
     pub created_at: u64,
     /// First user message content (if available)
     pub first_message: Option<String>,
     /// Timestamp of the first user message (if available)
     pub message_timestamp: Option<String>,
+    /// Session file size in bytes
+    pub size_bytes: Option<u64>,
+    /// Token count for this session
+    pub token_count: Option<u64>,
+    /// Estimated cost for this session in USD
+    pub cost_usd: Option<f64>,
+    /// Message count in this session
+    pub message_count: Option<u64>,
 }
 
 /// Represents a message entry in the JSONL file
@@ -348,6 +458,11 @@ pub async fn list_projects() -> Result<Vec<Project>, String> {
 
             // List all JSONL files (sessions) in this project directory
             let mut sessions = Vec::new();
+            let mut project_total_size = 0u64;
+            let mut project_total_tokens = 0u64;
+            let mut project_total_cost = 0.0f64;
+            let mut project_last_active = created_at;
+            
             if let Ok(session_entries) = fs::read_dir(&path) {
                 for session_entry in session_entries.flatten() {
                     let session_path = session_entry.path();
@@ -357,6 +472,29 @@ pub async fn list_projects() -> Result<Vec<Project>, String> {
                         if let Some(session_id) = session_path.file_stem().and_then(|s| s.to_str())
                         {
                             sessions.push(session_id.to_string());
+                            
+                            // Add file size
+                            if let Ok(metadata) = fs::metadata(&session_path) {
+                                project_total_size += metadata.len();
+                                
+                                // Update last activity time
+                                let file_time = metadata
+                                    .modified()
+                                    .or_else(|_| metadata.created())
+                                    .unwrap_or(SystemTime::UNIX_EPOCH)
+                                    .duration_since(SystemTime::UNIX_EPOCH)
+                                    .unwrap_or_default()
+                                    .as_secs();
+                                
+                                if file_time > project_last_active {
+                                    project_last_active = file_time;
+                                }
+                            }
+                            
+                            // Parse session analytics
+                            let analytics = parse_session_analytics(&session_path);
+                            project_total_tokens += analytics.token_count;
+                            project_total_cost += analytics.cost_usd;
                         }
                     }
                 }
@@ -364,9 +502,14 @@ pub async fn list_projects() -> Result<Vec<Project>, String> {
 
             projects.push(Project {
                 id: dir_name.to_string(),
-                path: project_path,
+                path: project_path.clone(),
                 sessions,
                 created_at,
+                total_size_bytes: if project_total_size > 0 { Some(project_total_size) } else { None },
+                last_active: if project_last_active > created_at { Some(project_last_active) } else { None },
+                total_tokens: if project_total_tokens > 0 { Some(project_total_tokens) } else { None },
+                total_cost_usd: if project_total_cost > 0.0 { Some(project_total_cost) } else { None },
+                agent_count: count_project_agents(&project_path),
             });
         }
     }
@@ -441,14 +584,26 @@ pub async fn get_project_sessions(project_id: String) -> Result<Vec<Session>, St
                     None
                 };
 
+                // Parse session analytics
+                let analytics = parse_session_analytics(&path);
+                let file_size = metadata.len();
+
+                // Aggregate todo counts from agent executions
+                let todo_counts = aggregate_session_todos(&claude_dir, &session_id);
+
                 sessions.push(Session {
                     id: session_id.to_string(),
                     project_id: project_id.clone(),
                     project_path: project_path.clone(),
                     todo_data,
+                    todo_counts,
                     created_at,
                     first_message,
                     message_timestamp,
+                    size_bytes: Some(file_size),
+                    token_count: if analytics.token_count > 0 { Some(analytics.token_count) } else { None },
+                    cost_usd: if analytics.cost_usd > 0.0 { Some(analytics.cost_usd) } else { None },
+                    message_count: if analytics.message_count > 0 { Some(analytics.message_count) } else { None },
                 });
             }
         }
@@ -2070,4 +2225,320 @@ pub async fn validate_hook_command(command: String) -> Result<serde_json::Value,
         }
         Err(e) => Err(format!("Failed to validate command: {}", e))
     }
+}
+
+// ===== PROJECT AND SESSION MANAGEMENT FUNCTIONS =====
+
+/// Deletes a Claude project and all its sessions
+#[tauri::command]
+pub async fn delete_claude_project(project_id: String) -> Result<serde_json::Value, String> {
+    log::info!("Deleting Claude project: {}", project_id);
+    
+    let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
+    let project_dir = claude_dir.join("projects").join(&project_id);
+    
+    if !project_dir.exists() {
+        return Err(format!("Project '{}' not found", project_id));
+    }
+    
+    // Count sessions before deletion for reporting
+    let session_count = fs::read_dir(&project_dir)
+        .map_err(|e| format!("Failed to read project directory: {}", e))?
+        .filter_map(|entry| {
+            if let Ok(e) = entry {
+                let path = e.path();
+                if let Some(ext) = path.extension().and_then(|ext| ext.to_str()) {
+                    if ext == "jsonl" {
+                        return Some(1);
+                    }
+                }
+            }
+            None
+        })
+        .sum::<usize>();
+    
+    // Calculate total size before deletion
+    let total_size = calculate_directory_size(&project_dir)?;
+    
+    // Delete the entire project directory
+    fs::remove_dir_all(&project_dir)
+        .map_err(|e| format!("Failed to delete project directory: {}", e))?;
+    
+    log::info!("Successfully deleted project '{}' with {} sessions ({:.2} MB)", 
+               project_id, session_count, total_size as f64 / 1024.0 / 1024.0);
+    
+    Ok(serde_json::json!({
+        "success": true,
+        "project_id": project_id,
+        "sessions_deleted": session_count,
+        "size_mb": total_size as f64 / 1024.0 / 1024.0,
+        "message": format!("Deleted project with {} sessions", session_count)
+    }))
+}
+
+/// Deletes a specific session from a project
+#[tauri::command]
+pub async fn delete_session(project_id: String, session_id: String) -> Result<serde_json::Value, String> {
+    log::info!("Deleting session '{}' from project '{}'", session_id, project_id);
+    
+    let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
+    let project_dir = claude_dir.join("projects").join(&project_id);
+    let session_file = project_dir.join(format!("{}.jsonl", session_id));
+    
+    if !session_file.exists() {
+        return Err(format!("Session '{}' not found in project '{}'", session_id, project_id));
+    }
+    
+    // Get file size before deletion
+    let file_size = fs::metadata(&session_file)
+        .map_err(|e| format!("Failed to get session file metadata: {}", e))?
+        .len();
+    
+    // Delete the session file
+    fs::remove_file(&session_file)
+        .map_err(|e| format!("Failed to delete session file: {}", e))?;
+    
+    // Also delete associated todo file if it exists
+    let todos_dir = claude_dir.join("todos");
+    let todo_file = todos_dir.join(format!("{}.json", session_id));
+    if todo_file.exists() {
+        if let Err(e) = fs::remove_file(&todo_file) {
+            log::warn!("Failed to delete todo file for session '{}': {}", session_id, e);
+        } else {
+            log::info!("Also deleted associated todo file for session '{}'", session_id);
+        }
+    }
+    
+    // Also delete associated statsig file if it exists
+    let statsig_dir = claude_dir.join("statsig");
+    let statsig_file = statsig_dir.join(format!("{}.json", session_id));
+    if statsig_file.exists() {
+        if let Err(e) = fs::remove_file(&statsig_file) {
+            log::warn!("Failed to delete statsig file for session '{}': {}", session_id, e);
+        } else {
+            log::info!("Also deleted associated statsig file for session '{}'", session_id);
+        }
+    }
+    
+    log::info!("Successfully deleted session '{}' ({:.2} KB)", 
+               session_id, file_size as f64 / 1024.0);
+    
+    Ok(serde_json::json!({
+        "success": true,
+        "session_id": session_id,
+        "project_id": project_id,
+        "size_kb": file_size as f64 / 1024.0,
+        "message": format!("Deleted session {}", session_id)
+    }))
+}
+
+/// Prunes old sessions based on age and minimum count to keep
+#[tauri::command]
+pub async fn prune_old_sessions(
+    project_id: Option<String>,
+    days_old: u32,
+    keep_min: usize,
+) -> Result<serde_json::Value, String> {
+    log::info!("Pruning sessions older than {} days, keeping at least {} sessions", days_old, keep_min);
+    
+    let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
+    let projects_dir = claude_dir.join("projects");
+    
+    let mut total_deleted = 0;
+    let mut total_size_freed = 0u64;
+    let mut projects_processed = Vec::new();
+    
+    let cutoff_time = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() - (days_old as u64 * 24 * 60 * 60);
+    
+    // Determine which projects to process
+    let projects_to_process = if let Some(specific_project) = project_id {
+        vec![specific_project]
+    } else {
+        // Get all project IDs
+        fs::read_dir(&projects_dir)
+            .map_err(|e| format!("Failed to read projects directory: {}", e))?
+            .filter_map(|entry| {
+                entry.ok()
+                    .filter(|e| e.path().is_dir())
+                    .and_then(|e| e.file_name().to_str().map(|s| s.to_string()))
+            })
+            .collect()
+    };
+    
+    for project_id in projects_to_process {
+        let project_dir = projects_dir.join(&project_id);
+        if !project_dir.exists() {
+            continue;
+        }
+        
+        // Get all session files with metadata
+        let mut sessions = Vec::new();
+        let entries = fs::read_dir(&project_dir)
+            .map_err(|e| format!("Failed to read project directory: {}", e))?;
+        
+        for entry in entries {
+            let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+            let path = entry.path();
+            
+            if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("jsonl") {
+                if let Some(session_id) = path.file_stem().and_then(|s| s.to_str()) {
+                    let metadata = fs::metadata(&path)
+                        .map_err(|e| format!("Failed to read file metadata: {}", e))?;
+                    
+                    let modified_time = metadata
+                        .modified()
+                        .or_else(|_| metadata.created())
+                        .unwrap_or(SystemTime::UNIX_EPOCH)
+                        .duration_since(SystemTime::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs();
+                    
+                    sessions.push((session_id.to_string(), path, modified_time, metadata.len()));
+                }
+            }
+        }
+        
+        // Sort by modification time (newest first)
+        sessions.sort_by(|a, b| b.2.cmp(&a.2));
+        
+        // Keep at least keep_min sessions, delete the rest if they're old enough
+        let mut deleted_count = 0;
+        let mut freed_size = 0u64;
+        
+        for (i, (session_id, path, modified_time, size)) in sessions.iter().enumerate() {
+            // Skip if we need to keep minimum sessions
+            if i < keep_min {
+                continue;
+            }
+            
+            // Delete if old enough
+            if *modified_time < cutoff_time {
+                fs::remove_file(path)
+                    .map_err(|e| format!("Failed to delete session file: {}", e))?;
+                
+                // Also try to delete associated todo file
+                let todo_file = claude_dir.join("todos").join(format!("{}.json", session_id));
+                if todo_file.exists() {
+                    let _ = fs::remove_file(&todo_file);
+                }
+                
+                deleted_count += 1;
+                freed_size += size;
+                log::info!("Deleted old session '{}' from project '{}'", session_id, project_id);
+            }
+        }
+        
+        if deleted_count > 0 {
+            projects_processed.push(serde_json::json!({
+                "project_id": project_id,
+                "sessions_deleted": deleted_count,
+                "size_freed_mb": freed_size as f64 / 1024.0 / 1024.0
+            }));
+            
+            total_deleted += deleted_count;
+            total_size_freed += freed_size;
+        }
+    }
+    
+    log::info!("Pruning complete: deleted {} sessions, freed {:.2} MB", 
+               total_deleted, total_size_freed as f64 / 1024.0 / 1024.0);
+    
+    Ok(serde_json::json!({
+        "success": true,
+        "total_sessions_deleted": total_deleted,
+        "total_size_freed_mb": total_size_freed as f64 / 1024.0 / 1024.0,
+        "projects_processed": projects_processed,
+        "message": format!("Deleted {} old sessions", total_deleted)
+    }))
+}
+
+/// Helper function to calculate directory size recursively
+fn calculate_directory_size(dir: &PathBuf) -> Result<u64, String> {
+    let mut total_size = 0u64;
+    
+    let entries = fs::read_dir(dir)
+        .map_err(|e| format!("Failed to read directory: {}", e))?;
+    
+    for entry in entries {
+        let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+        let path = entry.path();
+        
+        if path.is_file() {
+            let metadata = fs::metadata(&path)
+                .map_err(|e| format!("Failed to read file metadata: {}", e))?;
+            total_size += metadata.len();
+        } else if path.is_dir() {
+            total_size += calculate_directory_size(&path)?;
+        }
+    }
+    
+    Ok(total_size)
+}
+
+/// Represents session analytics parsed from JSONL
+#[derive(Debug, Default)]
+struct SessionAnalytics {
+    pub token_count: u64,
+    pub cost_usd: f64,
+    pub message_count: u64,
+}
+
+/// Parse JSONL file to extract tokens, cost, and message count
+fn parse_session_analytics(file_path: &PathBuf) -> SessionAnalytics {
+    let mut analytics = SessionAnalytics::default();
+    
+    let file = match fs::File::open(file_path) {
+        Ok(f) => f,
+        Err(_) => return analytics,
+    };
+    
+    let reader = BufReader::new(file);
+    
+    for line in reader.lines() {
+        let line = match line {
+            Ok(l) => l,
+            Err(_) => continue,
+        };
+        
+        if line.trim().is_empty() {
+            continue;
+        }
+        
+        // Parse JSON line
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&line) {
+            analytics.message_count += 1;
+            
+            // Look for usage information in various places
+            if let Some(usage) = json.get("usage") {
+                if let Some(input_tokens) = usage.get("input_tokens").and_then(|v| v.as_u64()) {
+                    analytics.token_count += input_tokens;
+                }
+                if let Some(output_tokens) = usage.get("output_tokens").and_then(|v| v.as_u64()) {
+                    analytics.token_count += output_tokens;
+                }
+            }
+            
+            // Also check message.usage
+            if let Some(message) = json.get("message") {
+                if let Some(usage) = message.get("usage") {
+                    if let Some(input_tokens) = usage.get("input_tokens").and_then(|v| v.as_u64()) {
+                        analytics.token_count += input_tokens;
+                    }
+                    if let Some(output_tokens) = usage.get("output_tokens").and_then(|v| v.as_u64()) {
+                        analytics.token_count += output_tokens;
+                    }
+                }
+            }
+            
+            // Look for cost information
+            if let Some(cost) = json.get("cost").and_then(|v| v.as_f64()) {
+                analytics.cost_usd += cost;
+            }
+        }
+    }
+    
+    analytics
 }

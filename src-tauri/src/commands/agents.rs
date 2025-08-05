@@ -11,13 +11,9 @@ use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager};
-use rusqlite::{params, Connection, Result as SqliteResult};
+use rusqlite::{Connection, Result as SqliteResult};
 
-/// Finds the full path to the claude binary
-/// This is necessary because macOS apps have a limited PATH environment
-fn find_claude_binary(app_handle: &AppHandle) -> Result<String, String> {
-    crate::claude_binary::find_claude_binary(app_handle)
-}
+// Removed unused find_claude_binary function - handled by claude_binary module
 
 /// Represents a CC Agent stored as a file
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -246,13 +242,21 @@ impl AgentParser {
     }
 
     /// Get the .claude/agents directory path
-    fn get_agents_directory(_project_path: Option<&str>) -> Result<PathBuf, String> {
-        // For Claudio, we always use global agents from ~/.claude/agents/
-        // Project agents will be handled separately in the future
-        let home_dir = dirs::home_dir()
-            .ok_or_else(|| "Failed to get home directory".to_string())?;
-        let agents_dir = home_dir.join(".claude").join("agents");
-        info!("Using global agents directory: {:?}", agents_dir);
+    fn get_agents_directory(project_path: Option<&str>) -> Result<PathBuf, String> {
+        let agents_dir = if let Some(project_path) = project_path {
+            // Use project-specific agents directory
+            let project_dir = PathBuf::from(project_path);
+            let agents_dir = project_dir.join(".claude").join("agents");
+            info!("Using project agents directory: {:?}", agents_dir);
+            agents_dir
+        } else {
+            // Use global agents directory
+            let home_dir = dirs::home_dir()
+                .ok_or_else(|| "Failed to get home directory".to_string())?;
+            let agents_dir = home_dir.join(".claude").join("agents");
+            info!("Using global agents directory: {:?}", agents_dir);
+            agents_dir
+        };
 
         // Create directory if it doesn't exist
         if !agents_dir.exists() {
@@ -278,6 +282,7 @@ impl AgentParser {
 /// Real-time JSONL reading and processing functions
 impl AgentRunMetrics {
     /// Calculate metrics from JSONL content
+    #[allow(dead_code)]
     pub fn from_jsonl(jsonl_content: &str) -> Self {
         let mut total_tokens = 0i64;
         let mut cost_usd = 0.0f64;
@@ -347,6 +352,7 @@ impl AgentRunMetrics {
 }
 
 /// Read JSONL content from a session file
+#[allow(dead_code)]
 pub async fn read_session_jsonl(session_id: &str, project_path: &str) -> Result<String, String> {
     let claude_dir = dirs::home_dir()
         .ok_or("Failed to get home directory")?
@@ -372,6 +378,7 @@ pub async fn read_session_jsonl(session_id: &str, project_path: &str) -> Result<
 }
 
 /// Get agent run with real-time metrics
+#[allow(dead_code)]
 pub async fn get_agent_run_with_metrics(run: AgentRun) -> AgentRunWithMetrics {
     match read_session_jsonl(&run.session_id, &run.project_path).await {
         Ok(jsonl_content) => {
@@ -415,9 +422,12 @@ pub fn init_database(app: &tauri::AppHandle) -> SqliteResult<Connection> {
 
 /// List all agents from .claude/agents/*.md files
 #[tauri::command]
-pub async fn list_agents(project_path: Option<String>) -> Result<Vec<Agent>, String> {
+pub async fn list_agents(project_path: String) -> Result<Vec<Agent>, String> {
     info!("list_agents called with project_path: {:?}", project_path);
-    let agents_dir = AgentParser::get_agents_directory(project_path.as_deref())?;
+    
+    // Convert empty string to None for get_agents_directory
+    let project_path_opt = if project_path.is_empty() { None } else { Some(project_path.as_str()) };
+    let agents_dir = AgentParser::get_agents_directory(project_path_opt)?;
     info!("Looking for agents in directory: {:?}", agents_dir);
     
     let mut agents = Vec::new();
@@ -802,7 +812,7 @@ pub async fn import_agent(project_path: Option<String>, json_data: String) -> Re
     let agent_data = export_data.agent;
     
     // Check if agent already exists
-    let agents = list_agents(project_path.clone()).await?;
+    let agents = list_agents(project_path.clone().unwrap_or_default()).await?;
     let existing_names: Vec<String> = agents.iter().map(|a| a.name.clone()).collect();
     
     let final_name = if existing_names.contains(&agent_data.name) {

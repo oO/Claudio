@@ -59,6 +59,7 @@ impl ProcessRegistry {
     }
 
     /// Register a new running agent process
+    #[allow(dead_code)]
     pub fn register_process(
         &self,
         run_id: i64,
@@ -84,6 +85,7 @@ impl ProcessRegistry {
     }
 
     /// Register a new running agent process using sidecar (similar to register_process but for sidecar children)
+    #[allow(dead_code)]
     pub fn register_sidecar_process(
         &self,
         run_id: i64,
@@ -152,6 +154,7 @@ impl ProcessRegistry {
     }
 
     /// Internal method to register any process
+    #[allow(dead_code)]
     fn register_process_internal(
         &self,
         run_id: i64,
@@ -217,6 +220,7 @@ impl ProcessRegistry {
     }
 
     /// Get all running agent processes
+    #[allow(dead_code)]
     pub fn get_running_agent_processes(&self) -> Result<Vec<ProcessInfo>, String> {
         let processes = self.processes.lock().map_err(|e| e.to_string())?;
         Ok(processes
