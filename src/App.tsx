@@ -247,6 +247,22 @@ function AppContent() {
     handleViewChange("project-settings");
   };
 
+  /**
+   * Handles project deletion
+   */
+  const handleProjectDeleted = (projectId: string) => {
+    setProjects(prev => prev.filter(p => p.id !== projectId));
+    setToast({ message: "Project deleted successfully", type: "success" });
+  };
+
+  /**
+   * Handles session deletion
+   */
+  const handleSessionDeleted = (sessionId: string) => {
+    setSessions(prev => prev.filter(s => s.id !== sessionId));
+    setToast({ message: "Session deleted successfully", type: "success" });
+  };
+
 
   const renderContent = () => {
     switch (view) {
@@ -388,8 +404,11 @@ function AppContent() {
                       <SessionList
                         sessions={sessions}
                         projectPath={selectedProject.path}
+                        projectId={selectedProject.id}
                         onBack={handleBack}
                         onEditClaudeFile={handleEditClaudeFile}
+                        onSessionDeleted={handleSessionDeleted}
+                        onProjectDeleted={handleProjectDeleted}
                       />
                     </motion.div>
                   ) : (
@@ -426,6 +445,7 @@ function AppContent() {
                           projects={projects}
                           onProjectClick={handleProjectClick}
                           onProjectSettings={handleProjectSettings}
+                          onProjectDeleted={handleProjectDeleted}
                           loading={loading}
                           className="animate-fade-in"
                         />

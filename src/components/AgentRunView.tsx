@@ -18,7 +18,7 @@ import { api, type AgentRunWithMetrics } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { formatISOTimestamp } from "@/lib/date-utils";
 import { StreamMessage } from "./StreamMessage";
-import { AGENT_ICONS } from "./CCAgents";
+import { ICON_MAP as AGENT_ICONS } from "./IconPicker";
 import type { ClaudeStreamMessage } from "./AgentExecution";
 import { ErrorBoundary } from "./ErrorBoundary";
 

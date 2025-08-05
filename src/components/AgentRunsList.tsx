@@ -7,7 +7,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { cn } from "@/lib/utils";
 import { formatISOTimestamp } from "@/lib/date-utils";
 import type { AgentRunWithMetrics } from "@/lib/api";
-import { AGENT_ICONS } from "./CCAgents";
+import { ICON_MAP as AGENT_ICONS } from "./IconPicker";
 import { useTabState } from "@/hooks/useTabState";
 
 interface AgentRunsListProps {

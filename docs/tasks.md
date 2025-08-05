@@ -2,39 +2,34 @@
 
 ## Current Status
 ✅ **Project Foundation Complete** - Tauri + React setup, git repository, basic structure
+✅ **Project & Session Management Complete** - Delete functionality, storage analytics, UI enhancements
+
+## ⚠️ **IMPORTANT DESIGN ISSUES TO REVISIT**
+
+### **Cost Calculation Limitations**
+**Status:** TEMPORARILY DISABLED
+**Issue:** Claude Code is available as part of different subscriptions (Pro, Max 1, Max 2) which don't spend API tokens. Current cost calculations are misleading/irrelevant for most users.
+
+**TODO:**
+- Research how to detect subscription vs API usage
+- Implement proper cost display logic (show only for API users)
+- Consider showing "subscription included" for Pro/Max users
+- Review backend cost parsing in `parse_session_analytics()`
 
 ## Next Development Tasks (Priority Order)
 
 ### 🔥 **IMMEDIATE - Start Here**
 
-#### 1. **Implement Agent File Parser** 
+#### 1. **✅ COMPLETED - Agent File Parser** 
 **File:** `src-tauri/src/commands/agents.rs`
-**Priority:** CRITICAL
+**Status:** FULLY IMPLEMENTED
 
-```rust
-// Add to agents.rs
-pub struct AgentParser;
-
-impl AgentParser {
-    pub fn parse_file(content: &str) -> Result<Agent, String> {
-        // Parse markdown to extract:
-        // - Title (first H1)
-        // - Description (first paragraph)
-        // - Tools (bullet list under ## Tools)
-        // - System prompt (content under ## System Prompt)
-    }
-    
-    pub fn generate_markdown(agent: &AgentData) -> String {
-        // Generate properly formatted .md from AgentData
-    }
-}
-```
-
-**Acceptance Criteria:**
-- Parse valid agent .md files correctly
-- Handle malformed files gracefully
-- Generate properly formatted markdown
-- Include comprehensive error messages
+**What was implemented:**
+- ✅ `AgentParser` struct with `parse_file()` and `generate_markdown()` methods
+- ✅ YAML frontmatter parsing with special character handling
+- ✅ Extraction of: name, description, tools, model, color (no icon per Claude Code spec)
+- ✅ Robust error handling for malformed files
+- ✅ Proper markdown generation with ordered YAML fields
 
 #### 2. **Implement list_agents() Function**
 **File:** `src-tauri/src/commands/agents.rs`  
@@ -131,28 +126,83 @@ pub async fn get_claude_projects() -> Result<Vec<ClaudeProject>, String> {
 
 **Deliverable:** Create `CLAUDE_INTEGRATION.md` with findings
 
-### 📋 **MEDIUM PRIORITY - Week 2**
+### 🆕 **CRITICAL NEW FEATURE - Project & Session Management**
+**Rationale:** Claude Code CLI has NO built-in project/session management commands
 
-#### 7. **Project Browser UI Component**
-**File:** `src/components/ProjectBrowser.tsx`
+#### 7. **Implement Project Discovery & Listing**
+**File:** `src-tauri/src/commands/projects.rs` (new)
+**Priority:** CRITICAL
 
-```tsx
-export function ProjectBrowser() {
-  // Display discovered Claude projects
-  // Show agent counts per project
-  // Navigation to project-specific views
+```rust
+#[tauri::command]
+pub async fn list_claude_projects() -> Result<Vec<ClaudeProject>, String> {
+    // 1. Scan ~/.claude/projects/ for encoded directories
+    // 2. Decode paths: -Users-olivier-Projects-app → /Users/olivier/Projects/app
+    // 3. Count sessions and calculate sizes
+    // 4. Check for CLAUDE.md and .mcp.json
 }
 ```
 
-#### 8. **Implement update_agent() Function**
-**File:** `src-tauri/src/commands/agents.rs`
+#### 8. **Implement Session Management**
+**File:** `src-tauri/src/commands/sessions.rs` (new)
+**Priority:** CRITICAL
 
-#### 9. **Implement delete_agent() Function**  
-**File:** `src-tauri/src/commands/agents.rs`
+```rust
+#[tauri::command]
+pub async fn list_project_sessions(project_path: String) -> Result<Vec<ClaudeSession>, String> {
+    // Parse JSONL files for metadata
+}
 
-#### 10. **Basic Task Execution**
-**File:** `src-tauri/src/commands/claude_integration.rs`
-**Depends on:** Claude Code integration research
+#[tauri::command]
+pub async fn delete_session(project_path: String, session_id: String) -> Result<(), String> {
+    // Delete specific session file
+}
+
+#[tauri::command]
+pub async fn prune_old_sessions(days_old: u32) -> Result<PruneResult, String> {
+    // Bulk cleanup old sessions
+}
+```
+
+#### 9. **Create Project Manager UI**
+**File:** `src/components/ProjectManager.tsx`
+**Priority:** HIGH
+
+```tsx
+export function ProjectManager() {
+  // List all Claude projects with metadata
+  // Delete projects, view sessions
+  // Show storage usage and costs
+}
+```
+
+#### 10. **Create Session Manager UI**
+**File:** `src/components/SessionManager.tsx`
+**Priority:** HIGH
+
+```tsx
+export function SessionManager({ project }: Props) {
+  // List project sessions
+  // Delete, export, view sessions
+  // Filter by date/size/cost
+}
+```
+
+### 📋 **HIGH PRIORITY - Complete Agent System**
+
+#### 11. **Enable Project-Level Agent Discovery**
+**File:** `src-tauri/src/commands/agents.rs`
+- Modify to scan both ~/.claude/agents/ and <project>/.claude/agents/
+- Implement precedence rules
+
+#### 12. **Implement Task Tool Integration**
+**File:** `src-tauri/src/commands/agents.rs::execute_agent()`
+**Priority:** CRITICAL - BLOCKS AGENT EXECUTION
+
+#### 13. **Agent Run Tracking**
+**File:** `src-tauri/src/commands/agents.rs`
+- Implement file-based run storage
+- Track execution history
 
 ### 🔧 **LOWER PRIORITY - Week 3+**
 
@@ -241,12 +291,27 @@ Co-authored-by: Claude.AI <noreply@anthropic.com>
 
 **Types:** `feat:` `fix:` `docs:` `refactor:` `test:` `chore:`
 
-## Ready to Start?
+## Ready to Continue?
 
-1. **Clone and setup:** `npm install && npm run tauri:dev`
-2. **Start with:** `src-tauri/src/commands/agents.rs` 
-3. **Create test agents:** Add sample .md files in `.claude/agents/`
-4. **Build incrementally:** Test each function before moving to next
-5. **Follow the design:** Reference `DESIGN.md` for architecture decisions
+### 🚨 **Two Critical Features Missing**
 
-The foundation is ready - time to build! 🚀
+1. **Task Tool Integration** - Agents can't execute without this
+   - File: `src-tauri/src/commands/agents.rs::execute_agent()`
+   - Use CLI approach with `claude_binary::find_claude_binary()`
+   - This unblocks the entire agent execution system
+
+2. **Project/Session Management** - Major gap in Claude Code
+   - Files: `projects.rs` and `sessions.rs` (new)
+   - Claude Code has NO CLI commands for this
+   - Users need visual tools to manage ~/.claude/projects/
+
+### 🎯 **Quick Start**
+
+1. **Run the app:** `npm install && npm run tauri:dev`
+2. **Test current features:** Agent CRUD works perfectly
+3. **Pick a critical feature:** Task integration or Project management
+4. **Reference docs:** 
+   - `docs/design.md` - Architecture details
+   - `docs/project-session-management.md` - New feature design
+
+The foundation is solid - these two features will make Claudio indispensable! 🚀

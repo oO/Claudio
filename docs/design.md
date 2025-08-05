@@ -6,12 +6,19 @@ Claudio is a visual interface for managing Claude Code's native subagent system.
 
 ## Architecture Overview
 
-### Current State
+### Current State (v0.2.2)
 - ✅ **Foundation**: Tauri + React + TypeScript setup complete
-- ✅ **Project Structure**: Clean separation of concerns
+- ✅ **Project Structure**: Clean separation of concerns  
 - ✅ **Basic UI**: Welcome screen with feature previews
-- ✅ **Rust Commands**: Placeholder structure for all major operations
+- ✅ **Rust Commands**: Fully implemented agent CRUD operations
 - ✅ **Git Setup**: AGPL-3.0 licensed, proper commit format
+- ✅ **Agent Parser**: Complete YAML frontmatter parser with error handling
+- ✅ **File-Based Storage**: Migrated from SQLite to .claude/agents/*.md files
+- ✅ **Dual-Level Discovery**: Support for both user-level and project-level agents
+- ✅ **Import/Export**: JSON and file-based agent sharing functionality
+- ✅ **UI Components**: CreateAgent, AgentsModal, AgentExecution views
+- ✅ **Analytics**: PostHog integration for usage tracking
+- ✅ **CI/CD**: Multi-platform GitHub Actions workflows
 
 ### Target Architecture
 
@@ -98,42 +105,44 @@ Always [specific guidelines].
 
 ## Implementation Plan
 
-### Phase 1: Dual-Level Agent Management
+### Phase 1: Dual-Level Agent Management ✅ **COMPLETED**
 **Priority: HIGH** *(Updated based on Claude Code research)*
 
 1. **Agent File Parser** (`src-tauri/src/commands/agents.rs`) ✅ *COMPLETED*
    - ✅ Parse YAML frontmatter + markdown content
-   - ✅ Extract metadata: name, description, tools, model, color, icon
+   - ✅ Extract metadata: name, description, tools, model, color, ~~icon~~
    - ✅ Handle malformed files gracefully with proper error messages
    - ✅ Generate properly formatted agent files
+   - ✅ Special handling for unquoted YAML special characters
 
-2. **Dual-Level Agent Discovery** *(Updated)*
-   - ✅ `list_agents()` - Scan both user-level (`~/.claude/agents/`) and project-level (`.claude/agents/`)
-   - ✅ Merge agents with project-level precedence
-   - ✅ Handle agent name conflicts correctly
-   - ✅ Return categorized agent lists (user vs project)
+2. **Dual-Level Agent Discovery** ✅ *COMPLETED*
+   - ✅ `list_agents()` - Currently scans user-level (`~/.claude/agents/`)
+   - ⚠️ Project-level scanning ready but not yet enabled (uses global only)
+   - ✅ File metadata extraction for timestamps
+   - ✅ Sorted agent lists with temporary ID assignment
 
 3. **Agent CRUD Operations** ✅ *COMPLETED*
    - ✅ `create_agent()` - Generate .md files with YAML frontmatter
-   - ✅ `update_agent()` - Modify existing .md files
+   - ✅ `update_agent()` - Modify existing .md files preserving creation time
    - ✅ `delete_agent()` - Remove .md files safely
-   - ✅ `get_agent()` - Load specific agent details
-   - ✅ Support both user-level and project-level locations
+   - ✅ `get_agent()` - Load specific agent details with metadata
+   - ✅ Safe filename generation from agent names
 
 4. **Agent Import/Export** ✅ *COMPLETED*
    - ✅ Export agents to JSON format for sharing
-   - ✅ Import agents from JSON with conflict resolution
-   - ✅ File-based import/export functionality
+   - ✅ Import agents from JSON with automatic renaming on conflicts
+   - ✅ Direct .md file export functionality
+   - ⚠️ GitHub import placeholder (not yet implemented)
 
 ### Phase 2: Claude Code Task Tool Integration  
-**Priority: HIGH** *(Updated based on research)*
+**Priority: HIGH** *(Next major milestone)*
 
-1. **Native Task Tool Integration** 🚧 *IN PROGRESS*
-   - 🔄 Research Claude Code's internal Task tool implementation
-   - 🔄 Implement `execute_agent()` using `subagent_type` parameter
-   - 🔄 Handle tool restrictions based on agent's `tools` frontmatter field
-   - 🔄 Respect model preferences from agent metadata
-   - 🔄 No external process spawning - use Claude Code's native agent system
+1. **Native Task Tool Integration** 🔄 *READY TO IMPLEMENT*
+   - ⚠️ `execute_agent()` function exists but returns placeholder error
+   - 📝 Research needed: How to invoke Claude Code's Task tool from Rust
+   - 📝 Consider using `claude_binary::find_claude_binary()` for CLI approach
+   - 📝 Implement proper `subagent_type` parameter passing
+   - 📝 Stream output capture and real-time updates
 
 2. **Agent Validation & Tool Management**
    - 🔄 Validate tool lists against Claude Code's available tools
@@ -157,27 +166,55 @@ Always [specific guidelines].
    }
    ```
 
-### Phase 3: User Interface
+### Phase 3: User Interface ✅ **MOSTLY COMPLETE**
 **Priority: MEDIUM**
 
-1. **Agent Studio Component**
-   - Visual markdown editor for agents
-   - Live preview of agent structure
-   - Tool selection interface
-   - System prompt editor with syntax highlighting
+1. **Agent Creation/Editing** ✅ *COMPLETED*
+   - ✅ `CreateAgent.tsx` - Full agent creation form
+   - ✅ `AgentsModal.tsx` - Agent management interface
+   - ✅ Tool selection with predefined Claude Code tools
+   - ✅ Model selection (sonnet, opus, haiku, inherit)
+   - ✅ Color selection for agent UI themes
+   - ⚠️ Live markdown preview not yet implemented
 
-2. **Project Browser Component**
-   - List Claude Code projects
-   - Show agent count per project
-   - Navigate to project-specific agents
+2. **Project Browser** ⚠️ *PARTIAL*
+   - ✅ `ProjectList.tsx` exists for project discovery
+   - ⚠️ Agent count per project not yet shown
+   - ⚠️ Project-specific agent navigation not implemented
 
-3. **Task Dashboard Component**
-   - Show active agent executions
-   - Display real-time output/logs
-   - Allow task cancellation
-   - Show execution history
+3. **Execution Components** ✅ *UI COMPLETE*
+   - ✅ `AgentExecution.tsx` - Execution interface ready
+   - ✅ `AgentExecutionDemo.tsx` - Demo mode for testing
+   - ✅ `AgentRunView.tsx` - View past runs
+   - ✅ `AgentRunOutputViewer.tsx` - JSONL output display
+   - ✅ Real-time streaming message components
+   - ⚠️ Waiting for backend Task tool integration
 
-### Phase 4: Advanced Features
+### Phase 4: Project & Session Management 🆕
+**Priority: HIGH** *(Critical gap in Claude Code CLI)*
+
+1. **Project Management**
+   - List all Claude projects from `~/.claude/projects/`
+   - Decode directory names back to original paths
+   - Show session counts, sizes, last activity
+   - Delete project metadata safely
+   - Check for CLAUDE.md and .mcp.json files
+
+2. **Session Management**  
+   - List sessions per project with metadata
+   - Parse JSONL for tokens, costs, timestamps
+   - Delete individual sessions
+   - Prune old sessions with configurable rules
+   - Export sessions to JSON/Markdown/HTML
+
+3. **Storage Analytics**
+   - Total storage usage across projects
+   - Cost breakdown by model and time
+   - Project activity visualization
+   - Session search functionality
+   - Automated cleanup policies
+
+### Phase 5: Advanced Features
 **Priority: LOW**
 
 1. **Agent Library**
@@ -186,11 +223,34 @@ Always [specific guidelines].
    - Agent templates and scaffolding
 
 2. **Analytics & Insights**
-   - Agent usage statistics
+   - Agent usage statistics  
    - Performance metrics
    - Delegation patterns
 
 ## Technical Considerations
+
+### Project Path Encoding
+
+Claude Code encodes project paths for storage by replacing `/` with `-`:
+```rust
+// Encoding: /Users/olivier/Projects/myapp → -Users-olivier-Projects-myapp
+fn encode_project_path(path: &str) -> String {
+    path.replace('/', "-")
+}
+
+// Decoding: -Users-olivier-Projects-myapp → /Users/olivier/Projects/myapp  
+fn decode_project_path(encoded: &str) -> String {
+    encoded.replace('-', "/")
+}
+```
+
+### JSONL Session Format
+
+Sessions are stored as newline-delimited JSON:
+```json
+{"type":"user","message":{"role":"user","content":"Hello"},"timestamp":"2025-06-02T18:46:59.937Z"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Hi!"}]},"timestamp":"2025-06-02T18:47:06.267Z"}
+```
 
 ### Claude Code Integration Methods
 
@@ -319,12 +379,43 @@ src/components/
 - ✅ Agent import/export functionality
 - ✅ Community agent library integration
 
-## Notes for Next Developer
+## Implementation Status Summary
 
-1. **Start with `src-tauri/src/commands/agents.rs`** - The file parser is foundational
-2. **Test with real `.claude/agents/*.md` files** - Create samples for testing
-3. **Focus on Claude Code integration early** - This is the core differentiator
-4. **Use existing Tauri patterns** - Follow the established command structure
-5. **Maintain AGPL-3.0 compliance** - All derived work must remain open source
+### ✅ Completed (v0.2.2)
+- **Agent File Management**: Full CRUD operations with YAML frontmatter
+- **File-Based Storage**: Complete migration from SQLite to .md files
+- **Import/Export**: JSON and direct file export functionality
+- **UI Foundation**: Agent creation, listing, and execution interfaces
+- **Analytics**: PostHog integration for usage tracking
+- **CI/CD**: Multi-platform builds via GitHub Actions
 
-The foundation is solid. Focus on the agent file parsing first, then build up to Claude Code integration. The UI can be developed in parallel once the backend operations are working.
+### 🔄 In Progress / Next Steps
+- **Task Tool Integration**: Connect to Claude Code's native agent system
+- **Project & Session Management**: Fill critical gap in Claude Code CLI
+- **Project-Level Agents**: Enable dual-level discovery (currently global only)
+- **Live Execution**: Stream real-time output from agent runs
+- **Storage Analytics**: Usage insights and cleanup tools
+- **GitHub Import**: Fetch agents from GitHub repositories
+
+### 📝 Technical Debt
+- Several functions return placeholder errors (execute_agent, stream output, etc.)
+- Agent run tracking still references SQLite (needs file-based approach)
+- Project-level agent discovery coded but not enabled
+
+## Critical Next Step: Task Tool Integration
+
+The highest priority is implementing `execute_agent()` to actually run agents via Claude Code's Task tool. Two approaches:
+
+1. **CLI Approach** (Recommended to start):
+   ```rust
+   Command::new(claude_binary_path)
+       .args(["--task", &task_description, "--subagent-type", &agent_name])
+       .current_dir(&project_path)
+       .spawn()
+   ```
+
+2. **SDK Approach** (If available):
+   - Research if Claude Code exposes an SDK or API
+   - More robust but may not exist yet
+
+The UI is ready and waiting - once Task tool integration works, Claudio becomes fully functional.

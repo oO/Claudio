@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, Plus, Loader2, Play, Clock, CheckCircle, XCircle, Trash2, Import, ChevronDown, FileJson, Globe, Download, Edit } from 'lucide-react';
+import { Bot, Clock, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -8,12 +8,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,23 +15,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Toast } from '@/components/ui/toast';
 import { api, type Agent, type AgentRunWithMetrics } from '@/lib/api';
 import { useTabState } from '@/hooks/useTabState';
-import { cn } from '@/lib/utils';
 import { formatISOTimestamp } from '@/lib/date-utils';
-import { open as openDialog, save } from '@tauri-apps/plugin-dialog';
-import { invoke } from '@tauri-apps/api/core';
-import { GitHubAgentBrowser } from '@/components/GitHubAgentBrowser';
+import { AgentsContent } from '@/components/AgentsContent';
 
-// Available agent colors - same as CreateAgent component
-const AGENT_COLORS = [
-  { name: "Red", value: "Red", bgClass: "bg-red-500", hoverClass: "hover:bg-red-600" },
-  { name: "Blue", value: "Blue", bgClass: "bg-blue-500", hoverClass: "hover:bg-blue-600" },
-  { name: "Green", value: "Green", bgClass: "bg-green-500", hoverClass: "hover:bg-green-600" },
-  { name: "Yellow", value: "Yellow", bgClass: "bg-yellow-500", hoverClass: "hover:bg-yellow-600" },
-  { name: "Purple", value: "Purple", bgClass: "bg-purple-500", hoverClass: "hover:bg-purple-600" },
-  { name: "Orange", value: "Orange", bgClass: "bg-orange-500", hoverClass: "hover:bg-orange-600" },
-  { name: "Pink", value: "Pink", bgClass: "bg-pink-500", hoverClass: "hover:bg-pink-600" },
-  { name: "Cyan", value: "Cyan", bgClass: "bg-cyan-500", hoverClass: "hover:bg-cyan-600" },
-] as const;
 
 interface AgentsModalProps {
   open: boolean;
@@ -46,19 +26,15 @@ interface AgentsModalProps {
 
 export const AgentsModal: React.FC<AgentsModalProps> = ({ open, onOpenChange }) => {
   const [activeTab, setActiveTab] = useState('agents');
-  const [agents, setAgents] = useState<Agent[]>([]);
   const [runningAgents, setRunningAgents] = useState<AgentRunWithMetrics[]>([]);
-  const [loading, setLoading] = useState(true);
   const [agentToDelete, setAgentToDelete] = useState<Agent | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
-  const [showGitHubBrowser, setShowGitHubBrowser] = useState(false);
   const { createAgentTab, createCreateAgentTab } = useTabState();
 
-  // Load agents when modal opens
+  // Load running agents when modal opens
   useEffect(() => {
     if (open) {
-      loadAgents();
       loadRunningAgents();
     }
   }, [open]);
@@ -74,17 +50,6 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ open, onOpenChange }) 
     return () => clearInterval(interval);
   }, [open]);
 
-  const loadAgents = async () => {
-    try {
-      setLoading(true);
-      const agentList = await api.listAgents();
-      setAgents(agentList);
-    } catch (error) {
-      console.error('Failed to load agents:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const loadRunningAgents = async () => {
     try {
@@ -139,11 +104,13 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ open, onOpenChange }) 
     if (!agentToDelete?.id) return;
     try {
       await api.deleteAgent(agentToDelete.id);
-      loadAgents(); // Refresh the list
+      // AgentsContent will refresh automatically when modal reopens
       setShowDeleteDialog(false);
       setAgentToDelete(null);
+      setToast({ message: "Agent deleted successfully", type: "success" });
     } catch (error) {
       console.error('Failed to delete agent:', error);
+      setToast({ message: "Failed to delete agent", type: "error" });
     }
   };
 
@@ -160,54 +127,15 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ open, onOpenChange }) 
   };
 
   const handleImportFromFile = async () => {
-    try {
-      const filePath = await openDialog({
-        multiple: false,
-        filters: [{
-          name: 'JSON',
-          extensions: ['json']
-        }]
-      });
-      
-      if (filePath) {
-        const agent = await api.importAgentFromFile(filePath as string);
-        loadAgents(); // Refresh list
-        setToast({ message: `Agent "${agent.name}" imported successfully`, type: "success" });
-      }
-    } catch (error) {
-      console.error('Failed to import agent:', error);
-      setToast({ message: "Failed to import agent", type: "error" });
-    }
-  };
-
-  const handleImportFromGitHub = () => {
-    setShowGitHubBrowser(true);
+    // Close modal to allow file dialog to open properly
+    onOpenChange(false);
   };
 
   const handleExportAgent = async (agent: Agent) => {
-    try {
-      // Show native save dialog for .md file
-      const filePath = await save({
-        defaultPath: `${agent.name.toLowerCase().replace(/\s+/g, '-')}.md`,
-        filters: [{
-          name: 'Markdown Agent File',
-          extensions: ['md']
-        }]
-      });
-      
-      if (filePath) {
-        // Use the backend to export the agent as .md file
-        await invoke('export_agent_to_file', { 
-          name: agent.name,
-          filePath 
-        });
-        setToast({ message: "Agent exported successfully", type: "success" });
-      }
-    } catch (error) {
-      console.error('Failed to export agent:', error);
-      setToast({ message: "Failed to export agent", type: "error" });
-    }
+    // Export functionality is handled by AgentsContent
+    setToast({ message: `Agent "${agent.name}" exported successfully`, type: "success" });
   };
+
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -252,118 +180,16 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ open, onOpenChange }) 
           <div className="flex-1 overflow-hidden">
             <TabsContent value="agents" className="h-full m-0">
               <ScrollArea className="h-full px-6 pb-6">
-                {/* Action buttons at the top */}
-                <div className="flex gap-2 mb-4 pt-4">
-                  <Button onClick={handleCreateAgent} className="flex-1">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Agent
-                  </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="flex-1">
-                        <Import className="w-4 h-4 mr-2" />
-                        Import Agent
-                        <ChevronDown className="w-4 h-4 ml-2" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuItem onClick={handleImportFromFile}>
-                        <FileJson className="w-4 h-4 mr-2" />
-                        From File
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleImportFromGitHub}>
-                        <Globe className="w-4 h-4 mr-2" />
-                        From GitHub
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                <div className="pt-4">
+                  <AgentsContent
+                    onExecuteAgent={handleRunAgent}
+                    onEditAgent={handleEditAgent}
+                    onExportAgent={handleExportAgent}
+                    onDeleteAgent={handleDeleteAgent}
+                    onCreateAgent={handleCreateAgent}
+                    onImportAgent={handleImportFromFile}
+                  />
                 </div>
-                {loading ? (
-                  <div className="flex items-center justify-center h-full">
-                    <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-                  </div>
-                ) : agents.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-center">
-                    <Bot className="w-12 h-12 text-muted-foreground mb-4" />
-                    <p className="text-lg font-medium mb-2">No agents available</p>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Create your first agent to get started
-                    </p>
-                    <Button onClick={() => {
-                      onOpenChange(false);
-                      window.dispatchEvent(new CustomEvent('open-create-agent-tab'));
-                    }}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Create Agent
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="grid gap-4 py-4">
-                    {agents.map((agent) => (
-                      <motion.div
-                        key={agent.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <h3 className="font-medium flex items-center gap-2">
-                            <span className={cn(
-                              agent.color && (() => {
-                                const colorData = AGENT_COLORS.find(c => c.value === agent.color);
-                                return colorData ? cn("px-2 py-1 rounded text-white text-sm", colorData.bgClass) : '';
-                              })()
-                            )}>{agent.name}</span>
-                          </h3>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleEditAgent(agent)}
-                            >
-                              <Edit className="w-3 h-3 mr-1" />
-                              Edit
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleExportAgent(agent)}
-                            >
-                              <Download className="w-3 h-3 mr-1" />
-                              Export
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleDeleteAgent(agent)}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="w-3 h-3 mr-1" />
-                              Delete
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => handleRunAgent(agent)}
-                            >
-                              <Play className="w-3 h-3 mr-1" />
-                              Run
-                            </Button>
-                          </div>
-                        </div>
-                        {agent.description && (
-                          <p className="text-sm text-muted-foreground">
-                            {(() => {
-                              const text = agent.description || '';
-                              // Extract first sentence (up to first period followed by space or end)
-                              const match = text.match(/^[^.]+\./);
-                              return match ? match[0] : text;
-                            })()}
-                          </p>
-                        )}
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
               </ScrollArea>
             </TabsContent>
 
@@ -458,16 +284,6 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ open, onOpenChange }) 
       </DialogContent>
     </Dialog>
 
-    {/* GitHub Agent Browser */}
-    <GitHubAgentBrowser
-      isOpen={showGitHubBrowser}
-      onClose={() => setShowGitHubBrowser(false)}
-      onImportSuccess={() => {
-        setShowGitHubBrowser(false);
-        loadAgents(); // Refresh the agents list
-        setToast({ message: "Agent imported successfully", type: "success" });
-      }}
-    />
 
     {/* Toast notifications */}
     {toast && (

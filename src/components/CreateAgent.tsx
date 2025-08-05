@@ -8,6 +8,7 @@ import { Toast, ToastContainer } from "@/components/ui/toast";
 import { api, type Agent } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import MDEditor from "@uiw/react-md-editor";
+import { ExampleEditor, type Example } from "@/components/ExampleEditor";
 // import { type AgentIconName } from "./CCAgents";
 
 // Available agent colors
@@ -89,6 +90,7 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showToolPicker, setShowToolPicker] = useState(false);
+  const [, setExamples] = useState<Example[]>([]);
   
   // Tool selection state
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
@@ -438,30 +440,12 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
                 </div>
               </div>
 
-              {/* Description */}
+              {/* Description and Examples */}
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <textarea
-                  id="description"
-                  value={description}
-                  onChange={(e) => {
-                    setDescription(e.target.value);
-                    // Auto-expand on change as well
-                    const target = e.target as HTMLTextAreaElement;
-                    target.style.height = 'auto';
-                    target.style.height = target.scrollHeight + 'px';
-                  }}
-                  placeholder="Brief description of when to use this agent"
-                  className="w-full px-3 py-2 bg-background border border-input rounded-md focus:ring-2 focus:ring-primary focus:border-transparent resize-none overflow-hidden"
-                  style={{ 
-                    minHeight: '42px',
-                    height: 'auto'
-                  }}
-                  onInput={(e) => {
-                    const target = e.target as HTMLTextAreaElement;
-                    target.style.height = 'auto';
-                    target.style.height = target.scrollHeight + 'px';
-                  }}
+                <ExampleEditor
+                  description={description}
+                  onDescriptionChange={setDescription}
+                  onExamplesChange={setExamples}
                 />
               </div>
 

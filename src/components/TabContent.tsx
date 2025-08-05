@@ -67,6 +67,10 @@ const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
       const sessionList = await api.getProjectSessions(project.id);
       setSessions(sessionList);
       setSelectedProject(project);
+      
+      // Update tab title to project name
+      const projectName = getProjectName(project.path);
+      updateTab(tab.id, { title: projectName });
     } catch (err) {
       console.error("Failed to load sessions:", err);
       setError("Failed to load sessions for this project.");
@@ -78,6 +82,25 @@ const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
   const handleBack = () => {
     setSelectedProject(null);
     setSessions([]);
+    // Restore tab title to "Projects"
+    updateTab(tab.id, { title: 'Projects' });
+  };
+  
+  // Get project name from path
+  const getProjectName = (path: string): string => {
+    const parts = path.split('/').filter(Boolean);
+    return parts[parts.length - 1] || path;
+  };
+  
+  const handleSessionDeleted = (sessionId: string) => {
+    setSessions(prev => prev.filter(s => s.id !== sessionId));
+  };
+  
+  const handleProjectDeleted = (projectId: string) => {
+    // Remove project from projects list
+    setProjects(prev => prev.filter(p => p.id !== projectId));
+    // Go back to projects view in the same tab
+    handleBack();
   };
   
   const handleNewSession = () => {
@@ -134,6 +157,7 @@ const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
                       <SessionList
                         sessions={sessions}
                         projectPath={selectedProject.path}
+                        projectId={selectedProject.id}
                         onBack={handleBack}
                         onSessionClick={(session) => {
                           // Update tab to show this session
@@ -151,6 +175,38 @@ const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
                             detail: { file } 
                           }));
                         }}
+                        onExecuteAgent={(agent) => {
+                          // Open agent execution in a new tab
+                          window.dispatchEvent(new CustomEvent('open-agent-execution', { 
+                            detail: { agent } 
+                          }));
+                        }}
+                        onEditAgent={(agent) => {
+                          // Open agent edit in a new tab  
+                          window.dispatchEvent(new CustomEvent('create-edit-agent-tab', { 
+                            detail: { agent } 
+                          }));
+                        }}
+                        onExportAgent={(agent) => {
+                          // Export project agent (same logic as personal agents)
+                          console.log('Export project agent:', agent);
+                          // TODO: Implement proper export dialog
+                        }}
+                        onDeleteAgent={(agent) => {
+                          // Delete agent and refresh agents list
+                          // This would need to be implemented properly with confirmation dialog
+                          console.log('Delete agent:', agent);
+                        }}
+                        onCreateAgent={() => {
+                          // Open create agent tab for project agents
+                          window.dispatchEvent(new CustomEvent('open-create-agent-tab'));
+                        }}
+                        onImportAgent={() => {
+                          // Open import agent tab for project agents  
+                          window.dispatchEvent(new CustomEvent('open-import-agent-tab'));
+                        }}
+                        onSessionDeleted={handleSessionDeleted}
+                        onProjectDeleted={handleProjectDeleted}
                       />
                     </motion.div>
                   ) : (

@@ -29,6 +29,16 @@ export interface Project {
   sessions: string[];
   /** Unix timestamp when the project directory was created */
   created_at: number;
+  /** Total size of all project files in bytes */
+  total_size_bytes?: number;
+  /** Last activity timestamp (most recent session) */
+  last_active?: number;
+  /** Total token count across all sessions */
+  total_tokens?: number;
+  /** Estimated total cost in USD */
+  total_cost_usd?: number;
+  /** Number of local project agents in .claude/agents/ */
+  agent_count?: number;
 }
 
 /**
@@ -43,12 +53,29 @@ export interface Session {
   project_path: string;
   /** Optional todo data associated with this session */
   todo_data?: any;
+  /** Aggregated todo counts from all agent executions in this session */
+  todo_counts?: {
+    /** Number of open todos (pending + in_progress) */
+    open: number;
+    /** Number of completed todos */
+    completed: number;
+    /** Total number of todos */
+    total: number;
+  };
   /** Unix timestamp when the session file was created */
   created_at: number;
   /** First user message content (if available) */
   first_message?: string;
   /** Timestamp of the first user message (if available) */
   message_timestamp?: string;
+  /** Session file size in bytes */
+  size_bytes?: number;
+  /** Token count for this session */
+  token_count?: number;
+  /** Estimated cost for this session in USD */
+  cost_usd?: number;
+  /** Message count in this session */
+  message_count?: number;
 }
 
 /**
@@ -658,10 +685,12 @@ export const api = {
    * Lists all global agents from ~/.claude/agents/
    * @returns Promise resolving to an array of agents
    */
-  async listAgents(): Promise<Agent[]> {
+  async listAgents(projectPath?: string): Promise<Agent[]> {
     try {
-      // For global agents, we don't need to pass a project path
-      return await invoke<Agent[]>('list_agents', {});
+      // Pass projectPath to get project-specific agents, or empty string for global agents
+      return await invoke<Agent[]>('list_agents', { 
+        projectPath: projectPath || "" 
+      });
     } catch (error) {
       console.error("Failed to list agents:", error);
       throw error;
@@ -1904,6 +1933,79 @@ export const api = {
       return await invoke<string>("slash_command_delete", { commandId, projectPath });
     } catch (error) {
       console.error("Failed to delete slash command:", error);
+      throw error;
+    }
+  },
+
+  // ===== PROJECT AND SESSION MANAGEMENT =====
+
+  /**
+   * Deletes a Claude project and all its sessions
+   * @param projectId - The project ID (encoded directory name)
+   * @returns Promise resolving to deletion summary
+   */
+  async deleteClaudeProject(projectId: string): Promise<{
+    success: boolean;
+    project_id: string;
+    sessions_deleted: number;
+    size_mb: number;
+    message: string;
+  }> {
+    try {
+      return await invoke("delete_claude_project", { projectId });
+    } catch (error) {
+      console.error("Failed to delete Claude project:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Deletes a specific session from a project
+   * @param projectId - The project ID (encoded directory name)
+   * @param sessionId - The session ID (UUID)
+   * @returns Promise resolving to deletion summary
+   */
+  async deleteSession(projectId: string, sessionId: string): Promise<{
+    success: boolean;
+    session_id: string;
+    project_id: string;
+    size_kb: number;
+    message: string;
+  }> {
+    try {
+      return await invoke("delete_session", { projectId, sessionId });
+    } catch (error) {
+      console.error("Failed to delete session:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Prunes old sessions based on age and minimum count to keep
+   * @param projectId - Optional project ID to limit pruning to specific project
+   * @param daysOld - Delete sessions older than this many days
+   * @param keepMin - Keep at least this many sessions (newest first)
+   * @returns Promise resolving to pruning summary
+   */
+  async pruneOldSessions(
+    projectId: string | undefined,
+    daysOld: number,
+    keepMin: number
+  ): Promise<{
+    success: boolean;
+    total_sessions_deleted: number;
+    total_size_freed_mb: number;
+    projects_processed: Array<{
+      project_id: string;
+      sessions_deleted: number;
+      size_freed_mb: number;
+    }>;
+    message: string;
+  }> {
+    try {
+      return await invoke("prune_old_sessions", { projectId, daysOld, keepMin });
+    } catch (error) {
+      console.error("Failed to prune old sessions:", error);
       throw error;
     }
   }

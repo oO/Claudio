@@ -24,7 +24,7 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { StreamMessage } from './StreamMessage';
 import { ErrorBoundary } from './ErrorBoundary';
 import { formatISOTimestamp } from '@/lib/date-utils';
-import { AGENT_ICONS } from './CCAgents';
+import { ICON_MAP as AGENT_ICONS } from './IconPicker';
 import type { ClaudeStreamMessage } from './AgentExecution';
 import { useTabState } from '@/hooks/useTabState';
 

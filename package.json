@@ -1,7 +1,7 @@
 {
   "name": "claudio",
   "private": true,
-  "version": "0.2.2",
+  "version": "0.3.0",
   "license": "AGPL-3.0",
   "type": "module",
   "scripts": {
@@ -9,7 +9,10 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "check": "tsc --noEmit && cd src-tauri && cargo check"
+    "check": "tsc --noEmit && cd src-tauri && cargo check",
+    "sync-version": "node scripts/sync-version.js",
+    "prebuild": "npm run sync-version",
+    "predev": "npm run sync-version"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
