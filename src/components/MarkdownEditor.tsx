@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import MDEditor from "@uiw/react-md-editor";
 import { motion } from "framer-motion";
-import { ArrowLeft, Save, Loader2 } from "lucide-react";
+import { Save, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Toast, ToastContainer } from "@/components/ui/toast";
 import { api } from "@/lib/api";
@@ -25,7 +25,6 @@ interface MarkdownEditorProps {
  * <MarkdownEditor onBack={() => setView('main')} />
  */
 export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
-  onBack,
   className,
 }) => {
   const [content, setContent] = useState<string>("");
@@ -74,56 +73,10 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     }
   };
   
-  const handleBack = () => {
-    if (hasChanges) {
-      const confirmLeave = window.confirm(
-        "You have unsaved changes. Are you sure you want to leave?"
-      );
-      if (!confirmLeave) return;
-    }
-    onBack();
-  };
   
   return (
     <div className={cn("flex flex-col h-full bg-background", className)}>
       <div className="w-full max-w-5xl mx-auto flex flex-col h-full">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="flex items-center justify-between p-4 border-b border-border"
-        >
-          <div className="flex items-center space-x-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleBack}
-              className="h-8 w-8"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div>
-              <h2 className="text-lg font-semibold">CLAUDE.md</h2>
-              <p className="text-xs text-muted-foreground">
-                Edit your Claude Code system prompt
-              </p>
-            </div>
-          </div>
-          
-          <Button
-            onClick={handleSave}
-            disabled={!hasChanges || saving}
-            size="sm"
-          >
-            {saving ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="mr-2 h-4 w-4" />
-            )}
-            {saving ? "Saving..." : "Save"}
-          </Button>
-        </motion.div>
         
         {/* Error display */}
         {error && (
@@ -136,8 +89,24 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
           </motion.div>
         )}
         
+        {/* Save Button */}
+        <div className="flex justify-end p-4 pb-2">
+          <Button
+            onClick={handleSave}
+            disabled={!hasChanges || saving}
+            size="sm"
+          >
+            {saving ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
+            {saving ? "Saving..." : "Save"}
+          </Button>
+        </div>
+
         {/* Editor */}
-        <div className="flex-1 p-4 overflow-hidden">
+        <div className="flex-1 px-4 pb-4 overflow-hidden">
           {loading ? (
             <div className="flex items-center justify-center h-full">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

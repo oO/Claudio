@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Circle, FileText, Settings, ExternalLink, BarChart3, Network, Info, Bot } from "lucide-react";
+import { Circle, FileText, Settings, ExternalLink, BarChart3, Network, Info, Bot, Folder } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover } from "@/components/ui/popover";
 import { api, type ClaudeVersionStatus } from "@/lib/api";
@@ -16,7 +16,7 @@ interface TopbarProps {
    */
   onSettingsClick: () => void;
   /**
-   * Callback when Usage Dashboard is clicked
+   * Callback when Dashboard is clicked
    */
   onUsageClick: () => void;
   /**
@@ -31,6 +31,10 @@ interface TopbarProps {
    * Callback when Agents is clicked
    */
   onAgentsClick?: () => void;
+  /**
+   * Callback when Projects is clicked
+   */
+  onProjectsClick?: () => void;
   /**
    * Optional className for styling
    */
@@ -55,6 +59,7 @@ export const Topbar: React.FC<TopbarProps> = ({
   onMCPClick,
   onInfoClick,
   onAgentsClick,
+  onProjectsClick,
   className,
 }) => {
   const [versionStatus, setVersionStatus] = useState<ClaudeVersionStatus | null>(null);
@@ -178,6 +183,18 @@ export const Topbar: React.FC<TopbarProps> = ({
       
       {/* Action Buttons */}
       <div className="flex items-center space-x-2">
+        {onProjectsClick && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onProjectsClick}
+            className="text-xs"
+          >
+            <Folder className="mr-2 h-3 w-3" />
+            Projects
+          </Button>
+        )}
+        
         {onAgentsClick && (
           <Button
             variant="ghost"
@@ -197,7 +214,7 @@ export const Topbar: React.FC<TopbarProps> = ({
           className="text-xs"
         >
           <BarChart3 className="mr-2 h-3 w-3" />
-          Usage Dashboard
+          Dashboard
         </Button>
         
         <Button

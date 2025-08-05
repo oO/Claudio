@@ -24,6 +24,8 @@ const TabItem: React.FC<TabItemProps> = ({ tab, isActive, onClose, onClick, isDr
         return MessageSquare;
       case 'agent':
         return Bot;
+      case 'agents':
+        return Bot;
       case 'projects':
         return Folder;
       case 'usage':
@@ -139,10 +141,8 @@ export const TabManager: React.FC<TabManagerProps> = ({ className }) => {
     tabs,
     activeTabId,
     createChatTab,
-    createProjectsTab,
     closeTab,
-    switchToTab,
-    canAddTab
+    switchToTab
   } = useTabState();
 
   // Access reorderTabs from context
@@ -279,13 +279,6 @@ export const TabManager: React.FC<TabManagerProps> = ({ className }) => {
     await closeTab(id);
   };
 
-  const handleNewTab = () => {
-    if (canAddTab()) {
-      createProjectsTab();
-      trackEvent.tabCreated('projects');
-    }
-  };
-
   const scrollTabs = (direction: 'left' | 'right') => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -384,21 +377,6 @@ export const TabManager: React.FC<TabManagerProps> = ({ className }) => {
         )}
       </AnimatePresence>
 
-      {/* New tab button */}
-      <button
-        onClick={handleNewTab}
-        disabled={!canAddTab()}
-        className={cn(
-          "p-2 mx-2 rounded-md transition-all duration-200 flex items-center justify-center",
-          "border border-border/50 bg-background/50 backdrop-blur-sm",
-          canAddTab()
-            ? "hover:bg-muted/80 hover:border-border text-muted-foreground hover:text-foreground hover:shadow-sm"
-            : "opacity-50 cursor-not-allowed bg-muted/30"
-        )}
-        title={canAddTab() ? "Browse projects (Ctrl+T)" : `Maximum tabs reached (${tabs.length}/20)`}
-      >
-        <Plus className="w-3.5 h-3.5" />
-      </button>
     </div>
   );
 };

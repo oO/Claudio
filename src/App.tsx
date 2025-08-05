@@ -24,7 +24,6 @@ import { Toast, ToastContainer } from "@/components/ui/toast";
 import { ProjectSettings } from '@/components/ProjectSettings';
 import { TabManager } from "@/components/TabManager";
 import { TabContent } from "@/components/TabContent";
-import { AgentsModal } from "@/components/AgentsModal";
 import { useTabState } from "@/hooks/useTabState";
 import { AnalyticsConsentBanner } from "@/components/AnalyticsConsent";
 import { useAppLifecycle, useTrackEvent } from "@/hooks";
@@ -50,7 +49,7 @@ type View =
  */
 function AppContent() {
   const [view, setView] = useState<View>("tabs");
-  const { createClaudeMdTab, createSettingsTab, createUsageTab, createMCPTab } = useTabState();
+  const { createClaudeMdTab, createSettingsTab, createUsageTab, createMCPTab, createAgentsTab, createProjectsTab } = useTabState();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -62,7 +61,6 @@ function AppContent() {
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
   const [projectForSettings, setProjectForSettings] = useState<Project | null>(null);
   const [previousView] = useState<View>("welcome");
-  const [showAgentsModal, setShowAgentsModal] = useState(false);
   
   // Initialize analytics lifecycle tracking
   useAppLifecycle();
@@ -515,12 +513,13 @@ function AppContent() {
     <div className="h-screen bg-background flex flex-col">
       {/* Topbar */}
       <Topbar
-        onClaudeClick={() => createClaudeMdTab()}
-        onSettingsClick={() => createSettingsTab()}
+        onProjectsClick={() => createProjectsTab()}
+        onAgentsClick={() => createAgentsTab()}
         onUsageClick={() => createUsageTab()}
+        onClaudeClick={() => createClaudeMdTab()}
         onMCPClick={() => createMCPTab()}
+        onSettingsClick={() => createSettingsTab()}
         onInfoClick={() => setShowNFO(true)}
-        onAgentsClick={() => setShowAgentsModal(true)}
       />
       
       {/* Analytics Consent Banner */}
@@ -534,11 +533,6 @@ function AppContent() {
       {/* NFO Credits Modal */}
       {showNFO && <NFOCredits onClose={() => setShowNFO(false)} />}
       
-      {/* Agents Modal */}
-      <AgentsModal 
-        open={showAgentsModal} 
-        onOpenChange={setShowAgentsModal} 
-      />
       
       {/* Claude Binary Dialog */}
       <ClaudeBinaryDialog

@@ -20,6 +20,7 @@ interface UseTabStateReturn {
   createMCPTab: () => string | null;
   createSettingsTab: () => string | null;
   createClaudeMdTab: () => string | null;
+  createAgentsTab: () => string | null;
   createClaudeFileTab: (filePath: string, fileName: string) => string;
   createCreateAgentTab: () => string;
   createImportAgentTab: () => string;
@@ -117,7 +118,7 @@ export const useTabState = (): UseTabStateReturn => {
 
     return addTab({
       type: 'usage',
-      title: 'Usage',
+      title: 'Dashboard',
       status: 'idle',
       hasUnsavedChanges: false,
       icon: 'bar-chart'
@@ -172,6 +173,23 @@ export const useTabState = (): UseTabStateReturn => {
       status: 'idle',
       hasUnsavedChanges: false,
       icon: 'file-text'
+    });
+  }, [addTab, tabs, setActiveTab]);
+
+  const createAgentsTab = useCallback((): string | null => {
+    // Check if agents tab already exists (singleton)
+    const existingTab = tabs.find(tab => tab.type === 'agents');
+    if (existingTab) {
+      setActiveTab(existingTab.id);
+      return existingTab.id;
+    }
+
+    return addTab({
+      type: 'agents',
+      title: 'Personal Agents',
+      status: 'idle',
+      hasUnsavedChanges: false,
+      icon: 'robot'
     });
   }, [addTab, tabs, setActiveTab]);
 
@@ -326,6 +344,7 @@ export const useTabState = (): UseTabStateReturn => {
     createMCPTab,
     createSettingsTab,
     createClaudeMdTab,
+    createAgentsTab,
     createClaudeFileTab,
     createCreateAgentTab,
     createImportAgentTab,

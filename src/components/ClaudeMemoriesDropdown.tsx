@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, Edit2, FileText, Loader2 } from "lucide-react";
+import { ChevronDown, Edit, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -109,8 +109,29 @@ export const ClaudeMemoriesDropdown: React.FC<ClaudeMemoriesDropdownProps> = ({
                 ) : error ? (
                   <div className="p-3 text-xs text-destructive">{error}</div>
                 ) : files.length === 0 ? (
-                  <div className="p-3 text-xs text-muted-foreground text-center">
-                    No CLAUDE.md files found in this project
+                  <div className="p-3 flex flex-col items-center justify-center text-center space-y-3">
+                    <div className="text-xs text-muted-foreground">
+                      No CLAUDE.md files found in this project
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Create a virtual CLAUDE.md file at project root
+                        const claudeMdFile: ClaudeMdFile = {
+                          absolute_path: `${projectPath}/CLAUDE.md`,
+                          relative_path: 'CLAUDE.md',
+                          size: 0,
+                          modified: Math.floor(Date.now() / 1000)
+                        };
+                        onEditFile(claudeMdFile);
+                      }}
+                    >
+                      <Edit className="h-3 w-3 mr-1" />
+                      Create CLAUDE.md
+                    </Button>
                   </div>
                 ) : (
                   <div className="max-h-64 overflow-y-auto">
@@ -135,14 +156,15 @@ export const ClaudeMemoriesDropdown: React.FC<ClaudeMemoriesDropdownProps> = ({
                         </div>
                         <Button
                           variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 flex-shrink-0"
+                          size="sm"
+                          className="h-7 px-2 text-xs flex-shrink-0"
                           onClick={(e) => {
                             e.stopPropagation();
                             onEditFile(file);
                           }}
                         >
-                          <Edit2 className="h-3 w-3" />
+                          <Edit className="h-3 w-3 mr-1" />
+                          Edit
                         </Button>
                       </motion.div>
                     ))}

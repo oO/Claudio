@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Network, Plus, Download, AlertCircle, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Network, Plus, Download, AlertCircle, Loader2 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Toast, ToastContainer } from "@/components/ui/toast";
@@ -26,7 +25,6 @@ interface MCPManagerProps {
  * Provides a comprehensive UI for adding, configuring, and managing MCP servers
  */
 export const MCPManager: React.FC<MCPManagerProps> = ({
-  onBack,
   className,
 }) => {
   const [activeTab, setActiveTab] = useState("servers");
@@ -99,33 +97,6 @@ export const MCPManager: React.FC<MCPManagerProps> = ({
   return (
     <div className={`flex flex-col h-full bg-background text-foreground ${className || ""}`}>
       <div className="max-w-5xl mx-auto w-full flex flex-col h-full">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="flex items-center justify-between p-4 border-b border-border"
-        >
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onBack}
-              className="h-8 w-8"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div>
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <Network className="h-5 w-5 text-blue-500" />
-                MCP Servers
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                Manage Model Context Protocol servers
-              </p>
-            </div>
-          </div>
-        </motion.div>
 
         {/* Error Display */}
         <AnimatePresence>

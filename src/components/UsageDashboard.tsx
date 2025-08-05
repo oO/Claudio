@@ -6,7 +6,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { api, type UsageStats, type ProjectUsage } from "@/lib/api";
 import { 
-  ArrowLeft, 
   TrendingUp, 
   Calendar, 
   Filter,
@@ -31,7 +30,7 @@ interface UsageDashboardProps {
  * @example
  * <UsageDashboard onBack={() => setView('welcome')} />
  */
-export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
+export const UsageDashboard: React.FC<UsageDashboardProps> = ({}) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<UsageStats | null>(null);
@@ -128,50 +127,25 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
-      >
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center space-x-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onBack}
-              className="h-8 w-8"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div>
-              <h1 className="text-lg font-semibold">Usage Dashboard</h1>
-              <p className="text-xs text-muted-foreground">
-                Track your Claude Code usage and costs
-              </p>
-            </div>
-          </div>
-          
-          {/* Date Range Filter */}
-          <div className="flex items-center space-x-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <div className="flex space-x-1">
-              {(["all", "30d", "7d"] as const).map((range) => (
-                <Button
-                  key={range}
-                  variant={selectedDateRange === range ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setSelectedDateRange(range)}
-                  className="text-xs"
-                >
-                  {range === "all" ? "All Time" : range === "7d" ? "Last 7 Days" : "Last 30 Days"}
-                </Button>
-              ))}
-            </div>
+      {/* Date Range Filter */}
+      <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 py-3">
+        <div className="flex items-center justify-end space-x-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <div className="flex space-x-1">
+            {(["all", "30d", "7d"] as const).map((range) => (
+              <Button
+                key={range}
+                variant={selectedDateRange === range ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setSelectedDateRange(range)}
+                className="text-xs"
+              >
+                {range === "all" ? "All Time" : range === "7d" ? "Last 7 Days" : "Last 30 Days"}
+              </Button>
+            ))}
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Main Content */}
       <div className="flex-1 overflow-auto p-4">

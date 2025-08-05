@@ -1,15 +1,9 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FileText, ArrowLeft, Clock, MessageSquare, MoreVertical, Trash2, HardDrive, ListChecks } from "lucide-react";
+import { FileText, Clock, MessageSquare, HardDrive, ListChecks, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -104,8 +98,6 @@ const ITEMS_PER_PAGE = 5;
 export const SessionList: React.FC<SessionListProps> = ({
   sessions,
   projectPath,
-  projectId,
-  onBack,
   onSessionClick,
   onEditClaudeFile,
   onExecuteAgent,
@@ -115,15 +107,12 @@ export const SessionList: React.FC<SessionListProps> = ({
   onCreateAgent,
   onImportAgent,
   onSessionDeleted,
-  onProjectDeleted,
   className,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState<Session | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteProjectDialogOpen, setDeleteProjectDialogOpen] = useState(false);
-  const [isDeletingProject, setIsDeletingProject] = useState(false);
   
   // Calculate pagination
   const totalPages = Math.ceil(sessions.length / ITEMS_PER_PAGE);
@@ -174,86 +163,10 @@ export const SessionList: React.FC<SessionListProps> = ({
     setSessionToDelete(null);
   };
 
-  // Project deletion handlers
-  const handleDeleteProject = () => {
-    setDeleteProjectDialogOpen(true);
-  };
 
-  const handleDeleteProjectConfirm = async () => {
-    setIsDeletingProject(true);
-    try {
-      await api.deleteClaudeProject(projectId);
-      onProjectDeleted?.(projectId);
-      setDeleteProjectDialogOpen(false);
-      // Go back to projects list
-      onBack();
-    } catch (error) {
-      console.error("Failed to delete project:", error);
-      // Still remove from UI and go back
-      onProjectDeleted?.(projectId);
-      setDeleteProjectDialogOpen(false);
-      onBack();
-    } finally {
-      setIsDeletingProject(false);
-    }
-  };
-
-  const handleDeleteProjectCancel = () => {
-    setDeleteProjectDialogOpen(false);
-  };
-
-  // Get project name from path
-  const getProjectName = (path: string): string => {
-    const parts = path.split('/').filter(Boolean);
-    return parts[parts.length - 1] || path;
-  };
   
   return (
     <div className={cn("space-y-4", className)}>
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.3 }}
-        className="flex items-center space-x-3"
-      >
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onBack}
-          className="h-8 w-8"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div className="flex-1 min-w-0">
-          <h2 className="text-base font-medium truncate">{getProjectName(projectPath)}</h2>
-          <p className="text-xs text-muted-foreground font-mono truncate">
-            {projectPath}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {sessions.length} session{sessions.length !== 1 ? 's' : ''}
-          </p>
-        </div>
-        {onProjectDeleted && (
-          <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={handleDeleteProject}
-                  className="text-destructive"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete Project
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        )}
-      </motion.div>
 
       {/* CLAUDE.md Memories Dropdown */}
       {onEditClaudeFile && (
@@ -440,42 +353,6 @@ export const SessionList: React.FC<SessionListProps> = ({
         </DialogContent>
       </Dialog>
 
-      {/* Project delete confirmation dialog */}
-      <Dialog open={deleteProjectDialogOpen} onOpenChange={setDeleteProjectDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Claude Code Data</DialogTitle>
-            <DialogDescription>
-              <strong>Your project files will NOT be deleted.</strong>
-              <br />
-              This will only remove Claude Code data for project:
-              <br />
-              <code className="bg-muted px-1 rounded text-sm">{getProjectName(projectPath)}</code>
-              <br />
-              <br />
-              <strong>This will remove:</strong>
-              <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
-                <li>{sessions.length} conversation session(s)</li>
-                <li>All conversation history from ~/.claude/projects/</li>
-              </ul>
-              <br />
-              <span className="text-destructive font-medium">This action cannot be undone.</span>
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={handleDeleteProjectCancel} disabled={isDeletingProject}>
-              Cancel
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleDeleteProjectConfirm} 
-              disabled={isDeletingProject}
-            >
-              {isDeletingProject ? "Deleting..." : "Delete Project Data"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }; 

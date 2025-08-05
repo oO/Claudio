@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  ArrowLeft, 
   Plus, 
   Trash2, 
   Save, 
@@ -60,7 +59,6 @@ interface EnvironmentVariable {
  * Provides a no-code interface for editing the settings.json file
  */
 export const Settings: React.FC<SettingsProps> = ({
-  onBack,
   className,
 }) => {
   const [settings, setSettings] = useState<ClaudeSettings | null>(null);
@@ -329,49 +327,6 @@ export const Settings: React.FC<SettingsProps> = ({
   return (
     <div className={cn("flex flex-col h-full bg-background text-foreground", className)}>
       <div className="max-w-4xl mx-auto w-full flex flex-col h-full">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="flex items-center justify-between p-4 border-b border-border"
-        >
-        <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onBack}
-          className="h-8 w-8"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div>
-          <h2 className="text-lg font-semibold">Settings</h2>
-          <p className="text-xs text-muted-foreground">
-              Configure Claude Code preferences
-          </p>
-          </div>
-        </div>
-        
-        <Button
-          onClick={saveSettings}
-          disabled={saving || loading}
-          size="sm"
-          className="gap-2 bg-primary hover:bg-primary/90"
-        >
-          {saving ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              <Save className="h-4 w-4" />
-              Save Settings
-            </>
-          )}
-        </Button>
-      </motion.div>
       
       {/* Error message */}
       <AnimatePresence>
@@ -411,6 +366,28 @@ export const Settings: React.FC<SettingsProps> = ({
             <TabsContent value="general" className="space-y-6">
               <Card className="p-6 space-y-6">
                 <div>
+                  {/* Save Button */}
+                  <div className="flex justify-end mb-4">
+                    <Button
+                      onClick={saveSettings}
+                      disabled={saving || loading}
+                      size="sm"
+                      className="gap-2 bg-primary hover:bg-primary/90"
+                    >
+                      {saving ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-4 w-4" />
+                          Save Settings
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  
                   <h3 className="text-base font-semibold mb-4">General Settings</h3>
                   
                   <div className="space-y-4">

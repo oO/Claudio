@@ -2,7 +2,7 @@ import React, { createContext, useState, useContext, useCallback, useEffect } fr
 
 export interface Tab {
   id: string;
-  type: 'chat' | 'agent' | 'projects' | 'usage' | 'mcp' | 'settings' | 'claude-md' | 'claude-file' | 'agent-execution' | 'create-agent' | 'import-agent';
+  type: 'chat' | 'agent' | 'agents' | 'projects' | 'usage' | 'mcp' | 'settings' | 'claude-md' | 'claude-file' | 'agent-execution' | 'create-agent' | 'import-agent';
   title: string;
   sessionId?: string;  // for chat tabs
   sessionData?: any; // for chat tabs - stores full session object
@@ -10,6 +10,15 @@ export interface Tab {
   agentData?: any; // for agent-execution tabs
   claudeFileId?: string; // for claude-file tabs
   initialProjectPath?: string; // for chat tabs
+  
+  // Simple navigation context - store the previous state to return to
+  previousState?: {
+    type: 'projects' | 'project-detail';
+    title: string;
+    selectedProject?: any;
+    sessions?: any[];
+  };
+  
   status: 'active' | 'idle' | 'running' | 'complete' | 'error';
   hasUnsavedChanges: boolean;
   order: number;
