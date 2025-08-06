@@ -435,8 +435,6 @@ function AppContent() {
                         <ProjectList
                           projects={projects}
                           onProjectClick={handleProjectClick}
-                          onProjectSettings={handleProjectSettings}
-                          onProjectDeleted={handleProjectDeleted}
                           loading={loading}
                           className="animate-fade-in"
                         />

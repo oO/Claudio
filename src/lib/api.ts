@@ -37,8 +37,6 @@ export interface Project {
   total_tokens?: number;
   /** Estimated total cost in USD */
   total_cost_usd?: number;
-  /** Number of local project agents in .claude/agents/ */
-  agent_count?: number;
 }
 
 /**

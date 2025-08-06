@@ -1,22 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, Plus, MoreVertical, Trash2 } from 'lucide-react';
-import { api, type Project, type Session, type ClaudeMdFile } from '@/lib/api';
-import { ProjectList } from '@/components/projects';
-import { SessionList, RunningClaudeSessions } from '@/components/sessions';
-import { Button } from '@/components/ui/button';
-import { ActionButton } from '@/components/ui/atoms/ActionButton';
-import { LoadingSpinner } from '@/components/ui/atoms/LoadingSpinner';
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Loader2, Plus, MoreVertical, Trash2, Settings } from "lucide-react";
+import { api, type Project, type Session, type ClaudeMdFile } from "@/lib/api";
+import { ProjectList } from "@/components/projects";
+import { SessionList, RunningClaudeSessions } from "@/components/sessions";
+import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/ui/atoms/ActionButton";
+import { LoadingSpinner } from "@/components/ui/atoms/LoadingSpinner";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { TabPageLayout } from '@/components/common';
-import { useTabState } from '@/hooks/useTabState';
-import { useScreenTracking } from '@/hooks/useAnalytics';
-import { Tab } from '@/contexts/TabContext';
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { TabPageLayout } from "@/components/common";
+import { useTabState } from "@/hooks/useTabState";
+import { useScreenTracking } from "@/hooks/useAnalytics";
+import { Tab } from "@/contexts/TabContext";
 
 interface ProjectsTabProps {
   tab: Tab;
@@ -30,15 +31,21 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Track screen when tab becomes active
-  useScreenTracking(isActive ? tab.type : undefined, isActive ? tab.id : undefined);
-  
+  useScreenTracking(
+    isActive ? tab.type : undefined,
+    isActive ? tab.id : undefined,
+  );
+
   // Load projects when tab becomes active and is of type 'projects'
   useEffect(() => {
-    if (isActive && tab.type === 'projects') {
+    if (isActive && tab.type === "projects") {
       // Check if we need to restore a previous state (like project detail view)
-      if (tab.previousState?.type === 'project-detail' && tab.previousState.selectedProject) {
+      if (
+        tab.previousState?.type === "project-detail" &&
+        tab.previousState.selectedProject
+      ) {
         setSelectedProject(tab.previousState.selectedProject);
         setSessions(tab.previousState.sessions || []);
         // Clear the previous state since we've restored it
@@ -48,7 +55,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
       }
     }
   }, [isActive, tab.type, tab.previousState]);
-  
+
   const loadProjects = async () => {
     try {
       setLoading(true);
@@ -57,12 +64,14 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
       setProjects(projectList);
     } catch (err) {
       console.error("Failed to load projects:", err);
-      setError("Failed to load projects. Please ensure ~/.claude directory exists.");
+      setError(
+        "Failed to load projects. Please ensure ~/.claude directory exists.",
+      );
     } finally {
       setLoading(false);
     }
   };
-  
+
   const handleProjectClick = async (project: Project) => {
     try {
       setLoading(true);
@@ -70,7 +79,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
       const sessionList = await api.getProjectSessions(project.id);
       setSessions(sessionList);
       setSelectedProject(project);
-      
+
       // Update tab title to project name
       const projectName = getProjectName(project.path);
       updateTab(tab.id, { title: projectName });
@@ -81,31 +90,31 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
       setLoading(false);
     }
   };
-  
+
   const handleBack = () => {
     setSelectedProject(null);
     setSessions([]);
     // Restore tab title to "Projects"
-    updateTab(tab.id, { title: 'Projects' });
+    updateTab(tab.id, { title: "Projects" });
   };
-  
+
   // Get project name from path
   const getProjectName = (path: string): string => {
-    const parts = path.split('/').filter(Boolean);
+    const parts = path.split("/").filter(Boolean);
     return parts[parts.length - 1] || path;
   };
-  
+
   const handleSessionDeleted = (sessionId: string) => {
-    setSessions(prev => prev.filter(s => s.id !== sessionId));
+    setSessions((prev) => prev.filter((s) => s.id !== sessionId));
   };
-  
+
   const handleProjectDeleted = (projectId: string) => {
     // Remove project from projects list
-    setProjects(prev => prev.filter(p => p.id !== projectId));
+    setProjects((prev) => prev.filter((p) => p.id !== projectId));
     // Go back to projects view in the same tab
     handleBack();
   };
-  
+
   const handleNewSession = () => {
     // Create a new chat tab
     createChatTab();
@@ -113,39 +122,60 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
 
   return (
     <TabPageLayout
-      title={selectedProject ? getProjectName(selectedProject.path) : "Projects"}
-      subtitle={selectedProject ? `${selectedProject.path} • ${sessions.length} session${sessions.length !== 1 ? 's' : ''}` : "Browse your Claude Code sessions"}
+      title={
+        selectedProject ? getProjectName(selectedProject.path) : "Projects"
+      }
+      subtitle={
+        selectedProject
+          ? `${selectedProject.path} • ${sessions.length} session${sessions.length !== 1 ? "s" : ""}`
+          : "Browse your Claude Code sessions"
+      }
       onBack={selectedProject ? handleBack : undefined}
       contentPadding={false}
-      actions={selectedProject ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <ActionButton
-              icon={MoreVertical}
-              label="More options"
-              variant="ghost"
-              size="icon"
-              showLabel={false}
-              className="h-8 w-8"
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={() => {
-                // Handle project deletion
-                const confirmed = window.confirm(`Are you sure you want to delete the project "${getProjectName(selectedProject.path)}"?\n\nThis will permanently delete all project sessions and data.`);
-                if (confirmed) {
-                  handleProjectDeleted(selectedProject.id);
-                }
-              }}
-              className="text-destructive"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete Project
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : undefined}
+      actions={
+        selectedProject ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <ActionButton
+                icon={MoreVertical}
+                label="More options"
+                variant="ghost"
+                size="icon"
+                showLabel={false}
+                className="h-8 w-8"
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => {
+                  // Handle project settings/hooks
+                  console.log("Project settings clicked for:", selectedProject);
+                  // TODO: Implement project settings functionality
+                }}
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Hooks
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => {
+                  // Handle project deletion
+                  const confirmed = window.confirm(
+                    `Are you sure you want to delete the project "${getProjectName(selectedProject.path)}"?\n\nThis will permanently delete all project sessions and data.`,
+                  );
+                  if (confirmed) {
+                    handleProjectDeleted(selectedProject.id);
+                  }
+                }}
+                className="text-destructive"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Project
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : undefined
+      }
     >
       <div className="h-full overflow-y-auto">
         <div className="container mx-auto p-6">
@@ -186,8 +216,9 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                     onSessionClick={(session) => {
                       // Update tab to show this session
                       updateTab(tab.id, {
-                        type: 'chat',
-                        title: session.project_path.split('/').pop() || 'Session',
+                        type: "chat",
+                        title:
+                          session.project_path.split("/").pop() || "Session",
                         sessionId: session.id,
                         sessionData: session, // Store full session object
                         initialProjectPath: session.project_path,
@@ -195,54 +226,66 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                     }}
                     onEditClaudeFile={(file: ClaudeMdFile) => {
                       // Open CLAUDE.md file in a new tab with return context
-                      window.dispatchEvent(new CustomEvent('open-claude-file', { 
-                        detail: { 
-                          file,
-                          returnContext: {
-                            type: 'project-detail',
-                            selectedProject,
-                            sessions
-                          }
-                        } 
-                      }));
+                      window.dispatchEvent(
+                        new CustomEvent("open-claude-file", {
+                          detail: {
+                            file,
+                            returnContext: {
+                              type: "project-detail",
+                              selectedProject,
+                              sessions,
+                            },
+                          },
+                        }),
+                      );
                     }}
                     onExecuteAgent={(agent) => {
                       // Open agent execution in a new tab
-                      window.dispatchEvent(new CustomEvent('open-agent-execution', { 
-                        detail: { agent } 
-                      }));
+                      window.dispatchEvent(
+                        new CustomEvent("open-agent-execution", {
+                          detail: { agent },
+                        }),
+                      );
                     }}
                     onEditAgent={(agent) => {
                       // Open agent edit in a new tab with return context
-                      window.dispatchEvent(new CustomEvent('create-edit-agent-tab', { 
-                        detail: { 
-                          agent,
-                          returnContext: {
-                            type: 'project-detail',
-                            title: selectedProject ? getProjectName(selectedProject.path) : 'Projects',
-                            selectedProject,
-                            sessions
-                          }
-                        } 
-                      }));
+                      window.dispatchEvent(
+                        new CustomEvent("create-edit-agent-tab", {
+                          detail: {
+                            agent,
+                            returnContext: {
+                              type: "project-detail",
+                              title: selectedProject
+                                ? getProjectName(selectedProject.path)
+                                : "Projects",
+                              selectedProject,
+                              sessions,
+                            },
+                          },
+                        }),
+                      );
                     }}
                     onExportAgent={(agent) => {
                       // Export project agent (same logic as personal agents)
-                      console.log('Export project agent:', agent);
+                      console.log("Export project agent:", agent);
                       // TODO: Implement proper export dialog
                     }}
                     onDeleteAgent={(agent) => {
                       // Delete agent and refresh agents list
                       // This would need to be implemented properly with confirmation dialog
-                      console.log('Delete agent:', agent);
+                      console.log("Delete agent:", agent);
                     }}
                     onCreateAgent={() => {
                       // Open create agent tab for project agents
-                      window.dispatchEvent(new CustomEvent('open-create-agent-tab'));
+                      window.dispatchEvent(
+                        new CustomEvent("open-create-agent-tab"),
+                      );
                     }}
                     onImportAgent={() => {
-                      // Open import agent tab for project agents  
-                      window.dispatchEvent(new CustomEvent('open-import-agent-tab'));
+                      // Open import agent tab for project agents
+                      window.dispatchEvent(
+                        new CustomEvent("open-import-agent-tab"),
+                      );
                     }}
                     onSessionDeleted={handleSessionDeleted}
                     onProjectDeleted={handleProjectDeleted}
@@ -261,15 +304,11 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5 }}
-                    className="mb-4"
+                    className="mb-4 flex justify-end"
                   >
-                    <Button
-                      onClick={handleNewSession}
-                      size="default"
-                      className="w-full max-w-md"
-                    >
+                    <Button onClick={handleNewSession} size="default">
                       <Plus className="mr-2 h-4 w-4" />
-                      New Claude Code session
+                      New Claude Code Project
                     </Button>
                   </motion.div>
 
@@ -281,11 +320,6 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                     <ProjectList
                       projects={projects}
                       onProjectClick={handleProjectClick}
-                      onProjectSettings={(project) => {
-                        // Project settings functionality can be added here if needed
-                        console.log('Project settings clicked for:', project);
-                      }}
-                      onProjectDeleted={handleProjectDeleted}
                       loading={loading}
                       className="animate-fade-in"
                     />
