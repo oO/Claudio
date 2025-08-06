@@ -1,8 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
-import { ErrorBoundary } from "./components/ErrorBoundary";
-import { AnalyticsErrorBoundary } from "./components/AnalyticsErrorBoundary";
+import { ErrorBoundary, AnalyticsErrorBoundary } from "./components/common";
 import { analytics, resourceMonitor } from "./lib/analytics";
 import { PostHogProvider } from "posthog-js/react";
 import "./assets/shimmer.css";

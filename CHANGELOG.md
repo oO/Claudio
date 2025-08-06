@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2025-01-06
+
+### Added
+- Comprehensive Atomic Design system with 50+ components (19 atoms, 15 molecules, 16 organisms)
+- Complete component documentation system with guides and patterns
+- Individual widget components (24 total) replacing monolithic AllToolWidgets.tsx
+- Custom hooks for complex state management (useSessionState, useAgentExecution, usePromptInput)
+- Domain-specific component organization (agents/, sessions/, settings/, etc.)
+- Atomic Design documentation with creation guides and best practices
+- Component composition patterns and performance optimizations
+- Tree-shaking optimized exports for minimal bundle size
+
+### Changed
+- Project tab behavior: topbar Projects button now creates multiple tabs (not singleton)
+- Refactored all large components (700-1713 lines) using Atomic Design principles
+- Harmonized UI patterns across all components (buttons, menus, actions)
+- Migrated components to organized folder structure by domain
+- Applied single responsibility principle throughout component architecture
+- Improved component reusability through atomic composition
+
+### Fixed
+- Circular dependency warnings in build process
+- Import path issues after component refactoring
+- TypeScript compilation errors from component moves
+
 ## [0.2.2] - 2025-01-04
 
 ### Fixed

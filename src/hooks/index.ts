@@ -24,3 +24,19 @@ export {
   useAsyncPerformanceTracker 
 } from './usePerformanceMonitor';
 export { TAB_SCREEN_NAMES } from './useAnalytics';
+
+// Prompt input hooks
+export { usePromptInput } from './usePromptInput';
+export { useSlashCommands } from './useSlashCommands';
+export { useImageHandling } from './useImageHandling';
+export { useAutoResize } from './useAutoResize';
+export { useFilePicker } from './useFilePicker';
+
+// Settings hooks
+export { useSettingsState } from './useSettingsState';
+export { useSettingsValidation } from './useSettingsValidation';
+export { useClaudeBinaryConfig } from './useClaudeBinaryConfig';
+
+// Agent execution hooks
+export { useAgentExecution, type ClaudeStreamMessage } from './useAgentExecution';
+export { useExecutionOutput } from './useExecutionOutput';
