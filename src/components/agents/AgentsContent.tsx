@@ -57,12 +57,12 @@ export const AgentsContent: React.FC<AgentsContentProps> = ({
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Load agents when component mounts or when projectPath changes
   useEffect(() => {
     loadAgents();
   }, [projectPath]);
-  
+
   const loadAgents = async () => {
     try {
       setLoading(true);
@@ -76,28 +76,28 @@ export const AgentsContent: React.FC<AgentsContentProps> = ({
       setLoading(false);
     }
   };
-  
+
   const handleExecuteAgent = (agent: Agent) => {
     onExecuteAgent?.(agent);
   };
-  
+
   const handleEditAgent = (agent: Agent) => {
     onEditAgent?.(agent);
   };
-  
+
   const handleExportAgent = (agent: Agent) => {
     onExportAgent?.(agent);
   };
-  
+
   const handleDeleteAgent = (agent: Agent) => {
     onDeleteAgent?.(agent);
   };
-  
+
   return (
     <div className={cn("w-full", className)}>
       {/* Create and Import buttons */}
       {(onCreateAgent || onImportAgent) && (
-        <div className="mb-6">
+        <div className="mb-2">
           <div className="flex gap-2">
             {onCreateAgent && (
               <Button
@@ -124,7 +124,7 @@ export const AgentsContent: React.FC<AgentsContentProps> = ({
           </div>
         </div>
       )}
-      
+
       {/* Agents List */}
       {loading ? (
         <div className="flex items-center justify-center py-8">
@@ -134,7 +134,9 @@ export const AgentsContent: React.FC<AgentsContentProps> = ({
         <div className="py-4 text-sm text-destructive text-center">{error}</div>
       ) : agents.length === 0 ? (
         <div className="py-8 text-sm text-muted-foreground text-center">
-          {projectPath ? "No project agents found in .claude/agents/" : "No personal agents found"}
+          {projectPath
+            ? "No project agents found in .claude/agents/"
+            : "No personal agents found"}
         </div>
       ) : (
         <div className="space-y-3">

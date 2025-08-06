@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { 
   ArrowLeft, 
   Terminal, 
+  MessagesSquare,
   FolderOpen, 
   Copy, 
   GitBranch,
@@ -69,7 +70,7 @@ export const SessionHeader: React.FC<SessionHeaderProps> = React.memo(({
           </Button>
           
           <div className="flex items-center gap-2">
-            <Terminal className="h-5 w-5 text-primary" />
+            <MessagesSquare className="h-5 w-5 text-primary" />
             <span className="font-semibold">Claude Code Session</span>
           </div>
 
