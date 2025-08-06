@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Loader2, Bot, FolderCode } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { invoke } from "@tauri-apps/api/core";
 import { api, type Project, type Session, type ClaudeMdFile } from "@/lib/api";
 import { OutputCacheProvider } from "@/lib/outputCache";
 import { TabProvider } from "@/contexts/TabContext";
@@ -73,6 +74,20 @@ function AppContent() {
     };
     
     setWindowTitle();
+  }, []);
+  
+  // Initialize quote pool on app startup
+  useEffect(() => {
+    const initializeQuotes = async () => {
+      try {
+        await invoke('initialize_quote_pool');
+        console.log('Quote pool initialized');
+      } catch (error) {
+        console.error('Failed to initialize quote pool:', error);
+      }
+    };
+    
+    initializeQuotes();
   }, []);
   
   // Track user journey milestones

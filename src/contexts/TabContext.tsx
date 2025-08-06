@@ -52,25 +52,26 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
 
   // Start with welcome message, then open default Projects tab after delay
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      // Create default projects tab after delay
-      const defaultTab: Tab = {
-        id: generateTabId(),
-        type: 'projects',
-        title: 'Projects',
-        status: 'idle',
-        hasUnsavedChanges: false,
-        order: 0,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      setTabs([defaultTab]);
-      setActiveTabId(defaultTab.id);
-    }, 4000); // 4 second delay to comfortably read welcome message and credits
+  // Removed automatic project tab creation - users should manually open tabs
+  // useEffect(() => {
+  //   const timer = setTimeout(() => {
+  //     // Create default projects tab after delay
+  //     const defaultTab: Tab = {
+  //       id: generateTabId(),
+  //       type: 'projects',
+  //       title: 'Projects',
+  //       status: 'idle',
+  //       hasUnsavedChanges: false,
+  //       order: 0,
+  //       createdAt: new Date(),
+  //       updatedAt: new Date()
+  //     };
+  //     setTabs([defaultTab]);
+  //     setActiveTabId(defaultTab.id);
+  //   }, 4000); // 4 second delay to comfortably read welcome message and credits
 
-    return () => clearTimeout(timer);
-  }, []);
+  //   return () => clearTimeout(timer);
+  // }, []);
 
   // Tab persistence disabled - no longer saving to localStorage
   // useEffect(() => {

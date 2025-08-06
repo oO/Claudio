@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Circle, FileText, Settings, ExternalLink, BarChart3, Network, Bot, Folder } from "lucide-react";
+import { Circle, FileText, Settings, ExternalLink, BarChart3, Network, Bot, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover } from "@/components/ui/popover";
 import { ActionButton } from "@/components/ui/atoms/ActionButton";
@@ -182,7 +182,7 @@ export const Topbar: React.FC<TopbarProps> = ({
       <div className="flex items-center space-x-1">
         {onProjectsClick && (
           <ActionButton
-            icon={Folder}
+            icon={FolderOpen}
             label="Projects"
             variant="ghost"
             size="sm"

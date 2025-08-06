@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import {
-  FolderOpen,
+  Folder,
   MessagesSquare,
   HardDrive,
   Clock,
@@ -99,7 +99,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                 <div className="flex-1">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <FolderOpen className="h-5 w-5 text-primary shrink-0" />
+                      <Folder className="h-5 w-5 text-primary shrink-0" />
                       <h3 className="font-semibold text-base truncate">
                         {getProjectName(project.path)}
                       </h3>
