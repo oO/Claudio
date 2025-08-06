@@ -15,14 +15,12 @@ import {
   AdvancedSettings,
   HooksSettings,
   CommandsSettings,
-  NetworkSettings,
-  AnalyticsSettings
+  NetworkSettings
 } from "@/components/settings";
 import {
   useSettingsState,
   useClaudeBinaryConfig
 } from "@/hooks";
-import { analytics } from "@/lib/analytics";
 
 interface SettingsProps {
   /**
@@ -44,11 +42,6 @@ export const Settings: React.FC<SettingsProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState("general");
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  
-  // Analytics state
-  const [analyticsEnabled, setAnalyticsEnabled] = useState(false);
-  const [analyticsConsented, setAnalyticsConsented] = useState(false);
-  const [showAnalyticsConsent, setShowAnalyticsConsent] = useState(false);
   
   // Settings state and actions
   const {
@@ -81,19 +74,8 @@ export const Settings: React.FC<SettingsProps> = ({
   // Load settings on mount
   useEffect(() => {
     loadSettings();
-    loadAnalyticsSettings();
   }, [loadSettings]);
 
-  /**
-   * Loads analytics settings
-   */
-  const loadAnalyticsSettings = async () => {
-    const settings = analytics.getSettings();
-    if (settings) {
-      setAnalyticsEnabled(settings.enabled);
-      setAnalyticsConsented(settings.hasConsented);
-    }
-  };
 
   /**
    * Enhanced save settings that handles binary path
@@ -164,7 +146,7 @@ export const Settings: React.FC<SettingsProps> = ({
       ) : (
         <div className="flex-1 overflow-y-auto p-4">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid grid-cols-8 w-full">
+            <TabsList className="grid grid-cols-7 w-full">
               <TabsTrigger value="general">General</TabsTrigger>
               <TabsTrigger value="permissions">Permissions</TabsTrigger>
               <TabsTrigger value="environment">Environment</TabsTrigger>
@@ -172,7 +154,6 @@ export const Settings: React.FC<SettingsProps> = ({
               <TabsTrigger value="hooks">Hooks</TabsTrigger>
               <TabsTrigger value="commands">Commands</TabsTrigger>
               <TabsTrigger value="proxy">Proxy</TabsTrigger>
-              <TabsTrigger value="analytics">Analytics</TabsTrigger>
             </TabsList>
             
             {/* General Settings */}
@@ -263,21 +244,6 @@ export const Settings: React.FC<SettingsProps> = ({
               </Card>
             </TabsContent>
             
-            {/* Analytics Settings */}
-            <TabsContent value="analytics" className="space-y-6">
-              <Card className="p-6 space-y-6">
-                <AnalyticsSettings
-                  analyticsEnabled={analyticsEnabled}
-                  analyticsConsented={analyticsConsented}
-                  showAnalyticsConsent={showAnalyticsConsent}
-                  onAnalyticsEnabledChange={setAnalyticsEnabled}
-                  onAnalyticsConsentChange={setAnalyticsConsented}
-                  onShowAnalyticsConsentChange={setShowAnalyticsConsent}
-                  onToast={setToast}
-                  onLoadAnalyticsSettings={loadAnalyticsSettings}
-                />
-              </Card>
-            </TabsContent>
           </Tabs>
         </div>
       )}

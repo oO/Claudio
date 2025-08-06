@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { api, type ClaudeSettings } from "@/lib/api";
 
 export interface PermissionRule {
@@ -61,7 +61,7 @@ export const useSettingsState = (
   /**
    * Loads the current Claude settings
    */
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -113,7 +113,7 @@ export const useSettingsState = (
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   /**
    * Saves the current settings

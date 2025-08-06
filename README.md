@@ -2,7 +2,7 @@
 
 Claude Code Native Agent Manager - A visual interface for managing Claude Code's native subagent system.
 
-Designed with ❤️ by oO. Coded with ✨ by Claude Sonnet 4
+Designed with ❤️ by oO. Coded with ✨ by Claude Code
 
 > [!WARNING]
 > This project is in early development mode. Claudio is being actively transformed from [Claudia](https://github.com/getAsterisk/claudia) to use file-based storage and Claude Code's native Task tool integration. All interfaces and functionality are subject to change.
@@ -23,7 +23,7 @@ Claudio provides a visual interface for managing Claude Code's native subagent s
 - **File-Based Agent Storage** - Agents stored as `.claude/agents/*.md` files
 - **Native Task Integration** - Uses Claude Code's built-in Task tool with subagent_type
 - **Visual Agent Studio** - Create and edit agents with rich UI
-- **Project-Based Management** - Per-project agent libraries  
+- **Project-Based Management** - Per-project agent libraries
 - **Real-Time Execution** - Live agent task execution dashboard
 
 ## 🚧 Development Status
@@ -60,7 +60,7 @@ npm run tauri dev  # or: bun run tauri dev
 ## 📚 Documentation
 
 - **[CLAUDE.md](CLAUDE.md)** - Project context and development guidelines
-- **[docs/design.md](docs/design.md)** - Architecture and design decisions  
+- **[docs/design.md](docs/design.md)** - Architecture and design decisions
 - **[docs/tasks.md](docs/tasks.md)** - Development roadmap and task breakdown
 - **[docs/claudia_readme.md](docs/claudia_readme.md)** - Original Claudia documentation
 
@@ -69,7 +69,7 @@ npm run tauri dev  # or: bun run tauri dev
 Claudio aims to be the definitive visual interface for Claude Code's agent ecosystem, providing:
 - Seamless integration with Claude Code workflows
 - Intuitive agent creation and management
-- Visual task execution monitoring  
+- Visual task execution monitoring
 - Community agent sharing and templates
 
 ## 📄 License

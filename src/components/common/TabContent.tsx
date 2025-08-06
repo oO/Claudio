@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTabState } from '@/hooks/useTabState';
 import { Tab } from '@/contexts/TabContext';
@@ -16,6 +16,75 @@ const AgentRunOutputViewer = lazy(() => import('@/components/agents').then(m => 
 const AgentExecution = lazy(() => import('@/components/agents').then(m => ({ default: m.AgentExecution })));
 const CreateAgent = lazy(() => import('@/components/agents').then(m => ({ default: m.CreateAgent })));
 // const ClaudeFileEditor = lazy(() => import('@/components/ClaudeFileEditor').then(m => ({ default: m.ClaudeFileEditor })));
+
+// Track if app has been initialized to only show animation on first load
+let hasPlayedInitialAnimation = false;
+
+const TypewriterWelcome: React.FC = () => {
+  const [displayedText, setDisplayedText] = useState('');
+  const [showSubtitle, setShowSubtitle] = useState(false);
+  const fullText = "Hello, I'm Claudio";
+  const [shouldAnimate, setShouldAnimate] = useState(!hasPlayedInitialAnimation);
+
+  useEffect(() => {
+    // If we should animate and haven't started yet, begin the animation
+    if (shouldAnimate && displayedText === '') {
+      hasPlayedInitialAnimation = true;
+      setDisplayedText('');
+    } else if (!shouldAnimate) {
+      // If we shouldn't animate, show the complete text immediately
+      setDisplayedText(fullText);
+      setShowSubtitle(true);
+      return;
+    }
+
+    if (shouldAnimate && displayedText.length < fullText.length) {
+      const timeout = setTimeout(() => {
+        setDisplayedText(fullText.slice(0, displayedText.length + 1));
+      }, 100); // 100ms per character
+      return () => clearTimeout(timeout);
+    } else if (shouldAnimate && displayedText.length === fullText.length) {
+      // Show subtitle after typewriter completes
+      setTimeout(() => setShowSubtitle(true), 300);
+    }
+  }, [displayedText, fullText, shouldAnimate]);
+
+  return (
+    <div className="flex items-center justify-center h-full">
+      <div className="text-center">
+        <div className="relative">
+          {/* Invisible placeholder text to maintain container width */}
+          <h1 className="text-9xl font-bold mb-8 opacity-0 select-none pointer-events-none">
+            {fullText}
+          </h1>
+          {/* Visible typing text positioned absolutely over placeholder */}
+          <h1 className="absolute top-0 left-0 text-9xl font-bold mb-8 bg-gradient-to-r from-red-500 via-orange-500 to-yellow-400 bg-clip-text text-transparent">
+            {displayedText}
+          </h1>
+        </div>
+        <div className="relative">
+          {/* Invisible placeholder subtitle to maintain layout height */}
+          <p className="text-base text-muted-foreground opacity-0 select-none pointer-events-none">
+            © 2025. Designed with ❤️ by oO. Coded with ✨ by Claude Code.
+          </p>
+          {/* Visible animated subtitle positioned absolutely over placeholder */}
+          <AnimatePresence>
+            {showSubtitle && (
+              <motion.p
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="absolute top-0 left-0 w-full text-base text-muted-foreground"
+              >
+                © 2025. Designed with ❤️ by oO. Coded with ✨ by Claude Code.
+              </motion.p>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 interface TabPanelProps {
   tab: Tab;
@@ -307,14 +376,7 @@ export const TabContent: React.FC = () => {
         ))}
       </AnimatePresence>
       
-      {tabs.length === 0 && (
-        <div className="flex items-center justify-center h-full text-muted-foreground">
-          <div className="text-center">
-            <p className="text-lg mb-2">No tabs open</p>
-            <p className="text-sm">Click Projects in the top bar to get started</p>
-          </div>
-        </div>
-      )}
+      {tabs.length === 0 && <TypewriterWelcome />}
     </div>
   );
 };

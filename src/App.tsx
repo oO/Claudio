@@ -512,7 +512,6 @@ function AppContent() {
         onClaudeClick={() => createClaudeMdTab()}
         onMCPClick={() => createMCPTab()}
         onSettingsClick={() => createSettingsTab()}
-        onInfoClick={() => setShowNFO(true)}
       />
       
       {/* Analytics Consent Banner */}

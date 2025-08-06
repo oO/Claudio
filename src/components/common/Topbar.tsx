@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Circle, FileText, Settings, ExternalLink, BarChart3, Network, Info, Bot, Folder } from "lucide-react";
+import { Circle, FileText, Settings, ExternalLink, BarChart3, Network, Bot, Folder } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover } from "@/components/ui/popover";
 import { ActionButton } from "@/components/ui/atoms/ActionButton";
@@ -25,10 +25,6 @@ interface TopbarProps {
    * Callback when MCP is clicked
    */
   onMCPClick: () => void;
-  /**
-   * Callback when Info is clicked
-   */
-  onInfoClick: () => void;
   /**
    * Callback when Agents is clicked
    */
@@ -59,7 +55,6 @@ export const Topbar: React.FC<TopbarProps> = ({
   onSettingsClick,
   onUsageClick,
   onMCPClick,
-  onInfoClick,
   onAgentsClick,
   onProjectsClick,
   className,
@@ -235,16 +230,6 @@ export const Topbar: React.FC<TopbarProps> = ({
           variant="ghost"
           size="sm"
           onClick={onSettingsClick}
-        />
-        
-        <ActionButton
-          icon={Info}
-          label="About"
-          variant="ghost"
-          size="icon"
-          onClick={onInfoClick}
-          showLabel={false}
-          title="About"
         />
       </div>
     </motion.div>
