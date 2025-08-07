@@ -48,7 +48,7 @@ const getProjectName = (path: string): string => {
  * @example
  * <ProjectList
  *   projects={projects}
- *   onProjectClick={(project) => console.log('Selected:', project)}
+ *   onProjectClick={(project) => handleProjectClick(project)}
  * />
  */
 export const ProjectList: React.FC<ProjectListProps> = ({

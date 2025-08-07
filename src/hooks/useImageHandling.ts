@@ -46,7 +46,6 @@ export const useImageHandling = ({
 
   // Extract image paths from prompt text
   const extractImagePaths = useCallback((text: string): string[] => {
-    console.log('[extractImagePaths] Input text length:', text.length);
     
     // Updated regex to handle both quoted and unquoted paths
     // Pattern 1: @"path with spaces or data URLs" - quoted paths
@@ -58,11 +57,9 @@ export const useImageHandling = ({
     
     // First, extract quoted paths (including data URLs)
     let matches = Array.from(text.matchAll(quotedRegex));
-    console.log('[extractImagePaths] Quoted matches:', matches.length);
     
     for (const match of matches) {
       const path = match[1]; // No need to trim, quotes preserve exact path
-      console.log('[extractImagePaths] Processing quoted path:', path.startsWith('data:') ? 'data URL' : path);
       
       // For data URLs, use as-is; for file paths, convert to absolute
       const fullPath = path.startsWith('data:') 
@@ -79,14 +76,12 @@ export const useImageHandling = ({
     
     // Then extract unquoted paths (typically file paths)
     matches = Array.from(textWithoutQuoted.matchAll(unquotedRegex));
-    console.log('[extractImagePaths] Unquoted matches:', matches.length);
     
     for (const match of matches) {
       const path = match[1].trim();
       // Skip if it looks like a data URL fragment (shouldn't happen with proper quoting)
       if (path.includes('data:')) continue;
       
-      console.log('[extractImagePaths] Processing unquoted path:', path);
       
       // Convert relative path to absolute if needed
       const fullPath = path.startsWith('/') ? path : (projectPath ? `${projectPath}/${path}` : path);
@@ -97,7 +92,6 @@ export const useImageHandling = ({
     }
 
     const uniquePaths = Array.from(pathsSet);
-    console.log('[extractImagePaths] Final extracted paths (unique):', uniquePaths.length);
     return uniquePaths;
   }, [projectPath, isImageFile]);
 

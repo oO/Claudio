@@ -66,11 +66,9 @@ const SessionMessageHandlerComponent: React.FC<SessionMessageHandlerProps> = ({
 
   // Reconnect to existing session
   const _reconnectToSession = useCallback(async (sessionId: string) => {
-    console.log('[SessionMessageHandler] Reconnecting to session:', sessionId);
     
     // Prevent duplicate listeners
     if (isListeningRef.current) {
-      console.log('[SessionMessageHandler] Already listening to session, skipping reconnect');
       return;
     }
     
@@ -84,7 +82,6 @@ const SessionMessageHandlerComponent: React.FC<SessionMessageHandlerProps> = ({
     // Set up session-specific listeners
     const outputUnlisten = await listen<string>(`claude-output:${sessionId}`, async (event) => {
       try {
-        console.log('[SessionMessageHandler] Received claude-output on reconnect:', event.payload);
         
         if (!isMountedRef.current) return;
         
@@ -106,8 +103,7 @@ const SessionMessageHandlerComponent: React.FC<SessionMessageHandlerProps> = ({
     });
 
     const completeUnlisten = await listen<boolean>(`claude-complete:${sessionId}`, async (event) => {
-      console.log('[SessionMessageHandler] Received claude-complete on reconnect:', event.payload);
-      if (isMountedRef.current) {
+        if (isMountedRef.current) {
         setIsLoading(false);
         hasActiveSessionRef.current = false;
       }
@@ -134,7 +130,6 @@ const SessionMessageHandlerComponent: React.FC<SessionMessageHandlerProps> = ({
 
   // Send prompt to Claude
   const sendPrompt = useCallback(async (prompt: string, model: "sonnet" | "opus") => {
-    console.log('[SessionMessageHandler] sendPrompt called with:', { prompt, model, projectPath, claudeSessionId, effectiveSession });
     
     if (!projectPath) {
       setError("Please select a project directory first");
@@ -171,25 +166,21 @@ const SessionMessageHandlerComponent: React.FC<SessionMessageHandlerProps> = ({
         // Mark as setting up listeners
         isListeningRef.current = true;
         
-        console.log('[SessionMessageHandler] Setting up generic event listeners first');
 
         let currentSessionId: string | null = claudeSessionId || effectiveSession?.id || null;
 
         // Helper to attach session-specific listeners
         const attachSessionSpecificListeners = async (sid: string) => {
-          console.log('[SessionMessageHandler] Attaching session-specific listeners for', sid);
 
           const specificOutputUnlisten = await listen<string>(`claude-output:${sid}`, (evt) => {
             handleStreamMessage(evt.payload);
           });
 
           const specificErrorUnlisten = await listen<string>(`claude-error:${sid}`, (evt) => {
-            console.error('Claude error (scoped):', evt.payload);
             setError(evt.payload);
           });
 
           const specificCompleteUnlisten = await listen<boolean>(`claude-complete:${sid}`, (evt) => {
-            console.log('[SessionMessageHandler] Received claude-complete (scoped):', evt.payload);
             processComplete(evt.payload);
           });
 
@@ -207,7 +198,6 @@ const SessionMessageHandlerComponent: React.FC<SessionMessageHandlerProps> = ({
             const msg = JSON.parse(event.payload) as ClaudeStreamMessage;
             if (msg.type === 'system' && msg.subtype === 'init' && msg.session_id) {
               if (!currentSessionId || currentSessionId !== msg.session_id) {
-                console.log('[SessionMessageHandler] Detected new session_id from generic listener:', msg.session_id);
                 currentSessionId = msg.session_id;
                 setClaudeSessionId(msg.session_id);
 
@@ -328,12 +318,10 @@ const SessionMessageHandlerComponent: React.FC<SessionMessageHandlerProps> = ({
         };
 
         const genericErrorUnlisten = await listen<string>('claude-error', (evt) => {
-          console.error('Claude error:', evt.payload);
           setError(evt.payload);
         });
 
         const genericCompleteUnlisten = await listen<boolean>('claude-complete', (evt) => {
-          console.log('[SessionMessageHandler] Received claude-complete (generic):', evt.payload);
           processComplete(evt.payload);
         });
 
@@ -396,12 +384,10 @@ const SessionMessageHandlerComponent: React.FC<SessionMessageHandlerProps> = ({
 
         // Execute the appropriate command
         if (effectiveSession && !isFirstPrompt) {
-          console.log('[SessionMessageHandler] Resuming session:', effectiveSession.id);
           trackEvent.sessionResumed(effectiveSession.id);
           trackEvent.modelSelected(model);
           await api.resumeClaudeCode(projectPath, effectiveSession.id, prompt, model);
         } else {
-          console.log('[SessionMessageHandler] Starting new session');
           setIsFirstPrompt(false);
           trackEvent.sessionCreated(model, 'prompt_input');
           trackEvent.modelSelected(model);
@@ -553,7 +539,6 @@ const SessionMessageHandlerComponent: React.FC<SessionMessageHandlerProps> = ({
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      console.log('[SessionMessageHandler] Component unmounting, cleaning up listeners');
       isListeningRef.current = false;
       unlistenRefs.current.forEach(unlisten => unlisten());
       unlistenRefs.current = [];
@@ -579,13 +564,10 @@ export function useSessionMessageHandler(props: Omit<SessionMessageHandlerProps,
     MessageHandlerComponent: () => <SessionMessageHandler {...props} />,
     sendPrompt: (_prompt: string, _model: "sonnet" | "opus") => {
       // We'll need to pass these methods through props or use a different pattern
-      console.warn('sendPrompt called on hook - implement proper method exposure');
     },
     cancelExecution: () => {
-      console.warn('cancelExecution called on hook - implement proper method exposure');
     },
     reconnectToSession: (_sessionId: string) => {
-      console.warn('reconnectToSession called on hook - implement proper method exposure');
     }
   };
 }

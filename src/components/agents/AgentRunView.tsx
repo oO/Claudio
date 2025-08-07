@@ -183,7 +183,7 @@ export const AgentRunView: React.FC<AgentRunViewProps> = ({
       const success = await api.killAgentSession(runId);
       
       if (success) {
-        console.log(`[AgentRunView] Successfully stopped agent session ${runId}`);
+        // Agent session stopped successfully
         
         // Update the run status locally
         if (run) {

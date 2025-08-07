@@ -270,7 +270,7 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
           return;
         }
       } catch (err) {
-        console.error("Failed to check for name conflicts:", err);
+        // Silent error - name conflict check failed
       }
     } else if (!isEditMode) {
       // For new agents, always check for conflicts
@@ -282,7 +282,7 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
           return;
         }
       } catch (err) {
-        console.error("Failed to check for name conflicts:", err);
+        // Silent error - name conflict check failed
       }
     }
 

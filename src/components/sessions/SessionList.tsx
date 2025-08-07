@@ -110,7 +110,7 @@ const ITEMS_PER_PAGE = 4;
  *   sessions={sessions}
  *   projectPath="/Users/example/project"
  *   onBack={() => setSelectedProject(null)}
- *   onSessionClick={(session) => console.log('Selected session:', session)}
+ *   onSessionClick={(session) => handleSessionClick(session)}
  * />
  */
 export const SessionList: React.FC<SessionListProps> = ({
@@ -197,9 +197,7 @@ export const SessionList: React.FC<SessionListProps> = ({
         sessionToDelete.project_id,
         sessionToDelete.id,
       );
-      console.log(
-        `Deleted session with ${result.todos_deleted} todos, ${result.timelines_deleted} timelines (${result.size_kb.toFixed(2)} KB)`,
-      );
+      // Session deleted successfully
       onSessionDeleted?.(sessionToDelete.id);
       setDeleteDialogOpen(false);
       setSessionToDelete(null);

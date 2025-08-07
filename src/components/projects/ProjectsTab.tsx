@@ -149,7 +149,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
               <DropdownMenuItem
                 onClick={() => {
                   // Handle project settings/hooks
-                  console.log("Project settings clicked for:", selectedProject);
+                  // Project settings will be implemented
                   // TODO: Implement project settings functionality
                 }}
               >
@@ -267,13 +267,13 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                     }}
                     onExportAgent={(agent) => {
                       // Export project agent (same logic as personal agents)
-                      console.log("Export project agent:", agent);
+                      // Agent export will be handled
                       // TODO: Implement proper export dialog
                     }}
                     onDeleteAgent={(agent) => {
                       // Delete agent and refresh agents list
                       // This would need to be implemented properly with confirmation dialog
-                      console.log("Delete agent:", agent);
+                      // Agent deletion will be handled
                     }}
                     onCreateAgent={() => {
                       // Open create agent tab for project agents

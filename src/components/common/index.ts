@@ -9,6 +9,7 @@ export { SlashCommandPicker } from './SlashCommandPicker';
 export { Topbar } from './Topbar';
 export { TabManager } from './TabManager';
 export { TabContent } from './TabContent';
+export { TypewriterText, WelcomeScreen } from './Welcome';
 export { TabPageLayout } from './TabPageLayout';
 export { MarkdownEditor } from './MarkdownEditor';
 export { ExampleEditor, type Example } from './ExampleEditor';

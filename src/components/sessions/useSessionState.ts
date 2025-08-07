@@ -222,7 +222,6 @@ export function useSessionState({
         });
         
         if (activeSession) {
-          console.log('[useSessionState] Found active session, setting session ID:', session.id);
           setClaudeSessionId(session.id);
           return true;
         }

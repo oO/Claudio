@@ -132,7 +132,7 @@ export const SessionActions: React.FC<SessionActionsProps> = ({
         sessionName
       );
       
-      console.log("Forked to new session:", newSessionId);
+      // Fork operation completed
       return newSessionId;
     } catch (err) {
       console.error("Failed to fork checkpoint:", err);
@@ -335,7 +335,7 @@ export function useSessionActions(props: SessionActionsProps) {
         sessionName
       );
       
-      console.log("Forked to new session:", newSessionId);
+      // Fork operation completed
       return newSessionId;
     } catch (err) {
       console.error("Failed to fork checkpoint:", err);

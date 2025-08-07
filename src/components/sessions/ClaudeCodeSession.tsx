@@ -197,12 +197,12 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
 
   const handleSendPrompt = async (_prompt: string, _model: "sonnet" | "opus") => {
     // This will be handled by the SessionMessageHandler component
-    console.log('[ClaudeCodeSession] handleSendPrompt delegated to SessionMessageHandler');
+    // Delegated to SessionMessageHandler
   };
 
   const handleCancelExecution = async () => {
     // This will be handled by the SessionMessageHandler component  
-    console.log('[ClaudeCodeSession] handleCancelExecution delegated to SessionMessageHandler');
+    // Delegated to SessionMessageHandler
   };
 
   const handleCheckpointSelect = async () => {
@@ -229,7 +229,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
         forkSessionName
       );
       
-      console.log("Forked to new session:", newSessionId);
+      // Fork operation completed
       setShowForkDialog(false);
       setForkCheckpointId(null);
       setForkSessionName("");
@@ -252,7 +252,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   };
 
   const handlePreviewUrlChange = (url: string) => {
-    console.log('[ClaudeCodeSession] Preview URL changed to:', url);
     setPreviewUrl(url);
   };
 

@@ -9,6 +9,7 @@ import { SettingsTab } from "@/components/settings";
 import { UsageTab } from "@/components/dashboard";
 import { MCPTab } from "@/components/mcp";
 import { ClaudeMdTab } from "@/components/claude";
+import { WelcomeScreen } from "./Welcome";
 import { invoke } from "@tauri-apps/api/core";
 
 // Lazy load heavy components
@@ -29,169 +30,6 @@ const CreateAgent = lazy(() =>
   import("@/components/agents").then((m) => ({ default: m.CreateAgent })),
 );
 // const ClaudeFileEditor = lazy(() => import('@/components/ClaudeFileEditor').then(m => ({ default: m.ClaudeFileEditor })));
-
-// Constants
-const QUOTE_REFRESH_INTERVAL_MS = 60 * 1000; // 1 minute
-
-// Simple session tracking for typewriter animation
-const getHasPlayedTypewriterThisSession = () => {
-  return sessionStorage.getItem('claudio-typewriter-played') === 'true';
-};
-
-const setHasPlayedTypewriterThisSession = (value: boolean) => {
-  sessionStorage.setItem('claudio-typewriter-played', value.toString());
-};
-
-// Custom hook for word-by-word typewriter effect
-const useWordTypewriter = (text: string, shouldStart: boolean, delay: number = 300) => {
-  const [displayedText, setDisplayedText] = useState("");
-  const [isComplete, setIsComplete] = useState(false);
-
-  useEffect(() => {
-    if (!shouldStart || !text) {
-      setDisplayedText("");
-      setIsComplete(false);
-      return;
-    }
-
-    const words = text.split(/(\s+|\n)/); // Split by spaces and newlines, keeping separators
-    let currentIndex = 0;
-    setDisplayedText("");
-    setIsComplete(false);
-
-    const animateWords = () => {
-      if (currentIndex < words.length) {
-        const nextText = words.slice(0, currentIndex + 1).join('');
-        setDisplayedText(nextText);
-        currentIndex++;
-        setTimeout(animateWords, delay);
-      } else {
-        setIsComplete(true);
-      }
-    };
-
-    const timeout = setTimeout(animateWords, delay);
-    return () => clearTimeout(timeout);
-  }, [text, shouldStart, delay]);
-
-  return { displayedText, isComplete };
-};
-
-interface QuoteResponse {
-  quote: string;
-  source: string;
-}
-
-const TypewriterWelcome: React.FC = () => {
-  const [quote, setQuote] = useState("");
-  const [quoteSource, setQuoteSource] = useState<string>("pool");
-  const fullText = "Hello, I'm Claudio";
-  
-  // Check if animation should play (only on first component mount of the session)
-  const hasPlayed = getHasPlayedTypewriterThisSession();
-  const [shouldAnimate] = useState(!hasPlayed);
-  
-  // Use word typewriter for title (150ms per word, only if should animate)
-  const { displayedText: titleText, isComplete: titleComplete } = useWordTypewriter(
-    fullText, 
-    shouldAnimate, 
-    150
-  );
-  
-  // Use word typewriter for quote (250ms per word, always animate when quote is available)
-  const { displayedText: quoteText } = useWordTypewriter(
-    quote,
-    !!quote && (titleComplete || !shouldAnimate), // Start when title complete or no title animation
-    250
-  );
-  
-  console.log("TypewriterWelcome: shouldAnimate =", shouldAnimate, "hasPlayed =", hasPlayed);
-
-  // Function to fetch a new quote
-  const fetchNewQuote = useCallback(async () => {
-    try {
-      const response = await invoke<QuoteResponse>("get_programming_quote");
-      setQuote(response.quote);
-      setQuoteSource(response.source);
-      console.log("TypewriterWelcome: Fetched new quote:", response.quote.split('\n')[0] + "...");
-    } catch (error) {
-      console.error("Failed to get quote:", error);
-      // Fallback quote if invoke fails - meta haiku about Claude being offline
-      setQuote(
-        "Claude sleeps silent\nNo quotes flow from distant mind\nSorry, try later",
-      );
-      setQuoteSource("fallback");
-    }
-  }, []);
-
-  // Get quote on component mount and set up auto-refresh timer
-  useEffect(() => {
-    // Initial quote fetch
-    fetchNewQuote();
-
-    // Set up auto-refresh timer
-    const refreshTimer = setInterval(() => {
-      console.log("TypewriterWelcome: Auto-refreshing quote after", QUOTE_REFRESH_INTERVAL_MS / 1000, "seconds");
-      fetchNewQuote();
-    }, QUOTE_REFRESH_INTERVAL_MS);
-
-    // Cleanup timer on unmount
-    return () => {
-      console.log("TypewriterWelcome: Cleaning up quote refresh timer");
-      clearInterval(refreshTimer);
-    };
-  }, [fetchNewQuote]);
-
-  // Mark animation as completed when title animation finishes
-  useEffect(() => {
-    if (shouldAnimate && titleComplete) {
-      console.log("TypewriterWelcome: Title animation completed, setting session flag");
-      setHasPlayedTypewriterThisSession(true);
-    }
-  }, [shouldAnimate, titleComplete]);
-
-  return (
-    <div className="flex flex-col h-full relative">
-      {/* Main content - centered */}
-      <div className="flex items-center justify-center flex-1">
-        <div className="text-center">
-          <div className="relative">
-            {/* Invisible placeholder text to maintain container width */}
-            <h1 className="text-9xl font-bold mb-8 opacity-0 select-none pointer-events-none">
-              {fullText}
-            </h1>
-            {/* Visible typing text positioned absolutely over placeholder */}
-            <h1 className="absolute top-0 left-0 text-9xl font-bold mb-8 bg-gradient-to-r from-red-500 via-orange-500 to-yellow-400 bg-clip-text text-transparent">
-              {shouldAnimate ? titleText : fullText}
-            </h1>
-          </div>
-          <div className="relative">
-            {/* Invisible placeholder for quote to maintain layout height */}
-            <div className="text-2xl font-extrabold opacity-0 select-none pointer-events-none whitespace-pre-line">
-              Line one of the quote\nLine two of the quote\nLine three of the
-              quote
-            </div>
-            {/* Visible typewritten quote positioned absolutely over placeholder */}
-            {quoteText && (
-              <div className="absolute top-0 left-0 w-full">
-                <div className="text-2xl font-extrabold whitespace-pre-line italic text-center bg-gradient-to-r from-red-500 via-orange-500 to-yellow-400 bg-clip-text text-transparent opacity-80">
-                  {quoteText}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Copyright - bottom of screen */}
-      <div className="pb-6 px-6 text-center">
-        <p className="text-sm text-muted-foreground">
-          © 2025. Designed with ❤️ by oO. Coded with ✨ by Claude Code.
-        </p>
-      </div>
-    </div>
-  );
-};
 
 interface TabPanelProps {
   tab: Tab;
@@ -383,17 +221,17 @@ export const TabContent: React.FC = () => {
     closeTab,
     updateTab,
   } = useTabState();
-  
+
   // Track when welcome screen becomes visible to trigger new quote
   const [welcomeKey, setWelcomeKey] = useState(0);
 
   // Update welcome key when returning to welcome screen (no tabs)
   useEffect(() => {
     if (tabs.length === 0) {
-      setWelcomeKey(prev => prev + 1);
+      setWelcomeKey((prev) => prev + 1);
     }
   }, [tabs.length]);
-  
+
   // Listen for events to open sessions in tabs
   useEffect(() => {
     const handleOpenSessionInTab = (event: CustomEvent) => {
@@ -563,7 +401,7 @@ export const TabContent: React.FC = () => {
         ))}
       </AnimatePresence>
 
-      {tabs.length === 0 && <TypewriterWelcome key={welcomeKey} />}
+      {tabs.length === 0 && <WelcomeScreen key={welcomeKey} />}
     </div>
   );
 };

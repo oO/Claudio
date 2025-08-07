@@ -76,19 +76,6 @@ function AppContent() {
     setWindowTitle();
   }, []);
   
-  // Initialize quote pool on app startup
-  useEffect(() => {
-    const initializeQuotes = async () => {
-      try {
-        await invoke('initialize_quote_pool');
-        console.log('Quote pool initialized');
-      } catch (error) {
-        console.error('Failed to initialize quote pool:', error);
-      }
-    };
-    
-    initializeQuotes();
-  }, []);
   
   // Track user journey milestones
   const [hasTrackedFirstChat] = useState(false);

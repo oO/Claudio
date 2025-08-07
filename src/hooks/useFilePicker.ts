@@ -53,7 +53,6 @@ export const useFilePicker = ({
   ): boolean => {
     // Check if @ was just typed and we have a project path
     if (projectPath?.trim() && newText.length > oldText.length && newText[newCursorPosition - 1] === '@') {
-      console.log('[useFilePicker] @ detected, projectPath:', projectPath);
       openFilePicker(newCursorPosition, "");
       return true;
     }

@@ -61,10 +61,10 @@ export const AgentsTab: React.FC<AgentsTabProps> = ({ tab, isActive }) => {
         }}
         onExportAgent={async (agent) => {
           // Export functionality is handled by AgentsContent
-          console.log('Export agent:', agent.name);
+          // Agent export will be handled
         }}
         onDeleteAgent={(agent) => {
-          console.log('Delete agent:', agent.name);
+          // Agent deletion will be handled
         }}
         onCreateAgent={() => {
           // Create agent in the same tab

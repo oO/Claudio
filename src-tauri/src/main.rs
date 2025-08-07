@@ -44,7 +44,6 @@ use commands::storage::{
     storage_insert_row, storage_execute_sql, storage_reset_database,
 };
 use commands::proxy::{get_proxy_settings, save_proxy_settings, apply_proxy_settings, get_setting, save_setting};
-use commands::quote::{get_programming_quote, initialize_quote_pool};
 use process::ProcessRegistryState;
 use std::sync::Mutex;
 use tauri::Manager;
@@ -242,9 +241,6 @@ fn main() {
             get_setting,
             save_setting,
             
-            // Quote Generation
-            get_programming_quote,
-            initialize_quote_pool,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -174,7 +174,6 @@ export const useAgentExecution = ({ agent }: UseAgentExecutionProps) => {
       
       // Execute the agent and get the run ID
       const executionRunId = await api.executeAgent(agent.id!, projectPath, task, model);
-      console.log("Agent execution started with run ID:", executionRunId);
       setRunId(executionRunId);
       
       // Track agent execution start
@@ -197,12 +196,10 @@ export const useAgentExecution = ({ agent }: UseAgentExecutionProps) => {
           const message = JSON.parse(event.payload) as ClaudeStreamMessage;
           setMessages(prev => [...prev, message]);
         } catch (err) {
-          console.error("Failed to parse message:", err, event.payload);
         }
       });
 
       const errorUnlisten = await listen<string>(`agent-error:${executionRunId}`, (event) => {
-        console.error("Agent error:", event.payload);
         setError(event.payload);
         
         // Track agent error
@@ -241,7 +238,6 @@ export const useAgentExecution = ({ agent }: UseAgentExecutionProps) => {
 
       unlistenRefs.current = [outputUnlisten, errorUnlisten, completeUnlisten, cancelUnlisten];
     } catch (err) {
-      console.error("Failed to execute agent:", err);
       setIsRunning(false);
       setExecutionStartTime(null);
       setRunId(null);
@@ -263,7 +259,6 @@ export const useAgentExecution = ({ agent }: UseAgentExecutionProps) => {
   const handleStop = async () => {
     try {
       if (!runId) {
-        console.error("No run ID available to stop");
         return;
       }
 
@@ -271,9 +266,7 @@ export const useAgentExecution = ({ agent }: UseAgentExecutionProps) => {
       const success = await api.killAgentSession(runId);
       
       if (success) {
-        console.log(`Successfully stopped agent session ${runId}`);
       } else {
-        console.warn(`Failed to stop agent session ${runId} - it may have already finished`);
       }
       
       // Update UI state
@@ -297,7 +290,6 @@ export const useAgentExecution = ({ agent }: UseAgentExecutionProps) => {
         }
       }]);
     } catch (err) {
-      console.error("Failed to stop agent:", err);
       // Still update UI state even if the backend call failed
       setIsRunning(false);
       setExecutionStartTime(null);
