@@ -9,7 +9,8 @@ import {
   GitBranch,
   Settings,
   Hash,
-  Command
+  Command,
+  Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover } from '@/components/ui/popover';
@@ -32,6 +33,7 @@ interface SessionHeaderProps {
   onToggleTimeline: () => void;
   onProjectSettings?: () => void;
   onSlashCommandsSettings?: () => void;
+  onDeleteProject?: () => void;
   setCopyPopoverOpen: (open: boolean) => void;
 }
 
@@ -50,6 +52,7 @@ export const SessionHeader: React.FC<SessionHeaderProps> = React.memo(({
   onToggleTimeline,
   onProjectSettings,
   onSlashCommandsSettings,
+  onDeleteProject,
   setCopyPopoverOpen
 }) => {
   return (
@@ -171,6 +174,15 @@ export const SessionHeader: React.FC<SessionHeaderProps> = React.memo(({
                 <DropdownMenuItem onClick={onSlashCommandsSettings}>
                   <Command className="h-4 w-4 mr-2" />
                   Slash Commands
+                </DropdownMenuItem>
+              )}
+              {onDeleteProject && projectPath && (
+                <DropdownMenuItem 
+                  onClick={onDeleteProject}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Project
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>

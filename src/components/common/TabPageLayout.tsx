@@ -89,7 +89,10 @@ export const TabPageLayout: React.FC<TabPageLayoutProps> = ({
             </div>
 
             {actions && (
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div
+                id="TabActions"
+                className="flex items-center gap-2 flex-shrink-0"
+              >
                 {loading ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
                 ) : (

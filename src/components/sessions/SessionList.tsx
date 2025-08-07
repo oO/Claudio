@@ -116,6 +116,7 @@ const ITEMS_PER_PAGE = 4;
 export const SessionList: React.FC<SessionListProps> = ({
   sessions,
   projectPath,
+  projectId,
   onSessionClick,
   onEditClaudeFile,
   onExecuteAgent,
@@ -125,6 +126,7 @@ export const SessionList: React.FC<SessionListProps> = ({
   onCreateAgent,
   onImportAgent,
   onSessionDeleted,
+  onProjectDeleted,
   className,
 }) => {
   const [activeTab, setActiveTab] = useState("sessions");

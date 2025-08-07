@@ -10,7 +10,7 @@ export interface ActionButtonProps extends Omit<ButtonProps, 'children'> {
   showLabel?: boolean;
 }
 
-export const ActionButton: React.FC<ActionButtonProps> = ({
+export const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(({
   icon: Icon,
   label,
   isLoading = false,
@@ -18,10 +18,11 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
   className,
   disabled,
   ...props
-}) => {
+}, ref) => {
   return (
     <Button
       {...props}
+      ref={ref}
       disabled={disabled || isLoading}
       className={cn(
         "gap-2",
@@ -36,4 +37,6 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
       {showLabel && label}
     </Button>
   );
-};
+});
+
+ActionButton.displayName = "ActionButton";
