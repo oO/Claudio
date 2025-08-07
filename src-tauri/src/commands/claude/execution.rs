@@ -1,6 +1,5 @@
 use super::types::*;
 use tauri::{AppHandle, Emitter, Manager, command};
-use tokio::process::Command;
 use uuid::Uuid;
 
 /// Opens a new Claude Code session
@@ -141,7 +140,6 @@ pub async fn get_claude_session_output(
 /// Helper function to spawn Claude process and handle streaming
 async fn spawn_claude_process(app: AppHandle, mut cmd: tokio::process::Command, prompt: String, model: String, project_path: String) -> Result<(), String> {
     use tokio::io::{AsyncBufReadExt, BufReader};
-    use std::sync::Mutex;
 
     // Spawn the process
     let mut child = cmd

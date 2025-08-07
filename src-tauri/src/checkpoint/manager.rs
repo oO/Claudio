@@ -765,6 +765,7 @@ impl CheckpointManager {
     }
 
     /// Get files modified since a given timestamp
+    #[allow(dead_code)]
     pub async fn get_files_modified_since(&self, since: DateTime<Utc>) -> Vec<PathBuf> {
         let tracker = self.file_tracker.read().await;
         tracker
@@ -776,6 +777,7 @@ impl CheckpointManager {
     }
 
     /// Get the last modification time of any tracked file
+    #[allow(dead_code)]
     pub async fn get_last_modification_time(&self) -> Option<DateTime<Utc>> {
         let tracker = self.file_tracker.read().await;
         tracker

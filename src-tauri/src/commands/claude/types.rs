@@ -4,7 +4,6 @@ use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::SystemTime;
 use tauri::AppHandle;
 use tokio::process::Child;
 use tokio::sync::Mutex;
@@ -191,6 +190,7 @@ pub fn count_todos_by_status(todos: &[serde_json::Value]) -> TodoCounts {
 }
 
 /// Count local agents in a project's .claude/agents directory
+#[allow(dead_code)]
 pub fn count_project_agents(project_path: &str) -> Option<u32> {
     let agents_dir = PathBuf::from(project_path).join(".claude").join("agents");
     

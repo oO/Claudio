@@ -39,6 +39,7 @@ pub struct ProcessHandle {
 /// Registry for tracking active agent processes
 pub struct ProcessRegistry {
     processes: Arc<Mutex<HashMap<i64, ProcessHandle>>>, // run_id -> ProcessHandle
+    #[allow(dead_code)]
     next_id: Arc<Mutex<i64>>, // Auto-incrementing ID for non-agent processes
 }
 
@@ -51,6 +52,7 @@ impl ProcessRegistry {
     }
 
     /// Generate a unique ID for non-agent processes
+    #[allow(dead_code)]
     pub fn generate_id(&self) -> Result<i64, String> {
         let mut next_id = self.next_id.lock().map_err(|e| e.to_string())?;
         let id = *next_id;
@@ -120,6 +122,7 @@ impl ProcessRegistry {
     }
 
     /// Register a new Claude session (without child process - handled separately)
+    #[allow(dead_code)]
     pub fn register_claude_session(
         &self,
         session_id: String,
@@ -242,6 +245,7 @@ impl ProcessRegistry {
     }
 
     /// Kill a running process with proper cleanup
+    #[allow(dead_code)]
     pub async fn kill_process(&self, run_id: i64) -> Result<bool, String> {
         use log::{error, info, warn};
 
@@ -357,6 +361,7 @@ impl ProcessRegistry {
     }
 
     /// Kill a process by PID using system commands (fallback method)
+    #[allow(dead_code)]
     pub fn kill_process_by_pid(&self, run_id: i64, pid: u32) -> Result<bool, String> {
         use log::{error, info, warn};
 
@@ -466,6 +471,7 @@ impl ProcessRegistry {
     }
 
     /// Append to live output for a process
+    #[allow(dead_code)]
     pub fn append_live_output(&self, run_id: i64, output: &str) -> Result<(), String> {
         let processes = self.processes.lock().map_err(|e| e.to_string())?;
         if let Some(handle) = processes.get(&run_id) {

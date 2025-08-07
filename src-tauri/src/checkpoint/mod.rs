@@ -124,6 +124,7 @@ pub struct FileState {
     /// Whether the file has been modified since last checkpoint
     pub is_modified: bool,
     /// Last modification timestamp
+    #[allow(dead_code)]
     pub last_modified: DateTime<Utc>,
     /// Whether the file currently exists
     pub exists: bool,
