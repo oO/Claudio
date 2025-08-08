@@ -9,8 +9,8 @@ import { TabProvider } from "@/contexts/TabContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ProjectList, ProjectSettings } from "@/components/projects";
-import { SessionList, RunningClaudeSessions } from "@/components/sessions";
+import { ProjectList, ProjectSettings, ProjectDetail } from "@/components/projects";
+import { RunningClaudeSessions } from "@/components/sessions";
 import { Topbar, MarkdownEditor, TabManager, TabContent } from "@/components/common";
 import { ClaudeFileEditor, ClaudeBinaryDialog } from "@/components/claude";
 import { Settings, AnalyticsConsentBanner } from "@/components/settings";
@@ -394,14 +394,20 @@ function AppContent() {
                       exit={{ opacity: 0, x: -20 }}
                       transition={{ duration: 0.3 }}
                     >
-                      <SessionList
+                      <ProjectDetail
                         sessions={sessions}
                         projectPath={selectedProject.path}
                         projectId={selectedProject.id}
-                        onBack={handleBack}
+                        onSessionClick={handleSessionClick}
                         onEditClaudeFile={handleEditClaudeFile}
                         onSessionDeleted={handleSessionDeleted}
                         onProjectDeleted={handleProjectDeleted}
+                        onExecuteAgent={handleExecuteAgent}
+                        onEditAgent={handleEditAgent}
+                        onExportAgent={handleExportAgent}
+                        onDeleteAgent={handleDeleteAgent}
+                        onCreateAgent={handleCreateAgent}
+                        onImportAgent={handleImportAgent}
                       />
                     </motion.div>
                   ) : (

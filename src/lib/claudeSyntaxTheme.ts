@@ -9,7 +9,7 @@ import { ThemeMode } from '@/contexts/ThemeContext';
  */
 export const getClaudeSyntaxTheme = (theme: ThemeMode): any => {
   const themes = {
-    dark: {
+    neutral_dark: {
       base: '#e3e8f0',
       background: 'transparent',
       comment: '#6b7280',
@@ -22,7 +22,7 @@ export const getClaudeSyntaxTheme = (theme: ThemeMode): any => {
       variable: '#a78bfa', // Light Purple
       operator: '#9ca3af',
     },
-    gray: {
+    cool_dark: {
       base: '#e3e8f0',
       background: 'transparent',
       comment: '#71717a',
@@ -35,7 +35,7 @@ export const getClaudeSyntaxTheme = (theme: ThemeMode): any => {
       variable: '#c084fc', // Purple
       operator: '#a1a1aa',
     },
-    light: {
+    neutral_light: {
       base: '#1f2937',
       background: 'transparent',
       comment: '#9ca3af',
@@ -48,7 +48,7 @@ export const getClaudeSyntaxTheme = (theme: ThemeMode): any => {
       variable: '#8b5cf6', // Violet
       operator: '#6b7280',
     },
-    white: {
+    warm_light: {
       base: '#000000',
       background: 'transparent',
       comment: '#6b7280',
@@ -77,7 +77,7 @@ export const getClaudeSyntaxTheme = (theme: ThemeMode): any => {
     }
   };
 
-  const colors = themes[theme] || themes.dark;
+  const colors = themes[theme] || themes.neutral_dark;
 
   return {
     'code[class*="language-"]': {
@@ -124,7 +124,7 @@ export const getClaudeSyntaxTheme = (theme: ThemeMode): any => {
       overflow: 'auto',
     },
     ':not(pre) > code[class*="language-"]': {
-      background: theme === 'light' 
+      background: (theme === 'neutral_light' || theme === 'warm_light')
         ? 'rgba(139, 92, 246, 0.1)' 
         : 'rgba(139, 92, 246, 0.1)',
       padding: '0.1em 0.3em',
@@ -255,4 +255,4 @@ export const getClaudeSyntaxTheme = (theme: ThemeMode): any => {
 };
 
 // Export default dark theme for backward compatibility
-export const claudeSyntaxTheme = getClaudeSyntaxTheme('dark');
+export const claudeSyntaxTheme = getClaudeSyntaxTheme('neutral_dark');

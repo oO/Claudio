@@ -34,6 +34,8 @@ CLAUDE.md
 *_TASK.md
 
 # Claude project-specific files
-.claude/
+.claude/settings.local.json
+.claude/shell-snapshots/
+.claude/todos/
 
 .env

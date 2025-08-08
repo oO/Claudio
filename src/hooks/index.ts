@@ -36,6 +36,8 @@ export { useFilePicker } from './useFilePicker';
 export { useSettingsState } from './useSettingsState';
 export { useSettingsValidation } from './useSettingsValidation';
 export { useClaudeBinaryConfig } from './useClaudeBinaryConfig';
+export { useLocalProjectSettings } from './useLocalProjectSettings';
+export { useTriLevelSettings } from './useTriLevelSettings';
 
 // Agent execution hooks
 export { useAgentExecution, type ClaudeStreamMessage } from './useAgentExecution';

@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useCallback, useEffect } from 'react';
 import { api } from '../lib/api';
 
-export type ThemeMode = 'dark' | 'gray' | 'light' | 'custom';
+export type ThemeMode = 'neutral_dark' | 'neutral_light' | 'cool_dark' | 'warm_light';
 
 export interface CustomThemeColors {
   background: string;
@@ -36,29 +36,64 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 const THEME_STORAGE_KEY = 'theme_preference';
 const CUSTOM_COLORS_STORAGE_KEY = 'theme_custom_colors';
 
-// Default custom theme colors (based on current dark theme)
+// Helper function to calculate relative luminance of a color
+const getRelativeLuminance = (color: string): number => {
+  // Handle hex colors
+  if (color.startsWith('#')) {
+    const hex = color.slice(1);
+    const r = parseInt(hex.substr(0, 2), 16) / 255;
+    const g = parseInt(hex.substr(2, 2), 16) / 255;
+    const b = parseInt(hex.substr(4, 2), 16) / 255;
+    
+    // Apply gamma correction
+    const gamma = (c: number) => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    
+    // Calculate relative luminance
+    return 0.2126 * gamma(r) + 0.7152 * gamma(g) + 0.0722 * gamma(b);
+  }
+  
+  // For other formats, default to 0.5 (will use dark overlay)
+  return 0.5;
+};
+
+// Validate background color for proper contrast boundaries
+const validateBackgroundColor = (color: string): { valid: boolean; luminance: number; reason?: string } => {
+  const luminance = getRelativeLuminance(color);
+  
+  if (luminance < 0.3 || luminance > 0.7) {
+    return { valid: true, luminance };
+  }
+  
+  return {
+    valid: false,
+    luminance,
+    reason: `Luminance ${(luminance * 100).toFixed(1)}% is too middle-range. Use dark colors (< 30%) or light colors (> 70%) for proper contrast.`
+  };
+};
+
+// Default custom theme colors (neutral dark)
 const DEFAULT_CUSTOM_COLORS: CustomThemeColors = {
-  background: 'oklch(0.12 0.01 240)',
-  foreground: 'oklch(0.98 0.01 240)',
-  card: 'oklch(0.14 0.01 240)',
-  cardForeground: 'oklch(0.98 0.01 240)',
-  primary: 'oklch(0.98 0.01 240)',
-  primaryForeground: 'oklch(0.12 0.01 240)',
-  secondary: 'oklch(0.16 0.01 240)',
-  secondaryForeground: 'oklch(0.98 0.01 240)',
-  muted: 'oklch(0.16 0.01 240)',
-  mutedForeground: 'oklch(0.65 0.01 240)',
-  accent: 'oklch(0.16 0.01 240)',
-  accentForeground: 'oklch(0.98 0.01 240)',
-  destructive: 'oklch(0.6 0.2 25)',
-  destructiveForeground: 'oklch(0.98 0.01 240)',
-  border: 'oklch(0.16 0.01 240)',
-  input: 'oklch(0.16 0.01 240)',
-  ring: 'oklch(0.98 0.01 240)',
+  background: '#0d1117',
+  foreground: 'rgba(255,255,255,0.95)',
+  card: 'rgba(255,255,255,0.08)',
+  cardForeground: 'rgba(255,255,255,0.95)',
+  primary: 'rgba(255,255,255,0.95)',
+  primaryForeground: '#0d1117',
+  secondary: 'rgba(255,255,255,0.06)',
+  secondaryForeground: 'rgba(255,255,255,0.95)',
+  muted: 'rgba(255,255,255,0.06)',
+  mutedForeground: 'rgba(255,255,255,0.6)',
+  accent: 'rgba(255,255,255,0.10)',
+  accentForeground: 'rgba(255,255,255,0.95)',
+  destructive: '#f85149',
+  destructiveForeground: '#ffffff',
+  border: 'rgba(255,255,255,0.1)',
+  input: 'rgba(255,255,255,0.06)',
+  ring: 'rgba(255,255,255,0.20)',
 };
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setThemeState] = useState<ThemeMode>('dark');
+  const [theme, setThemeState] = useState<ThemeMode>('neutral_dark');
   const [customColors, setCustomColorsState] = useState<CustomThemeColors>(DEFAULT_CUSTOM_COLORS);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -100,24 +135,42 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const root = document.documentElement;
     
     // Remove all theme classes
-    root.classList.remove('theme-dark', 'theme-gray', 'theme-light', 'theme-custom');
+    root.classList.remove(
+      'theme-neutral_dark', 'theme-neutral_light', 'theme-cool_dark', 'theme-warm_light',
+      'theme-dark-overlay', 'theme-light-overlay', 'dark'
+    );
     
-    // Add new theme class
+    // For preset themes, apply the theme class and determine overlay
     root.classList.add(`theme-${themeMode}`);
     
-    // If custom theme, apply custom colors as CSS variables
-    if (themeMode === 'custom') {
-      Object.entries(colors).forEach(([key, value]) => {
-        const cssVarName = `--color-${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
-        root.style.setProperty(cssVarName, value);
-      });
+    // Get the background color from the theme and determine overlay
+    const backgroundColors = {
+      'neutral_dark': '#141414',   // 6500K daylight
+      'cool_dark': '#151617',      // 7500K cool blue  
+      'warm_light': '#fefcf0',     // subtle warm tint
+      'neutral_light': '#fffffc'   // 6500K daylight
+    };
+    
+    const backgroundColor = backgroundColors[themeMode] || '#0d1117';
+    const luminance = getRelativeLuminance(backgroundColor);
+    const overlayClass = luminance < 0.3 ? 'theme-dark-overlay' : 'theme-light-overlay';
+    root.classList.add(overlayClass);
+    
+    // Add dark class for Tailwind compatibility
+    console.log(`Theme: ${themeMode}, Luminance: ${(luminance * 100).toFixed(1)}%, Dark class: ${luminance < 0.3}`);
+    
+    // Force clear first
+    root.classList.remove('dark');
+    
+    if (luminance < 0.3) {
+      root.classList.add('dark');
+      console.log('Added dark class');
     } else {
-      // Clear custom CSS variables when not using custom theme
-      Object.keys(colors).forEach((key) => {
-        const cssVarName = `--color-${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
-        root.style.removeProperty(cssVarName);
-      });
+      console.log('Removed dark class - should be light theme');
     }
+    
+    // Debug: log actual classes
+    console.log('HTML classes:', root.className);
   }, []);
 
   const setTheme = useCallback(async (newTheme: ThemeMode) => {
@@ -180,3 +233,6 @@ export const useThemeContext = () => {
   }
   return context;
 };
+
+// Export validation function for use in UI components
+export { validateBackgroundColor, getRelativeLuminance };

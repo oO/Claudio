@@ -141,7 +141,7 @@ export const ClaudeMemoriesDropdown: React.FC<ClaudeMemoriesDropdownProps> = ({
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.05 }}
-                        className="flex items-center justify-between p-3 hover:bg-accent/50 transition-colors border-b border-border last:border-b-0"
+                        className="flex items-center justify-between p-3 bg-card hover:bg-accent/50 transition-colors border-b border-border last:border-b-0"
                       >
                         <div className="flex-1 min-w-0 mr-2">
                           <p className="text-xs font-mono truncate">{file.relative_path}</p>

@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Plus, MoreVertical, Trash2, Settings } from "lucide-react";
 import { api, type Project, type Session, type ClaudeMdFile } from "@/lib/api";
-import { ProjectList } from "@/components/projects";
-import { SessionList, RunningClaudeSessions } from "@/components/sessions";
+import { ProjectList, ProjectDetail } from "@/components/projects";
+import { RunningClaudeSessions } from "@/components/sessions";
 import { Button } from "@/components/ui/button";
 import { ActionButton } from "@/components/ui/atoms/ActionButton";
 import { LoadingSpinner } from "@/components/ui/atoms/LoadingSpinner";
@@ -140,9 +140,9 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   };
   
   // Return real counts - these should come from actual project data
-  // For now, return 0 until we wire up the real data from SessionList tabs
-  const getAgentCount = () => 0; // TODO: Get from SessionList agents tab data
-  const getMemoryCount = () => 0; // TODO: Get from SessionList memories tab data  
+  // For now, return 0 until we wire up the real data from ProjectDetail tabs
+  const getAgentCount = () => 0; // TODO: Get from ProjectDetail agents tab data
+  const getMemoryCount = () => 0; // TODO: Get from ProjectDetail memories tab data  
   const getSettingsCount = () => 0; // TODO: Detect .claude/ directory existence
   
   // Helper to check if we should show optional deletion options
@@ -301,11 +301,10 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <SessionList
+                  <ProjectDetail
                     sessions={sessions}
                     projectPath={selectedProject.path}
                     projectId={selectedProject.id}
-                    onBack={handleBack}
                     onSessionClick={(session) => {
                       // Update tab to show this session
                       updateTab(tab.id, {

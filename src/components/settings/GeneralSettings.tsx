@@ -44,10 +44,10 @@ export const GeneralSettings: React.FC<GeneralSettingsProps> = ({
                 <SelectValue placeholder="Select a theme" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="dark">Dark</SelectItem>
-                <SelectItem value="gray">Gray</SelectItem>
-                <SelectItem value="light">Light</SelectItem>
-                <SelectItem value="custom">Custom</SelectItem>
+                <SelectItem value="neutral_dark">Neutral Dark</SelectItem>
+                <SelectItem value="cool_dark">Cool Dark</SelectItem>
+                <SelectItem value="warm_light">Warm Light</SelectItem>
+                <SelectItem value="neutral_light">Neutral Light</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">

@@ -1,5 +1,4 @@
 // Session-related components
-export { SessionList } from './SessionList';
 export { ClaudeCodeSession } from './ClaudeCodeSession';
 export { RunningClaudeSessions } from './RunningClaudeSessions';
 export { ExecutionControlBar } from './ExecutionControlBar';

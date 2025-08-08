@@ -4,7 +4,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { HooksEditor } from '@/components/settings';
-import { SlashCommandsManager } from '@/components/common';
+import { SlashCommandsManager, ToolPermissionsManager } from '@/components/common';
+import { useLocalProjectSettings } from '@/hooks';
 import { api } from '@/lib/api';
 import { 
   AlertTriangle, 
@@ -13,7 +14,8 @@ import {
   FolderOpen,
   GitBranch,
   Shield,
-  Command
+  Command,
+  Lock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -36,12 +38,33 @@ export const ProjectSettings: React.FC<ProjectSettingsProps> = ({
   const [activeTab, setActiveTab] = useState('commands');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   
+  // Project settings for tool permissions (base + local)
+  const {
+    baseSettings,
+    localSettings,
+    mergedSettings,
+    loading: settingsLoading,
+    saving: settingsSaving,
+    allowRules: baseAllowRules,
+    denyRules: baseDenyRules,
+    localAllowRules,
+    localDenyRules,
+    loadSettings: loadProjectSettings,
+    saveLocalSettings,
+    addLocalPermissionRule,
+    updateLocalPermissionRule,
+    removeLocalPermissionRule,
+  } = useLocalProjectSettings((success, message) => {
+    setToast({ message, type: success ? "success" : "error" });
+  });
+  
   // Other hooks settings
   const [gitIgnoreLocal, setGitIgnoreLocal] = useState(true);
 
   useEffect(() => {
     checkGitIgnore();
-  }, [project]);
+    loadProjectSettings(project.path);
+  }, [project, loadProjectSettings]);
 
   const checkGitIgnore = async () => {
     try {
@@ -75,6 +98,14 @@ export const ProjectSettings: React.FC<ProjectSettingsProps> = ({
     } catch (err) {
       console.error('Failed to update .gitignore:', err);
       setToast({ message: 'Failed to update .gitignore', type: 'error' });
+    }
+  };
+
+  const handleSavePermissions = async () => {
+    await saveLocalSettings(project.path);
+    // Also ensure local settings are in .gitignore
+    if (!gitIgnoreLocal) {
+      await addToGitIgnore();
     }
   };
 
@@ -112,6 +143,10 @@ export const ProjectSettings: React.FC<ProjectSettingsProps> = ({
                 <Command className="h-4 w-4" />
                 Slash Commands
               </TabsTrigger>
+              <TabsTrigger value="permissions" className="gap-2">
+                <Lock className="h-4 w-4" />
+                Tool Permissions
+              </TabsTrigger>
               <TabsTrigger value="project" className="gap-2">
                 <GitBranch className="h-4 w-4" />
                 Project Hooks
@@ -137,6 +172,105 @@ export const ProjectSettings: React.FC<ProjectSettingsProps> = ({
                   <SlashCommandsManager
                     projectPath={project.path}
                     scopeFilter="project"
+                  />
+                </div>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="permissions" className="space-y-6">
+              <Card className="p-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-2">Local Tool Permissions</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Override global tool permissions for this project. Settings are stored in
+                        <code className="mx-1 px-2 py-1 bg-muted rounded text-xs">.claude/settings.local.json</code>
+                        and are machine-specific (not committed to version control).
+                      </p>
+                    </div>
+                    
+                    <Button
+                      onClick={handleSavePermissions}
+                      disabled={settingsLoading || settingsSaving}
+                      size="sm"
+                      className="gap-2"
+                    >
+                      {settingsSaving ? (
+                        <>
+                          <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="h-3 w-3" />
+                          Save Local Overrides
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  
+                  {!gitIgnoreLocal && (
+                    <div className="flex items-center gap-4 p-3 bg-yellow-500/10 rounded-md">
+                      <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                      <div className="flex-1">
+                        <p className="text-sm text-yellow-600">
+                          Local settings file should be added to .gitignore
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={addToGitIgnore}
+                      >
+                        Add to .gitignore
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {/* Base Settings Display (Read-only) */}
+                  {(baseAllowRules.length > 0 || baseDenyRules.length > 0) && (
+                    <div className="space-y-3">
+                      <div className="border border-muted rounded-md p-4">
+                        <h4 className="text-sm font-medium text-muted-foreground mb-3">
+                          Base Project Settings (.claude/settings.json)
+                        </h4>
+                        <div className="space-y-2">
+                          {baseAllowRules.length > 0 && (
+                            <div>
+                              <span className="text-xs font-medium text-green-500">Allow: </span>
+                              {baseAllowRules.map((rule, index) => (
+                                <span key={rule.id} className="text-xs text-muted-foreground">
+                                  {rule.value}{index < baseAllowRules.length - 1 ? ", " : ""}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {baseDenyRules.length > 0 && (
+                            <div>
+                              <span className="text-xs font-medium text-red-500">Deny: </span>
+                              {baseDenyRules.map((rule, index) => (
+                                <span key={rule.id} className="text-xs text-muted-foreground">
+                                  {rule.value}{index < baseDenyRules.length - 1 ? ", " : ""}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Local Overrides (Editable) */}
+                  <ToolPermissionsManager
+                    allowRules={localAllowRules}
+                    denyRules={localDenyRules}
+                    onAddRule={addLocalPermissionRule}
+                    onUpdateRule={updateLocalPermissionRule}
+                    onRemoveRule={removeLocalPermissionRule}
+                    scope="local"
+                    title="Local Permission Overrides"
+                    description="Override project permissions for this machine only. These settings take precedence over base project settings."
                   />
                 </div>
               </Card>

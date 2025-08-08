@@ -1,0 +1,51 @@
+import React from "react";
+import { Bot } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { AgentsContent } from "@/components/agents";
+import type { Agent } from "@/lib/api";
+
+interface ProjectAgentsTabProps {
+  projectPath: string;
+  onExecuteAgent?: (agent: Agent) => void;
+  onEditAgent?: (agent: Agent) => void;
+  onExportAgent?: (agent: Agent) => void;
+  onDeleteAgent?: (agent: Agent) => void;
+  onCreateAgent?: () => void;
+  onImportAgent?: () => void;
+  className?: string;
+}
+
+export const ProjectAgentsTab: React.FC<ProjectAgentsTabProps> = ({
+  projectPath,
+  onExecuteAgent,
+  onEditAgent,
+  onExportAgent,
+  onDeleteAgent,
+  onCreateAgent,
+  onImportAgent,
+  className,
+}) => {
+  return (
+    <Card>
+      <CardContent className="p-6">
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-lg font-semibold mb-2">Project Agents</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Manage agents specific to this project.
+            </p>
+          </div>
+          <AgentsContent
+            projectPath={projectPath}
+            onExecuteAgent={onExecuteAgent}
+            onEditAgent={onEditAgent}
+            onExportAgent={onExportAgent}
+            onDeleteAgent={onDeleteAgent}
+            onCreateAgent={onCreateAgent}
+            onImportAgent={onImportAgent}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
