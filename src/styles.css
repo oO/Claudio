@@ -12,7 +12,6 @@
 
 /* === THEME FOUNDATION === */
 @theme {
-
     /* Border radius */
     --radius-sm: 0.25rem;
     --radius-base: 0.375rem;
@@ -38,55 +37,137 @@
 /* Fix for utilities not being generated properly by Tailwind v4 JIT */
 
 /* Background colors */
-.bg-background { background-color: var(--color-background); }
-.bg-card { background-color: var(--color-card); }
-.bg-popover { background-color: var(--color-popover); }
-.bg-primary { background-color: var(--color-primary); }
-.bg-secondary { background-color: var(--color-secondary); }
-.bg-muted { background-color: var(--color-muted); }
-.bg-accent { background-color: var(--color-accent); }
-.bg-destructive { background-color: var(--color-destructive); }
-.bg-success { background-color: var(--color-success); }
-.bg-info { background-color: var(--color-info); }
-.bg-input { background-color: var(--color-input); }
+.bg-background {
+    background-color: var(--color-background);
+}
+.bg-card {
+    background-color: var(--color-card);
+}
+.bg-popover {
+    background-color: var(--color-popover);
+}
+.bg-primary {
+    background-color: var(--color-primary);
+}
+.bg-secondary {
+    background-color: var(--color-secondary);
+}
+.bg-muted {
+    background-color: var(--color-muted);
+}
+.bg-accent {
+    background-color: var(--color-accent);
+}
+.bg-destructive {
+    background-color: var(--color-destructive);
+}
+.bg-success {
+    background-color: var(--color-success);
+}
+.bg-info {
+    background-color: var(--color-info);
+}
+.bg-input {
+    background-color: var(--color-input);
+}
 
 /* Text colors */
-.text-foreground { color: var(--color-foreground); }
-.text-card-foreground { color: var(--color-card-foreground); }
-.text-popover-foreground { color: var(--color-popover-foreground); }
-.text-primary { color: var(--color-primary); }
-.text-primary-foreground { color: var(--color-primary-foreground); }
-.text-secondary { color: var(--color-secondary); }
-.text-secondary-foreground { color: var(--color-secondary-foreground); }
-.text-muted-foreground { color: var(--color-muted-foreground); }
-.text-accent { color: var(--color-accent); }
-.text-accent-foreground { color: var(--color-accent-foreground); }
-.text-destructive { color: var(--color-destructive); }
-.text-destructive-foreground { color: var(--color-destructive-foreground); }
-.text-success { color: var(--color-success); }
-.text-success-foreground { color: var(--color-success-foreground); }
-.text-info { color: var(--color-info); }
-.text-info-foreground { color: var(--color-info-foreground); }
+.text-foreground {
+    color: var(--color-foreground);
+}
+.text-card-foreground {
+    color: var(--color-card-foreground);
+}
+.text-popover-foreground {
+    color: var(--color-popover-foreground);
+}
+.text-primary {
+    color: var(--color-primary);
+}
+.text-primary-foreground {
+    color: var(--color-primary-foreground);
+}
+.text-secondary {
+    color: var(--color-secondary);
+}
+.text-secondary-foreground {
+    color: var(--color-secondary-foreground);
+}
+.text-muted-foreground {
+    color: var(--color-muted-foreground);
+}
+.text-accent {
+    color: var(--color-accent);
+}
+.text-accent-foreground {
+    color: var(--color-accent-foreground);
+}
+.text-destructive {
+    color: var(--color-destructive);
+}
+.text-destructive-foreground {
+    color: var(--color-destructive-foreground);
+}
+.text-success {
+    color: var(--color-success);
+}
+.text-success-foreground {
+    color: var(--color-success-foreground);
+}
+.text-info {
+    color: var(--color-info);
+}
+.text-info-foreground {
+    color: var(--color-info-foreground);
+}
 
 /* Border colors */
-.border-border { border-color: var(--color-border); }
-.border-input { border-color: var(--color-input); }
-.border-primary { border-color: var(--color-primary); }
-.border-secondary { border-color: var(--color-secondary); }
-.border-muted { border-color: var(--color-muted); }
-.border-accent { border-color: var(--color-accent); }
-.border-destructive { border-color: var(--color-destructive); }
-.border-success { border-color: var(--color-success); }
-.border-info { border-color: var(--color-info); }
+.border-border {
+    border-color: var(--color-border);
+}
+.border-input {
+    border-color: var(--color-input);
+}
+.border-primary {
+    border-color: var(--color-primary);
+}
+.border-secondary {
+    border-color: var(--color-secondary);
+}
+.border-muted {
+    border-color: var(--color-muted);
+}
+.border-accent {
+    border-color: var(--color-accent);
+}
+.border-destructive {
+    border-color: var(--color-destructive);
+}
+.border-success {
+    border-color: var(--color-success);
+}
+.border-info {
+    border-color: var(--color-info);
+}
 
 /* Ring colors */
-.ring-ring { --tw-ring-color: var(--color-ring); }
-.ring-primary { --tw-ring-color: var(--color-primary); }
+.ring-ring {
+    --tw-ring-color: var(--color-ring);
+}
+.ring-primary {
+    --tw-ring-color: var(--color-primary);
+}
 
 /* Hover variations commonly used */
-.hover\:bg-accent:hover { background-color: var(--color-accent); }
-.hover\:text-destructive:hover { color: var(--color-destructive); }
-.hover\:text-foreground:hover { color: var(--color-foreground); }
+.hover\:bg-accent:hover {
+    background-color: var(--color-accent);
+}
+.hover\:text-destructive:hover {
+    color: var(--color-destructive);
+}
+.hover\:text-foreground:hover {
+    color: var(--color-foreground);
+}
 
 /* === LUMINOSITY-BASED THEME SYSTEM === */
 /* Background color is set dynamically via JavaScript in ThemeContext */
@@ -96,7 +177,7 @@
     --color-card: rgba(255, 255, 255, 0.08); /* fallback for dark theme */
     --color-foreground: rgba(255, 255, 255, 0.95); /* fallback */
     --color-border: rgba(255, 255, 255, 0.1); /* fallback */
-    --agent-background-opacity: 0.1; /* Single source of truth for agent transparency */
+    --agent-background-opacity: 0.2; /* Single source of truth for agent transparency */
 }
 
 /* Light or Dark CSS theme is set based on background color luminosity */
@@ -127,7 +208,11 @@
     --color-info: rgb(88, 166, 255);
     --color-info-foreground: rgb(0, 0, 0);
     --color-destructive: rgb(248, 81, 73);
-    --color-accent-alt: rgb(217, 119, 87); /* Warm accent for highlights/shimmer */
+    --color-accent-alt: rgb(
+        217,
+        119,
+        87
+    ); /* Warm accent for highlights/shimmer */
 }
 
 /* Light theme - RGBA values create optical mixing via alpha transparency */
@@ -156,7 +241,11 @@
     --color-info: rgb(9, 105, 218);
     --color-info-foreground: rgb(255, 255, 255);
     --color-destructive: rgb(207, 34, 46);
-    --color-accent-alt: rgb(180, 83, 9); /* Darker warm accent for light themes */
+    --color-accent-alt: rgb(
+        180,
+        83,
+        9
+    ); /* Darker warm accent for light themes */
 }
 
 /* Fix for select dropdown in portals */
@@ -568,61 +657,85 @@ button:focus-visible,
 
 .agent-red {
     --agent-color: 239, 68, 68; /* red-500 */
-    background-color: rgb(var(--agent-color) / var(--agent-background-opacity));
+    background-color: rgba(var(--agent-color), var(--agent-background-opacity));
     color: rgb(var(--agent-color));
 }
 
 .agent-blue {
     --agent-color: 59, 130, 246; /* blue-500 */
-    background-color: rgb(var(--agent-color) / var(--agent-background-opacity));
+    background-color: rgba(var(--agent-color), var(--agent-background-opacity));
     color: rgb(var(--agent-color));
 }
 
 .agent-green {
     --agent-color: 34, 197, 94; /* green-500 */
-    background-color: rgb(var(--agent-color) / var(--agent-background-opacity));
+    background-color: rgba(var(--agent-color), var(--agent-background-opacity));
     color: rgb(var(--agent-color));
 }
 
 .agent-yellow {
     --agent-color: 234, 179, 8; /* yellow-500 */
-    background-color: rgb(var(--agent-color) / var(--agent-background-opacity));
+    background-color: rgba(var(--agent-color), var(--agent-background-opacity));
     color: rgb(var(--agent-color));
 }
 
 .agent-purple {
     --agent-color: 168, 85, 247; /* purple-500 */
-    background-color: rgb(var(--agent-color) / var(--agent-background-opacity));
+    background-color: rgba(var(--agent-color), var(--agent-background-opacity));
     color: rgb(var(--agent-color));
 }
 
 .agent-orange {
     --agent-color: 249, 115, 22; /* orange-500 */
-    background-color: rgb(var(--agent-color) / var(--agent-background-opacity));
+    background-color: rgba(var(--agent-color), var(--agent-background-opacity));
     color: rgb(var(--agent-color));
 }
 
 .agent-pink {
     --agent-color: 236, 72, 153; /* pink-500 */
-    background-color: rgb(var(--agent-color) / var(--agent-background-opacity));
+    background-color: rgba(var(--agent-color), var(--agent-background-opacity));
     color: rgb(var(--agent-color));
 }
 
 .agent-cyan {
     --agent-color: 6, 182, 212; /* cyan-500 */
-    background-color: rgb(var(--agent-color) / var(--agent-background-opacity));
+    background-color: rgba(var(--agent-color), var(--agent-background-opacity));
     color: rgb(var(--agent-color));
 }
 
 /* Solid versions for buttons/previews */
-.agent-red-solid { background-color: rgb(var(--agent-color)); color: white; }
-.agent-blue-solid { background-color: rgb(var(--agent-color)); color: white; }
-.agent-green-solid { background-color: rgb(var(--agent-color)); color: white; }
-.agent-yellow-solid { background-color: rgb(var(--agent-color)); color: black; }
-.agent-purple-solid { background-color: rgb(var(--agent-color)); color: white; }
-.agent-orange-solid { background-color: rgb(var(--agent-color)); color: white; }
-.agent-pink-solid { background-color: rgb(var(--agent-color)); color: white; }
-.agent-cyan-solid { background-color: rgb(var(--agent-color)); color: white; }
+.agent-red-solid {
+    background-color: rgb(var(--agent-color));
+    color: white;
+}
+.agent-blue-solid {
+    background-color: rgb(var(--agent-color));
+    color: white;
+}
+.agent-green-solid {
+    background-color: rgb(var(--agent-color));
+    color: white;
+}
+.agent-yellow-solid {
+    background-color: rgb(var(--agent-color));
+    color: black;
+}
+.agent-purple-solid {
+    background-color: rgb(var(--agent-color));
+    color: white;
+}
+.agent-orange-solid {
+    background-color: rgb(var(--agent-color));
+    color: white;
+}
+.agent-pink-solid {
+    background-color: rgb(var(--agent-color));
+    color: white;
+}
+.agent-cyan-solid {
+    background-color: rgb(var(--agent-color));
+    color: white;
+}
 
 /* === SWITCH COMPONENT === */
 /* Dynamic switch styling using CSS classes instead of inline styles */
@@ -644,32 +757,80 @@ button:focus-visible,
 }
 
 /* Dark theme syntax colors */
-.theme-dark .syntax-comment { color: rgb(107, 114, 128); }
-.theme-dark .syntax-punctuation { color: rgb(156, 163, 175); }
-.theme-dark .syntax-property { color: rgb(245, 158, 11); } /* Amber */
-.theme-dark .syntax-tag { color: rgb(139, 92, 246); } /* Violet */
-.theme-dark .syntax-string { color: rgb(16, 185, 129); } /* Emerald */
-.theme-dark .syntax-function { color: rgb(129, 140, 248); } /* Indigo */
-.theme-dark .syntax-keyword { color: rgb(192, 132, 252); } /* Light violet */
-.theme-dark .syntax-variable { color: rgb(167, 139, 250); } /* Light purple */
-.theme-dark .syntax-operator { color: rgb(156, 163, 175); }
-.theme-dark .syntax-number { color: rgb(251, 191, 36); } /* Yellow */
-.theme-dark .syntax-boolean { color: rgb(248, 113, 113); } /* Red */
-.theme-dark .syntax-regex { color: rgb(34, 197, 94); } /* Green */
+.theme-dark .syntax-comment {
+    color: rgb(107, 114, 128);
+}
+.theme-dark .syntax-punctuation {
+    color: rgb(156, 163, 175);
+}
+.theme-dark .syntax-property {
+    color: rgb(245, 158, 11);
+} /* Amber */
+.theme-dark .syntax-tag {
+    color: rgb(139, 92, 246);
+} /* Violet */
+.theme-dark .syntax-string {
+    color: rgb(16, 185, 129);
+} /* Emerald */
+.theme-dark .syntax-function {
+    color: rgb(129, 140, 248);
+} /* Indigo */
+.theme-dark .syntax-keyword {
+    color: rgb(192, 132, 252);
+} /* Light violet */
+.theme-dark .syntax-variable {
+    color: rgb(167, 139, 250);
+} /* Light purple */
+.theme-dark .syntax-operator {
+    color: rgb(156, 163, 175);
+}
+.theme-dark .syntax-number {
+    color: rgb(251, 191, 36);
+} /* Yellow */
+.theme-dark .syntax-boolean {
+    color: rgb(248, 113, 113);
+} /* Red */
+.theme-dark .syntax-regex {
+    color: rgb(34, 197, 94);
+} /* Green */
 
 /* Light theme syntax colors */
-.theme-light .syntax-comment { color: rgb(107, 114, 128); }
-.theme-light .syntax-punctuation { color: rgb(75, 85, 99); }
-.theme-light .syntax-property { color: rgb(217, 119, 27); } /* Darker amber */
-.theme-light .syntax-tag { color: rgb(109, 40, 217); } /* Darker violet */
-.theme-light .syntax-string { color: rgb(5, 150, 105); } /* Darker emerald */
-.theme-light .syntax-function { color: rgb(67, 56, 202); } /* Darker indigo */
-.theme-light .syntax-keyword { color: rgb(147, 51, 234); } /* Darker violet */
-.theme-light .syntax-variable { color: rgb(124, 58, 237); } /* Darker purple */
-.theme-light .syntax-operator { color: rgb(75, 85, 99); }
-.theme-light .syntax-number { color: rgb(180, 83, 9); } /* Darker yellow */
-.theme-light .syntax-boolean { color: rgb(220, 38, 38); } /* Darker red */
-.theme-light .syntax-regex { color: rgb(21, 128, 61); } /* Darker green */
+.theme-light .syntax-comment {
+    color: rgb(107, 114, 128);
+}
+.theme-light .syntax-punctuation {
+    color: rgb(75, 85, 99);
+}
+.theme-light .syntax-property {
+    color: rgb(217, 119, 27);
+} /* Darker amber */
+.theme-light .syntax-tag {
+    color: rgb(109, 40, 217);
+} /* Darker violet */
+.theme-light .syntax-string {
+    color: rgb(5, 150, 105);
+} /* Darker emerald */
+.theme-light .syntax-function {
+    color: rgb(67, 56, 202);
+} /* Darker indigo */
+.theme-light .syntax-keyword {
+    color: rgb(147, 51, 234);
+} /* Darker violet */
+.theme-light .syntax-variable {
+    color: rgb(124, 58, 237);
+} /* Darker purple */
+.theme-light .syntax-operator {
+    color: rgb(75, 85, 99);
+}
+.theme-light .syntax-number {
+    color: rgb(180, 83, 9);
+} /* Darker yellow */
+.theme-light .syntax-boolean {
+    color: rgb(220, 38, 38);
+} /* Darker red */
+.theme-light .syntax-regex {
+    color: rgb(21, 128, 61);
+} /* Darker green */
 
 /* Rotating symbol animation */
 @keyframes rotate-symbol {

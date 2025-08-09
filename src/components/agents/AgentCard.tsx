@@ -51,6 +51,8 @@ export const AgentCard: React.FC<AgentCardProps> = ({
     return getAgentColor(color as AgentColorName).cssClass;
   };
 
+  const colorClass = getColorClass(agent.color);
+
   return (
     <motion.div
       initial={{ opacity: 0, x: -10 }}
@@ -60,10 +62,12 @@ export const AgentCard: React.FC<AgentCardProps> = ({
     >
       <Card className="hover:shadow-sm transition-shadow">
         <CardContent className="p-3 flex items-center gap-3">
-          <div className={cn(
-            "p-2 rounded-full flex-shrink-0",
-            getColorClass(agent.color)
-          )}>
+          <div 
+            className={cn(
+              "p-2 rounded-full flex-shrink-0",
+              colorClass
+            )}
+          >
             {renderIcon(agent.icon)}
           </div>
           <div className="flex-1 min-w-0">
