@@ -5,19 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Agent } from "@/lib/api";
+import { getAgentColor, type AgentColorName } from "@/lib/agentColors";
 import { ICON_MAP } from "@/components/common";
 
-// Agent color mapping - matches CreateAgent component
-const AGENT_COLOR_CLASSES = {
-  Red: { bg: "bg-red-500/10", text: "text-red-500" },
-  Blue: { bg: "bg-blue-500/10", text: "text-blue-500" },
-  Green: { bg: "bg-green-500/10", text: "text-green-500" },
-  Yellow: { bg: "bg-yellow-500/10", text: "text-yellow-500" },
-  Purple: { bg: "bg-purple-500/10", text: "text-purple-500" },
-  Orange: { bg: "bg-orange-500/10", text: "text-orange-500" },
-  Pink: { bg: "bg-pink-500/10", text: "text-pink-500" },
-  Cyan: { bg: "bg-cyan-500/10", text: "text-cyan-500" },
-} as const;
+// Agent colors now use centralized CSS classes
 
 interface AgentCardProps {
   agent: Agent;
@@ -55,9 +46,9 @@ export const AgentCard: React.FC<AgentCardProps> = ({
     return <Icon className="h-8 w-8" />;
   };
   
-  const getColorClasses = (color?: string) => {
-    const colorKey = color as keyof typeof AGENT_COLOR_CLASSES;
-    return AGENT_COLOR_CLASSES[colorKey] || AGENT_COLOR_CLASSES.Blue;
+  const getColorClass = (color?: string) => {
+    if (!color) return getAgentColor('Blue').cssClass;
+    return getAgentColor(color as AgentColorName).cssClass;
   };
 
   return (
@@ -71,8 +62,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({
         <CardContent className="p-3 flex items-center gap-3">
           <div className={cn(
             "p-2 rounded-full flex-shrink-0",
-            getColorClasses(agent.color).bg,
-            getColorClasses(agent.color).text
+            getColorClass(agent.color)
           )}>
             {renderIcon(agent.icon)}
           </div>

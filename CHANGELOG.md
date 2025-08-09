@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.5] - 2025-08-08
+
+### Fixed
+- Simplified theme system by removing complex luminosity calculations
+- Fixed Tailwind v4 JIT compilation issues with comprehensive manual utility overrides
+- Resolved transparent card backgrounds - now properly display RGBA optical mixing
+- Fixed select menu hardcoded colors to use dynamic theme-aware backgrounds
+- Added proper hover states to select menu items for better UX
+- Removed bleeding-edge CSS syntax for better browser compatibility
+
+### Changed
+- Enhanced theme definitions with simple `isDark` boolean flags
+- Preserved RGBA optical mixing design for progressive card stacking
+- Improved theme switching reliability across all preset themes
+- Reduced CSS complexity from 946 to 927 lines
+
 ## [0.3.4] - 2025-08-07
 
 ### Added

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Toast, ToastContainer } from "@/components/ui/toast";
 import { api, type Agent } from "@/lib/api";
+import { AGENT_COLORS, LEGACY_AGENT_COLORS, getAgentColor, type AgentColorName } from "@/lib/agentColors";
 import { cn } from "@/lib/utils";
 import MDEditor from "@uiw/react-md-editor";
 import { ExampleEditor, type Example } from "@/components/common";
@@ -33,17 +34,7 @@ import {
 } from "@/components/ui/organisms";
 // import { type AgentIconName } from "./CCAgents";
 
-// Available agent colors
-const AGENT_COLORS: ColorOption[] = [
-  { name: "Red", value: "Red", bgClass: "bg-red-500" },
-  { name: "Blue", value: "Blue", bgClass: "bg-blue-500" },
-  { name: "Green", value: "Green", bgClass: "bg-green-500" },
-  { name: "Yellow", value: "Yellow", bgClass: "bg-yellow-500" },
-  { name: "Purple", value: "Purple", bgClass: "bg-purple-500" },
-  { name: "Orange", value: "Orange", bgClass: "bg-orange-500" },
-  { name: "Pink", value: "Pink", bgClass: "bg-pink-500" },
-  { name: "Cyan", value: "Cyan", bgClass: "bg-cyan-500" },
-];
+// Agent colors now imported from centralized definitions
 
 // Claude Code tool categories and individual tools
 const TOOL_CATEGORIES: ToolCategory[] = [
@@ -104,7 +95,7 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
 }) => {
   const [name, setName] = useState(agent?.name || "");
   const [description, setDescription] = useState(agent?.description || "");
-  const [color, setColor] = useState(agent?.color || "Blue");
+  const [color, setColor] = useState<AgentColorName>(agent?.color as AgentColorName || "Blue");
   const [systemPrompt, setSystemPrompt] = useState(agent?.system_prompt || "");
   const [model, setModel] = useState(agent?.model || "inherit");
   const [saving, setSaving] = useState(false);
@@ -367,7 +358,7 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
                     Edit the{' '}
                     <span className={cn(
                       "px-2 py-1 rounded text-white text-sm",
-                      color && AGENT_COLORS.find(c => c.value === color)?.bgClass
+                      color && getAgentColor(color).solidClass
                     )}>
                       {name || agent?.name}
                     </span>
@@ -435,8 +426,7 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
                     className={cn(
                       "w-full",
                       // Apply color background except for default state (when color is Blue and it's the initial value)
-                      color && (color !== "Blue" || agent?.color) && AGENT_COLORS.find(c => c.value === color)?.bgClass,
-                      color && (color !== "Blue" || agent?.color) && "text-white placeholder:text-white/70"
+                      color && (color !== "Blue" || agent?.color) && getAgentColor(color).cssClass
                     )}
                   />
                 </div>
@@ -445,12 +435,12 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
                   <Label>Agent Color</Label>
                   <DropdownSelector
                     label="Agent Color"
-                    value={AGENT_COLORS.find(c => c.value === color)?.name || "Blue"}
+                    value={getAgentColor(color).name}
                     onClick={() => setShowColorPicker(true)}
                   >
                     <ColorSwatch
-                      color={AGENT_COLORS.find(c => c.value === color)?.name || "Blue"}
-                      bgClass={AGENT_COLORS.find(c => c.value === color)?.bgClass || "bg-blue-500"}
+                      color={getAgentColor(color).name}
+                      bgClass={getAgentColor(color).solidClass}
                       size="sm"
                     />
                   </DropdownSelector>
@@ -559,7 +549,7 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
   <ColorPickerDialog
     isOpen={showColorPicker}
     selectedColor={color}
-    colors={AGENT_COLORS}
+    colors={LEGACY_AGENT_COLORS}
     onColorSelect={setColor}
     onClose={() => setShowColorPicker(false)}
     title="Choose Agent Color"

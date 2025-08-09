@@ -98,29 +98,13 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
                         <p className="text-sm font-medium truncate">
                           {getFirstLine(session.first_message || "Untitled Session")}
                         </p>
-                        {session.status && (
-                          <span
-                            className={cn(
-                              "px-2 py-1 rounded-full text-xs font-medium",
-                              session.status === "running"
-                                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                                : session.status === "error"
-                                ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-                                : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200"
-                            )}
-                          >
-                            {session.status}
-                          </span>
-                        )}
                       </div>
                       <div className="flex items-center gap-4 text-xs text-muted-foreground">
                         <div className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
                           <span>
-                            {session.last_modified
-                              ? formatUnixTimestamp(session.last_modified)
-                              : session.created_at
-                              ? formatISOTimestamp(session.created_at)
+                            {session.created_at
+                              ? formatUnixTimestamp(session.created_at)
                               : "Unknown"}
                           </span>
                         </div>
@@ -130,11 +114,11 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
                             <span>{session.message_count} messages</span>
                           </div>
                         )}
-                        {session.total_size !== undefined && (
+                        {session.size_bytes !== undefined && (
                           <div className="flex items-center gap-1">
                             <HardDrive className="h-3 w-3" />
                             <span>
-                              {(session.total_size / 1024).toFixed(1)} KB
+                              {(session.size_bytes / 1024).toFixed(1)} KB
                             </span>
                           </div>
                         )}

@@ -7,6 +7,7 @@ import { ClaudeVersionSelector } from "@/components/claude";
 import { useTheme } from "@/hooks";
 import { useClaudeBinaryConfig } from "@/hooks/useClaudeBinaryConfig";
 import type { ClaudeSettings } from "@/lib/api";
+import { THEMES } from "@/lib/themes";
 
 interface GeneralSettingsProps {
   settings: ClaudeSettings | null;
@@ -44,10 +45,11 @@ export const GeneralSettings: React.FC<GeneralSettingsProps> = ({
                 <SelectValue placeholder="Select a theme" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="neutral_dark">Neutral Dark</SelectItem>
-                <SelectItem value="cool_dark">Cool Dark</SelectItem>
-                <SelectItem value="warm_light">Warm Light</SelectItem>
-                <SelectItem value="neutral_light">Neutral Light</SelectItem>
+                {THEMES.map(theme => (
+                  <SelectItem key={theme.id} value={theme.id}>
+                    {theme.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
