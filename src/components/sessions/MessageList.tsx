@@ -4,6 +4,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { StreamMessage } from './StreamMessage';
 import { Terminal } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { DebugLabel } from '@/components/ui/atoms';
 import type { ClaudeStreamMessage } from '@/components/agents';
 
 interface MessageListProps {
@@ -68,7 +69,9 @@ export const MessageList: React.FC<MessageListProps> = React.memo(({
 
   if (messages.length === 0) {
     return (
-      <div className={cn("flex-1 flex items-center justify-center", className)}>
+      <>
+        <DebugLabel label="MessageList" />
+        <div className={cn("relative flex-1 flex items-center justify-center", className)}>
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -87,15 +90,18 @@ export const MessageList: React.FC<MessageListProps> = React.memo(({
           </div>
         </motion.div>
       </div>
+      </>
     );
   }
 
   return (
-    <div
-      ref={scrollContainerRef}
-      onScroll={handleScroll}
-      className={cn("flex-1 overflow-y-auto scroll-smooth", className)}
-    >
+    <>
+      <DebugLabel label="MessageList" />
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className={cn("relative flex-1 overflow-y-auto scroll-smooth", className)}
+      >
       <div
         style={{
           height: `${virtualizer.getTotalSize()}px`,
@@ -151,5 +157,6 @@ export const MessageList: React.FC<MessageListProps> = React.memo(({
         </motion.div>
       )}
     </div>
+    </>
   );
 });

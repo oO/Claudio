@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { X, ChevronUp, ChevronDown } from 'lucide-react';
+import { DebugLabel } from '@/components/ui/atoms';
 
 interface QueuedPrompt {
   id: string;
@@ -25,12 +26,14 @@ export const SessionQueuedPrompts: React.FC<SessionQueuedPromptsProps> = ({
   if (queuedPrompts.length === 0) return null;
 
   return (
-    <AnimatePresence>
-      <motion.div
+    <>
+      <DebugLabel label="SessionQueuedPrompts" />
+      <AnimatePresence>
+        <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 20 }}
-        className="fixed bottom-24 left-1/2 -translate-x-1/2 z-30 w-full max-w-3xl px-4"
+        className="relative fixed bottom-24 left-1/2 -translate-x-1/2 z-30 w-full max-w-3xl px-4"
       >
         <div className="bg-background/95 backdrop-blur-md border rounded-lg shadow-lg p-3 space-y-2">
           <div className="flex items-center justify-between">
@@ -89,7 +92,8 @@ export const SessionQueuedPrompts: React.FC<SessionQueuedPromptsProps> = ({
           )}
         </div>
       </motion.div>
-    </AnimatePresence>
+      </AnimatePresence>
+    </>
   );
 };
 

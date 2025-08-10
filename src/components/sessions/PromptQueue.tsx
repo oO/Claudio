@@ -4,6 +4,7 @@ import { X, Clock, Sparkles, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { DebugLabel } from '@/components/ui/atoms';
 
 interface QueuedPrompt {
   id: string;
@@ -25,11 +26,13 @@ export const PromptQueue: React.FC<PromptQueueProps> = React.memo(({
   if (queuedPrompts.length === 0) return null;
 
   return (
-    <motion.div
+    <>
+      <DebugLabel label="PromptQueue" />
+      <motion.div
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: 'auto' }}
       exit={{ opacity: 0, height: 0 }}
-      className={cn("border-t bg-muted/20", className)}
+      className={cn("relative border-t bg-muted/20", className)}
     >
       <div className="px-4 py-3">
         <div className="flex items-center gap-2 mb-2">
@@ -80,5 +83,6 @@ export const PromptQueue: React.FC<PromptQueueProps> = React.memo(({
         </div>
       </div>
     </motion.div>
+    </>
   );
 });

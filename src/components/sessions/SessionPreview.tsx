@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SplitPane } from '@/components/ui/split-pane';
 import { WebviewPreview } from '@/components/common';
+import { DebugLabel } from '@/components/ui/atoms';
 
 interface SessionPreviewProps {
   showPreview: boolean;
@@ -41,9 +42,11 @@ export const SessionPreview: React.FC<SessionPreviewProps> = ({
   // If preview is maximized, render only the WebviewPreview in full screen
   if (showPreview && isPreviewMaximized) {
     return (
-      <AnimatePresence>
+      <>
+        <DebugLabel label="SessionPreview" />
+        <AnimatePresence>
         <motion.div 
-          className="fixed inset-0 z-50 bg-background"
+          className="relative fixed inset-0 z-50 bg-background"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -59,13 +62,17 @@ export const SessionPreview: React.FC<SessionPreviewProps> = ({
           />
         </motion.div>
       </AnimatePresence>
+      </>
     );
   }
 
   // Render with split pane when preview is active but not maximized
   if (showPreview) {
     return (
-      <SplitPane
+      <>
+        <DebugLabel label="SessionPreview" />
+        <SplitPane
+        className="relative"
         left={
           <div className="h-full">
             {/* Pass link detection handler to children */}
@@ -89,17 +96,21 @@ export const SessionPreview: React.FC<SessionPreviewProps> = ({
         minRightWidth={400}
         className="h-full"
       />
+      </>
     );
   }
 
   // Render without preview (normal layout)
   return (
-    <div className="h-full">
+    <>
+      <DebugLabel label="SessionPreview" />
+      <div className="relative h-full">
       {/* Pass link detection handler to children */}
       {React.cloneElement(children as React.ReactElement, {
         onLinkDetected: handleLinkDetected
       })}
     </div>
+    </>
   );
 };
 

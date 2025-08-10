@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import type { Session } from "@/lib/api";
+import { DebugLabel } from "@/components/ui/atoms";
 
 interface ProjectDeleteDialogProps {
   open: boolean;
@@ -29,7 +30,9 @@ export const ProjectDeleteDialog: React.FC<ProjectDeleteDialogProps> = ({
   onCancel,
 }) => {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+      {open && <DebugLabel label="ProjectDeleteDialog" />}
+      <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Delete Session</DialogTitle>
@@ -74,5 +77,6 @@ export const ProjectDeleteDialog: React.FC<ProjectDeleteDialogProps> = ({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    </>
   );
 };

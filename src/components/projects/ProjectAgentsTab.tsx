@@ -3,6 +3,7 @@ import { Bot } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { AgentsContent } from "@/components/agents";
 import type { Agent } from "@/lib/api";
+import { DebugLabel } from "@/components/ui/atoms";
 
 interface ProjectAgentsTabProps {
   projectPath: string;
@@ -26,7 +27,8 @@ export const ProjectAgentsTab: React.FC<ProjectAgentsTabProps> = ({
   className,
 }) => {
   return (
-    <Card>
+    <Card className="relative">
+      <DebugLabel label="ProjectAgentsTab" />
       <CardContent className="p-6">
         <div className="space-y-4">
           <div>

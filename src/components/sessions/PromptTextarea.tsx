@@ -2,6 +2,7 @@ import React from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useAutoResize } from "@/hooks/useAutoResize";
+import { DebugLabel } from "@/components/ui/atoms";
 
 export interface PromptTextareaProps {
   value: string;
@@ -54,7 +55,9 @@ export const PromptTextarea = React.forwardRef<HTMLTextAreaElement, PromptTextar
     const ref = autoResize ? textareaRef : forwardedRef;
 
     return (
-      <Textarea
+      <div className="relative">
+        <DebugLabel label="PromptTextarea" />
+        <Textarea
         ref={ref}
         value={value}
         onChange={onChange}
@@ -75,6 +78,7 @@ export const PromptTextarea = React.forwardRef<HTMLTextAreaElement, PromptTextar
         onDrop={onDrop}
         style={autoResize ? undefined : { minHeight, maxHeight }}
       />
+      </div>
     );
   }
 );

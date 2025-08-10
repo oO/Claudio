@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { open } from "@tauri-apps/plugin-dialog";
 import { FloatingPromptInput, type FloatingPromptInputRef } from "./FloatingPromptInput";
 import { ErrorBoundary } from "@/components/common";
+import { DebugLabel } from "@/components/ui/atoms";
 
 // Import extracted components
 import { useSessionState } from "./useSessionState";
@@ -321,7 +322,9 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   );
 
   return (
-    <div className={cn("flex flex-col h-full bg-background", className)}>
+    <>
+      <DebugLabel label="ClaudeCodeSession" />
+      <div className={cn("relative flex flex-col h-full bg-background", className)}>
       <div className="w-full h-full flex flex-col">
         {/* Header */}
         <SessionHeader
@@ -509,5 +512,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
         isLoading={isLoading}
       />
     </div>
+    </>
   );
 };

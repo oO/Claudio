@@ -23,6 +23,7 @@ import { api, type Checkpoint, type TimelineNode, type SessionTimeline, type Che
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { useTrackEvent } from "@/hooks";
+import { DebugLabel } from "@/components/ui/atoms";
 
 interface TimelineNavigatorProps {
   sessionId: string;
@@ -407,7 +408,9 @@ export const TimelineNavigator: React.FC<TimelineNavigatorProps> = ({
   };
 
   return (
-    <div className={cn("space-y-4", className)}>
+    <>
+      <DebugLabel label="TimelineNavigator" />
+      <div className={cn("relative space-y-4", className)}>
       {/* Experimental Feature Warning */}
       <div className="rounded-lg border border-yellow-600/50 bg-yellow-600/10 dark:border-yellow-400/50 dark:bg-yellow-400/10 p-3">
         <div className="flex items-start gap-2">
@@ -611,5 +614,6 @@ export const TimelineNavigator: React.FC<TimelineNavigatorProps> = ({
         </DialogContent>
       </Dialog>
     </div>
+    </>
   );
 }; 

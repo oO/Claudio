@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { api, type Session } from '@/lib/api';
+import { DebugLabel } from '@/components/ui/atoms';
 import type { ClaudeStreamMessage } from '@/components/agents';
 
 interface SessionActionsProps {
@@ -219,7 +220,11 @@ export const SessionActions: React.FC<SessionActionsProps> = ({
   }, [messages, rawJsonlOutput, projectPath, effectiveSession, onError]);
 
   // This component doesn't render anything, it just provides action methods
-  return null;
+  return (
+    <div className="relative">
+      <DebugLabel label="SessionActions" />
+    </div>
+  );
 };
 
 // Custom hook to use session actions

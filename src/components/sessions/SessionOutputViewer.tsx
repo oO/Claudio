@@ -12,6 +12,7 @@ import type { AgentRun } from '@/lib/api';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { StreamMessage } from './StreamMessage';
 import { ErrorBoundary } from '@/components/common';
+import { DebugLabel } from '@/components/ui/atoms';
 
 interface SessionOutputViewerProps {
   session: AgentRun;
@@ -373,12 +374,13 @@ export function SessionOutputViewer({ session, onClose, className }: SessionOutp
 
   return (
     <>
+      <DebugLabel label="SessionOutputViewer" />
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
         transition={{ duration: 0.2 }}
-        className={`${isFullscreen ? 'fixed inset-0 z-50 bg-background' : ''} ${className}`}
+        className={`relative ${isFullscreen ? 'fixed inset-0 z-50 bg-background' : ''} ${className}`}
       >
         <Card className={`h-full ${isFullscreen ? 'rounded-none border-0' : ''}`}>
           <CardHeader className="pb-3">

@@ -7,6 +7,7 @@ import { RunningClaudeSessions } from "@/components/sessions";
 import { Button } from "@/components/ui/button";
 import { ActionButton } from "@/components/ui/atoms/ActionButton";
 import { LoadingSpinner } from "@/components/ui/atoms/LoadingSpinner";
+import { DebugLabel } from "@/components/ui/atoms";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -224,7 +225,9 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   console.log("🎪 Rendering ProjectsTab, selectedProject:", selectedProject?.path || "none");
 
   return (
-    <TabPageLayout
+    <>
+      <DebugLabel label="ProjectsTab" />
+      <TabPageLayout
       title={
         selectedProject ? getProjectName(selectedProject.path) : "Projects"
       }
@@ -566,5 +569,6 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
         </DialogContent>
       </Dialog>
     </TabPageLayout>
+    </>
   );
 };

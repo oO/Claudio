@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { api, type ProcessInfo, type Session } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { formatISOTimestamp } from "@/lib/date-utils";
+import { DebugLabel } from "@/components/ui/atoms";
 
 interface RunningClaudeSessionsProps {
   /**
@@ -95,7 +96,9 @@ export const RunningClaudeSessions: React.FC<RunningClaudeSessionsProps> = ({
   }
 
   return (
-    <div className={cn("space-y-3", className)}>
+    <>
+      <DebugLabel label="RunningClaudeSessions" />
+      <div className={cn("relative space-y-3", className)}>
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-1">
           <div className="w-2 h-2 bg-green-500 dark:bg-green-400 rounded-full animate-pulse" />
@@ -171,5 +174,6 @@ export const RunningClaudeSessions: React.FC<RunningClaudeSessionsProps> = ({
         })}
       </div>
     </div>
+    </>
   );
 }; 

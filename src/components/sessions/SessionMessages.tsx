@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { StreamMessage } from './StreamMessage';
+import { DebugLabel } from '@/components/ui/atoms';
 import type { ClaudeStreamMessage } from '@/components/agents';
 
 interface SessionMessagesProps {
@@ -29,9 +30,11 @@ export const SessionMessages: React.FC<SessionMessagesProps> = ({
   });
 
   return (
-    <div
-      ref={parentRef}
-      className="flex-1 overflow-y-auto relative pb-40"
+    <>
+      <DebugLabel label="SessionMessages" />
+      <div
+        ref={parentRef}
+        className="relative flex-1 overflow-y-auto pb-40"
       style={{
         contain: 'strict',
       }}
@@ -93,6 +96,7 @@ export const SessionMessages: React.FC<SessionMessagesProps> = ({
         </motion.div>
       )}
     </div>
+    </>
   );
 };
 

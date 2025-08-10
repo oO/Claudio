@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Popover } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { DebugLabel } from "@/components/ui/atoms";
 
 /**
  * Thinking mode type definition
@@ -111,7 +112,9 @@ export const ThinkingModeSelector: React.FC<ThinkingModeSelectorProps> = ({
   );
 
   return (
-    <Popover
+    <div className="relative">
+      <DebugLabel label="ThinkingModeSelector" />
+      <Popover
       trigger={
         showTooltip ? (
           <TooltipProvider>
@@ -161,5 +164,6 @@ export const ThinkingModeSelector: React.FC<ThinkingModeSelectorProps> = ({
       align="start"
       side="top"
     />
+    </div>
   );
 };

@@ -14,6 +14,7 @@ import { SelectComponent, type SelectOption } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { api, type CheckpointStrategy } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { DebugLabel } from "@/components/ui/atoms";
 
 interface CheckpointSettingsProps {
   sessionId: string;
@@ -128,12 +129,14 @@ export const CheckpointSettings: React.FC<CheckpointSettingsProps> = ({
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className={cn("space-y-6", className)}
-    >
+    <>
+      <DebugLabel label="CheckpointSettings" />
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        className={cn("relative space-y-6", className)}
+      >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Settings className="h-5 w-5" />
@@ -276,5 +279,6 @@ export const CheckpointSettings: React.FC<CheckpointSettingsProps> = ({
         </div>
       </div>
     </motion.div>
+    </>
   );
 }; 

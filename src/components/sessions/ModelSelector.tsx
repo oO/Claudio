@@ -3,6 +3,7 @@ import { ChevronUp, Zap, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { DebugLabel } from "@/components/ui/atoms";
 
 export type Model = {
   id: "sonnet" | "opus";
@@ -50,7 +51,9 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   const isCompact = variant === "compact";
 
   return (
-    <Popover
+    <div className="relative">
+      <DebugLabel label="ModelSelector" />
+      <Popover
       trigger={
         <Button
           variant="outline"
@@ -102,5 +105,6 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       align="start"
       side="top"
     />
+    </div>
   );
 };

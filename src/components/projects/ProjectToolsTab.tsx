@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { TriLevelPermissionsManager } from "@/components/common";
 import { useTriLevelSettings } from "@/hooks";
 import { api } from "@/lib/api";
+import { DebugLabel } from "@/components/ui/atoms";
 
 interface ProjectToolsTabProps {
   projectPath: string;
@@ -43,7 +44,8 @@ export const ProjectToolsTab: React.FC<ProjectToolsTabProps> = ({
   };
 
   return (
-    <Card>
+    <Card className="relative">
+      <DebugLabel label="ProjectToolsTab" />
       <CardContent className="p-6">
         <div className="space-y-4">
           {/* Header with Save Button */}

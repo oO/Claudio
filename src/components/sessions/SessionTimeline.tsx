@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 import { TimelineNavigator } from './TimelineNavigator';
+import { DebugLabel } from '@/components/ui/atoms';
 import type { Session } from '@/lib/api';
 
 interface SessionTimelineProps {
@@ -29,14 +30,16 @@ export const SessionTimeline: React.FC<SessionTimelineProps> = ({
   onCheckpointCreated,
 }) => {
   return (
-    <AnimatePresence>
-      {showTimeline && effectiveSession && (
-        <motion.div
+    <>
+      <DebugLabel label="SessionTimeline" />
+      <AnimatePresence>
+        {showTimeline && effectiveSession && (
+          <motion.div
           initial={{ x: "100%" }}
           animate={{ x: 0 }}
           exit={{ x: "100%" }}
           transition={{ type: "spring", damping: 20, stiffness: 300 }}
-          className="fixed right-0 top-0 h-full w-full sm:w-96 bg-background border-l border-border shadow-xl z-30 overflow-hidden"
+          className="relative fixed right-0 top-0 h-full w-full sm:w-96 bg-background border-l border-border shadow-xl z-30 overflow-hidden"
         >
           <div className="h-full flex flex-col">
             {/* Timeline Header */}
@@ -67,8 +70,9 @@ export const SessionTimeline: React.FC<SessionTimelineProps> = ({
             </div>
           </div>
         </motion.div>
-      )}
-    </AnimatePresence>
+        )}
+      </AnimatePresence>
+    </>
   );
 };
 

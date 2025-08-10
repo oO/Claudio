@@ -9,6 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import type { Session, ClaudeMdFile, Agent } from "@/lib/api";
 import { api } from "@/lib/api";
+import { DebugLabel } from "@/components/ui/atoms";
 import { 
   ProjectSessionTab,
   ProjectMemoriesTab,
@@ -134,7 +135,8 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
   };
 
   return (
-    <div className={cn("space-y-6", className)}>
+    <div className={cn("space-y-6 relative", className)}>
+      <DebugLabel label="ProjectDetail" />
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full max-w-2xl grid-cols-4">
           <TabsTrigger value="sessions" className="gap-2">

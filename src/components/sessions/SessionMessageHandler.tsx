@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback } from 'react';
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { api } from "@/lib/api";
+import { DebugLabel } from "@/components/ui/atoms";
 import type { ClaudeStreamMessage } from "@/components/agents";
 
 interface SessionMessageHandlerProps {
@@ -546,7 +547,11 @@ const SessionMessageHandlerComponent: React.FC<SessionMessageHandlerProps> = ({
   }, [isListeningRef]);
 
   // This component doesn't render anything, it only manages message handling
-  return null;
+  return (
+    <div className="relative">
+      <DebugLabel label="SessionMessageHandler" />
+    </div>
+  );
 };
 
 // Export the methods for external use

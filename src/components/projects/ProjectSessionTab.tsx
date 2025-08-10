@@ -19,6 +19,7 @@ import {
   getFirstLine,
 } from "@/lib/date-utils";
 import type { Session } from "@/lib/api";
+import { DebugLabel } from "@/components/ui/atoms";
 
 interface ProjectSessionTabProps {
   sessions: Session[];
@@ -49,7 +50,8 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
   const currentSessions = sessions.slice(startIndex, endIndex);
 
   return (
-    <Card>
+    <Card className="relative">
+      <DebugLabel label="ProjectSessionTab" />
       <CardContent className="p-6">
         <AnimatePresence mode="popLayout">
           {currentSessions.length === 0 ? (

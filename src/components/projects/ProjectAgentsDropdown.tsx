@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { api, type Agent } from "@/lib/api";
 import { AgentCard } from "@/components/agents";
+import { DebugLabel } from "@/components/ui/atoms";
 
 interface ProjectAgentsDropdownProps {
   /**
@@ -104,7 +105,8 @@ export const ProjectAgentsDropdown: React.FC<ProjectAgentsDropdownProps> = ({
   };
   
   return (
-    <div className={cn("w-full", className)}>
+    <div className={cn("w-full relative", className)}>
+      <DebugLabel label="ProjectAgentsDropdown" />
       <Card className="overflow-hidden">
         {/* Dropdown Header */}
         <button

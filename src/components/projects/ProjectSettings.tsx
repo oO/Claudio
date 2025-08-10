@@ -7,6 +7,7 @@ import { HooksEditor } from '@/components/settings';
 import { SlashCommandsManager, ToolPermissionsManager } from '@/components/common';
 import { useLocalProjectSettings } from '@/hooks';
 import { api } from '@/lib/api';
+import { DebugLabel } from '@/components/ui/atoms';
 import { 
   AlertTriangle, 
   ArrowLeft, 
@@ -110,7 +111,8 @@ export const ProjectSettings: React.FC<ProjectSettingsProps> = ({
   };
 
   return (
-    <div className={cn("flex flex-col h-full", className)}>
+    <div className={cn("flex flex-col h-full relative", className)}>
+      <DebugLabel label="ProjectSettings" />
       {/* Header */}
       <div className="border-b px-6 py-4">
         <div className="flex items-center justify-between">

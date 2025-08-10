@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.9] - 2025-08-10
+
+### Added
+- DebugLabel components to all project and session components for improved debugging
+- Component-level CLAUDE.md documentation with debug label implementation patterns
+- Proper positioning context for debug labels to prevent visual overlap
+
+### Changed
+- All project and session components now include `relative` positioning for proper debug label placement
+- ProjectDeleteDialog debug label now conditionally renders only when dialog is open
+- StreamMessage import standardized to use consistent DebugLabel import path
+
+### Fixed
+- Debug label positioning conflicts where child component labels would cover parent labels
+- Debug labels now position relative to their component boundaries rather than global positioning
+
 ## [0.3.8] - 2025-08-10
 
 ### Added

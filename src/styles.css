@@ -1227,6 +1227,7 @@ code::-webkit-scrollbar-thumb:hover {
     transition: opacity 0.2s ease;
 }
 
+
 /* Make debug labels slightly more visible on hover */
 .debug-label:hover {
     opacity: 1;

@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CheckpointSettings } from './CheckpointSettings';
 import { SlashCommandsManager } from '@/components/common';
+import { DebugLabel } from '@/components/ui/atoms';
 import type { Session } from '@/lib/api';
 
 interface SessionSettingsProps {
@@ -46,7 +47,8 @@ export const SessionSettings: React.FC<SessionSettingsProps> = ({
   isLoading,
 }) => {
   return (
-    <>
+    <div className="relative">
+      <DebugLabel label="SessionSettings" />
       {/* Fork Dialog */}
       <Dialog open={showForkDialog} onOpenChange={onForkDialogChange}>
         <DialogContent>
@@ -122,7 +124,7 @@ export const SessionSettings: React.FC<SessionSettingsProps> = ({
           </DialogContent>
         </Dialog>
       )}
-    </>
+    </div>
   );
 };
 

@@ -7,6 +7,7 @@ import { PromptTextarea } from "./PromptTextarea";
 import { ModelSelector } from "./ModelSelector";
 import { ThinkingModeSelector, type ThinkingMode } from "./ThinkingModeSelector";
 import { PromptControls } from "./PromptControls";
+import { DebugLabel } from "@/components/ui/atoms";
 
 export interface ExpandedPromptModalProps {
   isOpen: boolean;
@@ -55,13 +56,15 @@ export const ExpandedPromptModal: React.FC<ExpandedPromptModalProps> = ({
   onDrop,
 }) => {
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
+    <>
+      <DebugLabel label="ExpandedPromptModal" />
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm"
+          className="relative fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm"
           onClick={onClose}
         >
           <motion.div
@@ -142,7 +145,8 @@ export const ExpandedPromptModal: React.FC<ExpandedPromptModalProps> = ({
             </div>
           </motion.div>
         </motion.div>
-      )}
-    </AnimatePresence>
+        )}
+      </AnimatePresence>
+    </>
   );
 };

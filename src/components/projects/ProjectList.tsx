@@ -12,6 +12,7 @@ import type { Project } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { formatTimeAgo } from "@/lib/date-utils";
 import { Pagination } from "@/components/ui/pagination";
+import { DebugLabel } from "@/components/ui/atoms";
 
 interface ProjectListProps {
   /**
@@ -78,7 +79,8 @@ export const ProjectList: React.FC<ProjectListProps> = ({
   };
 
   return (
-    <div className={cn("space-y-4", className)}>
+    <div className={cn("space-y-4 relative", className)}>
+      <DebugLabel label="ProjectList" />
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {currentProjects.map((project, index) => (
           <motion.div

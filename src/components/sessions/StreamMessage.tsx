@@ -9,9 +9,9 @@ import {
   ToolResultRenderer,
   MarkdownRenderer,
   MessageUsageStats,
-  DebugLabel,
   type MessageRole 
 } from "@/components/ui";
+import { DebugLabel } from "@/components/ui/atoms";
 import type { ClaudeStreamMessage } from "@/components/agents";
 import { SummaryWidget, SystemInitializedWidget } from "../tools/ToolWidgets";
 
@@ -116,7 +116,7 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({ message, classNa
       if (!renderedSomething) return null;
       
       return (
-        <Card className={cn("border-primary/20", className, "relative")}>
+        <Card className={cn("relative border-primary/20", className)}>
           <DebugLabel label="AssistantMessage" />
           <CardContent className="p-4">
             <MessageHeader
@@ -219,7 +219,7 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({ message, classNa
       if (!renderedSomething) return null;
       
       return (
-        <Card className={cn("border-muted-foreground/20", className, "relative")}>
+        <Card className={cn("relative border-muted-foreground/20", className)}>
           <DebugLabel label="UserMessage" />
           <CardContent className="p-4">
             <MessageHeader role="user" />
@@ -238,9 +238,9 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({ message, classNa
       
       return (
         <Card className={cn(
+          "relative",
           isError ? "border-destructive/20 bg-destructive/5" : "border-green-600/20 bg-green-600/5 dark:border-green-400/20 dark:bg-green-400/5",
-          className,
-          "relative"
+          className
         )}>
           <DebugLabel label="ResultMessage" />
           <CardContent className="p-4">

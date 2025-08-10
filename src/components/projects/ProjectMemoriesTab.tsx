@@ -18,6 +18,7 @@ import {
 } from "@/lib/date-utils";
 import type { ClaudeMdFile } from "@/lib/api";
 import { api } from "@/lib/api";
+import { DebugLabel } from "@/components/ui/atoms";
 
 interface ProjectMemoriesTabProps {
   projectPath: string;
@@ -52,7 +53,8 @@ export const ProjectMemoriesTab: React.FC<ProjectMemoriesTabProps> = ({
   };
 
   return (
-    <Card>
+    <Card className="relative">
+      <DebugLabel label="ProjectMemoriesTab" />
       <CardContent className="p-6">
         <div className="space-y-4">
           <div>

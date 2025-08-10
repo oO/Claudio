@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { StopCircle, Clock, Hash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { DebugLabel } from "@/components/ui/atoms";
 
 interface ExecutionControlBarProps {
   isExecuting: boolean;
@@ -42,7 +43,9 @@ export const ExecutionControlBar: React.FC<ExecutionControlBarProps> = ({
   };
 
   return (
-    <AnimatePresence>
+    <>
+      <DebugLabel label="ExecutionControlBar" />
+      <AnimatePresence>
       {isExecuting && (
         <motion.div
           initial={{ y: 100, opacity: 0 }}
@@ -50,7 +53,7 @@ export const ExecutionControlBar: React.FC<ExecutionControlBarProps> = ({
           exit={{ y: 100, opacity: 0 }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
           className={cn(
-            "fixed bottom-6 left-1/2 -translate-x-1/2 z-50",
+            "relative fixed bottom-6 left-1/2 -translate-x-1/2 z-50",
             "bg-background/95 backdrop-blur-md border rounded-full shadow-lg",
             "px-6 py-3 flex items-center gap-4",
             className
@@ -98,5 +101,6 @@ export const ExecutionControlBar: React.FC<ExecutionControlBarProps> = ({
         </motion.div>
       )}
     </AnimatePresence>
+    </>
   );
 }; 

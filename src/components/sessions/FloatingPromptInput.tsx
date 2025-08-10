@@ -4,6 +4,7 @@ import { Maximize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { FilePicker, SlashCommandPicker, ImagePreview } from "@/components/common";
+import { DebugLabel } from "@/components/ui/atoms";
 import { type FileEntry, type SlashCommand } from "@/lib/api";
 
 // Import our extracted components and hooks
@@ -313,6 +314,7 @@ const FloatingPromptInputInner = (
 
   return (
     <>
+      <DebugLabel label="FloatingPromptInput" />
       {/* Expanded Modal */}
       <ExpandedPromptModal
         isOpen={isExpanded}
@@ -339,7 +341,7 @@ const FloatingPromptInputInner = (
       {/* Fixed Position Input Bar */}
       <div
         className={cn(
-          "fixed bottom-0 left-0 right-0 z-40 bg-background border-t border-border",
+          "relative fixed bottom-0 left-0 right-0 z-40 bg-background border-t border-border",
           dragActive && "ring-2 ring-primary ring-offset-2",
           className
         )}
