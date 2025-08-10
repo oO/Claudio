@@ -1,22 +1,28 @@
 import React, { useState } from "react";
-import { FileText, ChevronRight } from "lucide-react";
+import { FileText, ChevronRight, Loader2 } from "lucide-react";
+import { DebugLabel } from "@/components/ui/atoms";
 import { cn } from "@/lib/utils";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneLight, oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useTheme } from "@/hooks";
-import { DebugLabel } from "@/components/ui/atoms";
 
 // Constants
 const PREVIEW_LINES = 4; // Number of lines to show when collapsed
 const LARGE_FILE_THRESHOLD = 20; // Files with more lines are considered "large"
 
 /**
- * Widget for Read tool result - shows file content with line numbers
+ * Unified widget for Read and Write tools
  */
-export const ReadResultWidget: React.FC<{ content: string; filePath?: string }> = ({ content, filePath }) => {
+export const FileWidget: React.FC<{ 
+  type: 'read' | 'write';
+  filePath: string; 
+  content?: string;
+  result?: any;
+}> = ({ type, filePath, content, result }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanding, setIsExpanding] = useState(false);
   const { theme } = useTheme();
-  
+
   // Customize oneLight theme to have better contrast
   const customLightTheme = {
     ...oneLight,
@@ -96,7 +102,7 @@ export const ReadResultWidget: React.FC<{ content: string; filePath?: string }> 
   // Check if the document has the dark theme class
   const isDarkTheme = document.documentElement.classList.contains('theme-dark');
   const syntaxTheme = isDarkTheme ? customDarkTheme : customLightTheme;
-  
+
   // Extract file extension for syntax highlighting
   const getLanguage = (path?: string) => {
     if (!path) return "text";
@@ -140,7 +146,7 @@ export const ReadResultWidget: React.FC<{ content: string; filePath?: string }> 
     return languageMap[ext || ""] || "text";
   };
 
-  // Parse content to separate line numbers from code
+  // Parse content to separate line numbers from code (for read type)
   const parseContent = (rawContent: string) => {
     const lines = rawContent.split('\n');
     const codeLines: string[] = [];
@@ -192,9 +198,46 @@ export const ReadResultWidget: React.FC<{ content: string; filePath?: string }> 
     };
   };
 
+  // Get the content to display based on type
+  const getDisplayContent = () => {
+    if (type === 'write') {
+      // For write type, use the content prop directly
+      return {
+        codeContent: content || '',
+        startLineNumber: 1,
+        isError: false
+      };
+    }
+    
+    // For read type, extract from result
+    if (!result) {
+      return { codeContent: '', startLineNumber: 1, isError: false };
+    }
+
+    let resultContent = '';
+    const isError = result.is_error || false;
+    
+    if (typeof result.content === 'string') {
+      resultContent = result.content;
+    } else if (result.content && typeof result.content === 'object') {
+      if (result.content.text) {
+        resultContent = result.content.text;
+      } else if (Array.isArray(result.content)) {
+        resultContent = result.content
+          .map((c: any) => (typeof c === 'string' ? c : c.text || JSON.stringify(c)))
+          .join('\n');
+      } else {
+        resultContent = JSON.stringify(result.content, null, 2);
+      }
+    }
+
+    const { codeContent, startLineNumber } = parseContent(resultContent);
+    return { codeContent, startLineNumber, isError };
+  };
+
+  const { codeContent, startLineNumber, isError } = getDisplayContent();
   const language = getLanguage(filePath);
-  const { codeContent, startLineNumber } = parseContent(content);
-  const lineCount = content.split('\n').filter(line => line.trim()).length;
+  const lineCount = codeContent.split('\n').filter(line => line.trim()).length;
   const isLargeFile = lineCount > LARGE_FILE_THRESHOLD;
   
   // When collapsed, only show first N lines to help renderer performance
@@ -202,42 +245,107 @@ export const ReadResultWidget: React.FC<{ content: string; filePath?: string }> 
     ? codeContent 
     : codeContent.split('\n').slice(0, PREVIEW_LINES).join('\n');
 
-  return (
-    <div className="rounded-lg overflow-hidden border bg-card w-full relative">
-      <DebugLabel label="ReadResultWidget" />
-      <div className="px-4 py-2 border-b bg-muted/30 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-xs font-mono text-muted-foreground">
-            File content
-          </span>
-          {isLargeFile && (
-            <span className="text-xs text-muted-foreground">
-              ({lineCount} lines)
-            </span>
-          )}
+  // Get header text based on type
+  const headerText = type === 'read' ? 'File content:' : 'Writing to file:';
+  const debugLabel = 'FileWidget';
+
+  // Loading state for read type
+  if (type === 'read' && !result) {
+    return (
+      <div className="flex items-center gap-2 rounded-lg bg-muted/50 relative">
+        <DebugLabel label={debugLabel} />
+        <FileText className="h-4 w-4 text-primary" />
+        <span className="text-sm">Reading file:</span>
+        <code className="text-sm font-mono bg-background px-2 py-0.5 rounded flex-1 truncate">
+          {filePath}
+        </code>
+        <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
+          <div className="h-2 w-2 bg-primary rounded-full animate-pulse" />
+          <span>Loading...</span>
         </div>
-        {isLargeFile && (
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ChevronRight className={cn("h-3 w-3 transition-transform", isExpanded && "rotate-90")} />
-            {isExpanded ? "Collapse" : "Expand"}
-          </button>
-        )}
+      </div>
+    );
+  }
+
+  // No content available
+  if (!codeContent && type === 'read') {
+    return (
+      <div className="space-y-1 relative">
+        <DebugLabel label={debugLabel} />
+        <div className="flex items-center gap-2 rounded-lg bg-muted/50">
+          <FileText className="h-4 w-4 text-primary" />
+          <span className="text-sm">{headerText}</span>
+          <code className="text-sm font-mono bg-background px-2 py-0.5 rounded flex-1 truncate">
+            {filePath}
+          </code>
+        </div>
+        <div className="text-center py-4 text-sm text-muted-foreground">
+          No content available
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1 relative">
+      <DebugLabel label={debugLabel} />
+      {/* Command section - outside the expand box */}
+      <div className="flex items-center gap-2 rounded-lg bg-muted/50">
+        <FileText className="h-4 w-4 text-primary" />
+        <span className="text-sm">{headerText}</span>
+        <code className="text-sm font-mono bg-background px-2 py-0.5 rounded flex-1 truncate">
+          {filePath}
+        </code>
       </div>
       
-      {/* Content area */}
-      <div className="relative">
-        <div className={cn(
-          "transition-all duration-200",
-          !isExpanded && isLargeFile && "max-h-32"
-        )}>
-          <div className={cn(
-            "relative overflow-x-auto bg-background",
-            !isExpanded && isLargeFile && "max-h-28"
-          )}>
+      {/* Results section - expandable box */}
+      <div className="rounded-lg border bg-card overflow-hidden">
+        <div className="px-4 py-2 border-b bg-muted/30 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono text-muted-foreground">
+              {isError ? "Error" : (type === 'read' ? "File content" : "Preview")}
+            </span>
+            {!isError && lineCount > 0 && (
+              <span className="text-xs text-muted-foreground">
+                ({lineCount} {lineCount === 1 ? 'line' : 'lines'})
+              </span>
+            )}
+          </div>
+          
+          {isLargeFile && !isError && (
+            <button
+              onClick={async () => {
+                if (!isExpanded) {
+                  setIsExpanding(true);
+                  // Small delay to allow UI to update before heavy rendering
+                  await new Promise(resolve => setTimeout(resolve, 50));
+                  setIsExpanded(true);
+                  setIsExpanding(false);
+                } else {
+                  setIsExpanded(false);
+                }
+              }}
+              disabled={isExpanding}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+            >
+              {isExpanding ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Loading...
+                </>
+              ) : (
+                <>
+                  <ChevronRight className={cn("h-3 w-3 transition-transform", isExpanded && "rotate-90")} />
+                  {isExpanded ? "Collapse" : "Expand"}
+                </>
+              )}
+            </button>
+          )}
+        </div>
+        
+        {/* Content area */}
+        <div className="relative">
+          <div className="relative overflow-x-auto bg-background">
             <SyntaxHighlighter
               language={language}
               style={syntaxTheme}
@@ -264,17 +372,16 @@ export const ReadResultWidget: React.FC<{ content: string; filePath?: string }> 
                 opacity: 0.5,
               }}
             >
-              {displayContent}
+              {isError ? (codeContent || "Error occurred") : displayContent}
             </SyntaxHighlighter>
+            {isLargeFile && !isExpanded && !isError && (
+              <div className="px-3 py-2 text-xs text-muted-foreground text-center bg-muted/20 border-t">
+                ... {lineCount - PREVIEW_LINES} more lines ...
+              </div>
+            )}
           </div>
         </div>
-        
-        {/* Gradient fade for collapsed view */}
-        {!isExpanded && isLargeFile && (
-          <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-card to-transparent pointer-events-none" />
-        )}
       </div>
-      
     </div>
   );
 };

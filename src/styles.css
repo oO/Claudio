@@ -237,11 +237,7 @@
     --color-info-foreground: rgb(255, 255, 255);
     --color-destructive: rgb(207, 34, 46);
     --color-destructive-foreground: rgb(255, 255, 255);
-    --color-accent-alt: rgb(
-        180,
-        83,
-        9
-    ); /* Darker warm accent for light themes */
+    --color-accent-alt: rgb(180, 83, 9); /* highlights/shimmer */
 }
 
 /* Fix for select dropdown in portals */

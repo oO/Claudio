@@ -64,11 +64,11 @@ export const CommandOutputWidget: React.FC<{
     <div className="rounded-lg border bg-card overflow-hidden">
       <div className="px-4 py-2 bg-muted/30 flex items-center gap-2">
         <ChevronRight className="h-3 w-3 text-green-600 dark:text-green-400" />
-        <span className="text-xs font-mono text-green-700 dark:text-green-300">Output</span>
+        <span className="text-xs font-mono text-green-600 dark:text-green-400">Output</span>
       </div>
       <div className="p-3">
-        <pre className="text-sm font-mono text-zinc-300 whitespace-pre-wrap">
-          {output ? parseAnsiToReact(output) : <span className="text-zinc-500 italic">No output</span>}
+        <pre className="text-sm font-mono text-foreground whitespace-pre-wrap">
+          {output ? parseAnsiToReact(output) : <span className="text-muted-foreground italic">No output</span>}
         </pre>
       </div>
     </div>

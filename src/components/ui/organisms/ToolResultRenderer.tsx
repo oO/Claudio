@@ -6,10 +6,10 @@ import {
   EditResultWidget,
   MultiEditResultWidget,
   LSResultWidget,
-  ReadResultWidget,
   SystemReminderWidget,
   CommandOutputWidget
 } from "@/components/tools/ToolWidgets";
+import { FileWidget } from "@/components/tools";
 
 interface ToolResultProps {
   content: any;
@@ -204,7 +204,7 @@ export const ToolResultRenderer: React.FC<ToolResultProps> = ({
           <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
           <span className="text-sm font-medium">Read Result</span>
         </div>
-        <ReadResultWidget content={contentText} filePath={filePath} />
+        <FileWidget type="read" filePath={filePath || 'unknown'} result={{ content: contentText }} />
       </div>
     );
   }

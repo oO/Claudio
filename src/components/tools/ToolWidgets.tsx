@@ -1,9 +1,7 @@
 // Tool output widgets collection - export from individual widget files
 export * from './LSWidget';
 export * from './LSResultWidget';
-export * from './ReadWidget';
-export * from './ReadResultWidget';
-export * from './WriteWidget';
+export * from './FileWidget';
 export * from './GlobWidget';
 export * from './EditWidget';
 export * from './EditResultWidget';

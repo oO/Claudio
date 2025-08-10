@@ -6,7 +6,8 @@ import {
   ChevronDown,
   ChevronUp,
   Info,
-  FileText
+  FileText,
+  Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { open } from "@tauri-apps/plugin-shell";
@@ -22,6 +23,7 @@ export const WebFetchWidget: React.FC<{
 }> = ({ url, prompt, result }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showFullContent, setShowFullContent] = useState(false);
+  const [isExpanding, setIsExpanding] = useState(false);
   
   // Extract result content if available
   let fetchedContent = '';
@@ -148,10 +150,26 @@ export const WebFetchWidget: React.FC<{
                 </div>
                 {isTruncated && (
                   <button
-                    onClick={() => setShowFullContent(!showFullContent)}
-                    className="text-xs text-purple-500 hover:text-purple-600 transition-colors flex items-center gap-1"
+                    onClick={async () => {
+                      if (!showFullContent) {
+                        setIsExpanding(true);
+                        // Small delay to allow UI to update before heavy rendering
+                        await new Promise(resolve => setTimeout(resolve, 50));
+                        setShowFullContent(true);
+                        setIsExpanding(false);
+                      } else {
+                        setShowFullContent(false);
+                      }
+                    }}
+                    disabled={isExpanding}
+                    className="text-xs text-purple-500 hover:text-purple-600 transition-colors flex items-center gap-1 disabled:opacity-50"
                   >
-                    {showFullContent ? (
+                    {isExpanding ? (
+                      <>
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Loading...
+                      </>
+                    ) : showFullContent ? (
                       <>
                         <ChevronUp className="h-3 w-3" />
                         Show less
@@ -168,16 +186,10 @@ export const WebFetchWidget: React.FC<{
               
               {/* Fetched Content */}
               <div className="relative">
-                <div className={cn(
-                  "rounded-lg bg-muted/30 p-3 overflow-hidden",
-                  !showFullContent && isTruncated && "max-h-[300px]"
-                )}>
+                <div className="rounded-lg bg-muted/30 p-3 overflow-hidden">
                   <pre className="text-sm font-mono text-foreground/90 whitespace-pre-wrap">
                     {previewContent}
                   </pre>
-                  {!showFullContent && isTruncated && (
-                    <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-muted/30 to-transparent pointer-events-none" />
-                  )}
                 </div>
               </div>
             </div>

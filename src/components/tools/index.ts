@@ -1,9 +1,7 @@
 // File System Widgets
 export { LSWidget } from './LSWidget';
 export { LSResultWidget } from './LSResultWidget';
-export { ReadWidget } from './ReadWidget';
-export { ReadResultWidget } from './ReadResultWidget';
-export { WriteWidget } from './WriteWidget';
+export { FileWidget } from './FileWidget';
 export { GlobWidget } from './GlobWidget';
 
 // Code Editing Widgets

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Search, ChevronRight } from "lucide-react";
+import { Search, ChevronRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DebugLabel } from "@/components/ui/atoms";
 
@@ -8,6 +8,7 @@ import { DebugLabel } from "@/components/ui/atoms";
  */
 export const GlobWidget: React.FC<{ pattern: string; result?: any }> = ({ pattern, result }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanding, setIsExpanding] = useState(false);
   
   // Extract result content if available
   let resultContent = '';
@@ -75,27 +76,41 @@ export const GlobWidget: React.FC<{ pattern: string; result?: any }> = ({ patter
             
             {isLargeResult && !isError && (
               <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                onClick={async () => {
+                  if (!isExpanded) {
+                    setIsExpanding(true);
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                    setIsExpanded(true);
+                    setIsExpanding(false);
+                  } else {
+                    setIsExpanded(false);
+                  }
+                }}
+                disabled={isExpanding}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
               >
-                <ChevronRight className={cn("h-3 w-3 transition-transform", isExpanded && "rotate-90")} />
-                {isExpanded ? "Collapse" : "Expand"}
+                {isExpanding ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    <ChevronRight className={cn("h-3 w-3 transition-transform", isExpanded && "rotate-90")} />
+                    {isExpanded ? "Collapse" : "Expand"}
+                  </>
+                )}
               </button>
             )}
           </div>
           
           {/* Content area */}
           <div className="relative">
-            <div className={cn(
-              "transition-all duration-200",
-              !isExpanded && isLargeResult && "max-h-24"
-            )}>
+            <div className="p-3 text-xs font-mono whitespace-pre-wrap bg-background overflow-auto">
               <div className={cn(
-                "p-3 text-xs font-mono whitespace-pre-wrap overflow-auto",
-                !isExpanded && isLargeResult && "max-h-20",
                 isError 
-                  ? "text-red-600 dark:text-red-400" 
-                  : "text-green-700 dark:text-green-300"
+                  ? "text-destructive" 
+                  : "text-foreground"
               )}>
                 {isError 
                   ? (resultContent || "Search failed")
@@ -106,11 +121,6 @@ export const GlobWidget: React.FC<{ pattern: string; result?: any }> = ({ patter
                 }
               </div>
             </div>
-            
-            {/* Gradient fade for collapsed view */}
-            {!isExpanded && isLargeResult && !isError && lineCount > 3 && (
-              <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-card to-transparent pointer-events-none" />
-            )}
           </div>
         </div>
       )}

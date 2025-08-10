@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.8] - 2025-08-10
+
+### Added
+- Unified FileWidget component merging ReadWidget and WriteWidget functionality
+- Consistent expand/collapse patterns across all tool widgets (BashWidget, EditWidget, WriteWidget)
+- Loading spinners for expand functionality on large files
+- Enhanced theme compatibility with CSS custom properties throughout all widgets
+
+### Changed
+- **BREAKING**: Removed ReadWidget and WriteWidget in favor of unified FileWidget approach
+- All file operations now use identical syntax highlighting and line numbering
+- Standardized widget layouts following GlobWidget reference pattern
+- Improved visual consistency across all tool result displays
+- Enhanced EditWidget with proper expand/collapse functionality for large diffs
+
+### Fixed
+- Theme-safe color usage across all widgets (replaced hardcoded colors with semantic classes)
+- Proper diff visualization with distinct colors for additions/deletions
+- Grep output parsing to handle complex format with context lines and separators
+- Command styling in BashWidget using appropriate semantic colors (text-info for commands)
+
+### Technical
+- Reduced bundle size by eliminating duplicate file handling code
+- Single maintenance point for file-related widget functionality
+- Improved code reuse with unified language mapping and syntax themes
+
 ## [0.3.7] - 2025-08-10
 
 ### Added

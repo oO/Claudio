@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Search, ChevronRight } from "lucide-react";
+import { Search, ChevronRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DebugLabel } from "@/components/ui/atoms";
 
@@ -14,6 +14,7 @@ export const GrepWidget: React.FC<{
   result?: any;
 }> = ({ pattern, include, path, exclude, result }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanding, setIsExpanding] = useState(false);
   
   // Extract result content if available
   let resultContent = '';
@@ -43,8 +44,76 @@ export const GrepWidget: React.FC<{
     isLargeResult = lineCount > 5; // Show collapsed view for more than 5 results
   }
   
-  // Get first few lines for preview
-  const previewLines = resultContent.split('\n').slice(0, 3).join('\n');
+  // Parse grep output for better formatting
+  const parseGrepOutput = (content: string) => {
+    const lines = content.split('\n');
+    const parsed: Array<{type: 'file' | 'match' | 'context' | 'separator' | 'text', content: string, filename?: string}> = [];
+    
+    for (const line of lines) {
+      if (line.trim() === '') continue;
+      
+      // Handle separator lines
+      if (line.trim() === '--') {
+        parsed.push({type: 'separator', content: ''});
+        continue;
+      }
+      
+      // Check for file path with context (contains '-')
+      // Format: "/path/to/file.tsx-context_content"
+      if (line.includes('/') && line.includes('-')) {
+        const dashIndex = line.lastIndexOf('-');
+        const beforeDash = line.substring(0, dashIndex);
+        const afterDash = line.substring(dashIndex + 1);
+        
+        // Check if this looks like a file path
+        if (beforeDash.includes('/') && !beforeDash.includes(' ')) {
+          const parts = beforeDash.split('/');
+          const filename = parts[parts.length - 1];
+          
+          parsed.push({type: 'context', content: afterDash, filename});
+          continue;
+        }
+      }
+      
+      // Check for file path with match (contains ':')
+      // Format: "/path/to/file.tsx:match_content"
+      if (line.includes('/') && line.includes(':')) {
+        const colonIndex = line.indexOf(':');
+        const beforeColon = line.substring(0, colonIndex);
+        const afterColon = line.substring(colonIndex + 1);
+        
+        // Check if this looks like a file path
+        if (beforeColon.includes('/') && !beforeColon.includes(' ')) {
+          const parts = beforeColon.split('/');
+          const filename = parts[parts.length - 1];
+          
+          parsed.push({type: 'match', content: afterColon, filename});
+          continue;
+        }
+      }
+      
+      // Check if this is a standalone filename (no path, no separators)
+      if (!line.includes('/') && !line.includes('-') && !line.includes(':') && line.includes('.')) {
+        parsed.push({type: 'file', content: line});
+        continue;
+      }
+      
+      // If not a recognized format, just add the line as-is
+      parsed.push({type: 'text', content: line});
+    }
+    
+    return parsed;
+  };
+
+  const parsedContent = isError ? [] : parseGrepOutput(resultContent);
+  
+  // Create preview for collapsed view
+  const createPreview = (parsed: Array<{type: 'file' | 'match' | 'context' | 'separator' | 'text', content: string, filename?: string}>, limit: number) => {
+    const preview = parsed.slice(0, limit);
+    return preview.length < parsed.length;
+  };
+  
+  const isPreviewTruncated = createPreview(parsedContent, 12);
   
   // Build search description
   const searchDesc = [];
@@ -91,42 +160,76 @@ export const GrepWidget: React.FC<{
             
             {isLargeResult && !isError && (
               <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                onClick={async () => {
+                  if (!isExpanded) {
+                    setIsExpanding(true);
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                    setIsExpanded(true);
+                    setIsExpanding(false);
+                  } else {
+                    setIsExpanded(false);
+                  }
+                }}
+                disabled={isExpanding}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
               >
-                <ChevronRight className={cn("h-3 w-3 transition-transform", isExpanded && "rotate-90")} />
-                {isExpanded ? "Collapse" : "Expand"}
+                {isExpanding ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    <ChevronRight className={cn("h-3 w-3 transition-transform", isExpanded && "rotate-90")} />
+                    {isExpanded ? "Collapse" : "Expand"}
+                  </>
+                )}
               </button>
             )}
           </div>
           
           {/* Content area */}
           <div className="relative">
-            <div className={cn(
-              "transition-all duration-200",
-              !isExpanded && isLargeResult && "max-h-24"
-            )}>
-              <div className={cn(
-                "p-3 text-xs font-mono whitespace-pre-wrap overflow-auto",
-                !isExpanded && isLargeResult && "max-h-20",
-                isError 
-                  ? "text-red-600 dark:text-red-400" 
-                  : "text-green-700 dark:text-green-300"
-              )}>
-                {isError 
-                  ? (resultContent || "Search failed")
-                  : (!isExpanded && isLargeResult 
-                      ? previewLines + (lineCount > 3 ? '\n...' : '')
-                      : (resultContent || "No matches found")
-                    )
-                }
-              </div>
+            <div className="p-3 text-xs font-mono bg-background overflow-auto">
+              {isError ? (
+                <div className="text-destructive whitespace-pre-wrap">
+                  {resultContent || "Search failed"}
+                </div>
+              ) : parsedContent.length === 0 ? (
+                <div className="text-muted-foreground">No matches found</div>
+              ) : (
+                <div className="space-y-0.5">
+                  {(!isExpanded && isLargeResult ? parsedContent.slice(0, 12) : parsedContent).map((item, index) => (
+                    <div key={index}>
+                      {item.type === 'file' && (
+                        <div className="font-bold text-primary mt-2 first:mt-0">
+                          {item.content}
+                        </div>
+                      )}
+                      {item.type === 'match' && (
+                        <div className="text-foreground ml-4 whitespace-pre-wrap bg-accent/20 px-2 py-0.5 rounded">
+                          {item.content}
+                        </div>
+                      )}
+                      {item.type === 'context' && (
+                        <div className="text-muted-foreground ml-4 whitespace-pre-wrap text-xs">
+                          {item.content}
+                        </div>
+                      )}
+                      {item.type === 'separator' && (
+                        <div className="border-t border-muted my-2"></div>
+                      )}
+                      {item.type === 'text' && (
+                        <div className="text-foreground whitespace-pre-wrap">{item.content}</div>
+                      )}
+                    </div>
+                  ))}
+                  {!isExpanded && isLargeResult && isPreviewTruncated && (
+                    <div className="text-muted-foreground italic mt-2">...</div>
+                  )}
+                </div>
+              )}
             </div>
-            
-            {/* Gradient fade for collapsed view */}
-            {!isExpanded && isLargeResult && !isError && lineCount > 3 && (
-              <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-card to-transparent pointer-events-none" />
-            )}
           </div>
         </div>
       )}

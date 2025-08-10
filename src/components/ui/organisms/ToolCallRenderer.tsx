@@ -4,10 +4,9 @@ import {
   TasksWidget,
   TodoReadWidget,
   LSWidget,
-  ReadWidget,
   GlobWidget,
   BashWidget,
-  WriteWidget,
+  FileWidget,
   GrepWidget,
   EditWidget,
   MCPWidget,
@@ -108,7 +107,7 @@ export const ToolCallRenderer: React.FC<ToolCallRendererProps> = ({
     
     // Read tool
     if (toolName === "read" && input?.file_path) {
-      return <ReadWidget filePath={input.file_path} result={toolResult} />;
+      return <FileWidget type="read" filePath={input.file_path} result={toolResult} />;
     }
     
     // Glob tool
@@ -123,7 +122,7 @@ export const ToolCallRenderer: React.FC<ToolCallRendererProps> = ({
     
     // Write tool
     if (toolName === "write" && input?.file_path && input?.content) {
-      return <WriteWidget filePath={input.file_path} content={input.content} result={toolResult} />;
+      return <FileWidget type="write" filePath={input.file_path} content={input.content} result={toolResult} />;
     }
     
     // Grep tool
