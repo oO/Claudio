@@ -69,7 +69,7 @@ const ThinkingModeIndicator: React.FC<{ level: number }> = ({ level }) => {
           key={i}
           className={cn(
             "w-1 h-3 rounded-full transition-colors",
-            i <= level ? "bg-blue-500" : "bg-muted"
+            i <= level ? "bg-primary" : "bg-muted"
           )}
         />
       ))}

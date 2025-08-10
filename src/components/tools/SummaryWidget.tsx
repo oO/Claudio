@@ -1,5 +1,6 @@
 import React from "react";
 import { Info } from "lucide-react";
+import { DebugLabel } from "@/components/ui/atoms";
 
 /**
  * Widget for AI-generated summaries
@@ -9,7 +10,8 @@ export const SummaryWidget: React.FC<{
   leafUuid?: string;
 }> = ({ summary, leafUuid }) => {
   return (
-    <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 overflow-hidden">
+    <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 overflow-hidden relative">
+      <DebugLabel label="SummaryWidget" />
       <div className="px-4 py-3 flex items-start gap-3">
         <div className="mt-0.5">
           <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center">

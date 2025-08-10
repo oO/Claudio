@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import { Bot, Sparkles, Zap, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DebugLabel } from "@/components/ui/atoms";
 
 /**
  * Widget for Task tool - displays sub-agent task information
  */
-export const TaskWidget: React.FC<{ 
+export const SubAgentTaskWidget: React.FC<{ 
   description?: string; 
   prompt?: string;
   result?: any;
@@ -13,7 +14,8 @@ export const TaskWidget: React.FC<{
   const [isExpanded, setIsExpanded] = useState(false);
   
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 relative">
+      <DebugLabel label="SubAgentTaskWidget" />
       <div className="flex items-center gap-2 mb-2">
         <div className="relative">
           <Bot className="h-4 w-4 text-purple-500" />

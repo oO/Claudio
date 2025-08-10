@@ -392,8 +392,8 @@ export function SessionOutputViewer({ session, onClose, className }: SessionOutp
                       {session.status}
                     </Badge>
                     {session.status === 'running' && (
-                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
-                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse mr-1"></div>
+                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-700">
+                        <div className="w-1.5 h-1.5 bg-green-500 dark:bg-green-400 rounded-full animate-pulse mr-1"></div>
                         Live
                       </Badge>
                     )}
@@ -552,7 +552,7 @@ export function SessionOutputViewer({ session, onClose, className }: SessionOutp
               <h2 className="text-lg font-semibold">{session.agent_name} - Output</h2>
               {session.status === 'running' && (
                 <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <div className="w-2 h-2 bg-green-500 dark:bg-green-400 rounded-full animate-pulse"></div>
                   <span className="text-xs text-green-600 font-medium">Running</span>
                 </div>
               )}

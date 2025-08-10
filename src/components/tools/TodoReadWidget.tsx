@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
+import { DebugLabel } from "@/components/ui/atoms";
 
 /**
  * Widget for TodoRead tool - displays todos with advanced viewing capabilities
@@ -396,7 +397,8 @@ export const TodoReadWidget: React.FC<{ todos?: any[]; result?: any }> = ({ todo
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 relative">
+      <DebugLabel label="TodoReadWidget" />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

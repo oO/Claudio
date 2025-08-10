@@ -24,6 +24,9 @@ export { MessageTimestamp } from './MessageTimestamp';
 export { MessageUsageStats } from './MessageUsageStats';
 export { SyntaxHighlighter } from './SyntaxHighlighter';
 
+// Debug components
+export { DebugLabel } from './DebugLabel';
+
 export type { DatabaseStatusIndicatorProps } from "./DatabaseStatusIndicator";
 export type { TableStatusBadgeProps } from "./TableStatusBadge";
 export type { ActionButtonProps } from "./ActionButton";

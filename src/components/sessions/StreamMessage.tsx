@@ -9,6 +9,7 @@ import {
   ToolResultRenderer,
   MarkdownRenderer,
   MessageUsageStats,
+  DebugLabel,
   type MessageRole 
 } from "@/components/ui";
 import type { ClaudeStreamMessage } from "@/components/agents";
@@ -115,7 +116,8 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({ message, classNa
       if (!renderedSomething) return null;
       
       return (
-        <Card className={cn("border-primary/20 bg-primary/5", className)}>
+        <Card className={cn("border-primary/20", className, "relative")}>
+          <DebugLabel label="AssistantMessage" />
           <CardContent className="p-4">
             <MessageHeader
               role="assistant"
@@ -217,7 +219,8 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({ message, classNa
       if (!renderedSomething) return null;
       
       return (
-        <Card className={cn("border-muted-foreground/20 bg-muted/20", className)}>
+        <Card className={cn("border-muted-foreground/20", className, "relative")}>
+          <DebugLabel label="UserMessage" />
           <CardContent className="p-4">
             <MessageHeader role="user" />
             <div className="flex-1 space-y-2 min-w-0 mt-2">
@@ -235,15 +238,17 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({ message, classNa
       
       return (
         <Card className={cn(
-          isError ? "border-destructive/20 bg-destructive/5" : "border-green-500/20 bg-green-500/5",
-          className
+          isError ? "border-destructive/20 bg-destructive/5" : "border-green-600/20 bg-green-600/5 dark:border-green-400/20 dark:bg-green-400/5",
+          className,
+          "relative"
         )}>
+          <DebugLabel label="ResultMessage" />
           <CardContent className="p-4">
             <div className="flex items-start gap-3">
               {isError ? (
                 <AlertCircle className="h-5 w-5 text-destructive mt-0.5" />
               ) : (
-                <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5" />
+                <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5" />
               )}
               <div className="flex-1 space-y-2">
                 <h4 className="font-semibold text-sm">

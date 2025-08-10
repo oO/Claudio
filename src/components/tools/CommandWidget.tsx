@@ -1,5 +1,6 @@
 import React from "react";
 import { Terminal } from "lucide-react";
+import { DebugLabel } from "@/components/ui/atoms";
 
 /**
  * Widget for user commands (e.g., model, clear)
@@ -10,12 +11,13 @@ export const CommandWidget: React.FC<{
   commandArgs?: string;
 }> = ({ commandName, commandMessage, commandArgs }) => {
   return (
-    <div className="rounded-lg border bg-zinc-950/50 overflow-hidden">
-      <div className="px-4 py-2 border-b bg-zinc-900/50 flex items-center gap-2">
-        <Terminal className="h-3.5 w-3.5 text-blue-500" />
-        <span className="text-xs font-mono text-blue-400">Command</span>
+    <div className="rounded-lg border bg-card overflow-hidden relative">
+      <DebugLabel label="CommandWidget" />
+      <div className="px-4 py-2 border-b bg-muted/30 flex items-center gap-2">
+        <Terminal className="h-3.5 w-3.5 text-primary" />
+        <span className="text-xs font-mono text-primary/80">Command</span>
       </div>
-      <div className="p-3 space-y-1">
+      <div className="p-3 space-y-1 bg-background">
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">$</span>
           <code className="text-sm font-mono text-foreground">{commandName}</code>

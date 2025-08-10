@@ -35,7 +35,7 @@ export const MessageContent: React.FC<MessageContentProps> = ({
   // Handle array of content blocks
   if (Array.isArray(content)) {
     return (
-      <div className={cn("space-y-2", className)}>
+      <div className={cn("space-y-1", className)}>
         {content.map((block: any, idx: number) => {
           if (block.type === "text") {
             const textContent = extractTextContent(block);

@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { open } from "@tauri-apps/plugin-shell";
+import { DebugLabel } from "@/components/ui/atoms";
 
 /**
  * Widget for WebSearch tool - displays web search query and results
@@ -109,7 +110,8 @@ export const WebSearchWidget: React.FC<{
   };
   
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 relative">
+      <DebugLabel label="WebSearchWidget" />
       {/* Subtle Search Query Header */}
       <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500/5 border border-blue-500/10">
         <Globe className="h-4 w-4 text-blue-500/70" />

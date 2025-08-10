@@ -3,6 +3,7 @@ import { FileText } from "lucide-react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { getClaudeSyntaxTheme } from "@/lib/claudeSyntaxTheme";
 import { useTheme } from "@/hooks";
+import { DebugLabel } from "@/components/ui/atoms";
 
 /**
  * Widget for Write tool
@@ -111,7 +112,7 @@ export const WriteWidget: React.FC<{ filePath: string; content: string; result?:
 
   const CodePreview = ({ codeContent, truncated }: { codeContent: string; truncated: boolean }) => (
     <div 
-      className="rounded-lg border bg-zinc-950 overflow-hidden w-full"
+      className="rounded-lg border bg-zinc-950 overflow-hidden w-full relative"
       style={{ 
         height: truncated ? '440px' : 'auto', 
         maxHeight: truncated ? '440px' : undefined,
@@ -119,6 +120,7 @@ export const WriteWidget: React.FC<{ filePath: string; content: string; result?:
         flexDirection: 'column' 
       }}
     >
+      <DebugLabel label="WriteWidget" />
       <div className="px-4 py-2 border-b bg-zinc-950 flex items-center justify-between sticky top-0 z-10">
         <span className="text-xs font-mono text-muted-foreground">Preview</span>
         {isLargeContent && truncated && (

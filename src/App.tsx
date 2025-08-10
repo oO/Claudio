@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Loader2, Bot, FolderCode } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
-import { api, type Project, type Session, type ClaudeMdFile } from "@/lib/api";
+import { api, type Project, type Session, type ClaudeMdFile, type Agent } from "@/lib/api";
 import { OutputCacheProvider } from "@/lib/outputCache";
 import { TabProvider } from "@/contexts/TabContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
@@ -254,6 +254,62 @@ function AppContent() {
   const handleSessionDeleted = (sessionId: string) => {
     setSessions(prev => prev.filter(s => s.id !== sessionId));
     setToast({ message: "Session deleted successfully", type: "success" });
+  };
+
+  /**
+   * Handles session click - TODO: Implement session navigation
+   */
+  const handleSessionClick = (session: Session) => {
+    console.log("Session clicked:", session.id);
+    // TODO: Implement session navigation logic
+  };
+
+  /**
+   * Handles agent execution - TODO: Implement agent execution
+   */
+  const handleExecuteAgent = (agent: Agent) => {
+    console.log("Execute agent:", agent.name);
+    // TODO: Implement agent execution logic
+  };
+
+  /**
+   * Handles agent editing - TODO: Implement agent editing
+   */
+  const handleEditAgent = (agent: Agent) => {
+    console.log("Edit agent:", agent.name);
+    // TODO: Implement agent editing logic
+  };
+
+  /**
+   * Handles agent export - TODO: Implement agent export
+   */
+  const handleExportAgent = (agent: Agent) => {
+    console.log("Export agent:", agent.name);
+    // TODO: Implement agent export logic
+  };
+
+  /**
+   * Handles agent deletion - TODO: Implement agent deletion
+   */
+  const handleDeleteAgent = (agent: Agent) => {
+    console.log("Delete agent:", agent.name);
+    // TODO: Implement agent deletion logic
+  };
+
+  /**
+   * Handles agent creation - TODO: Implement agent creation
+   */
+  const handleCreateAgent = () => {
+    console.log("Create agent");
+    // TODO: Implement agent creation logic
+  };
+
+  /**
+   * Handles agent import - TODO: Implement agent import
+   */
+  const handleImportAgent = () => {
+    console.log("Import agent");
+    // TODO: Implement agent import logic
   };
 
 

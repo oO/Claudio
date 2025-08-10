@@ -409,12 +409,12 @@ export const TimelineNavigator: React.FC<TimelineNavigatorProps> = ({
   return (
     <div className={cn("space-y-4", className)}>
       {/* Experimental Feature Warning */}
-      <div className="rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-3">
+      <div className="rounded-lg border border-yellow-600/50 bg-yellow-600/10 dark:border-yellow-400/50 dark:bg-yellow-400/10 p-3">
         <div className="flex items-start gap-2">
-          <AlertCircle className="h-4 w-4 text-yellow-600 mt-0.5" />
+          <AlertCircle className="h-4 w-4 text-yellow-700 dark:text-yellow-300 mt-0.5" />
           <div className="text-xs">
-            <p className="font-medium text-yellow-600">Experimental Feature</p>
-            <p className="text-yellow-600/80">
+            <p className="font-medium text-yellow-700 dark:text-yellow-300">Experimental Feature</p>
+            <p className="text-yellow-600 dark:text-yellow-400">
               Checkpointing may affect directory structure or cause data loss. Use with caution.
             </p>
           </div>
@@ -532,13 +532,13 @@ export const TimelineNavigator: React.FC<TimelineNavigatorProps> = ({
                 <Card>
                   <CardContent className="p-3">
                     <div className="text-xs text-muted-foreground">Added Files</div>
-                    <div className="text-2xl font-bold text-green-600">{diff.addedFiles.length}</div>
+                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">{diff.addedFiles.length}</div>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="p-3">
                     <div className="text-xs text-muted-foreground">Deleted Files</div>
-                    <div className="text-2xl font-bold text-red-600">{diff.deletedFiles.length}</div>
+                    <div className="text-2xl font-bold text-red-600 dark:text-red-400">{diff.deletedFiles.length}</div>
                   </CardContent>
                 </Card>
               </div>
@@ -559,8 +559,8 @@ export const TimelineNavigator: React.FC<TimelineNavigatorProps> = ({
                       <div key={file.path} className="flex items-center justify-between text-xs">
                         <span className="font-mono">{file.path}</span>
                         <div className="flex items-center gap-2 text-xs">
-                          <span className="text-green-600">+{file.additions}</span>
-                          <span className="text-red-600">-{file.deletions}</span>
+                          <span className="text-green-600 dark:text-green-400">+{file.additions}</span>
+                          <span className="text-red-600 dark:text-red-400">-{file.deletions}</span>
                         </div>
                       </div>
                     ))}
@@ -573,7 +573,7 @@ export const TimelineNavigator: React.FC<TimelineNavigatorProps> = ({
                   <h4 className="text-sm font-medium mb-2">Added Files</h4>
                   <div className="space-y-1">
                     {diff.addedFiles.map((file) => (
-                      <div key={file} className="text-xs font-mono text-green-600">
+                      <div key={file} className="text-xs font-mono text-green-600 dark:text-green-400">
                         + {file}
                       </div>
                     ))}
@@ -586,7 +586,7 @@ export const TimelineNavigator: React.FC<TimelineNavigatorProps> = ({
                   <h4 className="text-sm font-medium mb-2">Deleted Files</h4>
                   <div className="space-y-1">
                     {diff.deletedFiles.map((file) => (
-                      <div key={file} className="text-xs font-mono text-red-600">
+                      <div key={file} className="text-xs font-mono text-red-600 dark:text-red-400">
                         - {file}
                       </div>
                     ))}

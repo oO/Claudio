@@ -1,6 +1,7 @@
 import React from "react";
 import { FileText } from "lucide-react";
 import { ReadResultWidget } from "./ReadResultWidget";
+import { DebugLabel } from "@/components/ui/atoms";
 
 /**
  * Widget for Read tool
@@ -24,8 +25,9 @@ export const ReadWidget: React.FC<{ filePath: string; result?: any }> = ({ fileP
     }
     
     return (
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
+      <div className="space-y-1 relative">
+        <DebugLabel label="ReadWidget" />
+        <div className="flex items-center gap-2 rounded-lg bg-muted/50">
           <FileText className="h-4 w-4 text-primary" />
           <span className="text-sm">File content:</span>
           <code className="text-sm font-mono bg-background px-2 py-0.5 rounded flex-1 truncate">
@@ -38,7 +40,8 @@ export const ReadWidget: React.FC<{ filePath: string; result?: any }> = ({ fileP
   }
   
   return (
-    <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
+    <div className="flex items-center gap-2 rounded-lg bg-muted/50 relative">
+      <DebugLabel label="ReadWidget" />
       <FileText className="h-4 w-4 text-primary" />
       <span className="text-sm">Reading file:</span>
       <code className="text-sm font-mono bg-background px-2 py-0.5 rounded flex-1 truncate">

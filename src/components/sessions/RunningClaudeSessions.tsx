@@ -98,7 +98,7 @@ export const RunningClaudeSessions: React.FC<RunningClaudeSessionsProps> = ({
     <div className={cn("space-y-3", className)}>
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-1">
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+          <div className="w-2 h-2 bg-green-500 dark:bg-green-400 rounded-full animate-pulse" />
           <h3 className="text-sm font-medium">Active Claude Sessions</h3>
         </div>
         <span className="text-xs text-muted-foreground">

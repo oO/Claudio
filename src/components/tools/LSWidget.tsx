@@ -1,6 +1,7 @@
 import React from "react";
 import { FolderOpen } from "lucide-react";
 import { LSResultWidget } from "./LSResultWidget";
+import { DebugLabel } from "@/components/ui/atoms";
 
 /**
  * Widget for LS (List Directory) tool
@@ -24,7 +25,8 @@ export const LSWidget: React.FC<{ path: string; result?: any }> = ({ path, resul
     }
     
     return (
-      <div className="space-y-2">
+      <div className="space-y-2 relative">
+        <DebugLabel label="LSWidget" />
         <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
           <FolderOpen className="h-4 w-4 text-primary" />
           <span className="text-sm">Directory contents for:</span>

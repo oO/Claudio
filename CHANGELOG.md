@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.7] - 2025-08-10
+
+### Added
+- Debug mode system with persistent localStorage toggle for component identification
+- Debug mode toggle in Settings → Advanced section for easy UI access
+- DebugLabel atomic component with dedicated CSS class styling
+- Debug labels for all major session and tool widgets (AssistantMessage, UserMessage, GrepWidget, etc.)
+
+### Changed
+- Renamed TaskWidget → SubAgentTaskWidget for clearer distinction from task lists
+- Replaced TodoWidget with TasksWidget using clean bullet list format instead of table rows
+- Improved markdown spacing in message cards with tighter prose styling
+- Optimized collapsible widget performance by limiting rendered content vs CSS overflow
+
+### Fixed
+- Theme compatibility issues across multiple tool widgets (hardcoded colors → theme-aware)
+- Syntax highlighting theme detection for better contrast in both light/dark modes
+- Icon weight consistency between user (CircleUser) and assistant (Bot) message icons
+
 ## [0.3.6] - 2025-08-09
 
 ### Fixed

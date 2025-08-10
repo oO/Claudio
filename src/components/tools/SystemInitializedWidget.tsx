@@ -27,6 +27,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { DebugLabel } from "@/components/ui/atoms";
 
 /**
  * Widget for displaying system initialization information in a visually appealing way
@@ -109,7 +110,8 @@ export const SystemInitializedWidget: React.FC<{
   }, {} as Record<string, string[]>);
   
   return (
-    <Card className="border-blue-500/20 bg-blue-500/5">
+    <Card className="border-blue-500/20 bg-blue-500/5 relative">
+      <DebugLabel label="SystemInitializedWidget" />
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
           <Settings className="h-5 w-5 text-blue-500 mt-0.5" />

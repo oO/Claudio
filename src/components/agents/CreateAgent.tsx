@@ -8,7 +8,7 @@ import { Toast, ToastContainer } from "@/components/ui/toast";
 import { api, type Agent } from "@/lib/api";
 import { AGENT_COLORS, LEGACY_AGENT_COLORS, getAgentColor, type AgentColorName } from "@/lib/agentColors";
 import { cn } from "@/lib/utils";
-import MDEditor from "@uiw/react-md-editor";
+import { ThemedMDEditor } from "@/components/ui";
 import { ExampleEditor, type Example } from "@/components/common";
 
 // Atomic Design System imports
@@ -95,7 +95,16 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
 }) => {
   const [name, setName] = useState(agent?.name || "");
   const [description, setDescription] = useState(agent?.description || "");
-  const [color, setColor] = useState<AgentColorName>(agent?.color as AgentColorName || "Blue");
+  // Ensure the color is valid - fallback to Blue if the agent color doesn't match our types
+  const getValidColor = (colorValue?: string): AgentColorName => {
+    const validColors: AgentColorName[] = ['Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Orange', 'Pink', 'Cyan'];
+    if (colorValue && validColors.includes(colorValue as AgentColorName)) {
+      return colorValue as AgentColorName;
+    }
+    return "Blue";
+  };
+  
+  const [color, setColor] = useState<AgentColorName>(getValidColor(agent?.color));
   const [systemPrompt, setSystemPrompt] = useState(agent?.system_prompt || "");
   const [model, setModel] = useState(agent?.model || "inherit");
   const [saving, setSaving] = useState(false);
@@ -358,7 +367,7 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
                     Edit the{' '}
                     <span className={cn(
                       "px-2 py-1 rounded text-white text-sm",
-                      color && getAgentColor(color).solidClass
+                      getAgentColor(color || "Blue").solidClass
                     )}>
                       {name || agent?.name}
                     </span>
@@ -519,15 +528,11 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
                 <p className="text-xs text-muted-foreground mb-2">
                   Define the behavior and capabilities of your CC Agent
                 </p>
-                <div className="rounded-lg border border-border overflow-hidden shadow-sm" data-color-mode="dark">
-                  <MDEditor
-                    value={systemPrompt}
-                    onChange={(val) => setSystemPrompt(val || "")}
-                    preview="edit"
-                    height={400}
-                    visibleDragbar={false}
-                  />
-                </div>
+                <ThemedMDEditor
+                  value={systemPrompt}
+                  onChange={(val) => setSystemPrompt(val || "")}
+                  height={400}
+                />
               </div>
             </div>
           </motion.div>
@@ -550,7 +555,7 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
     isOpen={showColorPicker}
     selectedColor={color}
     colors={LEGACY_AGENT_COLORS}
-    onColorSelect={setColor}
+    onColorSelect={(color: string) => setColor(color as AgentColorName)}
     onClose={() => setShowColorPicker(false)}
     title="Choose Agent Color"
   />

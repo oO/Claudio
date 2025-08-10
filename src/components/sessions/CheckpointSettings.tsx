@@ -147,12 +147,12 @@ export const CheckpointSettings: React.FC<CheckpointSettingsProps> = ({
       </div>
 
       {/* Experimental Feature Warning */}
-      <div className="rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-3">
+      <div className="rounded-lg border border-yellow-600/50 bg-yellow-600/10 dark:border-yellow-400/50 dark:bg-yellow-400/10 p-3">
         <div className="flex items-start gap-2">
-          <AlertCircle className="h-4 w-4 text-yellow-600 mt-0.5" />
+          <AlertCircle className="h-4 w-4 text-yellow-700 dark:text-yellow-300 mt-0.5" />
           <div className="text-xs">
-            <p className="font-medium text-yellow-600">Experimental Feature</p>
-            <p className="text-yellow-600/80">
+            <p className="font-medium text-yellow-700 dark:text-yellow-300">Experimental Feature</p>
+            <p className="text-yellow-600 dark:text-yellow-400">
               Checkpointing may affect directory structure or cause data loss. Use with caution.
             </p>
           </div>
@@ -176,7 +176,7 @@ export const CheckpointSettings: React.FC<CheckpointSettingsProps> = ({
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="rounded-lg border border-green-500/50 bg-green-500/10 p-3 text-xs text-green-600"
+          className="rounded-lg border border-green-600/50 bg-green-600/10 dark:border-green-400/50 dark:bg-green-400/10 p-3 text-xs text-green-600 dark:text-green-400"
         >
           {successMessage}
         </motion.div>

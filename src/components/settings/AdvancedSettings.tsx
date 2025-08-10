@@ -1,7 +1,24 @@
 import React from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { useDebug } from "@/hooks";
 import type { ClaudeSettings } from "@/lib/api";
+
+/**
+ * Debug Mode Toggle Component
+ */
+const DebugModeToggle: React.FC = () => {
+  const { isDebugMode, toggleDebug } = useDebug();
+
+  return (
+    <Switch
+      id="debugMode"
+      checked={isDebugMode}
+      onCheckedChange={toggleDebug}
+    />
+  );
+};
 
 interface AdvancedSettingsProps {
   settings: ClaudeSettings | null;
@@ -21,6 +38,19 @@ export const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
         </p>
       </div>
       
+      {/* Debug Mode Toggle */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <Label htmlFor="debugMode">Debug Mode</Label>
+            <p className="text-xs text-muted-foreground">
+              Show component labels for debugging UI issues
+            </p>
+          </div>
+          <DebugModeToggle />
+        </div>
+      </div>
+
       {/* API Key Helper */}
       <div className="space-y-2">
         <Label htmlFor="apiKeyHelper">API Key Helper Script</Label>

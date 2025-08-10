@@ -61,10 +61,10 @@ export const CommandOutputWidget: React.FC<{
   };
 
   return (
-    <div className="rounded-lg border bg-zinc-950/50 overflow-hidden">
-      <div className="px-4 py-2 bg-zinc-900/50 flex items-center gap-2">
-        <ChevronRight className="h-3 w-3 text-green-500" />
-        <span className="text-xs font-mono text-green-400">Output</span>
+    <div className="rounded-lg border bg-card overflow-hidden">
+      <div className="px-4 py-2 bg-muted/30 flex items-center gap-2">
+        <ChevronRight className="h-3 w-3 text-green-600 dark:text-green-400" />
+        <span className="text-xs font-mono text-green-700 dark:text-green-300">Output</span>
       </div>
       <div className="p-3">
         <pre className="text-sm font-mono text-zinc-300 whitespace-pre-wrap">

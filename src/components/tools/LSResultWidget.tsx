@@ -131,7 +131,7 @@ export const LSResultWidget: React.FC<{ content: string }> = ({ content }) => {
           return <FileCode className="h-3.5 w-3.5 text-cyan-500" />;
         case 'sh':
         case 'bash':
-          return <Terminal className="h-3.5 w-3.5 text-green-500" />;
+          return <Terminal className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />;
         default:
           return <FileText className="h-3.5 w-3.5 text-muted-foreground" />;
       }

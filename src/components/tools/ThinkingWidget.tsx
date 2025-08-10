@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Bot, Sparkles, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DebugLabel } from "@/components/ui/atoms";
 
 /**
  * Widget for displaying AI thinking/reasoning content
@@ -16,7 +17,8 @@ export const ThinkingWidget: React.FC<{
   const trimmedThinking = thinking.trim();
   
   return (
-    <div className="rounded-lg border border-gray-500/20 bg-gray-500/5 overflow-hidden">
+    <div className="rounded-lg border border-gray-500/20 bg-gray-500/5 overflow-hidden relative">
+      <DebugLabel label="ThinkingWidget" />
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-500/10 transition-colors"

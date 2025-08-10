@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
-import MDEditor from "@uiw/react-md-editor";
 import { motion } from "framer-motion";
 import { Save, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Toast, ToastContainer } from "@/components/ui/toast";
+import { ThemedMDEditor } from "@/components/ui";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -112,15 +112,10 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="h-full rounded-lg border border-border overflow-hidden shadow-sm" data-color-mode="dark">
-              <MDEditor
-                value={content}
-                onChange={(val) => setContent(val || "")}
-                preview="edit"
-                height="100%"
-                visibleDragbar={false}
-              />
-            </div>
+            <ThemedMDEditor
+              value={content}
+              onChange={(val) => setContent(val || "")}
+            />
           )}
         </div>
       </div>

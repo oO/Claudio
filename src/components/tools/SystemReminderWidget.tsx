@@ -1,6 +1,7 @@
 import React from "react";
 import { Info, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DebugLabel } from "@/components/ui/atoms";
 
 /**
  * Widget for displaying system reminders (instead of raw XML)
@@ -19,7 +20,8 @@ export const SystemReminderWidget: React.FC<{ message: string }> = ({ message })
   }
   
   return (
-    <div className={cn("flex items-start gap-2 p-3 rounded-md border", colorClass)}>
+    <div className={cn("flex items-start gap-2 p-3 rounded-md border relative", colorClass)}>
+      <DebugLabel label="SystemReminderWidget" />
       <div className="mt-0.5">{icon}</div>
       <div className="flex-1 text-sm">{message}</div>
     </div>

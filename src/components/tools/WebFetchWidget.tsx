@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { open } from "@tauri-apps/plugin-shell";
+import { DebugLabel } from "@/components/ui/atoms";
 
 /**
  * Widget for WebFetch tool - displays URL fetching with optional prompts
@@ -74,7 +75,8 @@ export const WebFetchWidget: React.FC<{
   };
   
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 relative">
+      <DebugLabel label="WebFetchWidget" />
       {/* Header with URL and optional prompt */}
       <div className="space-y-2">
         {/* URL Display */}

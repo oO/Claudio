@@ -72,7 +72,7 @@ export const ToolResultRenderer: React.FC<ToolResultProps> = ({
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4 text-green-500" />
+          <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
           <span className="text-sm font-medium">Tool Result</span>
         </div>
         
@@ -105,7 +105,7 @@ export const ToolResultRenderer: React.FC<ToolResultProps> = ({
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4 text-green-500" />
+          <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
           <span className="text-sm font-medium">Edit Result</span>
         </div>
         <EditResultWidget content={contentText} />
@@ -121,7 +121,7 @@ export const ToolResultRenderer: React.FC<ToolResultProps> = ({
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4 text-green-500" />
+          <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
           <span className="text-sm font-medium">MultiEdit Result</span>
         </div>
         <MultiEditResultWidget content={contentText} />
@@ -167,7 +167,7 @@ export const ToolResultRenderer: React.FC<ToolResultProps> = ({
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4 text-green-500" />
+          <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
           <span className="text-sm font-medium">Directory Contents</span>
         </div>
         <LSResultWidget content={contentText} />
@@ -201,7 +201,7 @@ export const ToolResultRenderer: React.FC<ToolResultProps> = ({
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4 text-green-500" />
+          <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
           <span className="text-sm font-medium">Read Result</span>
         </div>
         <ReadResultWidget content={contentText} filePath={filePath} />
@@ -225,7 +225,7 @@ export const ToolResultRenderer: React.FC<ToolResultProps> = ({
         {isError ? (
           <AlertCircle className="h-4 w-4 text-destructive" />
         ) : (
-          <CheckCircle2 className="h-4 w-4 text-green-500" />
+          <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
         )}
         <span className="text-sm font-medium">Tool Result</span>
       </div>

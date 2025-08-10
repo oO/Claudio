@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { getClaudeSyntaxTheme } from "@/lib/claudeSyntaxTheme";
 import { useTheme } from "@/hooks";
+import { DebugLabel } from "@/components/ui/atoms";
 import * as Diff from 'diff';
 
 const getLanguage = (path: string) => {
@@ -66,7 +67,8 @@ export const EditWidget: React.FC<{
   const language = getLanguage(file_path);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 relative">
+      <DebugLabel label="EditWidget" />
       <div className="flex items-center gap-2 mb-2">
         <FileEdit className="h-4 w-4 text-primary" />
         <span className="text-sm font-medium">Applying Edit to:</span>
@@ -75,7 +77,7 @@ export const EditWidget: React.FC<{
         </code>
       </div>
 
-      <div className="rounded-lg border bg-zinc-950 overflow-hidden text-xs font-mono">
+      <div className="rounded-lg border bg-card overflow-hidden text-xs font-mono">
         <div className="max-h-[440px] overflow-y-auto overflow-x-auto">
           {diffResult.map((part, index) => {
             const partClass = part.added 
@@ -97,7 +99,7 @@ export const EditWidget: React.FC<{
             return (
               <div key={index} className={cn(partClass, "flex")}>
                 <div className="w-8 select-none text-center flex-shrink-0">
-                  {part.added ? <span className="text-green-400">+</span> : part.removed ? <span className="text-red-400">-</span> : null}
+                  {part.added ? <span className="text-green-700 dark:text-green-300">+</span> : part.removed ? <span className="text-red-700 dark:text-red-300">-</span> : null}
                 </div>
                 <div className="flex-1">
                   <SyntaxHighlighter

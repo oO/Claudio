@@ -197,7 +197,6 @@
     --color-muted-foreground: rgba(255, 255, 255, 0.6);
     --color-accent: rgba(255, 255, 255, 0.1);
     --color-accent-foreground: rgba(255, 255, 255, 0.95);
-    --color-destructive-foreground: rgb(255, 255, 255);
     --color-border: rgba(255, 255, 255, 0.1);
     --color-input: rgba(255, 255, 255, 0.06);
     --color-ring: rgba(255, 255, 255, 0.2);
@@ -208,11 +207,8 @@
     --color-info: rgb(88, 166, 255);
     --color-info-foreground: rgb(0, 0, 0);
     --color-destructive: rgb(248, 81, 73);
-    --color-accent-alt: rgb(
-        217,
-        119,
-        87
-    ); /* Warm accent for highlights/shimmer */
+    --color-destructive-foreground: rgb(255, 255, 255);
+    --color-accent-alt: rgb(217, 119, 87); /* highlights/shimmer */
 }
 
 /* Light theme - RGBA values create optical mixing via alpha transparency */
@@ -230,7 +226,6 @@
     --color-muted-foreground: rgba(0, 0, 0, 0.55);
     --color-accent: rgba(0, 0, 0, 0.06);
     --color-accent-foreground: rgba(0, 0, 0, 0.9);
-    --color-destructive-foreground: rgb(255, 255, 255);
     --color-border: rgba(0, 0, 0, 0.1);
     --color-input: rgba(0, 0, 0, 0.04);
     --color-ring: rgba(0, 0, 0, 0.15);
@@ -241,6 +236,7 @@
     --color-info: rgb(9, 105, 218);
     --color-info-foreground: rgb(255, 255, 255);
     --color-destructive: rgb(207, 34, 46);
+    --color-destructive-foreground: rgb(255, 255, 255);
     --color-accent-alt: rgb(
         180,
         83,
@@ -445,6 +441,32 @@ button:focus-visible,
     color: var(--color-accent-foreground) !important;
 }
 
+.w-md-editor-toolbar button:active,
+.w-md-editor-toolbar button[data-active] {
+    background-color: var(--color-primary) !important;
+    color: var(--color-primary-foreground) !important;
+}
+
+/* Ensure good contrast for editor text input */
+.w-md-editor-text-pre .token.title,
+.w-md-editor-text-input .token.title {
+    color: var(--color-primary) !important;
+}
+
+.w-md-editor-text-pre .token.bold,
+.w-md-editor-text-input .token.bold {
+    color: var(--color-foreground) !important;
+    font-weight: bold !important;
+}
+
+.w-md-editor-text-pre .token.code,
+.w-md-editor-text-input .token.code {
+    background-color: var(--color-muted) !important;
+    color: var(--color-foreground) !important;
+    border-radius: 3px !important;
+    padding: 2px 4px !important;
+}
+
 .w-md-editor-content {
     background-color: var(--color-background) !important;
 }
@@ -463,6 +485,102 @@ button:focus-visible,
 .wmde-markdown {
     background-color: transparent !important;
     color: var(--color-foreground) !important;
+}
+
+/* Enhanced markdown editor theming for optimal contrast and readability */
+.wmde-markdown h1,
+.wmde-markdown h2,
+.wmde-markdown h3,
+.wmde-markdown h4,
+.wmde-markdown h5,
+.wmde-markdown h6 {
+    color: var(--color-foreground) !important;
+    border-color: var(--color-border) !important;
+}
+
+.wmde-markdown a {
+    color: var(--color-primary) !important;
+    text-decoration: underline !important;
+}
+
+.wmde-markdown a:hover {
+    color: var(--color-primary) !important;
+    opacity: 0.8;
+}
+
+.wmde-markdown blockquote {
+    color: var(--color-muted-foreground) !important;
+    border-left-color: var(--color-border) !important;
+    background-color: var(--color-muted) !important;
+}
+
+.wmde-markdown code {
+    background-color: var(--color-muted) !important;
+    color: var(--color-foreground) !important;
+    border: 1px solid var(--color-border) !important;
+}
+
+.wmde-markdown pre {
+    background-color: var(--color-card) !important;
+    border: 1px solid var(--color-border) !important;
+}
+
+.wmde-markdown pre code {
+    background-color: transparent !important;
+    border: none !important;
+}
+
+.wmde-markdown table {
+    border-color: var(--color-border) !important;
+}
+
+.wmde-markdown th,
+.wmde-markdown td {
+    border-color: var(--color-border) !important;
+    background-color: var(--color-card) !important;
+}
+
+.wmde-markdown th {
+    background-color: var(--color-muted) !important;
+}
+
+.wmde-markdown hr {
+    border-color: var(--color-border) !important;
+}
+
+.wmde-markdown em,
+.wmde-markdown i {
+    color: var(--color-muted-foreground) !important;
+}
+
+.wmde-markdown strong,
+.wmde-markdown b {
+    color: var(--color-foreground) !important;
+    font-weight: bold !important;
+}
+
+.wmde-markdown ul,
+.wmde-markdown ol {
+    color: var(--color-foreground) !important;
+}
+
+.wmde-markdown li {
+    color: var(--color-foreground) !important;
+}
+
+/* Ensure input areas have proper contrast */
+.w-md-editor-text-input {
+    caret-color: var(--color-primary) !important;
+}
+
+.w-md-editor-text-input::placeholder {
+    color: var(--color-muted-foreground) !important;
+}
+
+/* Focus states for better accessibility */
+.w-md-editor-text-input:focus {
+    outline: 2px solid var(--color-ring) !important;
+    outline-offset: -1px !important;
 }
 
 /* Prose styles - integrated with unified theme system */
@@ -703,36 +821,44 @@ button:focus-visible,
     color: rgb(var(--agent-color));
 }
 
-/* Solid versions for buttons/previews */
+/* Solid versions for buttons/previews - with complete color definitions */
 .agent-red-solid {
+    --agent-color: 239, 68, 68; /* red-500 */
     background-color: rgb(var(--agent-color));
     color: white;
 }
 .agent-blue-solid {
+    --agent-color: 59, 130, 246; /* blue-500 */
     background-color: rgb(var(--agent-color));
     color: white;
 }
 .agent-green-solid {
+    --agent-color: 34, 197, 94; /* green-500 */
     background-color: rgb(var(--agent-color));
     color: white;
 }
 .agent-yellow-solid {
+    --agent-color: 234, 179, 8; /* yellow-500 */
     background-color: rgb(var(--agent-color));
     color: black;
 }
 .agent-purple-solid {
+    --agent-color: 168, 85, 247; /* purple-500 */
     background-color: rgb(var(--agent-color));
     color: white;
 }
 .agent-orange-solid {
+    --agent-color: 249, 115, 22; /* orange-500 */
     background-color: rgb(var(--agent-color));
     color: white;
 }
 .agent-pink-solid {
+    --agent-color: 236, 72, 153; /* pink-500 */
     background-color: rgb(var(--agent-color));
     color: white;
 }
 .agent-cyan-solid {
+    --agent-color: 6, 182, 212; /* cyan-500 */
     background-color: rgb(var(--agent-color));
     color: white;
 }
@@ -1026,14 +1152,14 @@ code::-webkit-scrollbar {
 pre::-webkit-scrollbar-thumb,
 .w-md-editor-content::-webkit-scrollbar-thumb,
 code::-webkit-scrollbar-thumb {
-    background-color: rgba(156, 163, 175, 0.4);
+    background-color: var(--color-muted);
     border-radius: 4px;
 }
 
 pre::-webkit-scrollbar-thumb:hover,
 .w-md-editor-content::-webkit-scrollbar-thumb:hover,
 code::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(156, 163, 175, 0.6);
+    background-color: var(--color-border);
 }
 
 /* NFO Credits Scanlines Animation */
@@ -1085,4 +1211,27 @@ code::-webkit-scrollbar-thumb:hover {
 
 .image-move-to-input {
     animation: moveToInput 0.8s ease-in-out forwards;
+}
+
+/* Debug Label - Controls all debug label styling */
+.debug-label {
+    position: absolute;
+    top: 0.5rem; /* top-1 */
+    right: 0; /* right-1 */
+    font-size: 9px; /* text-[8px] */
+    color: var(--color-destructive-foreground);
+    background-color: var(--color-destructive);
+    padding: 0.125rem 0.25rem; /* px-1 py-0.5 */
+    border-radius: 0.25rem 0 0 0.25rem; /* rounded */
+    z-index: 10;
+    font-family: var(--font-mono);
+    font-weight: 800;
+    pointer-events: none;
+    user-select: none;
+    transition: opacity 0.2s ease;
+}
+
+/* Make debug labels slightly more visible on hover */
+.debug-label:hover {
+    opacity: 1;
 }

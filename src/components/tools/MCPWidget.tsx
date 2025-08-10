@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { getClaudeSyntaxTheme } from "@/lib/claudeSyntaxTheme";
 import { useTheme } from "@/hooks";
+import { DebugLabel } from "@/components/ui/atoms";
 
 /**
  * Widget for MCP (Model Context Protocol) tools
@@ -64,7 +65,8 @@ export const MCPWidget: React.FC<{
   const inputTokens = hasInput ? estimateTokens(inputString) : 0;
 
   return (
-    <div className="rounded-lg border border-violet-500/20 bg-gradient-to-br from-violet-500/5 to-purple-500/5 overflow-hidden">
+    <div className="rounded-lg border border-violet-500/20 bg-gradient-to-br from-violet-500/5 to-purple-500/5 overflow-hidden relative">
+      <DebugLabel label="MCPWidget" />
       {/* Header */}
       <div className="px-4 py-3 bg-gradient-to-r from-violet-500/10 to-purple-500/10 border-b border-violet-500/20">
         <div className="flex items-center justify-between">

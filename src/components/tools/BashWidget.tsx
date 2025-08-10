@@ -1,6 +1,7 @@
 import React from "react";
 import { Terminal, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DebugLabel } from "@/components/ui/atoms";
 
 /**
  * Widget for Bash tool
@@ -32,9 +33,10 @@ export const BashWidget: React.FC<{
   }
   
   return (
-    <div className="rounded-lg border bg-zinc-950 overflow-hidden">
-      <div className="px-4 py-2 bg-zinc-900/50 flex items-center gap-2 border-b">
-        <Terminal className="h-3.5 w-3.5 text-green-500" />
+    <div className="rounded-lg border bg-card overflow-hidden relative">
+      <DebugLabel label="BashWidget" />
+      <div className="px-4 py-2 bg-muted/30 flex items-center gap-2 border-b">
+        <Terminal className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
         <span className="text-xs font-mono text-muted-foreground">Terminal</span>
         {description && (
           <>
@@ -45,13 +47,13 @@ export const BashWidget: React.FC<{
         {/* Show loading indicator when no result yet */}
         {!result && (
           <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
-            <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+            <div className="h-2 w-2 bg-green-600 dark:bg-green-400 rounded-full animate-pulse" />
             <span>Running...</span>
           </div>
         )}
       </div>
       <div className="p-4 space-y-3">
-        <code className="text-xs font-mono text-green-400 block">
+        <code className="text-xs font-mono text-green-700 dark:text-green-300 block">
           $ {command}
         </code>
         
@@ -61,7 +63,7 @@ export const BashWidget: React.FC<{
             "mt-3 p-3 rounded-md border text-xs font-mono whitespace-pre-wrap overflow-x-auto",
             isError 
               ? "border-red-500/20 bg-red-500/5 text-red-400" 
-              : "border-green-500/20 bg-green-500/5 text-green-300"
+              : "border-green-500/20 bg-green-500/5 text-green-700 dark:text-green-300"
           )}>
             {resultContent || (isError ? "Command failed" : "Command completed")}
           </div>

@@ -66,6 +66,15 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     <div className={cn(
       "prose dark:prose-invert max-w-none",
       compact ? "prose-sm" : "prose-base",
+      // Fix spacing issues - target specific elements causing excessive spacing
+      "prose-p:my-1 prose-p:leading-normal",
+      "prose-ul:my-1 prose-ol:my-1",
+      "prose-li:my-0.5 prose-li:leading-normal",
+      "prose-h1:my-1 prose-h2:my-1 prose-h3:my-1 prose-h4:my-1 prose-h5:my-1 prose-h6:my-1",
+      "prose-blockquote:my-1",
+      "prose-pre:my-1",
+      // Specifically target list item content and nested paragraphs
+      "prose-li:prose-p:my-0.5",
       className
     )}>
       <ReactMarkdown

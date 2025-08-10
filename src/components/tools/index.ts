@@ -20,8 +20,8 @@ export { CommandOutputWidget } from './CommandOutputWidget';
 export { MCPWidget } from './MCPWidget';
 
 // Task Management Widgets
-export { TodoWidget } from './TodoWidget';
-export { TaskWidget } from './TaskWidget';
+export { TasksWidget } from './TasksWidget';
+export { SubAgentTaskWidget } from './SubAgentTaskWidget';
 export { TodoReadWidget } from './TodoReadWidget';
 
 // Web & Search Widgets

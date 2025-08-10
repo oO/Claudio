@@ -1,7 +1,7 @@
 import React from "react";
 import { Terminal } from "lucide-react";
 import { 
-  TodoWidget,
+  TasksWidget,
   TodoReadWidget,
   LSWidget,
   ReadWidget,
@@ -11,7 +11,7 @@ import {
   GrepWidget,
   EditWidget,
   MCPWidget,
-  TaskWidget,
+  SubAgentTaskWidget,
   ThinkingWidget,
   WebSearchWidget,
   WebFetchWidget,
@@ -73,7 +73,7 @@ export const ToolCallRenderer: React.FC<ToolCallRendererProps> = ({
     
     // Task tool - for sub-agent tasks
     if (toolName === "task" && input) {
-      return <TaskWidget description={input.description} prompt={input.prompt} result={toolResult} />;
+      return <SubAgentTaskWidget description={input.description} prompt={input.prompt} result={toolResult} />;
     }
     
     // Edit tool
@@ -93,7 +93,7 @@ export const ToolCallRenderer: React.FC<ToolCallRendererProps> = ({
     
     // TodoWrite tool
     if (toolName === "todowrite" && input?.todos) {
-      return <TodoWidget todos={input.todos} result={toolResult} />;
+      return <TasksWidget todos={input.todos} result={toolResult} />;
     }
     
     // TodoRead tool
