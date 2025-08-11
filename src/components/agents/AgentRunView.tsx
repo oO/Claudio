@@ -17,7 +17,7 @@ import { Popover } from "@/components/ui/popover";
 import { api, type AgentRunWithMetrics } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { formatISOTimestamp } from "@/lib/date-utils";
-import { StreamMessage } from "@/components/sessions";
+import { StreamMessage } from "@/components/sessions/StreamMessage";
 import { ICON_MAP as AGENT_ICONS, ErrorBoundary } from "@/components/common";
 import type { ClaudeStreamMessage } from "@/hooks/useAgentExecution";
 

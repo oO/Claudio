@@ -19,7 +19,7 @@ export const THEMES: ThemeDefinition[] = [
   {
     id: "cool_dark",
     name: "Cool Dark",
-    backgroundColor: "rgb(41, 44, 50)",
+    backgroundColor: "rgb(41, 44, 55)",
     isDark: true,
   },
   {

@@ -42,8 +42,6 @@ export function useSessionState({
   const [forkCheckpointId, setForkCheckpointId] = useState<string | null>(null);
   const [forkSessionName, setForkSessionName] = useState("");
   
-  // Slash commands state
-  const [showSlashCommandsSettings, setShowSlashCommandsSettings] = useState(false);
   
   // Queued prompts state
   const [queuedPrompts, setQueuedPrompts] = useState<Array<{ id: string; prompt: string; model: "sonnet" | "opus" }>>([]);
@@ -390,8 +388,6 @@ export function useSessionState({
     setForkCheckpointId,
     forkSessionName,
     setForkSessionName,
-    showSlashCommandsSettings,
-    setShowSlashCommandsSettings,
     
     // Queue state
     queuedPrompts,

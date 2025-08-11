@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   FileText,
   MessagesSquare,
   Bot,
   Lock,
+  Command,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,7 @@ import {
   ProjectToolsTab,
   ProjectDeleteDialog,
 } from "@/components/projects";
+import { SlashCommandsManager } from "@/components/common";
 
 interface ProjectDetailProps {
   /**
@@ -32,13 +34,21 @@ interface ProjectDetailProps {
    */
   projectId: string;
   /**
+   * Initial active tab (used for restoration)
+   */
+  initialActiveTab?: string;
+  /**
+   * Callback when active tab changes (for state preservation)
+   */
+  onActiveTabChange?: (activeTab: string) => void;
+  /**
    * Callback when a session is clicked
    */
   onSessionClick?: (session: Session) => void;
   /**
    * Callback when editing a CLAUDE.md file
    */
-  onEditClaudeFile?: (file: ClaudeMdFile) => void;
+  onEditClaudeFile?: (file: ClaudeMdFile, activeTab: string) => void;
   /**
    * Callback when executing an agent
    */
@@ -46,7 +56,7 @@ interface ProjectDetailProps {
   /**
    * Callback when editing an agent
    */
-  onEditAgent?: (agent: Agent) => void;
+  onEditAgent?: (agent: Agent, activeTab: string) => void;
   /**
    * Callback when exporting an agent
    */
@@ -86,6 +96,8 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
   sessions,
   projectPath,
   projectId,
+  initialActiveTab = "sessions",
+  onActiveTabChange,
   onSessionClick,
   onEditClaudeFile,
   onExecuteAgent,
@@ -98,10 +110,18 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
   onProjectDeleted,
   className,
 }) => {
-  const [activeTab, setActiveTab] = useState("sessions");
+  const [activeTab, setActiveTab] = useState(initialActiveTab);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  // Update activeTab when initialActiveTab changes (for restoration)
+  useEffect(() => {
+    if (initialActiveTab && initialActiveTab !== activeTab) {
+      setActiveTab(initialActiveTab);
+    }
+  }, [initialActiveTab]);
   const [sessionToDelete, setSessionToDelete] = useState<Session | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const handleSessionDelete = (session: Session) => {
     setSessionToDelete(session);
@@ -134,11 +154,15 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
     setSessionToDelete(null);
   };
 
+
   return (
     <div className={cn("space-y-6 relative", className)}>
       <DebugLabel label="ProjectDetail" />
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full max-w-2xl grid-cols-4">
+      <Tabs value={activeTab} onValueChange={(value) => {
+        setActiveTab(value);
+        onActiveTabChange?.(value);
+      }} className="w-full">
+        <TabsList className="grid w-full max-w-2xl grid-cols-5">
           <TabsTrigger value="sessions" className="gap-2">
             <MessagesSquare className="h-4 w-4" />
             Sessions
@@ -155,6 +179,10 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
             <Lock className="h-4 w-4" />
             Tools
           </TabsTrigger>
+          <TabsTrigger value="commands" className="gap-2">
+            <Command className="h-4 w-4" />
+            Commands
+          </TabsTrigger>
         </TabsList>
 
         {/* Sessions Tab */}
@@ -170,7 +198,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
         <TabsContent value="memories" className="mt-2">
           <ProjectMemoriesTab
             projectPath={projectPath}
-            onEditClaudeFile={onEditClaudeFile}
+            onEditClaudeFile={(file) => onEditClaudeFile?.(file, activeTab)}
           />
         </TabsContent>
 
@@ -179,7 +207,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
           <ProjectAgentsTab
             projectPath={projectPath}
             onExecuteAgent={onExecuteAgent}
-            onEditAgent={onEditAgent}
+            onEditAgent={(agent) => onEditAgent?.(agent, activeTab)}
             onExportAgent={onExportAgent}
             onDeleteAgent={onDeleteAgent}
             onCreateAgent={onCreateAgent}
@@ -190,6 +218,19 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
         {/* Tools Tab */}
         <TabsContent value="tools" className="mt-2">
           <ProjectToolsTab projectPath={projectPath} />
+        </TabsContent>
+
+        {/* Commands Tab */}
+        <TabsContent value="commands" className="mt-2">
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Slash Commands</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Manage project-specific slash commands for this project.
+              </p>
+            </div>
+            <SlashCommandsManager projectPath={projectPath} />
+          </div>
         </TabsContent>
       </Tabs>
 

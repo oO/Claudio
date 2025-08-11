@@ -4,7 +4,7 @@ import { RefreshCw } from "lucide-react";
 import { LoadingSpinner } from "@/components/ui/atoms/LoadingSpinner";
 import { StatusMessage } from "@/components/ui/molecules/StatusMessage";
 import { ScrollIndicator } from "@/components/ui/atoms/ScrollIndicator";
-import { StreamMessage } from "@/components/sessions";
+import { StreamMessage } from "@/components/sessions/StreamMessage";
 import { ErrorBoundary } from "@/components/common";
 import type { ClaudeStreamMessage } from "@/hooks/useAgentExecution";
 import { cn } from "@/lib/utils";

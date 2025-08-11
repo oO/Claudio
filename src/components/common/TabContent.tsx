@@ -3,6 +3,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTabState } from "@/hooks/useTabState";
 import { Tab } from "@/contexts/TabContext";
 import { LoadingSpinner } from "@/components/ui/atoms/LoadingSpinner";
+import { NavigationProvider } from "@/contexts/NavigationContext";
+import { ChatTabWrapper } from "./ChatTabWrapper";
+import { ClaudeFileTabWrapper } from "./ClaudeFileTabWrapper";
+import { CreateAgentTabWrapper } from "./CreateAgentTabWrapper";
 import { ProjectsTab } from "@/components/projects";
 import { AgentsTab } from "@/components/agents";
 import { SettingsTab } from "@/components/settings";
@@ -45,36 +49,53 @@ const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
   const renderContent = () => {
     switch (tab.type) {
       case "projects":
-        return <ProjectsTab tab={tab} isActive={isActive} />;
+        return (
+          <NavigationProvider tabId={tab.id}>
+            <ProjectsTab tab={tab} isActive={isActive} />
+          </NavigationProvider>
+        );
+
 
       case "agents":
-        return <AgentsTab tab={tab} isActive={isActive} />;
+        return (
+          <NavigationProvider tabId={tab.id}>
+            <AgentsTab tab={tab} isActive={isActive} />
+          </NavigationProvider>
+        );
 
       case "usage":
-        return <UsageTab tab={tab} isActive={isActive} />;
+        return (
+          <NavigationProvider tabId={tab.id}>
+            <UsageTab tab={tab} isActive={isActive} />
+          </NavigationProvider>
+        );
 
       case "mcp":
-        return <MCPTab tab={tab} isActive={isActive} />;
+        return (
+          <NavigationProvider tabId={tab.id}>
+            <MCPTab tab={tab} isActive={isActive} />
+          </NavigationProvider>
+        );
 
       case "settings":
-        return <SettingsTab tab={tab} isActive={isActive} />;
+        return (
+          <NavigationProvider tabId={tab.id}>
+            <SettingsTab tab={tab} isActive={isActive} />
+          </NavigationProvider>
+        );
 
       case "claude-md":
-        return <ClaudeMdTab tab={tab} isActive={isActive} />;
+        return (
+          <NavigationProvider tabId={tab.id}>
+            <ClaudeMdTab tab={tab} isActive={isActive} />
+          </NavigationProvider>
+        );
 
       case "chat":
         return (
-          <ClaudeCodeSession
-            session={tab.sessionData} // Pass the full session object if available
-            initialProjectPath={tab.initialProjectPath || tab.sessionId}
-            onBack={() => {
-              // Go back to projects view in the same tab
-              updateTab(tab.id, {
-                type: "projects",
-                title: "Projects",
-              });
-            }}
-          />
+          <NavigationProvider tabId={tab.id}>
+            <ChatTabWrapper tab={tab} />
+          </NavigationProvider>
         );
 
       case "agent":
@@ -82,104 +103,41 @@ const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
           return <div className="p-4">No agent run ID specified</div>;
         }
         return (
-          <AgentRunOutputViewer agentRunId={tab.agentRunId} tabId={tab.id} />
+          <NavigationProvider tabId={tab.id}>
+            <AgentRunOutputViewer agentRunId={tab.agentRunId} tabId={tab.id} />
+          </NavigationProvider>
         );
 
       case "claude-file":
-        if (!tab.claudeFileId) {
-          return <div className="p-4">No Claude file path specified</div>;
-        }
-        // Create a ClaudeMdFile object from the stored file path
-        const file = {
-          absolute_path: tab.claudeFileId,
-          relative_path: tab.title,
-          size: 0,
-          modified: 0,
-        };
-        // Import ClaudeFileEditor dynamically to avoid circular imports
-        const ClaudeFileEditor = lazy(() =>
-          import("@/components/claude").then((m) => ({
-            default: m.ClaudeFileEditor,
-          })),
-        );
         return (
-          <ClaudeFileEditor
-            file={file}
-            onBack={() => {
-              // Return to projects tab - the effect will handle restoring state
-              updateTab(tab.id, {
-                type: "projects",
-                title: tab.previousState?.title || "Projects",
-              });
-            }}
-          />
+          <NavigationProvider tabId={tab.id}>
+            <ClaudeFileTabWrapper tab={tab} />
+          </NavigationProvider>
         );
 
       case "agent-execution":
         if (!tab.agentData) {
           return <div className="p-4">No agent data specified</div>;
         }
-        return <AgentExecution agent={tab.agentData} onBack={() => {}} />;
+        return (
+          <NavigationProvider tabId={tab.id}>
+            <AgentExecution agent={tab.agentData} onBack={() => {}} />
+          </NavigationProvider>
+        );
 
       case "create-agent":
         return (
-          <CreateAgent
-            agent={tab.agentData} // Pass agent data for editing if available
-            onAgentCreated={() => {
-              // Handle navigation based on previous state
-              if (tab.previousState?.type === "project-detail") {
-                // Return to the project detail view
-                updateTab(tab.id, {
-                  type: "projects",
-                  title: tab.previousState.title || "Projects",
-                });
-              } else {
-                // Switch back to agents tab and close this one
-                const agentsTab = tabs.find((t) => t.type === "agents");
-                if (agentsTab) {
-                  window.dispatchEvent(
-                    new CustomEvent("switch-to-tab", {
-                      detail: { tabId: agentsTab.id },
-                    }),
-                  );
-                }
-                // Close this tab after agent is created/updated
-                window.dispatchEvent(
-                  new CustomEvent("close-tab", { detail: { tabId: tab.id } }),
-                );
-              }
-            }}
-            onBack={() => {
-              // Handle navigation based on previous state
-              if (tab.previousState?.type === "project-detail") {
-                // Return to the project detail view
-                updateTab(tab.id, {
-                  type: "projects",
-                  title: tab.previousState.title || "Projects",
-                });
-              } else {
-                // Switch back to agents tab
-                const agentsTab = tabs.find((t) => t.type === "agents");
-                if (agentsTab) {
-                  window.dispatchEvent(
-                    new CustomEvent("switch-to-tab", {
-                      detail: { tabId: agentsTab.id },
-                    }),
-                  );
-                }
-                // Close this tab when back is clicked
-                window.dispatchEvent(
-                  new CustomEvent("close-tab", { detail: { tabId: tab.id } }),
-                );
-              }
-            }}
-          />
+          <NavigationProvider tabId={tab.id}>
+            <CreateAgentTabWrapper tab={tab} />
+          </NavigationProvider>
         );
 
       case "import-agent":
         // TODO: Implement import agent component
         return (
-          <div className="p-4">Import agent functionality coming soon...</div>
+          <NavigationProvider tabId={tab.id}>
+            <div className="p-4">Import agent functionality coming soon...</div>
+          </NavigationProvider>
         );
 
       default:

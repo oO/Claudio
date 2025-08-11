@@ -118,8 +118,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     setForkCheckpointId,
     forkSessionName,
     setForkSessionName,
-    showSlashCommandsSettings,
-    setShowSlashCommandsSettings,
     queuedPrompts,
     setQueuedPrompts,
     queuedPromptsCollapsed,
@@ -340,8 +338,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
           onCopyAsJsonl={sessionActions.copyAsJsonl}
           onCopyAsMarkdown={sessionActions.copyAsMarkdown}
           onToggleTimeline={() => setShowTimeline(!showTimeline)}
-          onProjectSettings={onProjectSettings ? () => onProjectSettings(projectPath) : undefined}
-          onSlashCommandsSettings={() => setShowSlashCommandsSettings(true)}
           setCopyPopoverOpen={setCopyPopoverOpen}
         />
 
@@ -505,8 +501,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
         onConfirmFork={handleConfirmFork}
         showSettings={showSettings}
         onSettingsChange={setShowSettings}
-        showSlashCommandsSettings={showSlashCommandsSettings}
-        onSlashCommandsSettingsChange={setShowSlashCommandsSettings}
         effectiveSession={effectiveSession}
         projectPath={projectPath}
         isLoading={isLoading}

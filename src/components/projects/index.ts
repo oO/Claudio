@@ -11,3 +11,4 @@ export { ProjectMemoriesTab } from './ProjectMemoriesTab';
 export { ProjectAgentsTab } from './ProjectAgentsTab';
 export { ProjectToolsTab } from './ProjectToolsTab';
 export { ProjectDeleteDialog } from './ProjectDeleteDialog';
+export { SlashCommandsSettings } from './SlashCommandsSettings';

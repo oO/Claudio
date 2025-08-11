@@ -41,6 +41,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [activeProjectTab, setActiveProjectTab] = useState<string>("sessions");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [projectDeleteDialogOpen, setProjectDeleteDialogOpen] = useState(false);
@@ -83,6 +84,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   } | null>(null);
   const [ageRangeLoading, setAgeRangeLoading] = useState(false);
 
+
   // Track screen when tab becomes active
   useScreenTracking(
     isActive ? tab.type : undefined,
@@ -104,20 +106,19 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   // Load projects when tab becomes active and is of type 'projects'
   useEffect(() => {
     if (isActive && tab.type === "projects") {
-      // Check if we need to restore a previous state (like project detail view)
-      if (
-        tab.previousState?.type === "project-detail" &&
-        tab.previousState.selectedProject
-      ) {
-        setSelectedProject(tab.previousState.selectedProject);
-        setSessions(tab.previousState.sessions || []);
-        // Clear the previous state since we've restored it
-        updateTab(tab.id, { previousState: undefined });
+      // Check if we need to restore project state first
+      if (tab.restoreProjectState) {
+        setSelectedProject(tab.restoreProjectState.selectedProject);
+        setSessions(tab.restoreProjectState.sessions || []);
+        setActiveProjectTab(tab.restoreProjectState.activeTab || "sessions");
+        // Clear the restore state after using it
+        updateTab(tab.id, { restoreProjectState: undefined });
       } else {
         loadProjects();
       }
     }
-  }, [isActive, tab.type, tab.previousState]);
+  }, [isActive, tab.type, tab.restoreProjectState]);
+
 
   const loadProjects = async () => {
     try {
@@ -155,8 +156,10 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   };
 
   const handleBack = () => {
+    // Simple back navigation without navigation stack
     setSelectedProject(null);
     setSessions([]);
+    setActiveProjectTab("sessions"); // Reset to default
     // Restore tab title to "Projects"
     updateTab(tab.id, { title: "Projects" });
   };
@@ -491,31 +494,43 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                     sessions={sessions}
                     projectPath={selectedProject.path}
                     projectId={selectedProject.id}
+                    initialActiveTab={activeProjectTab}
+                    onActiveTabChange={setActiveProjectTab}
                     onSessionClick={(session) => {
-                      // Update tab to show this session
+                      // Update tab to show this session with proper previousState for back navigation
                       updateTab(tab.id, {
                         type: "chat",
-                        title:
-                          session.project_path.split("/").pop() || "Session",
+                        title: session.project_path.split("/").pop() || "Session",
                         sessionId: session.id,
                         sessionData: session, // Store full session object
                         initialProjectPath: session.project_path,
+                        // Store state to return to - this is the KEY fix!
+                        restoreProjectState: {
+                          selectedProject: selectedProject,
+                          sessions: sessions,
+                          activeTab: activeProjectTab,
+                        },
                       });
                     }}
-                    onEditClaudeFile={(file: ClaudeMdFile) => {
-                      // Open CLAUDE.md file in a new tab with return context
-                      window.dispatchEvent(
-                        new CustomEvent("open-claude-file", {
-                          detail: {
-                            file,
-                            returnContext: {
-                              type: "project-detail",
-                              selectedProject,
-                              sessions,
-                            },
-                          },
-                        }),
-                      );
+                    onEditClaudeFile={(file: ClaudeMdFile, currentActiveTab: string) => {
+                      // Open CLAUDE.md file in same tab with restore state
+                      updateTab(tab.id, {
+                        type: "claude-file",
+                        title: file.relative_path,
+                        claudeFileId: file.absolute_path,
+                        // Store state to return to
+                        restoreProjectState: {
+                          selectedProject: selectedProject,
+                          sessions: sessions,
+                          activeTab: currentActiveTab, // Preserve the current tab
+                        },
+                        previousState: {
+                          type: "projects",
+                          title: getProjectName(selectedProject.path),
+                          selectedProject: selectedProject,
+                          sessions: sessions,
+                        },
+                      });
                     }}
                     onExecuteAgent={(agent) => {
                       // Open agent execution in a new tab
@@ -525,23 +540,25 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                         }),
                       );
                     }}
-                    onEditAgent={(agent) => {
-                      // Open agent edit in a new tab with return context
-                      window.dispatchEvent(
-                        new CustomEvent("create-edit-agent-tab", {
-                          detail: {
-                            agent,
-                            returnContext: {
-                              type: "project-detail",
-                              title: selectedProject
-                                ? getProjectName(selectedProject.path)
-                                : "Projects",
-                              selectedProject,
-                              sessions,
-                            },
-                          },
-                        }),
-                      );
+                    onEditAgent={(agent, currentActiveTab: string) => {
+                      // Open agent edit in same tab with restore state
+                      updateTab(tab.id, {
+                        type: "create-agent",
+                        title: `Edit ${agent.name}`,
+                        agentData: agent,
+                        // Store state to return to
+                        restoreProjectState: {
+                          selectedProject: selectedProject,
+                          sessions: sessions,
+                          activeTab: currentActiveTab, // Preserve the current tab
+                        },
+                        previousState: {
+                          type: "projects",
+                          title: getProjectName(selectedProject.path),
+                          selectedProject: selectedProject,
+                          sessions: sessions,
+                        },
+                      });
                     }}
                     onExportAgent={(agent) => {
                       // Export project agent (same logic as personal agents)

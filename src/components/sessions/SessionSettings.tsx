@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CheckpointSettings } from './CheckpointSettings';
-import { SlashCommandsManager } from '@/components/common';
 import { DebugLabel } from '@/components/ui/atoms';
 import type { Session } from '@/lib/api';
 
@@ -21,9 +20,6 @@ interface SessionSettingsProps {
   showSettings: boolean;
   onSettingsChange: (show: boolean) => void;
   
-  // Slash commands dialog state
-  showSlashCommandsSettings: boolean;
-  onSlashCommandsSettingsChange: (show: boolean) => void;
   
   // Session data
   effectiveSession: Session | null;
@@ -40,8 +36,6 @@ export const SessionSettings: React.FC<SessionSettingsProps> = ({
   onConfirmFork,
   showSettings,
   onSettingsChange,
-  showSlashCommandsSettings,
-  onSlashCommandsSettingsChange,
   effectiveSession,
   projectPath,
   isLoading,
@@ -108,22 +102,6 @@ export const SessionSettings: React.FC<SessionSettingsProps> = ({
         </Dialog>
       )}
 
-      {/* Slash Commands Settings Dialog */}
-      {showSlashCommandsSettings && (
-        <Dialog open={showSlashCommandsSettings} onOpenChange={onSlashCommandsSettingsChange}>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
-            <DialogHeader>
-              <DialogTitle>Slash Commands</DialogTitle>
-              <DialogDescription>
-                Manage project-specific slash commands for {projectPath}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex-1 overflow-y-auto">
-              <SlashCommandsManager projectPath={projectPath} />
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
     </div>
   );
 };

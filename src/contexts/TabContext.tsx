@@ -1,8 +1,9 @@
 import React, { createContext, useState, useContext, useCallback, useEffect } from 'react';
+import type { NavigationStack } from './NavigationContext';
 
 export interface Tab {
   id: string;
-  type: 'chat' | 'agent' | 'agents' | 'projects' | 'project-detail' | 'usage' | 'mcp' | 'settings' | 'claude-md' | 'claude-file' | 'agent-execution' | 'create-agent' | 'import-agent';
+  type: 'chat' | 'agent' | 'agents' | 'projects' | 'usage' | 'mcp' | 'settings' | 'claude-md' | 'claude-file' | 'agent-execution' | 'create-agent' | 'import-agent';
   title: string;
   sessionId?: string;  // for chat tabs
   sessionData?: any; // for chat tabs - stores full session object
@@ -10,12 +11,20 @@ export interface Tab {
   agentData?: any; // for agent-execution tabs
   claudeFileId?: string; // for claude-file tabs
   initialProjectPath?: string; // for chat tabs
-  projectId?: string; // for project-detail tabs
-  projectData?: any; // for project-detail tabs
   
-  // Simple navigation context - store the previous state to return to
+  // For restoring project detail state when navigating back from sessions
+  restoreProjectState?: {
+    selectedProject?: any;
+    sessions?: any[];
+    activeTab?: string;
+  };
+  
+  // Navigation stack for hierarchical navigation
+  navigationStack?: NavigationStack;
+  
+  // Legacy navigation context - will be deprecated in favor of navigationStack
   previousState?: {
-    type: 'projects' | 'project-detail';
+    type: 'projects';
     title: string;
     selectedProject?: any;
     sessions?: any[];

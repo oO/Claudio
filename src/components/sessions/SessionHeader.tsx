@@ -9,7 +9,6 @@ import {
   GitBranch,
   Settings,
   Hash,
-  Command,
   Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,7 +16,6 @@ import { Popover } from '@/components/ui/popover';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { DebugLabel } from '@/components/ui/atoms';
 
 interface SessionHeaderProps {
   projectPath: string;
@@ -32,8 +30,6 @@ interface SessionHeaderProps {
   onCopyAsJsonl: () => void;
   onCopyAsMarkdown: () => void;
   onToggleTimeline: () => void;
-  onProjectSettings?: () => void;
-  onSlashCommandsSettings?: () => void;
   onDeleteProject?: () => void;
   setCopyPopoverOpen: (open: boolean) => void;
 }
@@ -51,18 +47,14 @@ export const SessionHeader: React.FC<SessionHeaderProps> = React.memo(({
   onCopyAsJsonl,
   onCopyAsMarkdown,
   onToggleTimeline,
-  onProjectSettings,
-  onSlashCommandsSettings,
   onDeleteProject,
   setCopyPopoverOpen
 }) => {
   return (
-    <>
-      <DebugLabel label="SessionHeader" />
       <motion.div 
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative bg-background/95 backdrop-blur-sm border-b px-4 py-3 sticky top-0 z-40"
+      className="relative bg-background border-b px-4 py-3 sticky top-0 z-40"
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -167,18 +159,6 @@ export const SessionHeader: React.FC<SessionHeaderProps> = React.memo(({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              {onProjectSettings && projectPath && (
-                <DropdownMenuItem onClick={onProjectSettings}>
-                  <Settings className="h-4 w-4 mr-2" />
-                  Project Settings
-                </DropdownMenuItem>
-              )}
-              {onSlashCommandsSettings && projectPath && (
-                <DropdownMenuItem onClick={onSlashCommandsSettings}>
-                  <Command className="h-4 w-4 mr-2" />
-                  Slash Commands
-                </DropdownMenuItem>
-              )}
               {onDeleteProject && projectPath && (
                 <DropdownMenuItem 
                   onClick={onDeleteProject}
@@ -193,6 +173,5 @@ export const SessionHeader: React.FC<SessionHeaderProps> = React.memo(({
         </div>
       </div>
     </motion.div>
-    </>
   );
 });

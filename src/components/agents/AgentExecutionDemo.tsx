@@ -1,5 +1,5 @@
 import React from "react";
-import { StreamMessage } from "@/components/sessions";
+import { StreamMessage } from "@/components/sessions/StreamMessage";
 import type { ClaudeStreamMessage } from "@/hooks/useAgentExecution";
 
 /**

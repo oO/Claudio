@@ -37,6 +37,7 @@ interface UseTabStateReturn {
   findTabBySessionId: (sessionId: string) => Tab | undefined;
   findTabByAgentRunId: (agentRunId: string) => Tab | undefined;
   findTabByType: (type: Tab['type']) => Tab | undefined;
+  getTabById: (id: string) => Tab | undefined;
   canAddTab: () => boolean;
 }
 
@@ -355,6 +356,7 @@ export const useTabState = (): UseTabStateReturn => {
     findTabBySessionId,
     findTabByAgentRunId,
     findTabByType,
+    getTabById,
     canAddTab
   };
 };

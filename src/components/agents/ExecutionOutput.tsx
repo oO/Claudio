@@ -1,7 +1,7 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Terminal, Loader2 } from "lucide-react";
-import { StreamMessage } from "@/components/sessions";
+import { StreamMessage } from "@/components/sessions/StreamMessage";
 import { ErrorBoundary } from "@/components/common";
 import { LoadingSpinner } from "@/components/ui/atoms/LoadingSpinner";
 import type { ClaudeStreamMessage } from "@/hooks/useAgentExecution";

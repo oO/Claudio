@@ -72,7 +72,7 @@ export const SessionPreview: React.FC<SessionPreviewProps> = ({
       <>
         <DebugLabel label="SessionPreview" />
         <SplitPane
-        className="relative"
+        className="relative h-full"
         left={
           <div className="h-full">
             {/* Pass link detection handler to children */}
@@ -94,7 +94,6 @@ export const SessionPreview: React.FC<SessionPreviewProps> = ({
         onSplitChange={onSplitChange}
         minLeftWidth={400}
         minRightWidth={400}
-        className="h-full"
       />
       </>
     );

@@ -18,41 +18,35 @@ Co-authored-by: Claude.AI <noreply@anthropic.com>
 
 **Types**: `feat:` `fix:` `docs:` `refactor:` `test:` `chore:`
 
-## Commit Preparation Steps
+## Commit Management
 
-**MANDATORY steps before creating any commit:**
+**MANDATORY: Always delegate commits to the commit-expert subagent**
 
-1. **Check git status and changes**
-   ```bash
-   git status          # See all untracked files
-   git diff           # See staged and unstaged changes
-   git log --oneline -5  # See recent commit messages for style
-   ```
+```javascript
+// Use Task tool to delegate to commit-expert
+Task({
+  subagent_type: "commit-expert", 
+  description: "Create commit for [feature/fix description]",
+  prompt: `Handle the complete commit workflow for [describe changes].
+  
+  Context needed:
+  - Summary of what was implemented/changed/fixed
+  - Key files or components affected  
+  - Any breaking changes or migrations required
+  - Special considerations for version increment
+  - Target audience impact (users/developers/system)`
+})
+```
 
-2. **Find and increment version**
-   ```bash
-   # Find current version from last commit message
-   git log --oneline -1 | grep -o 'v[0-9]*\.[0-9]*\.[0-9]*'
-   # Increment patch version (e.g., v0.3.8 → v0.3.9)
-   ```
+**The commit-expert will automatically:**
+- Analyze all git changes and categorize by impact
+- Determine appropriate semantic version increment
+- Verify TypeScript and Rust builds pass
+- Update CHANGELOG.md with structured entries
+- Create properly formatted commit following project standards
+- Handle version synchronization between package.json and Cargo.toml
 
-3. **Run build and fix any errors**
-   ```bash
-   npm run check       # MUST pass - abort if errors found
-   # Fix any TypeScript/Rust errors before proceeding
-   ```
-
-4. **Update CHANGELOG.md**
-   ```bash
-   # Add new version section with changes
-   # Follow existing format and chronological order
-   ```
-
-5. **Stage files and commit**
-   ```bash
-   git add <relevant-files>
-   git commit -m "<commit-message>"
-   ```
+**Never create commits manually** - always use the commit-expert subagent to ensure consistency, proper versioning, and comprehensive documentation.
 
 ## Development Commands
 

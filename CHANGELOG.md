@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.11] - 2025-08-11
+
+### Added
+- NavigationProvider context for consistent navigation state management across all tabs
+- ChatTabWrapper, ClaudeFileTabWrapper, and CreateAgentTabWrapper for proper navigation flow
+- Project tab state preservation when navigating between agents, memories, and sessions
+- SlashCommandsSettings component for project-specific command management
+
+### Changed
+- Unified navigation system using restoreProjectState approach for all tab transitions
+- All tab content now wrapped with NavigationProvider for consistent state management
+- ProjectDetail component now preserves and restores active tab state (sessions, agents, memories, tools, commands)
+- Simplified navigation logic by removing complex navigation stack system
+- Enhanced agent and memory editing to preserve current project tab context
+
+### Fixed
+- Navigation back button from sessions/agent editing/memory editing now correctly returns to parent project detail state
+- Eliminated "Unknown tab type: project-detail" errors caused by navigation stack complexity
+- Fixed navigation context loss when editing agents, memories, or viewing sessions within projects
+- Active tab preservation ensures users return to correct project tab (not always sessions) after editing operations
+- Proper state restoration when navigating back from CLAUDE.md file editing or agent creation/editing
+
+### Technical
+- Removed deprecated navigation stack system in favor of simpler restoreProjectState pattern
+- Updated TabContext interface to support enhanced project state restoration
+- Standardized all tab wrappers to use consistent navigation patterns
+
 ## [0.3.10] - 2025-08-11
 
 ### Added
