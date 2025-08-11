@@ -72,7 +72,7 @@ jobs:
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          workspaces: './src-backend -> target'
           key: ${{ matrix.platform.os }}-rust-${{ hashFiles('**/Cargo.lock') }}
           
       # Setup Bun
@@ -114,8 +114,8 @@ jobs:
         with:
           name: build-logs-${{ matrix.platform.name }}
           path: |
-            src-tauri/target/release/build/*/output
-            src-tauri/target/debug/build/*/output
+            src-backend/target/release/build/*/output
+            src-backend/target/debug/build/*/output
           retention-days: 3
 
   # Summary job to ensure all builds pass

@@ -63,7 +63,7 @@ npm run tauri build     # Full application build (all platforms)
 # Type checking
 npm run check           # Frontend + backend type/syntax check
 tsc --noEmit           # Frontend TypeScript check only
-cd src-tauri && cargo check  # Rust syntax check only
+cd src-backend && cargo check  # Rust syntax check only
 ```
 
 ### Version Management
@@ -126,7 +126,7 @@ Claudio is a **Claude Code Native Agent Manager** built on Tauri (Rust backend +
 Components follow entity-based organization with Atomic Design patterns:
 
 ```
-src/components/
+src-frontend/components/
 ├── agents/          # Agent management UI
 ├── projects/        # Project browser and settings
 ├── sessions/        # Session timeline and execution

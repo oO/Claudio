@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.12] - 2025-08-11
+
+### Changed
+- Renamed src-tauri → src-backend for symmetric folder naming with src-frontend
+- Updated all configuration files (package.json, vite.config.ts, tsconfig.json, index.html, tailwind.config.js)
+- Updated all CI/CD workflows (.github/workflows/*.yml) to use new paths
+- Updated build scripts (sync-version.js, bump-version.sh) with new folder structure
+- Updated documentation (CLAUDE.md) to reflect new folder organization
+
+### Technical
+- Used git mv to preserve history for both folder renames (531 files total)
+- Maintained symmetric folder structure: src-frontend/ and src-backend/
+- Verified all build systems (TypeScript, Rust, Vite) work correctly after refactor
+- No functional changes - purely organizational improvements
+
 ## [0.3.11] - 2025-08-11
 
 ### Added

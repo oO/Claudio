@@ -12,7 +12,7 @@ import { join } from 'path';
 
 const ROOT_DIR = new URL('..', import.meta.url).pathname;
 const PACKAGE_JSON_PATH = join(ROOT_DIR, 'package.json');
-const CARGO_TOML_PATH = join(ROOT_DIR, 'src-tauri', 'Cargo.toml');
+const CARGO_TOML_PATH = join(ROOT_DIR, 'src-backend', 'Cargo.toml');
 
 function syncVersion() {
   try {
