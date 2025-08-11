@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.13] - 2025-08-11
+
+### Changed
+- Updated Tauri packages to latest versions (@tauri-apps/api: 2.7.0, plugins: 2.3.x series)
+- Updated Lucide React from 0.468.0 to 0.539.0 for latest icon set
+- Updated PrismJS to 1.30.0 to patch security vulnerability
+- Updated Zustand from 5.0.6 to 5.0.7 for latest state management improvements
+- Updated 167 Rust dependencies including core Tauri libraries for security and performance
+
+### Security
+- Patched PrismJS security vulnerability through version update to 1.30.0
+- Updated all Tauri dependencies to latest secure versions
+
+### Technical
+- All updates maintain compatibility with existing codebase
+- Rust backend compiles successfully with updated dependencies
+- No breaking changes introduced by dependency updates
+
 ## [0.3.12] - 2025-08-11
 
 ### Changed
