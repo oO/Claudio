@@ -2,8 +2,9 @@ use super::types::*;
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
-use std::time::SystemTime;
+use std::time::{SystemTime, Duration, UNIX_EPOCH};
 use tauri::command;
+use serde::{Deserialize, Serialize};
 
 /// Gets sessions for a specific project
 #[command]
@@ -199,38 +200,8 @@ pub async fn delete_session(project_id: String, session_id: String) -> Result<se
     fs::remove_file(&session_file)
         .map_err(|e| format!("Failed to delete session file: {}", e))?;
     
-    // Clean up associated files
-    let todos_dir = claude_dir.join("todos");
-    let mut todos_deleted = 0;
-    let mut timelines_deleted = 0;
-    
-    // Delete all agent todo files for this session (pattern: {session-id}-agent-*.json)
-    if todos_dir.exists() {
-        if let Ok(todo_entries) = fs::read_dir(&todos_dir) {
-            for todo_entry in todo_entries.flatten() {
-                let file_name = todo_entry.file_name().to_string_lossy().to_string();
-                if file_name.starts_with(&format!("{}-agent-", session_id)) && file_name.ends_with(".json") {
-                    if let Err(e) = fs::remove_file(todo_entry.path()) {
-                        log::warn!("Failed to delete todo file '{}': {}", file_name, e);
-                    } else {
-                        todos_deleted += 1;
-                        log::debug!("Deleted todo file: {}", file_name);
-                    }
-                }
-            }
-        }
-    }
-    
-    // Delete timeline directory for this session
-    let timeline_dir = project_dir.join(".timelines").join(&session_id);
-    if timeline_dir.exists() {
-        if let Err(e) = fs::remove_dir_all(&timeline_dir) {
-            log::warn!("Failed to delete timeline directory for session '{}': {}", session_id, e);
-        } else {
-            timelines_deleted = 1;
-            log::debug!("Deleted timeline directory for session: {}", session_id);
-        }
-    }
+    // Clean up associated files using shared function
+    let (todos_deleted, timelines_deleted) = super::projects::delete_session_dependencies(&claude_dir, &project_dir, &session_id);
     
     // Note: Statsig files don't appear to be session-specific based on file structure analysis
     // They seem to be global cache files, so we don't delete them
@@ -370,4 +341,235 @@ pub async fn prune_old_sessions(
         "projects_processed": projects_processed,
         "message": format!("Deleted {} old sessions", total_deleted)
     }))
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SessionDeletionPreview {
+    pub sessions_to_delete: Vec<Session>,
+    pub sessions_to_keep: Vec<Session>,
+    pub total_sessions: usize,
+    pub sessions_to_delete_count: usize,
+    pub sessions_to_keep_count: usize,
+    pub size_to_free_mb: f64,
+}
+
+/// Gets a preview of sessions that would be deleted based on age threshold
+#[command]
+pub async fn preview_session_deletion_by_age(
+    project_id: String,
+    days_old: u64
+) -> Result<SessionDeletionPreview, String> {
+    log::info!("Previewing session deletion for project '{}' older than {} days", project_id, days_old);
+    
+    let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
+    let project_dir = claude_dir.join("projects").join(&project_id);
+    
+    if !project_dir.exists() {
+        return Err(format!("Project '{}' not found", project_id));
+    }
+    
+    // Get all sessions for the project
+    let all_sessions = get_project_sessions(project_id.clone()).await?;
+    
+    // Calculate the cutoff timestamp
+    let cutoff_duration = Duration::from_secs(days_old * 24 * 60 * 60);
+    let cutoff_timestamp = SystemTime::now()
+        .checked_sub(cutoff_duration)
+        .ok_or("Invalid duration")?;
+    
+    let mut sessions_to_delete = Vec::new();
+    let mut sessions_to_keep = Vec::new();
+    let mut size_to_free = 0u64;
+    
+    for session in all_sessions {
+        // Get the actual file modification time
+        let session_file = project_dir.join(format!("{}.jsonl", session.id));
+        if let Ok(metadata) = session_file.metadata() {
+            if let Ok(modified_time) = metadata.modified() {
+                if modified_time < cutoff_timestamp {
+                    size_to_free += session.size_bytes.unwrap_or(0);
+                    sessions_to_delete.push(session);
+                } else {
+                    sessions_to_keep.push(session);
+                }
+            } else {
+                // If we can't get modified time, use created_at as fallback
+                let created_time = UNIX_EPOCH + Duration::from_secs(session.created_at);
+                if created_time < cutoff_timestamp {
+                    size_to_free += session.size_bytes.unwrap_or(0);
+                    sessions_to_delete.push(session);
+                } else {
+                    sessions_to_keep.push(session);
+                }
+            }
+        }
+    }
+    
+    // Sort sessions by created_at (oldest first for deletion, newest first for keeping)
+    sessions_to_delete.sort_by(|a, b| a.created_at.cmp(&b.created_at));
+    sessions_to_keep.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+    
+    Ok(SessionDeletionPreview {
+        total_sessions: sessions_to_delete.len() + sessions_to_keep.len(),
+        sessions_to_delete_count: sessions_to_delete.len(),
+        sessions_to_keep_count: sessions_to_keep.len(),
+        sessions_to_delete,
+        sessions_to_keep,
+        size_to_free_mb: size_to_free as f64 / 1024.0 / 1024.0,
+    })
+}
+
+/// Deletes sessions older than specified days for a project
+#[command]
+pub async fn delete_sessions_by_age(
+    project_id: String,
+    days_old: u64
+) -> Result<serde_json::Value, String> {
+    log::info!("Deleting sessions for project '{}' older than {} days", project_id, days_old);
+    
+    let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
+    let project_dir = claude_dir.join("projects").join(&project_id);
+    
+    if !project_dir.exists() {
+        return Err(format!("Project '{}' not found", project_id));
+    }
+    
+    // Get preview to know what will be deleted
+    let preview = preview_session_deletion_by_age(project_id.clone(), days_old).await?;
+    
+    let mut sessions_deleted = 0;
+    let mut todos_deleted = 0;
+    let mut timelines_deleted = 0;
+    
+    // Delete each session and its dependencies
+    for session in &preview.sessions_to_delete {
+        // Delete the session file
+        let session_file = project_dir.join(format!("{}.jsonl", session.id));
+        if session_file.exists() {
+            if let Err(e) = fs::remove_file(&session_file) {
+                log::warn!("Failed to delete session file '{}': {}", session_file.display(), e);
+                continue;
+            }
+            sessions_deleted += 1;
+        }
+        
+        // Delete session dependencies using shared function
+        let (session_todos, session_timelines) = super::projects::delete_session_dependencies(
+            &claude_dir, &project_dir, &session.id
+        );
+        todos_deleted += session_todos;
+        timelines_deleted += session_timelines;
+    }
+    
+    log::info!(
+        "Successfully deleted {} sessions, {} todos, {} timelines for project '{}' ({:.2} MB freed)",
+        sessions_deleted, todos_deleted, timelines_deleted, project_id, preview.size_to_free_mb
+    );
+    
+    Ok(serde_json::json!({
+        "success": true,
+        "project_id": project_id,
+        "sessions_deleted": sessions_deleted,
+        "todos_deleted": todos_deleted,
+        "timelines_deleted": timelines_deleted,
+        "sessions_remaining": preview.sessions_to_keep_count,
+        "size_freed_mb": preview.size_to_free_mb,
+        "days_old": days_old,
+        "message": format!(
+            "Deleted {} sessions older than {} days ({} remaining)", 
+            sessions_deleted, days_old, preview.sessions_to_keep_count
+        )
+    }))
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SessionAgeRange {
+    pub newest_age_days: u64,
+    pub oldest_age_days: u64,
+    pub total_sessions: usize,
+    pub has_sessions: bool,
+}
+
+/// Gets the age range of sessions in a project (newest to oldest in days)
+#[command]
+pub async fn get_session_age_range(project_id: String) -> Result<SessionAgeRange, String> {
+    log::info!("Getting session age range for project '{}'", project_id);
+    
+    let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
+    let project_dir = claude_dir.join("projects").join(&project_id);
+    
+    if !project_dir.exists() {
+        return Err(format!("Project '{}' not found", project_id));
+    }
+    
+    // Get all sessions for the project
+    let all_sessions = get_project_sessions(project_id.clone()).await?;
+    
+    if all_sessions.is_empty() {
+        return Ok(SessionAgeRange {
+            newest_age_days: 0,
+            oldest_age_days: 0,
+            total_sessions: 0,
+            has_sessions: false,
+        });
+    }
+    
+    let now = SystemTime::now();
+    let mut newest_time: Option<SystemTime> = None;
+    let mut oldest_time: Option<SystemTime> = None;
+    
+    for session in &all_sessions {
+        // Get the actual file modification time
+        let session_file = project_dir.join(format!("{}.jsonl", session.id));
+        let session_time = if let Ok(metadata) = session_file.metadata() {
+            if let Ok(modified_time) = metadata.modified() {
+                modified_time
+            } else {
+                // If we can't get modified time, use created_at as fallback
+                UNIX_EPOCH + Duration::from_secs(session.created_at)
+            }
+        } else {
+            // If file doesn't exist, use created_at as fallback
+            UNIX_EPOCH + Duration::from_secs(session.created_at)
+        };
+        
+        match (newest_time, oldest_time) {
+            (None, None) => {
+                newest_time = Some(session_time);
+                oldest_time = Some(session_time);
+            },
+            (Some(newest), Some(oldest)) => {
+                if session_time > newest {
+                    newest_time = Some(session_time);
+                }
+                if session_time < oldest {
+                    oldest_time = Some(session_time);
+                }
+            },
+            _ => unreachable!(),
+        }
+    }
+    
+    let newest_age_days = if let Some(newest) = newest_time {
+        now.duration_since(newest)
+            .unwrap_or(Duration::from_secs(0))
+            .as_secs() / (24 * 60 * 60)
+    } else {
+        0
+    };
+    
+    let oldest_age_days = if let Some(oldest) = oldest_time {
+        now.duration_since(oldest)
+            .unwrap_or(Duration::from_secs(0))
+            .as_secs() / (24 * 60 * 60)
+    } else {
+        0
+    };
+    
+    Ok(SessionAgeRange {
+        newest_age_days,
+        oldest_age_days: oldest_age_days.max(1), // Ensure at least 1 day minimum
+        total_sessions: all_sessions.len(),
+        has_sessions: true,
+    })
 }

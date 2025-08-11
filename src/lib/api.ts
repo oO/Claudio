@@ -1933,24 +1933,113 @@ export const api = {
     }
   },
 
-  // ===== PROJECT AND SESSION MANAGEMENT =====
+  /**
+   * Checks if a project has settings files (settings.json, settings.local.json)
+   * @param projectPath - The absolute path to the project
+   * @returns Promise resolving to the number of settings files found
+   */
+  async checkProjectSettings(projectPath: string): Promise<number> {
+    try {
+      return await invoke<number>("check_project_settings", { projectPath });
+    } catch (error) {
+      console.error("Failed to check project settings:", error);
+      return 0;
+    }
+  },
 
   /**
-   * Deletes a Claude project and all its associated data including todos and timelines
-   * @param projectId - The project ID (encoded directory name)
+   * Previews session deletion by age for a project
+   * @param projectId - The project ID
+   * @param daysOld - Sessions older than this many days will be deleted
+   * @returns Promise resolving to deletion preview
+   */
+  async previewSessionDeletionByAge(projectId: string, daysOld: number): Promise<{
+    sessions_to_delete: Session[];
+    sessions_to_keep: Session[];
+    total_sessions: number;
+    sessions_to_delete_count: number;
+    sessions_to_keep_count: number;
+    size_to_free_mb: number;
+  }> {
+    try {
+      return await invoke("preview_session_deletion_by_age", { projectId, daysOld });
+    } catch (error) {
+      console.error("Failed to preview session deletion:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Deletes sessions older than specified days for a project
+   * @param projectId - The project ID
+   * @param daysOld - Sessions older than this many days will be deleted
    * @returns Promise resolving to deletion summary
    */
-  async deleteClaudeProject(projectId: string): Promise<{
+  async deleteSessionsByAge(projectId: string, daysOld: number): Promise<{
     success: boolean;
     project_id: string;
     sessions_deleted: number;
     todos_deleted: number;
     timelines_deleted: number;
+    sessions_remaining: number;
+    size_freed_mb: number;
+    days_old: number;
+    message: string;
+  }> {
+    try {
+      return await invoke("delete_sessions_by_age", { projectId, daysOld });
+    } catch (error) {
+      console.error("Failed to delete sessions by age:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Gets the age range of sessions in a project (newest to oldest in days)
+   * @param projectId - The project ID
+   * @returns Promise resolving to age range information
+   */
+  async getSessionAgeRange(projectId: string): Promise<{
+    newest_age_days: number;
+    oldest_age_days: number;
+    total_sessions: number;
+    has_sessions: boolean;
+  }> {
+    try {
+      return await invoke("get_session_age_range", { projectId });
+    } catch (error) {
+      console.error("Failed to get session age range:", error);
+      throw error;
+    }
+  },
+
+  // ===== PROJECT AND SESSION MANAGEMENT =====
+
+  /**
+   * Deletes a Claude project and all its associated data including todos and timelines
+   * @param projectId - The project ID (encoded directory name)
+   * @param options - Optional deletion options for agents, memories, and settings
+   * @returns Promise resolving to deletion summary
+   */
+  async deleteClaudeProject(projectId: string, options?: {
+    sessions: boolean;
+    agents: boolean;
+    memories: boolean;
+    settings: boolean;
+  }): Promise<{
+    success: boolean;
+    project_id: string;
+    sessions_deleted: number;
+    todos_deleted: number;
+    timelines_deleted: number;
+    agents_deleted: number;
+    memories_deleted: number;
+    settings_deleted: number;
     size_mb: number;
     message: string;
   }> {
     try {
-      return await invoke("delete_claude_project", { projectId });
+      return await invoke("delete_claude_project", { projectId, options });
     } catch (error) {
       console.error("Failed to delete Claude project:", error);
       throw error;

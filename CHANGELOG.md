@@ -5,21 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.9] - 2025-08-10
+## [0.3.10] - 2025-08-11
 
 ### Added
-- DebugLabel components to all project and session components for improved debugging
-- Component-level CLAUDE.md documentation with debug label implementation patterns
-- Proper positioning context for debug labels to prevent visual overlap
+- Comprehensive session deletion system with age-based filtering for bulk cleanup
+- Dynamic session age range detection replacing hardcoded deletion presets
+- Real-time preview of sessions to be deleted before confirmation
+- Granular project deletion options (agents, memories, settings) with selective cleanup
+- New "Delete Sessions" feature for targeted cleanup of old sessions based on actual project data
+- Session dependency tracking for todos and timelines during deletion
+- Enhanced project settings detection for more accurate deletion feedback
 
 ### Changed
-- All project and session components now include `relative` positioning for proper debug label placement
-- ProjectDeleteDialog debug label now conditionally renders only when dialog is open
-- StreamMessage import standardized to use consistent DebugLabel import path
+- Project deletion modal now dynamically detects available deletion categories
+- Delete Project Data dialog logic improved for better detection of deletable content
+- Session deletion UI adapts to actual project session age ranges instead of fixed presets
+- Consistent semantic color usage for hover states throughout deletion interfaces
+- Improved deletion feedback with detailed counts for all affected file types
 
 ### Fixed
-- Debug label positioning conflicts where child component labels would cover parent labels
-- Debug labels now position relative to their component boundaries rather than global positioning
+- Project deletion now properly handles granular settings deletion (only settings files, not entire .claude directory)
+- Session deletion dependencies correctly clean up associated todos and timeline files
+- Enhanced error handling for deletion operations with proper logging
+- Fixed modal detection logic for project deletion dialogs
 
 ## [0.3.8] - 2025-08-10
 

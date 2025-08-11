@@ -18,6 +18,42 @@ Co-authored-by: Claude.AI <noreply@anthropic.com>
 
 **Types**: `feat:` `fix:` `docs:` `refactor:` `test:` `chore:`
 
+## Commit Preparation Steps
+
+**MANDATORY steps before creating any commit:**
+
+1. **Check git status and changes**
+   ```bash
+   git status          # See all untracked files
+   git diff           # See staged and unstaged changes
+   git log --oneline -5  # See recent commit messages for style
+   ```
+
+2. **Find and increment version**
+   ```bash
+   # Find current version from last commit message
+   git log --oneline -1 | grep -o 'v[0-9]*\.[0-9]*\.[0-9]*'
+   # Increment patch version (e.g., v0.3.8 → v0.3.9)
+   ```
+
+3. **Run build and fix any errors**
+   ```bash
+   npm run check       # MUST pass - abort if errors found
+   # Fix any TypeScript/Rust errors before proceeding
+   ```
+
+4. **Update CHANGELOG.md**
+   ```bash
+   # Add new version section with changes
+   # Follow existing format and chronological order
+   ```
+
+5. **Stage files and commit**
+   ```bash
+   git add <relevant-files>
+   git commit -m "<commit-message>"
+   ```
+
 ## Development Commands
 
 ### Core Development

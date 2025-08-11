@@ -27,7 +27,8 @@ use commands::claude::{
     save_claude_md_file, save_claude_settings, save_system_prompt, search_files,
     track_checkpoint_message, track_session_messages, update_checkpoint_settings,
     get_hooks_config, update_hooks_config, validate_hook_command,
-    delete_claude_project, delete_session, prune_old_sessions,
+    delete_claude_project, delete_session, prune_old_sessions, check_project_settings,
+    preview_session_deletion_by_age, delete_sessions_by_age, get_session_age_range,
     ClaudeProcessState,
 };
 use commands::mcp::{
@@ -151,6 +152,10 @@ fn main() {
             delete_claude_project,
             delete_session,
             prune_old_sessions,
+            check_project_settings,
+            preview_session_deletion_by_age,
+            delete_sessions_by_age,
+            get_session_age_range,
             
             // Checkpoint Management
             create_checkpoint,
