@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { api, type ClaudeMdFile } from "@/lib/api";
 import { formatUnixTimestamp } from "@/lib/date-utils";
+import { DebugLabel } from "@/components/ui/atoms";
 
 interface ClaudeMemoriesDropdownProps {
   /**
@@ -69,7 +70,8 @@ export const ClaudeMemoriesDropdown: React.FC<ClaudeMemoriesDropdownProps> = ({
   };
   
   return (
-    <div className={cn("w-full", className)}>
+    <div className={cn("relative w-full", className)}>
+      <DebugLabel label="ClaudeMemoriesDropdown" />
       <Card className="overflow-hidden">
         {/* Dropdown Header */}
         <button

@@ -1,6 +1,7 @@
 import React from "react";
 import { Play, StopCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DebugLabel } from "@/components/ui/atoms";
 
 interface ExecutionControlsProps {
   isRunning: boolean;
@@ -18,7 +19,9 @@ export const ExecutionControls: React.FC<ExecutionControlsProps> = ({
   className,
 }) => {
   return (
-    <Button
+    <div className="relative inline-block">
+      <DebugLabel label="ExecutionControls" />
+      <Button
       onClick={isRunning ? onStop : onExecute}
       disabled={isExecuteDisabled}
       variant={isRunning ? "destructive" : "default"}
@@ -36,5 +39,6 @@ export const ExecutionControls: React.FC<ExecutionControlsProps> = ({
         </>
       )}
     </Button>
+    </div>
   );
 };

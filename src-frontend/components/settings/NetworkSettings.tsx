@@ -1,5 +1,6 @@
 import React from "react";
 import { ProxySettings } from "@/components/settings";
+import { DebugLabel } from "@/components/ui/atoms";
 
 interface NetworkSettingsProps {
   onProxyChange: (hasChanges: boolean, getSettings: (() => any) | null, save: (() => Promise<void>) | null) => void;
@@ -11,9 +12,12 @@ export const NetworkSettings: React.FC<NetworkSettingsProps> = ({
   onToast,
 }) => {
   return (
-    <ProxySettings 
-      setToast={onToast}
-      onChange={onProxyChange}
-    />
+    <div className="relative">
+      <DebugLabel label="NetworkSettings" />
+      <ProxySettings 
+        setToast={onToast}
+        onChange={onProxyChange}
+      />
+    </div>
   );
 };

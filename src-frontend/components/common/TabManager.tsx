@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { useTrackEvent } from '@/hooks';
 import { LoadingSpinner } from '@/components/ui/atoms/LoadingSpinner';
 import { ActionButton } from '@/components/ui/atoms/ActionButton';
+import { DebugLabel } from '@/components/ui/atoms';
 
 interface TabItemProps {
   tab: Tab;
@@ -298,6 +299,7 @@ export const TabManager: React.FC<TabManagerProps> = ({ className }) => {
 
   return (
     <div className={cn("flex items-stretch bg-muted/15 border-b relative", className)}>
+      <DebugLabel label="TabManager" />
       {/* Left fade gradient */}
       {showLeftScroll && (
         <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-muted/15 to-transparent pointer-events-none z-10" />

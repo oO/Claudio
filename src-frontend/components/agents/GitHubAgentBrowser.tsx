@@ -19,6 +19,7 @@ import { api, type GitHubAgentFile, type AgentExport, type Agent } from "@/lib/a
 export type AgentIconName = keyof typeof ICON_MAP;
 import { ICON_MAP } from "@/components/common";
 import { open } from "@tauri-apps/plugin-shell";
+import { DebugLabel } from "@/components/ui/atoms";
 
 interface GitHubAgentBrowserProps {
   isOpen: boolean;
@@ -159,7 +160,9 @@ export const GitHubAgentBrowser: React.FC<GitHubAgentBrowserProps> = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <div className="relative">
+      {isOpen && <DebugLabel label="GitHubAgentBrowser" />}
+      <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -231,7 +234,7 @@ export const GitHubAgentBrowser: React.FC<GitHubAgentBrowserProps> = ({
                       exit={{ opacity: 0, scale: 0.9 }}
                       transition={{ duration: 0.2, delay: index * 0.05 }}
                     >
-                      <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer"
+                      <Card className="h-full hover:bg-card-hover hover:border-hover transition-all duration-200 cursor-pointer"
                             onClick={() => handlePreviewAgent(agent)}>
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between mb-3">
@@ -386,5 +389,6 @@ export const GitHubAgentBrowser: React.FC<GitHubAgentBrowserProps> = ({
         )}
       </AnimatePresence>
     </Dialog>
+    </div>
   );
 };

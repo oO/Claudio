@@ -9,6 +9,7 @@ import { ICON_MAP as AGENT_ICONS } from "@/components/common";
 import { useComponentMetrics } from "@/hooks";
 import { useAgentExecution } from "@/hooks/useAgentExecution";
 import { useExecutionOutput } from "@/hooks/useExecutionOutput";
+import { DebugLabel } from "@/components/ui/atoms";
 import { ExecutionConfig } from "./ExecutionConfig";
 import { ExecutionControls } from "./ExecutionControls";
 import { ExecutionOutput } from "./ExecutionOutput";
@@ -117,7 +118,8 @@ export const AgentExecution: React.FC<AgentExecutionProps> = ({
   };
 
   return (
-    <div className={cn("flex flex-col h-full bg-background", className)}>
+    <div className={cn("flex flex-col h-full bg-background relative", className)}>
+      <DebugLabel label="AgentExecution" />
       {/* Fixed container that takes full height */}
       <div className="h-full flex flex-col">
         {/* Sticky Header */}

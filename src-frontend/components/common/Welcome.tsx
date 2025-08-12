@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { DebugLabel } from "@/components/ui/atoms";
 
 // Constants
 const LETTER_DELAY = 30; // ms delay per letter
@@ -126,6 +127,7 @@ export const TypewriterText: React.FC<TypewriterTextProps> = ({
 export const WelcomeScreen: React.FC = () => {
   return (
     <div className="flex flex-col h-full relative">
+      <DebugLabel label="Welcome" />
       {/* Main content - centered */}
       <div className="flex items-center justify-center flex-1">
         <div className="text-center">

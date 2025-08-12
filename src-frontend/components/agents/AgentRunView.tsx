@@ -20,6 +20,7 @@ import { formatISOTimestamp } from "@/lib/date-utils";
 import { StreamMessage } from "@/components/sessions/StreamMessage";
 import { ICON_MAP as AGENT_ICONS, ErrorBoundary } from "@/components/common";
 import type { ClaudeStreamMessage } from "@/hooks/useAgentExecution";
+import { DebugLabel } from "@/components/ui/atoms";
 
 interface AgentRunViewProps {
   /**
@@ -239,7 +240,8 @@ export const AgentRunView: React.FC<AgentRunViewProps> = ({
   }
 
   return (
-    <div className={cn("flex flex-col h-full bg-background", className)}>
+    <div className={cn("flex flex-col h-full bg-background relative", className)}>
+      <DebugLabel label="AgentRunView" />
       <div className="w-full max-w-5xl mx-auto h-full flex flex-col">
         {/* Header */}
         <motion.div

@@ -4,6 +4,7 @@ import { Network, Plus, Download, AlertCircle, Loader2 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Toast, ToastContainer } from "@/components/ui/toast";
+import { DebugLabel } from "@/components/ui/atoms";
 import { api, type MCPServer } from "@/lib/api";
 import { MCPServerList } from "./MCPServerList";
 import { MCPAddServer } from "./MCPAddServer";
@@ -92,7 +93,8 @@ export const MCPManager: React.FC<MCPManagerProps> = ({
   };
 
   return (
-    <div className={`flex flex-col h-full bg-background text-foreground ${className || ""}`}>
+    <div className={`relative flex flex-col h-full bg-background text-foreground ${className || ""}`}>
+      <DebugLabel label="MCPManager" />
       <div className="max-w-5xl mx-auto w-full flex flex-col h-full">
 
         {/* Error Display */}

@@ -4,6 +4,7 @@ import { Save, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Toast, ToastContainer } from "@/components/ui/toast";
 import { ThemedMDEditor } from "@/components/ui";
+import { DebugLabel } from "@/components/ui/atoms";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -75,7 +76,8 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   
   
   return (
-    <div className={cn("flex flex-col h-full bg-background", className)}>
+    <div className={cn("flex flex-col h-full bg-background relative", className)}>
+      <DebugLabel label="MarkdownEditor" />
       <div className="w-full max-w-5xl mx-auto flex flex-col h-full">
         
         {/* Error display */}

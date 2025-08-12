@@ -102,7 +102,7 @@ export const ProjectMemoriesTab: React.FC<ProjectMemoriesTabProps> = ({
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.05 }}
                       className={cn(
-                        "group flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors",
+                        "group flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-card-hover hover:border-hover transition-colors cursor-pointer",
                         className
                       )}
                     >

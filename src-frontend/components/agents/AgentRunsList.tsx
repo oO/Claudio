@@ -9,6 +9,7 @@ import { formatISOTimestamp } from "@/lib/date-utils";
 import type { AgentRunWithMetrics } from "@/lib/api";
 import { ICON_MAP as AGENT_ICONS } from "@/components/common";
 import { useTabState } from "@/hooks/useTabState";
+import { DebugLabel } from "@/components/ui/atoms";
 
 interface AgentRunsListProps {
   /**
@@ -97,7 +98,8 @@ export const AgentRunsList: React.FC<AgentRunsListProps> = ({
   }
 
   return (
-    <>
+    <div className="relative">
+      <DebugLabel label="AgentRunsList" />
       <div className={cn("space-y-2", className)}>
         <AnimatePresence mode="popLayout">
           {currentRuns.map((run, index) => (
@@ -114,7 +116,7 @@ export const AgentRunsList: React.FC<AgentRunsListProps> = ({
             >
               <Card
                 className={cn(
-                  "cursor-pointer transition-all hover:shadow-md hover:scale-[1.01] active:scale-[0.99]",
+                  "cursor-pointer transition-all hover:bg-card-hover hover:border-hover",
                   run.status === "running" && "border-green-500/50"
                 )}
                 onClick={() => handleRunClick(run)}
@@ -195,7 +197,6 @@ export const AgentRunsList: React.FC<AgentRunsListProps> = ({
           </div>
         )}
       </div>
-
-    </>
+    </div>
   );
 }; 

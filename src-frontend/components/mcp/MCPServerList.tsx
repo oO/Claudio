@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { DebugLabel } from "@/components/ui/atoms";
 import { api, type MCPServer } from "@/lib/api";
 import { useTrackEvent } from "@/hooks";
 
@@ -380,7 +381,8 @@ export const MCPServerList: React.FC<MCPServerListProps> = ({
   }
 
   return (
-    <div className="p-6">
+    <div className="relative p-6">
+      <DebugLabel label="MCPServerList" />
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>

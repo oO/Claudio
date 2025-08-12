@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { DebugLabel } from "@/components/ui/atoms";
 import { api } from "@/lib/api";
 import { 
   X, 
@@ -358,10 +359,11 @@ export const FilePicker: React.FC<FilePickerProps> = ({
         "absolute bottom-full mb-2 left-0 z-50",
         "w-[500px] h-[400px]",
         "bg-background border border-border rounded-lg shadow-lg",
-        "flex flex-col overflow-hidden",
+        "flex flex-col overflow-hidden relative",
         className
       )}
     >
+      <DebugLabel label="FilePicker" />
       {/* Header */}
       <div className="border-b border-border p-3">
         <div className="flex items-center justify-between">

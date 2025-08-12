@@ -17,6 +17,7 @@ import { api, type Agent, type AgentRunWithMetrics } from '@/lib/api';
 import { useTabState } from '@/hooks/useTabState';
 import { formatISOTimestamp } from '@/lib/date-utils';
 import { AgentsContent } from '@/components/agents';
+import { DebugLabel } from '@/components/ui/atoms';
 
 
 interface AgentsModalProps {
@@ -152,6 +153,7 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ open, onOpenChange }) 
 
   return (
     <>
+      {open && <DebugLabel label="AgentsModal" />}
       <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl h-[600px] flex flex-col p-0">
         <DialogHeader className="px-6 pt-6">

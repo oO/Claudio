@@ -8,7 +8,7 @@ import { Plus, FileText, Save, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { LoadingSpinner, HookTypeSelector } from '@/components/ui/atoms';
+import { LoadingSpinner, HookTypeSelector, DebugLabel } from '@/components/ui/atoms';
 import { StatusMessage, ValidationFeedback, HookMetadata } from '@/components/ui/molecules';
 import { 
   HookMatcherEditor, 
@@ -498,7 +498,8 @@ export const HooksEditor: React.FC<HooksEditorProps> = ({
   );
 
   return (
-    <div className={cn("space-y-6", className)}>
+    <div className={cn("space-y-6 relative", className)}>
+      <DebugLabel label="HooksEditor" />
       {/* Loading State */}
       {isLoading && (
         <LoadingSpinner 

@@ -4,6 +4,7 @@ import { AgentsContent, CreateAgent } from '@/components/agents';
 import { useTabState } from '@/hooks/useTabState';
 import { useScreenTracking } from '@/hooks/useAnalytics';
 import { Tab } from '@/contexts/TabContext';
+import { DebugLabel } from '@/components/ui/atoms';
 
 interface AgentsTabProps {
   tab: Tab;
@@ -19,7 +20,9 @@ export const AgentsTab: React.FC<AgentsTabProps> = ({ tab, isActive }) => {
   // Check if we're in edit mode
   if (tab.agentData) {
     return (
-      <CreateAgent
+      <div className="relative h-full">
+        <DebugLabel label="AgentsTab" />
+        <CreateAgent
         agent={tab.agentData}
         onAgentCreated={() => {
           // Clear agent data and return to agents list
@@ -36,11 +39,14 @@ export const AgentsTab: React.FC<AgentsTabProps> = ({ tab, isActive }) => {
           });
         }}
       />
+      </div>
     );
   }
   
   return (
-    <TabPageLayout
+    <div className="relative h-full">
+      <DebugLabel label="AgentsTab" />
+      <TabPageLayout
       title="Personal Agents"
       subtitle="Manage your personal Claude Code agents"
     >
@@ -79,5 +85,6 @@ export const AgentsTab: React.FC<AgentsTabProps> = ({ tab, isActive }) => {
         className="h-full"
       />
     </TabPageLayout>
+    </div>
   );
 };

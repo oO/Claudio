@@ -17,7 +17,8 @@ import {
   LoadingSpinner,
   AgentIcon,
   ColorSwatch,
-  RadioOption
+  RadioOption,
+  DebugLabel
 } from "@/components/ui/atoms";
 import { 
   StatusMessage,
@@ -341,7 +342,8 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
   };
 
   return (
-    <div className={cn("flex flex-col h-full bg-background", className)}>
+    <div className={cn("flex flex-col h-full bg-background relative", className)}>
+      <DebugLabel label="CreateAgent" />
       <div className="w-full max-w-5xl mx-auto flex flex-col h-full">
         {/* Header */}
         <motion.div

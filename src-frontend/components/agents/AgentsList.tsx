@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { api, type Agent } from "@/lib/api";
 import { AgentsContent } from "./AgentsContent";
+import { DebugLabel } from "@/components/ui/atoms";
 
 interface AgentsListProps {
   /**
@@ -98,7 +99,8 @@ export const AgentsList: React.FC<AgentsListProps> = ({
   };
   
   return (
-    <div className={cn("w-full", className)}>
+    <div className={cn("w-full relative", className)}>
+      <DebugLabel label="AgentsList" />
       <Card className="overflow-hidden">
         {/* Header */}
         <button

@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SelectComponent } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
+import { DebugLabel } from "@/components/ui/atoms";
 import { api } from "@/lib/api";
 import { useTrackEvent } from "@/hooks";
 
@@ -271,7 +272,8 @@ export const MCPAddServer: React.FC<MCPAddServerProps> = ({
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="relative p-6 space-y-6">
+      <DebugLabel label="MCPAddServer" />
       <div>
         <h3 className="text-base font-semibold">Add MCP Server</h3>
         <p className="text-sm text-muted-foreground mt-1">

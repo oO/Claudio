@@ -1,6 +1,7 @@
 import React from 'react';
 import { TabPageLayout } from '@/components/common';
 import { MCPManager } from '@/components/mcp';
+import { DebugLabel } from '@/components/ui/atoms';
 import { useScreenTracking } from '@/hooks/useAnalytics';
 import { Tab } from '@/contexts/TabContext';
 
@@ -14,11 +15,14 @@ export const MCPTab: React.FC<MCPTabProps> = ({ tab, isActive }) => {
   useScreenTracking(isActive ? tab.type : undefined, isActive ? tab.id : undefined);
 
   return (
-    <TabPageLayout
-      title="MCP Servers"
-      subtitle="Manage Model Context Protocol servers"
-    >
-      <MCPManager onBack={() => {}} />
-    </TabPageLayout>
+    <div className="relative">
+      <DebugLabel label="MCPTab" />
+      <TabPageLayout
+        title="MCP Servers"
+        subtitle="Manage Model Context Protocol servers"
+      >
+        <MCPManager onBack={() => {}} />
+      </TabPageLayout>
+    </div>
   );
 };

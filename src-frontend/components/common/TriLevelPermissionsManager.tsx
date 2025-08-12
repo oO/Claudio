@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { DebugLabel } from "@/components/ui/atoms";
 import { cn } from "@/lib/utils";
 import type { TriLevelRule } from "@/hooks/useTriLevelSettings";
 
@@ -145,7 +146,8 @@ export const TriLevelPermissionsManager: React.FC<TriLevelPermissionsManagerProp
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      <DebugLabel label="TriLevelPermissionsManager" />
       {/* Header */}
       <div className="flex items-center gap-3">
         <Shield className="h-5 w-5 text-muted-foreground" />

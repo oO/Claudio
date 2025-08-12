@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { Toast, ToastContainer } from "@/components/ui/toast";
 import { ActionButton } from "@/components/ui/atoms/ActionButton";
 import { LoadingSpinner } from "@/components/ui/atoms/LoadingSpinner";
+import { DebugLabel } from "@/components/ui/atoms";
 import {
   GeneralSettings,
   PermissionsSettings,
@@ -123,10 +124,11 @@ export const Settings: React.FC<SettingsProps> = ({ className }) => {
   return (
     <div
       className={cn(
-        "flex flex-col h-full bg-background text-foreground",
+        "flex flex-col h-full bg-background text-foreground relative",
         className,
       )}
     >
+      <DebugLabel label="Settings" />
       <div className="max-w-4xl mx-auto w-full flex flex-col h-full">
         {/* Error message */}
         <AnimatePresence>

@@ -2,6 +2,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DebugLabel } from "@/components/ui/atoms";
 import { cn } from "@/lib/utils";
 
 interface TabPageLayoutProps {
@@ -56,8 +57,9 @@ export const TabPageLayout: React.FC<TabPageLayoutProps> = ({
   return (
     <div
       id="TabPageLayout"
-      className={cn("h-full flex flex-col bg-background", className)}
+      className={cn("h-full flex flex-col bg-background relative", className)}
     >
+      <DebugLabel label="TabPageLayout" />
       <div className="max-w-4xl mx-auto w-full flex flex-col h-full">
         {/* Header */}
         <motion.div

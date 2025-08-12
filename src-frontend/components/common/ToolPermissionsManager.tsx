@@ -4,6 +4,7 @@ import { Plus, Trash2, Shield } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { DebugLabel } from "@/components/ui/atoms";
 import type { PermissionRule } from "@/hooks/useSettingsState";
 
 interface ToolPermissionsManagerProps {
@@ -63,7 +64,8 @@ export const ToolPermissionsManager: React.FC<ToolPermissionsManagerProps> = ({
     : "Control which tools Claude Code can use without manual approval globally.";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      <DebugLabel label="ToolPermissionsManager" />
       <div className="flex items-center gap-3">
         <Shield className="h-5 w-5 text-muted-foreground" />
         <div>

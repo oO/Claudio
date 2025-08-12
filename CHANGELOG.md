@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.14] - 2025-08-12
+
+### Added
+- Comprehensive DebugLabel system across ~45 major frontend components
+- DebugLabel component with proper positioning for development identification
+- Theme-aware card hover system with `--color-card-hover` CSS variables
+- `hover:bg-card-hover` utility class for consistent interactive feedback
+
+### Changed
+- Standardized hover states across all interactive cards throughout the application
+- Updated all card components in agents/, settings/, mcp/, dashboard/, claude/, common/, and sessions/ folders
+- Enhanced visual feedback with consistent hover:bg-card-hover transitions
+- Improved development experience with component identification labels
+
+### Technical
+- Added DebugLabel imports and positioning to 51+ component files
+- Implemented theme-aware hover variables for both light and dark modes
+- Maintained consistent component architecture and coding standards
+- All changes are purely additive with no breaking changes
+
 ## [0.3.13] - 2025-08-11
 
 ### Changed

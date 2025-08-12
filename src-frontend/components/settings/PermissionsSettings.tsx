@@ -1,6 +1,7 @@
 import React from "react";
 import { ToolPermissionsManager } from "@/components/common";
 import type { PermissionRule } from "@/hooks/useSettingsState";
+import { DebugLabel } from "@/components/ui/atoms";
 
 interface PermissionsSettingsProps {
   allowRules: PermissionRule[];
@@ -18,14 +19,17 @@ export const PermissionsSettings: React.FC<PermissionsSettingsProps> = ({
   onRemoveRule,
 }) => {
   return (
-    <ToolPermissionsManager
-      allowRules={allowRules}
-      denyRules={denyRules}
-      onAddRule={onAddRule}
-      onUpdateRule={onUpdateRule}
-      onRemoveRule={onRemoveRule}
-      scope="global"
-      title="Permission Rules"
-    />
+    <div className="relative">
+      <DebugLabel label="PermissionsSettings" />
+      <ToolPermissionsManager
+        allowRules={allowRules}
+        denyRules={denyRules}
+        onAddRule={onAddRule}
+        onUpdateRule={onUpdateRule}
+        onRemoveRule={onRemoveRule}
+        scope="global"
+        title="Permission Rules"
+      />
+    </div>
   );
 };

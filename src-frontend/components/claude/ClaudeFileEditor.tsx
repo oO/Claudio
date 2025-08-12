@@ -6,6 +6,7 @@ import { Toast, ToastContainer } from "@/components/ui/toast";
 import { ThemedMDEditor } from "@/components/ui";
 import { api, type ClaudeMdFile } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { DebugLabel } from "@/components/ui/atoms";
 
 interface ClaudeFileEditorProps {
   /**
@@ -93,7 +94,8 @@ export const ClaudeFileEditor: React.FC<ClaudeFileEditorProps> = ({
   };
   
   return (
-    <div className={cn("flex flex-col h-full bg-background", className)}>
+    <div className={cn("relative flex flex-col h-full bg-background", className)}>
+      <DebugLabel label="ClaudeFileEditor" />
       <div className="w-full max-w-5xl mx-auto flex flex-col h-full">
         {/* Header */}
         <motion.div

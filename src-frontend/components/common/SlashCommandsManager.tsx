@@ -30,6 +30,7 @@ import { api, type SlashCommand } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { COMMON_TOOL_MATCHERS } from "@/types/hooks";
 import { useTrackEvent } from "@/hooks";
+import { DebugLabel } from "@/components/ui/atoms";
 
 interface SlashCommandsManagerProps {
   projectPath?: string;
@@ -300,7 +301,8 @@ export const SlashCommandsManager: React.FC<SlashCommandsManagerProps> = ({
   }, {} as Record<string, SlashCommand[]>);
 
   return (
-    <div className={cn("space-y-4", className)}>
+    <div className={cn("space-y-4 relative", className)}>
+      <DebugLabel label="SlashCommandsManager" />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

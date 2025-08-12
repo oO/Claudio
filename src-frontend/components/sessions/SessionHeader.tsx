@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Popover } from '@/components/ui/popover';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
+import { DebugLabel } from '@/components/ui/atoms';
 import { cn } from '@/lib/utils';
 
 interface SessionHeaderProps {
@@ -56,6 +57,7 @@ export const SessionHeader: React.FC<SessionHeaderProps> = React.memo(({
       animate={{ opacity: 1, y: 0 }}
       className="relative bg-background border-b px-4 py-3 sticky top-0 z-40"
     >
+      <DebugLabel label="SessionHeader" />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Button

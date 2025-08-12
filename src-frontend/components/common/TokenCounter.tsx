@@ -1,6 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { Hash } from "lucide-react";
+import { DebugLabel } from "@/components/ui/atoms";
 import { cn } from "@/lib/utils";
 
 interface TokenCounterProps {
@@ -40,10 +41,11 @@ export const TokenCounter: React.FC<TokenCounterProps> = ({
         "fixed bottom-20 right-4 z-30",
         "bg-background/90 backdrop-blur-sm",
         "border border-border rounded-full",
-        "px-3 py-1.5 shadow-lg",
+        "px-3 py-1.5 shadow-lg relative",
         className
       )}
     >
+      <DebugLabel label="TokenCounter" />
       <div className="flex items-center gap-1.5 text-xs">
         <Hash className="h-3 w-3 text-muted-foreground" />
         <span className="font-mono">{tokens.toLocaleString()}</span>

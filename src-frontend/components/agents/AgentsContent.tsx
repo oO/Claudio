@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { api, type Agent } from "@/lib/api";
 import { AgentCard } from "./AgentCard";
+import { DebugLabel } from "@/components/ui/atoms";
 
 interface AgentsContentProps {
   /**
@@ -94,7 +95,8 @@ export const AgentsContent: React.FC<AgentsContentProps> = ({
   };
 
   return (
-    <div className={cn("w-full", className)}>
+    <div className={cn("w-full relative", className)}>
+      <DebugLabel label="AgentsContent" />
       {/* Create and Import buttons */}
       {(onCreateAgent || onImportAgent) && (
         <div className="mb-2">

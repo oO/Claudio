@@ -86,7 +86,7 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ delay: index * 0.05 }}
                   className={cn(
-                    "group flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer",
+                    "group flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-card-hover hover:border-hover transition-colors cursor-pointer",
                     className
                   )}
                   onClick={() => onSessionClick?.(session)}

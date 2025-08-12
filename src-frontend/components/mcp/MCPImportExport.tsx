@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { SelectComponent } from "@/components/ui/select";
+import { DebugLabel } from "@/components/ui/atoms";
 import { api } from "@/lib/api";
 
 interface MCPImportExportProps {
@@ -161,7 +162,8 @@ export const MCPImportExport: React.FC<MCPImportExportProps> = ({
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="relative p-6 space-y-6">
+      <DebugLabel label="MCPImportExport" />
       <div>
         <h3 className="text-base font-semibold">Import & Export</h3>
         <p className="text-sm text-muted-foreground mt-1">
@@ -193,7 +195,7 @@ export const MCPImportExport: React.FC<MCPImportExportProps> = ({
         </Card>
 
         {/* Import from Claude Desktop */}
-        <Card className="p-4 hover:bg-accent/5 transition-colors">
+        <Card className="p-4 hover:bg-card-hover hover:border-hover transition-colors cursor-pointer">
           <div className="space-y-3">
             <div className="flex items-start gap-3">
               <div className="p-2.5 bg-blue-500/10 rounded-lg">
@@ -227,7 +229,7 @@ export const MCPImportExport: React.FC<MCPImportExportProps> = ({
         </Card>
 
         {/* Import from JSON */}
-        <Card className="p-4 hover:bg-accent/5 transition-colors">
+        <Card className="p-4 hover:bg-card-hover hover:border-hover transition-colors cursor-pointer">
           <div className="space-y-3">
             <div className="flex items-start gap-3">
               <div className="p-2.5 bg-purple-500/10 rounded-lg">
@@ -298,7 +300,7 @@ export const MCPImportExport: React.FC<MCPImportExportProps> = ({
         </Card>
 
         {/* Serve as MCP */}
-        <Card className="p-4 border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors">
+        <Card className="p-4 border-primary/20 bg-primary/5 hover:bg-card-hover hover:border-hover transition-colors cursor-pointer">
           <div className="space-y-3">
             <div className="flex items-start gap-3">
               <div className="p-2.5 bg-green-500/20 rounded-lg">

@@ -174,7 +174,7 @@ export const TodoReadWidget: React.FC<{ todos?: any[]; result?: any }> = ({ todo
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }}
         className={cn(
-          "group rounded-lg border p-4 transition-all hover:shadow-md cursor-pointer",
+          "group rounded-lg border p-4 transition-all hover:bg-card-hover hover:border-hover cursor-pointer",
           config.bgColor,
           config.borderColor,
           todo.status === "completed" && "opacity-75"

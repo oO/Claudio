@@ -71,6 +71,16 @@
     background-color: var(--color-input);
 }
 
+/* Hover background colors */
+.hover\:bg-card-hover:hover {
+    background-color: var(--color-card-hover);
+}
+
+/* Hover border colors */
+.hover\:border-hover:hover {
+    border-color: var(--color-border-hover);
+}
+
 /* Text colors */
 .text-foreground {
     color: var(--color-foreground);
@@ -201,6 +211,10 @@
     --color-input: rgba(255, 255, 255, 0.06);
     --color-ring: rgba(255, 255, 255, 0.2);
 
+    /* Standard card hover states - increased opacity for better visibility */
+    --color-card-hover: rgba(255, 255, 255, 0.12);
+    --color-border-hover: rgba(255, 255, 255, 0.35);
+
     /* Semantic status colors for dark backgrounds */
     --color-success: rgb(63, 185, 80);
     --color-success-foreground: rgb(0, 0, 0);
@@ -229,6 +243,10 @@
     --color-border: rgba(0, 0, 0, 0.1);
     --color-input: rgba(0, 0, 0, 0.04);
     --color-ring: rgba(0, 0, 0, 0.15);
+
+    /* Standard card hover states - increased opacity for better visibility */
+    --color-card-hover: rgba(0, 0, 0, 0.08);
+    --color-border-hover: rgba(0, 0, 0, 0.35);
 
     /* Semantic status colors for light backgrounds */
     --color-success: rgb(26, 127, 55);
@@ -1226,7 +1244,6 @@ code::-webkit-scrollbar-thumb:hover {
     user-select: none;
     transition: opacity 0.2s ease;
 }
-
 
 /* Make debug labels slightly more visible on hover */
 .debug-label:hover {

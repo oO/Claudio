@@ -124,7 +124,7 @@ export const RunningClaudeSessions: React.FC<RunningClaudeSessionsProps> = ({
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2 }}
             >
-              <Card className="transition-all hover:shadow-md hover:scale-[1.01] cursor-pointer">
+              <Card className="transition-all hover:bg-card-hover hover:border-hover cursor-pointer">
                 <CardContent 
                   className="p-3"
                   onClick={() => handleResumeSession(session)}

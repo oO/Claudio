@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useDebug } from "@/hooks";
 import type { ClaudeSettings } from "@/lib/api";
+import { DebugLabel } from "@/components/ui/atoms";
 
 /**
  * Debug Mode Toggle Component
@@ -30,7 +31,8 @@ export const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
   onUpdateSetting,
 }) => {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      <DebugLabel label="AdvancedSettings" />
       <div>
         <h3 className="text-base font-semibold mb-4">Advanced Settings</h3>
         <p className="text-sm text-muted-foreground mb-6">

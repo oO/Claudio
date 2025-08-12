@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import type { EnvironmentVariable } from "@/hooks/useSettingsState";
+import { DebugLabel } from "@/components/ui/atoms";
 
 interface EnvironmentSettingsProps {
   envVars: EnvironmentVariable[];
@@ -20,7 +21,8 @@ export const EnvironmentSettings: React.FC<EnvironmentSettingsProps> = ({
   onRemoveEnvVar,
 }) => {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      <DebugLabel label="EnvironmentSettings" />
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-base font-semibold">Environment Variables</h3>

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { AlertTriangle } from "lucide-react";
 import { api } from "@/lib/api";
 import { Toast, ToastContainer } from "@/components/ui/toast";
-import { LoadingSpinner } from "@/components/ui/atoms";
+import { LoadingSpinner, DebugLabel } from "@/components/ui/atoms";
 import { StatusMessage } from "@/components/ui/molecules";
 import {
   DatabaseHeader,
@@ -258,7 +258,8 @@ export const StorageTab: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      <DebugLabel label="StorageTab" />
       {/* Database Header */}
       <DatabaseHeader
         tables={tables}

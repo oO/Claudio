@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { api, type ClaudeInstallation } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { CheckCircle, HardDrive, Settings } from "lucide-react";
+import { DebugLabel } from "@/components/ui/atoms";
 
 interface ClaudeVersionSelectorProps {
   /**
@@ -165,7 +166,8 @@ export const ClaudeVersionSelector: React.FC<ClaudeVersionSelectorProps> = ({
   const customInstallations = installations.filter(i => i.installation_type === "Custom");
 
   return (
-    <Card className={className}>
+    <Card className={cn("relative", className)}>
+      <DebugLabel label="ClaudeVersionSelector" />
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <CheckCircle className="h-5 w-5" />

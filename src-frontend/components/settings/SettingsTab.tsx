@@ -3,6 +3,7 @@ import { TabPageLayout } from '@/components/common';
 import { Settings } from '@/components/settings';
 import { useScreenTracking } from '@/hooks/useAnalytics';
 import { Tab } from '@/contexts/TabContext';
+import { DebugLabel } from '@/components/ui/atoms';
 
 interface SettingsTabProps {
   tab: Tab;
@@ -14,11 +15,14 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ tab, isActive }) => {
   useScreenTracking(isActive ? tab.type : undefined, isActive ? tab.id : undefined);
 
   return (
-    <TabPageLayout
-      title="Settings"
-      subtitle="Configure your Claudio preferences"
-    >
-      <Settings onBack={() => {}} />
-    </TabPageLayout>
+    <div className="relative">
+      <DebugLabel label="SettingsTab" />
+      <TabPageLayout
+        title="Settings"
+        subtitle="Configure your Claudio preferences"
+      >
+        <Settings onBack={() => {}} />
+      </TabPageLayout>
+    </div>
   );
 };

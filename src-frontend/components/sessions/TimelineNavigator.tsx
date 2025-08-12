@@ -281,7 +281,7 @@ export const TimelineNavigator: React.FC<TimelineNavigatorProps> = ({
           {/* Checkpoint card */}
           <Card 
             className={cn(
-              "flex-1 cursor-pointer transition-all hover:shadow-md",
+              "flex-1 cursor-pointer transition-all hover:bg-card-hover hover:border-hover",
               isCurrent && "border-primary ring-2 ring-primary/20",
               isSelected && "border-blue-500 bg-blue-500/5",
               !hasChildren && "ml-5"

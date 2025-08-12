@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Terminal, Loader2 } from "lucide-react";
 import { StreamMessage } from "@/components/sessions/StreamMessage";
 import { ErrorBoundary } from "@/components/common";
-import { LoadingSpinner } from "@/components/ui/atoms/LoadingSpinner";
+import { LoadingSpinner, DebugLabel } from "@/components/ui/atoms";
 import type { ClaudeStreamMessage } from "@/hooks/useAgentExecution";
 import type { Virtualizer } from "@tanstack/react-virtual";
 
@@ -27,7 +27,8 @@ export const ExecutionOutput: React.FC<ExecutionOutputProps> = ({
   onScroll,
 }) => {
   return (
-    <div className="flex-1 overflow-hidden">
+    <div className="flex-1 overflow-hidden relative">
+      <DebugLabel label="ExecutionOutput" />
       <div className="w-full max-w-5xl mx-auto h-full">
         <div 
           ref={scrollContainerRef}

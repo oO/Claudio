@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Agent } from "@/lib/api";
 import { getAgentColor, type AgentColorName } from "@/lib/agentColors";
 import { ICON_MAP } from "@/components/common";
+import { DebugLabel } from "@/components/ui/atoms";
 
 // Agent colors now use centralized CSS classes
 
@@ -58,9 +59,10 @@ export const AgentCard: React.FC<AgentCardProps> = ({
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: animationDelay }}
-      className={className}
+      className={cn("relative", className)}
     >
-      <Card className="hover:shadow-sm transition-shadow">
+      <DebugLabel label="AgentCard" />
+      <Card className="hover:bg-card-hover hover:border-hover transition-all duration-200">
         <CardContent className="p-3 flex items-center gap-3">
           <div 
             className={cn(

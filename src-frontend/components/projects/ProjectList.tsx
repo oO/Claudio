@@ -96,7 +96,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
             <Card
               data-testid="project-card"
               data-project-id={project.id}
-              className="p-4 hover:shadow-md transition-all duration-200 cursor-pointer group h-full"
+              className="p-4 hover:bg-card-hover hover:border-hover transition-all duration-200 cursor-pointer group h-full"
               onClick={() => onProjectClick(project)}
             >
               <div className="flex flex-col h-full">

@@ -3,6 +3,7 @@ import { TabPageLayout } from '@/components/common';
 import { UsageDashboard } from '@/components/dashboard';
 import { useScreenTracking } from '@/hooks/useAnalytics';
 import { Tab } from '@/contexts/TabContext';
+import { DebugLabel } from '@/components/ui/atoms';
 
 interface UsageTabProps {
   tab: Tab;
@@ -14,11 +15,14 @@ export const UsageTab: React.FC<UsageTabProps> = ({ tab, isActive }) => {
   useScreenTracking(isActive ? tab.type : undefined, isActive ? tab.id : undefined);
 
   return (
-    <TabPageLayout
-      title="Dashboard"
-      subtitle="Monitor your Claude API usage and costs"
-    >
-      <UsageDashboard onBack={() => {}} />
-    </TabPageLayout>
+    <div className="relative h-full">
+      <DebugLabel label="UsageTab" />
+      <TabPageLayout
+        title="Dashboard"
+        subtitle="Monitor your Claude API usage and costs"
+      >
+        <UsageDashboard onBack={() => {}} />
+      </TabPageLayout>
+    </div>
   );
 };

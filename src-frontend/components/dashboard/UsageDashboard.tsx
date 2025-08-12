@@ -16,6 +16,7 @@ import {
   Briefcase
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DebugLabel } from "@/components/ui/atoms";
 
 interface UsageDashboardProps {
   /**
@@ -126,7 +127,8 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({}) => {
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="relative flex-1 flex flex-col overflow-hidden">
+      <DebugLabel label="UsageDashboard" />
       {/* Date Range Filter */}
       <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 py-3">
         <div className="flex items-center justify-end space-x-2">

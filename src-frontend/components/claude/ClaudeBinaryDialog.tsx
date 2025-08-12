@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ExternalLink, FileQuestion, Terminal, AlertCircle, Loader2 } from "lucide-react";
 import { ClaudeVersionSelector } from "@/components/claude";
+import { DebugLabel } from "@/components/ui/atoms";
 
 interface ClaudeBinaryDialogProps {
   open: boolean;
@@ -58,7 +59,8 @@ export function ClaudeBinaryDialog({ open, onOpenChange, onSuccess, onError }: C
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="relative sm:max-w-[600px]">
+        {open && <DebugLabel label="ClaudeBinaryDialog" />}
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileQuestion className="w-5 h-5" />
