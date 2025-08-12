@@ -11,15 +11,27 @@ export const CreateAgentTabWrapper: React.FC<CreateAgentTabWrapperProps> = ({ ta
   const { updateTab, tabs } = useTabState();
 
   const handleBack = () => {
-    // Always use simple fallback without navigation stack
-    if (tab.previousState?.type === "projects") {
-      // Return to the project detail view
+    // Check if we came from a project detail view
+    if (tab.previousState?.type === "projects" && tab.previousState?.selectedProject) {
+      // Return to the project detail view with the correct state
       updateTab(tab.id, {
         type: "projects",
         title: tab.previousState.title || "Projects",
-        // Restore project state if it exists
-        restoreProjectState: tab.restoreProjectState,
+        // Restore the full project state to show project detail, not project list
+        restoreProjectState: {
+          selectedProject: tab.previousState.selectedProject,
+          sessions: tab.previousState.sessions || [],
+          activeTab: tab.restoreProjectState?.activeTab || "agents",
+        },
         // Clear the agent data
+        agentData: undefined,
+      });
+    } else if (tab.previousState?.type === "projects") {
+      // Return to projects list if no selected project
+      updateTab(tab.id, {
+        type: "projects",
+        title: "Projects",
+        restoreProjectState: undefined,
         agentData: undefined,
       });
     } else {
@@ -40,15 +52,27 @@ export const CreateAgentTabWrapper: React.FC<CreateAgentTabWrapperProps> = ({ ta
   };
 
   const handleAgentCreated = () => {
-    // Always use simple fallback without navigation stack
-    if (tab.previousState?.type === "projects") {
-      // Return to the project detail view
+    // Check if we came from a project detail view
+    if (tab.previousState?.type === "projects" && tab.previousState?.selectedProject) {
+      // Return to the project detail view with the correct state
       updateTab(tab.id, {
         type: "projects",
         title: tab.previousState.title || "Projects",
-        // Restore project state if it exists
-        restoreProjectState: tab.restoreProjectState,
+        // Restore the full project state to show project detail, not project list
+        restoreProjectState: {
+          selectedProject: tab.previousState.selectedProject,
+          sessions: tab.previousState.sessions || [],
+          activeTab: tab.restoreProjectState?.activeTab || "agents",
+        },
         // Clear the agent data
+        agentData: undefined,
+      });
+    } else if (tab.previousState?.type === "projects") {
+      // Return to projects list if no selected project
+      updateTab(tab.id, {
+        type: "projects",
+        title: "Projects",
+        restoreProjectState: undefined,
         agentData: undefined,
       });
     } else {

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.16] - 2025-08-12
+
+### Fixed
+- Navigation regression in ClaudeFileTabWrapper and CreateAgentTabWrapper where back button incorrectly returned to project list instead of project detail view
+- Enhanced navigation logic to properly check for selectedProject state and restore complete project detail context
+- Navigation from "Claudio → Memories → Edit file" now correctly returns to "Claudio → Memories" instead of project list
+- Improved handleBack() and handleAgentCreated() methods to preserve active sub-tab state during navigation
+
 ## [0.3.15] - 2025-08-12
 
 ### Added
