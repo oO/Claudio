@@ -9,9 +9,9 @@ import { TabProvider } from "@/contexts/TabContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ProjectList, ProjectSettings, ProjectDetail } from "@/components/projects";
+import { ProjectList, ProjectDetail } from "@/components/projects";
 import { RunningClaudeSessions } from "@/components/sessions";
-import { Topbar, MarkdownEditor, TabManager, TabContent } from "@/components/common";
+import { Topbar, TabManager, TabContent } from "@/components/common";
 import { ClaudeFileEditor, ClaudeBinaryDialog } from "@/components/claude";
 import { Settings, AnalyticsConsentBanner } from "@/components/settings";
 import { CCAgents } from "@/components/agents";
@@ -25,7 +25,6 @@ import { useAppLifecycle, useTrackEvent } from "@/hooks";
 type View = 
   | "welcome" 
   | "projects" 
-  | "editor" 
   | "claude-file-editor" 
   | "settings"
   | "cc-agents"
@@ -35,7 +34,6 @@ type View =
   | "agent-run-view"
   | "mcp"
   | "usage-dashboard"
-  | "project-settings"
   | "tabs"; // New view for tab-based interface
 
 /**
@@ -53,7 +51,6 @@ function AppContent() {
   const [showNFO, setShowNFO] = useState(false);
   const [showClaudeBinaryDialog, setShowClaudeBinaryDialog] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
-  const [projectForSettings, setProjectForSettings] = useState<Project | null>(null);
   const [previousView] = useState<View>("welcome");
   
   // Initialize analytics lifecycle tracking
@@ -232,13 +229,6 @@ function AppContent() {
     setView(newView);
   };
 
-  /**
-   * Handles navigating to hooks configuration
-   */
-  const handleProjectSettings = (project: Project) => {
-    setProjectForSettings(project);
-    handleViewChange("project-settings");
-  };
 
   /**
    * Handles project deletion
@@ -380,13 +370,6 @@ function AppContent() {
           />
         );
 
-      case "editor":
-        return (
-          <div className="flex-1 overflow-hidden">
-            <MarkdownEditor onBack={() => handleViewChange("welcome")} />
-          </div>
-        );
-      
       case "settings":
         return (
           <div className="flex-1 flex flex-col" style={{ minHeight: 0 }}>
@@ -545,19 +528,6 @@ function AppContent() {
           <MCPManager onBack={() => handleViewChange("welcome")} />
         );
       
-      case "project-settings":
-        if (projectForSettings) {
-          return (
-            <ProjectSettings
-              project={projectForSettings}
-              onBack={() => {
-                setProjectForSettings(null);
-                handleViewChange(previousView || "projects");
-              }}
-            />
-          );
-        }
-        break;
       
       default:
         return null;

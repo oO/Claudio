@@ -1,12 +1,22 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Save, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Eye, Edit, Split, Trash2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Toast, ToastContainer } from "@/components/ui/toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ThemedMDEditor } from "@/components/ui";
 import { api, type ClaudeMdFile } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { DebugLabel } from "@/components/ui/atoms";
+
+type PreviewMode = "edit" | "preview" | "live";
 
 interface ClaudeFileEditorProps {
   /**
@@ -17,6 +27,20 @@ interface ClaudeFileEditorProps {
    * Callback to go back to the previous view
    */
   onBack: () => void;
+  /**
+   * Initial display mode for the editor
+   * @default "edit"
+   */
+  initialMode?: PreviewMode;
+  /**
+   * Whether the editor should start in read-only mode
+   * @default false
+   */
+  viewMode?: boolean;
+  /**
+   * Callback when the file is deleted
+   */
+  onDelete?: () => void;
   /**
    * Optional className for styling
    */
@@ -35,6 +59,9 @@ interface ClaudeFileEditorProps {
 export const ClaudeFileEditor: React.FC<ClaudeFileEditorProps> = ({
   file,
   onBack,
+  initialMode = "preview",
+  viewMode = false,
+  onDelete,
   className,
 }) => {
   const [content, setContent] = useState<string>("");
@@ -43,6 +70,9 @@ export const ClaudeFileEditor: React.FC<ClaudeFileEditorProps> = ({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [currentMode, setCurrentMode] = useState<PreviewMode>(initialMode);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   
   const hasChanges = content !== originalContent;
   
@@ -93,6 +123,29 @@ export const ClaudeFileEditor: React.FC<ClaudeFileEditorProps> = ({
     onBack();
   };
   
+  const handleDeleteClick = () => {
+    setDeleteDialogOpen(true);
+  };
+  
+  const handleDeleteConfirm = async () => {
+    setDeleting(true);
+    try {
+      await api.deleteFile(file.absolute_path);
+      setDeleteDialogOpen(false);
+      onDelete?.();
+      onBack(); // Go back after successful deletion
+    } catch (error) {
+      console.error("Failed to delete memory file:", error);
+      setToast({ message: "Failed to delete file", type: "error" });
+    } finally {
+      setDeleting(false);
+    }
+  };
+  
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+  };
+  
   return (
     <div className={cn("relative flex flex-col h-full bg-background", className)}>
       <DebugLabel label="ClaudeFileEditor" />
@@ -121,18 +174,62 @@ export const ClaudeFileEditor: React.FC<ClaudeFileEditorProps> = ({
             </div>
           </div>
           
-          <Button
-            onClick={handleSave}
-            disabled={!hasChanges || saving}
-            size="sm"
-          >
-            {saving ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="mr-2 h-4 w-4" />
-            )}
-            {saving ? "Saving..." : "Save"}
-          </Button>
+          {/* Controls - Mode Toggle and Actions */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center border border-border rounded-lg overflow-hidden">
+              <Button
+                variant={currentMode === "preview" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setCurrentMode("preview")}
+                className="h-8 px-3 text-xs rounded-none rounded-l-md border-0"
+              >
+                <Eye className="h-3 w-3 mr-1" />
+                View
+              </Button>
+              <Button
+                variant={currentMode === "edit" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setCurrentMode("edit")}
+                className="h-8 px-3 text-xs rounded-none border-0 border-l border-r border-border/50"
+              >
+                <Edit className="h-3 w-3 mr-1" />
+                Edit
+              </Button>
+              <Button
+                variant={currentMode === "live" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setCurrentMode("live")}
+                className="h-8 px-3 text-xs rounded-none rounded-r-md border-0"
+              >
+                <Split className="h-3 w-3 mr-1" />
+                Live
+              </Button>
+            </div>
+            
+            <Button
+              onClick={handleSave}
+              disabled={!hasChanges || saving || viewMode}
+              size="sm"
+              className="h-8"
+            >
+              {saving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="mr-2 h-4 w-4" />
+              )}
+              {saving ? "Saving..." : "Save"}
+            </Button>
+            
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDeleteClick}
+              className="h-8"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </Button>
+          </div>
         </motion.div>
         
         {/* Error display */}
@@ -155,7 +252,9 @@ export const ClaudeFileEditor: React.FC<ClaudeFileEditorProps> = ({
           ) : (
             <ThemedMDEditor
               value={content}
-              onChange={(val) => setContent(val || "")}
+              onChange={viewMode ? undefined : (val) => setContent(val || "")}
+              preview={currentMode}
+              data-color-mode={undefined} // Let ThemedMDEditor handle theme
             />
           )}
         </div>
@@ -171,6 +270,49 @@ export const ClaudeFileEditor: React.FC<ClaudeFileEditorProps> = ({
           />
         )}
       </ToastContainer>
+      
+      {/* Delete confirmation dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Delete Memory
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{file.relative_path}"?
+              <br />
+              <span className="text-destructive font-medium">This action cannot be undone.</span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleDeleteCancel}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteConfirm}
+              disabled={deleting}
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }; 

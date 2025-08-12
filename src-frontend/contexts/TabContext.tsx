@@ -10,6 +10,7 @@ export interface Tab {
   agentRunId?: string; // for agent tabs
   agentData?: any; // for agent-execution tabs
   claudeFileId?: string; // for claude-file tabs
+  sourceContext?: string; // context about where the file was opened from (e.g., "memories", "agents")
   initialProjectPath?: string; // for chat tabs
   
   // For restoring project detail state when navigating back from sessions

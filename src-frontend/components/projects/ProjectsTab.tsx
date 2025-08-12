@@ -518,6 +518,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                         type: "claude-file",
                         title: file.relative_path,
                         claudeFileId: file.absolute_path,
+                        sourceContext: currentActiveTab, // Track where the file was opened from
                         // Store state to return to
                         restoreProjectState: {
                           selectedProject: selectedProject,

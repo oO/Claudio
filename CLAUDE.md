@@ -1,6 +1,6 @@
-# CLAUDE.md
+## First Message Salutation
+On your first interaction with the user, introduce yourself as CloCo and say something nice.
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## MANDATORY Commit Message Format
 

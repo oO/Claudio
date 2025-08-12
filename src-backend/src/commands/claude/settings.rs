@@ -1,6 +1,9 @@
 use super::types::*;
 use std::fs;
-use tauri::{AppHandle, command};
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+use tauri::{AppHandle, command, Manager, Emitter};
+use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher, EventKind};
 
 /// Reads the Claude settings file
 #[command]
@@ -42,6 +45,63 @@ pub async fn save_claude_settings(settings: serde_json::Value) -> Result<String,
         .map_err(|e| format!("Failed to write settings file: {}", e))?;
 
     Ok("Settings saved successfully".to_string())
+}
+
+/// Starts watching the Claude settings file for changes
+#[command]
+pub async fn start_settings_watcher(app: AppHandle) -> Result<String, String> {
+    log::info!("Starting settings file watcher");
+    
+    let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
+    let settings_path = claude_dir.join("settings.json");
+    
+    // Create parent directory if it doesn't exist
+    if let Some(parent) = settings_path.parent() {
+        if !parent.exists() {
+            fs::create_dir_all(parent)
+                .map_err(|e| format!("Failed to create settings directory: {}", e))?;
+        }
+    }
+    
+    // Clone the app handle for use in the watcher callback
+    let app_handle = app.clone();
+    
+    // Create the file watcher
+    let mut watcher = RecommendedWatcher::new(
+        move |res: Result<Event, notify::Error>| {
+            match res {
+                Ok(event) => {
+                    // Only respond to modify events
+                    if matches!(event.kind, EventKind::Modify(_)) {
+                        log::info!("Settings file changed, emitting reload event");
+                        // Emit an event to the frontend
+                        if let Err(e) = app_handle.emit("settings-file-changed", ()) {
+                            log::error!("Failed to emit settings-file-changed event: {}", e);
+                        }
+                    }
+                }
+                Err(e) => {
+                    log::error!("File watcher error: {:?}", e);
+                }
+            }
+        },
+        Config::default().with_poll_interval(Duration::from_millis(500)),
+    ).map_err(|e| format!("Failed to create file watcher: {}", e))?;
+
+    // Watch the settings file (or its parent directory if it doesn't exist yet)
+    let watch_path = if settings_path.exists() {
+        settings_path.as_path()
+    } else {
+        claude_dir.as_path()
+    };
+    
+    watcher.watch(watch_path, RecursiveMode::NonRecursive)
+        .map_err(|e| format!("Failed to start watching settings file: {}", e))?;
+
+    // Keep the watcher alive by storing it in the app state
+    app.manage(Arc::new(Mutex::new(watcher)));
+    
+    Ok("Settings watcher started successfully".to_string())
 }
 
 /// Reads the CLAUDE.md system prompt file

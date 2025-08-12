@@ -1,5 +1,6 @@
 use super::types::*;
 use std::fs;
+use std::path::Path;
 use std::time::SystemTime;
 use tauri::command;
 
@@ -135,6 +136,28 @@ pub async fn get_recently_modified_files(
     // This is a placeholder - the actual implementation would depend on the checkpoint manager
     // For now, return an empty list
     Ok(Vec::new())
+}
+
+/// Deletes a file from the filesystem
+#[command]
+pub async fn delete_file(file_path: String) -> Result<String, String> {
+    log::info!("Deleting file: {}", file_path);
+    
+    let path = Path::new(&file_path);
+    
+    // Security check: ensure the file exists and is actually a file (not a directory)
+    if !path.exists() {
+        return Err(format!("File does not exist: {}", file_path));
+    }
+    
+    if !path.is_file() {
+        return Err(format!("Path is not a file: {}", file_path));
+    }
+    
+    fs::remove_file(&file_path)
+        .map_err(|e| format!("Failed to delete file {}: {}", file_path, e))?;
+    
+    Ok("File deleted successfully".to_string())
 }
 
 // Helper functions

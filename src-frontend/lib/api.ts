@@ -635,6 +635,33 @@ export const api = {
   },
 
   /**
+   * Starts watching the Claude settings file for changes
+   * @returns Promise resolving when the watcher is started
+   */
+  async startSettingsWatcher(): Promise<string> {
+    try {
+      return await invoke<string>("start_settings_watcher");
+    } catch (error) {
+      console.error("Failed to start settings watcher:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Deletes a file from the filesystem
+   * @param filePath - The absolute path to the file to delete
+   * @returns Promise resolving when the file is deleted
+   */
+  async deleteFile(filePath: string): Promise<string> {
+    try {
+      return await invoke<string>("delete_file", { filePath });
+    } catch (error) {
+      console.error("Failed to delete file:", error);
+      throw error;
+    }
+  },
+
+  /**
    * Finds all CLAUDE.md files in a project directory
    * @param projectPath - The absolute path to the project
    * @returns Promise resolving to an array of CLAUDE.md files

@@ -71,7 +71,7 @@ export const ProjectToolsTab: React.FC<ProjectToolsTabProps> = ({
               ) : (
                 <>
                   <Save className="h-3 w-3" />
-                  Save All Levels
+                  Save Rules
                 </>
               )}
             </Button>

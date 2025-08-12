@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { api, type ClaudeSettings } from "@/lib/api";
 
 export interface PermissionRule {

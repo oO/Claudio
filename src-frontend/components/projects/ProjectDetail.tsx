@@ -3,7 +3,7 @@ import {
   FileText,
   MessagesSquare,
   Bot,
-  Lock,
+  Shield,
   Command,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -176,7 +176,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
             Agents
           </TabsTrigger>
           <TabsTrigger value="tools" className="gap-2">
-            <Lock className="h-4 w-4" />
+            <Shield className="h-4 w-4" />
             Tools
           </TabsTrigger>
           <TabsTrigger value="commands" className="gap-2">
@@ -198,7 +198,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
         <TabsContent value="memories" className="mt-2">
           <ProjectMemoriesTab
             projectPath={projectPath}
-            onEditClaudeFile={(file) => onEditClaudeFile?.(file, activeTab)}
+            onViewClaudeFile={(file) => onEditClaudeFile?.(file, activeTab)}
           />
         </TabsContent>
 

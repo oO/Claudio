@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { motion, AnimatePresence } from "framer-motion";
 import { Save, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ import {
   NetworkSettings,
 } from "@/components/settings";
 import { useSettingsState, useClaudeBinaryConfig } from "@/hooks";
+import { api } from "@/lib/api";
 
 interface SettingsProps {
   /**
@@ -68,9 +70,39 @@ export const Settings: React.FC<SettingsProps> = ({ className }) => {
   // Binary path management
   const { saveBinaryPath } = useClaudeBinaryConfig();
 
-  // Load settings on mount
+  // File watcher reference
+  const unlistenRef = useRef<UnlistenFn | null>(null);
+
+  // Load settings on mount and start file watcher
   useEffect(() => {
-    loadSettings();
+    const initializeSettings = async () => {
+      // Load initial settings
+      await loadSettings();
+      
+      // Start file watcher
+      try {
+        await api.startSettingsWatcher();
+        
+        // Set up event listener for file changes
+        const unlisten = await listen("settings-file-changed", () => {
+          console.log("Settings file changed externally, reloading...");
+          loadSettings();
+        });
+        
+        unlistenRef.current = unlisten;
+      } catch (error) {
+        console.error("Failed to start settings file watcher:", error);
+      }
+    };
+    
+    initializeSettings();
+    
+    // Cleanup: remove event listener when component unmounts
+    return () => {
+      if (unlistenRef.current) {
+        unlistenRef.current();
+      }
+    };
   }, [loadSettings]);
 
   /**

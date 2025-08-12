@@ -46,6 +46,20 @@ interface FilePickerProps {
    */
   initialQuery?: string;
   /**
+   * Only show directories, hide files
+   */
+  directoriesOnly?: boolean;
+  /**
+   * Function to validate if a directory can be selected
+   * Return false to prevent selection (but allow navigation)
+   */
+  canSelectDirectory?: (entry: FileEntry) => boolean;
+  /**
+   * Function to determine if a directory should show a visual indicator
+   * Return true to show warning/disabled state
+   */
+  isDirectoryDisabled?: (entry: FileEntry) => boolean;
+  /**
    * Optional className for styling
    */
   className?: string;
@@ -100,6 +114,9 @@ export const FilePicker: React.FC<FilePickerProps> = ({
   onSelect,
   onClose,
   initialQuery = "",
+  directoriesOnly = false,
+  canSelectDirectory,
+  isDirectoryDisabled,
   className,
 }) => {
   const searchQuery = initialQuery;
@@ -132,7 +149,10 @@ export const FilePicker: React.FC<FilePickerProps> = ({
   const fileListRef = useRef<HTMLDivElement>(null);
   
   // Computed values
-  const displayEntries = searchQuery.trim() ? searchResults : entries;
+  const baseEntries = searchQuery.trim() ? searchResults : entries;
+  const displayEntries = directoriesOnly 
+    ? baseEntries.filter(entry => entry.is_directory)
+    : baseEntries;
   const canGoBack = pathHistory.length > 1;
   
   // Get relative path for display
@@ -180,12 +200,15 @@ export const FilePicker: React.FC<FilePickerProps> = ({
   // Reset selected index when entries change
   useEffect(() => {
     setSelectedIndex(0);
-  }, [entries, searchResults]);
+  }, [entries, searchResults, directoriesOnly]);
 
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const displayEntries = searchQuery.trim() ? searchResults : entries;
+      const baseEntries = searchQuery.trim() ? searchResults : entries;
+      const displayEntries = directoriesOnly 
+        ? baseEntries.filter(entry => entry.is_directory)
+        : baseEntries;
       
       switch (e.key) {
         case 'Escape':
@@ -197,7 +220,13 @@ export const FilePicker: React.FC<FilePickerProps> = ({
           e.preventDefault();
           // Enter always selects the current item (file or directory)
           if (displayEntries.length > 0 && selectedIndex < displayEntries.length) {
-            onSelect(displayEntries[selectedIndex]);
+            const entry = displayEntries[selectedIndex];
+            // Check if this entry can be selected
+            if (entry.is_directory && canSelectDirectory && !canSelectDirectory(entry)) {
+              // Don't select, but allow navigation via right arrow
+              return;
+            }
+            onSelect(entry);
           }
           break;
           
@@ -234,7 +263,7 @@ export const FilePicker: React.FC<FilePickerProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [entries, searchResults, selectedIndex, searchQuery, canGoBack]);
+  }, [entries, searchResults, selectedIndex, searchQuery, canGoBack, directoriesOnly]);
 
   // Scroll selected item into view
   useEffect(() => {
@@ -339,6 +368,12 @@ export const FilePicker: React.FC<FilePickerProps> = ({
   };
 
   const handleEntryClick = (entry: FileEntry) => {
+    // Check if this entry can be selected
+    if (entry.is_directory && canSelectDirectory && !canSelectDirectory(entry)) {
+      // Don't select, but allow navigation via double-click
+      return;
+    }
+    
     // Single click always selects (file or directory)
     onSelect(entry);
   };
@@ -429,6 +464,8 @@ export const FilePicker: React.FC<FilePickerProps> = ({
               const Icon = getFileIcon(entry);
               const isSearching = searchQuery.trim() !== '';
               const isSelected = index === selectedIndex;
+              const isDisabled = entry.is_directory && isDirectoryDisabled && isDirectoryDisabled(entry);
+              const canSelect = !entry.is_directory || !canSelectDirectory || canSelectDirectory(entry);
               
               return (
                 <button
@@ -439,15 +476,28 @@ export const FilePicker: React.FC<FilePickerProps> = ({
                   onMouseEnter={() => setSelectedIndex(index)}
                   className={cn(
                     "w-full flex items-center gap-2 px-2 py-1.5 rounded-md",
-                    "hover:bg-accent transition-colors",
-                    "text-left text-sm",
-                    isSelected && "bg-accent"
+                    "transition-colors text-left text-sm",
+                    isDisabled 
+                      ? "text-muted-foreground cursor-not-allowed" 
+                      : "hover:bg-accent",
+                    isSelected && !isDisabled && "bg-accent",
+                    isDisabled && isSelected && "bg-muted"
                   )}
-                  title={entry.is_directory ? "Click to select • Double-click to enter" : "Click to select"}
+                  title={
+                    isDisabled 
+                      ? "Directory already contains CLAUDE.md • Double-click to navigate" 
+                      : entry.is_directory 
+                        ? "Click to select • Double-click to enter" 
+                        : "Click to select"
+                  }
                 >
                   <Icon className={cn(
                     "h-4 w-4 flex-shrink-0",
-                    entry.is_directory ? "text-blue-500" : "text-muted-foreground"
+                    entry.is_directory 
+                      ? isDisabled 
+                        ? "text-muted-foreground" 
+                        : "text-blue-500"
+                      : "text-muted-foreground"
                   )} />
                   
                   <span className="flex-1 truncate">

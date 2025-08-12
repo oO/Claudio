@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.15] - 2025-08-12
+
+### Added
+- Complete "Add Memory" functionality with project-scoped directory selection and validation
+- File deletion functionality with confirmation dialogs across memory management interfaces
+- Enhanced FilePicker component with directoriesOnly, canSelectDirectory, and isDirectoryDisabled props
+- Settings file watcher functionality with real-time change detection via notify library
+- Comprehensive tri-state toggle button controls for consistent UI interactions
+
+### Changed
+- ClaudeFileEditor UI completely redesigned with mode toggle controls (View/Edit/Live) and proper action buttons
+- ClaudeMdTab redesigned to match ClaudeFileEditor with TabPageLayout integration and consistent controls
+- Memory management interfaces now provide consistent visual indicators and validation feedback
+- FilePicker now supports directory-only selection with proper validation callbacks
+- Removed legacy MarkdownEditor component and cleaned up unused imports throughout the application
+
+### Fixed
+- Memory file validation now properly prevents selecting directories with existing CLAUDE.md files
+- Consistent delete confirmation dialogs with proper loading states and error handling
+- Enhanced directory selection validation with visual disabled states for unavailable options
+
+### Technical
+- Added notify dependency (6.1.1) for file system watching capabilities  
+- Implemented delete_file and start_settings_watcher backend commands
+- Enhanced API layer with proper file deletion and settings watching support
+- Removed deprecated view types and cleaned up routing logic in App.tsx
+
 ## [0.3.14] - 2025-08-12
 
 ### Added
