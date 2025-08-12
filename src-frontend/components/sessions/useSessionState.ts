@@ -188,11 +188,51 @@ export function useSessionState({
       
       const history = await api.loadSessionHistory(session.id, session.project_id);
       
-      // Convert history to messages format
-      const loadedMessages: ClaudeStreamMessage[] = history.map(entry => ({
-        ...entry,
-        type: entry.type || "assistant"
-      }));
+      // Convert history to messages format with agent identification
+      let currentSubagentType: string | undefined;
+      
+      const loadedMessages: ClaudeStreamMessage[] = history.map((entry, index) => {
+        const isSidechain = entry.isSidechain === true;
+        let agentType: "main" | "subagent" = isSidechain ? "subagent" : "main";
+        let agentName: string | undefined;
+        
+        // Check for Task tool usage to identify subagent type
+        if (!isSidechain && entry.message?.content && Array.isArray(entry.message.content)) {
+          const taskTool = entry.message.content.find(
+            (c: any) => c.type === "tool_use" && c.name === "Task"
+          );
+          if (taskTool?.input?.subagent_type) {
+            // Store the subagent type for upcoming sidechain messages
+            currentSubagentType = taskTool.input.subagent_type;
+          }
+        }
+        
+        // Set agent name based on context
+        if (isSidechain && currentSubagentType) {
+          // Use the stored subagent type for all sidechain messages
+          agentName = currentSubagentType;
+        } else if (!isSidechain) {
+          // Reset when back to main chain
+          if (entry.type === "user" && entry.message?.content) {
+            // Check if this is a tool result returning from sidechain
+            const hasToolResult = Array.isArray(entry.message.content) && 
+              entry.message.content.some((c: any) => c.type === "tool_result");
+            if (hasToolResult) {
+              currentSubagentType = undefined;
+            }
+          }
+        }
+        
+        return {
+          ...entry,
+          type: entry.type || "assistant",
+          agentType,
+          agentName,
+          isSidechain,
+          parentUuid: entry.parentUuid,
+          messageNumber: index + 1 // JSONL line number (1-based)
+        };
+      });
       
       setMessages(loadedMessages);
       setRawJsonlOutput(history.map(h => JSON.stringify(h)));

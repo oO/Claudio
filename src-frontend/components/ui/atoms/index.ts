@@ -10,6 +10,7 @@ export { CodeSyntaxHighlight } from "./CodeSyntaxHighlight";
 
 // Agent-specific atomic components
 export { AgentIcon } from './AgentIcon';
+export { AgentAvatar } from './AgentAvatar';
 export { ExecutionStatusBadge } from './ExecutionStatusBadge';
 export { OutputFormatBadge } from './OutputFormatBadge';
 export { ScrollIndicator } from './ScrollIndicator';

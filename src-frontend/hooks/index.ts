@@ -42,4 +42,5 @@ export { useTriLevelSettings } from './useTriLevelSettings';
 
 // Agent execution hooks
 export { useAgentExecution, type ClaudeStreamMessage } from './useAgentExecution';
+export { useAgentMetadata } from './useAgentMetadata';
 export { useExecutionOutput } from './useExecutionOutput';

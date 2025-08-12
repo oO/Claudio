@@ -1,19 +1,21 @@
 import React, { useState, useEffect } from "react";
-import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, MessageSquare, Clock, ArrowUpFromLine, ArrowDownToLine } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { 
-  MessageHeader, 
-  MessageContent, 
-  ToolCallRenderer, 
+import {
+  MessageHeader,
+  MessageContent,
+  ToolCallRenderer,
   ToolResultRenderer,
   MarkdownRenderer,
   MessageUsageStats,
-  type MessageRole 
+  type MessageRole,
 } from "@/components/ui";
-import { DebugLabel } from "@/components/ui/atoms";
+import { DebugLabel, MessageRoleIcon } from "@/components/ui/atoms";
 import type { ClaudeStreamMessage } from "@/components/agents";
 import { SummaryWidget, SystemInitializedWidget } from "../tools/ToolWidgets";
+import { getAgentColor, type AgentColorName } from "@/lib/agentColors";
+import { useAgentMetadata } from "@/hooks";
 
 interface StreamMessageProps {
   message: ClaudeStreamMessage;
@@ -23,19 +25,76 @@ interface StreamMessageProps {
 }
 
 /**
+ * Get the agent background class for the general-purpose built-in subagent
+ * This is the only built-in subagent type in Claude Code
+ */
+const getGeneralPurposeColorClass = (): string => {
+  return "bg-muted/30 border-muted-foreground/20";
+};
+
+/**
  * Component to render a single Claude Code stream message using Atomic Design principles
  */
-const StreamMessageComponent: React.FC<StreamMessageProps> = ({ message, className, streamMessages, onLinkDetected }) => {
+const StreamMessageComponent: React.FC<StreamMessageProps> = ({
+  message,
+  className,
+  streamMessages,
+  onLinkDetected,
+}) => {
   // State to track tool results mapped by tool call ID
   const [toolResults, setToolResults] = useState<Map<string, any>>(new Map());
   
+  // Load agent metadata for project/personal agents
+  const { metadata: agentMetadata } = useAgentMetadata(
+    message.agentType === "subagent" ? message.subagentType : undefined
+  );
+  
+  // Helper to get agent background class
+  const getAgentBackgroundClass = (): string => {
+    // For subagents
+    if (message.agentType === "subagent" && message.subagentType) {
+      // Special case: general-purpose is the only built-in subagent
+      if (message.subagentType === "general-purpose") {
+        return getGeneralPurposeColorClass();
+      }
+      
+      // All other subagents are project/personal agents with metadata
+      if (agentMetadata?.color) {
+        // Convert hex color to agent color class
+        const hexToColorMap: Record<string, AgentColorName> = {
+          "#ef4444": "Red",
+          "#3b82f6": "Blue", 
+          "#10b981": "Green",
+          "#f59e0b": "Yellow",
+          "#8b5cf6": "Purple",
+          "#f97316": "Orange",
+          "#ec4899": "Pink",
+          "#06b6d4": "Cyan",
+        };
+        
+        const colorName = hexToColorMap[agentMetadata.color] || "Blue";
+        return getAgentColor(colorName).cssClass;
+      }
+      
+      // Fallback for project/personal agents without color metadata
+      return getAgentColor("Blue").cssClass;
+    }
+    
+    // Main agent uses default border styling
+    return "border-primary/20";
+  };
+
   // Extract all tool results from stream messages
   useEffect(() => {
     const results = new Map<string, any>();
-    
+
     // Iterate through all messages to find tool results
-    streamMessages.forEach(msg => {
-      if (msg.type === "user" && msg.message?.content && Array.isArray(msg.message.content)) {
+    streamMessages.forEach((msg) => {
+      if (
+        msg.type === "user" &&
+        msg.message?.content &&
+        Array.isArray(msg.message.content)
+      ) {
         msg.message.content.forEach((content: any) => {
           if (content.type === "tool_result" && content.tool_use_id) {
             results.set(content.tool_use_id, content);
@@ -43,16 +102,16 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({ message, classNa
         });
       }
     });
-    
+
     setToolResults(results);
   }, [streamMessages]);
-  
+
   // Helper to get tool result for a specific tool call ID
   const getToolResult = (toolId: string | undefined): any => {
     if (!toolId) return null;
     return toolResults.get(toolId) || null;
   };
-  
+
   try {
     // Skip rendering for meta messages that don't have meaningful content
     if (message.isMeta && !message.leafUuid && !message.summary) {
@@ -60,8 +119,18 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({ message, classNa
     }
 
     // Handle summary messages
-    if (message.leafUuid && message.summary && (message as any).type === "summary") {
-      return <SummaryWidget summary={message.summary} leafUuid={message.leafUuid} />;
+    if (
+      message.leafUuid &&
+      message.summary &&
+      (message as any).type === "summary"
+    ) {
+      return (
+        <SummaryWidget
+          summary={message.summary}
+          leafUuid={message.leafUuid}
+          messageNumber={message.messageNumber}
+        />
+      );
     }
 
     // System initialization message
@@ -79,10 +148,10 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({ message, classNa
     // Assistant message
     if (message.type === "assistant" && message.message) {
       const msg = message.message;
-      
+
       let renderedSomething = false;
       const contentItems: React.ReactNode[] = [];
-      
+
       // Process message content
       if (msg.content && Array.isArray(msg.content)) {
         msg.content.forEach((content: any, idx: number) => {
@@ -90,14 +159,14 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({ message, classNa
           if (content.type === "text") {
             renderedSomething = true;
             contentItems.push(
-              <MessageContent 
-                key={`text-${idx}`} 
-                content={content} 
-                onLinkDetected={onLinkDetected} 
-              />
+              <MessageContent
+                key={`text-${idx}`}
+                content={content}
+                onLinkDetected={onLinkDetected}
+              />,
             );
           }
-          
+
           // Thinking content and tool use
           if (content.type === "thinking" || content.type === "tool_use") {
             renderedSomething = true;
@@ -107,25 +176,60 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({ message, classNa
                 key={`tool-${idx}`}
                 toolCall={content}
                 toolResult={toolResult}
-              />
+              />,
             );
           }
         });
       }
-      
+
       if (!renderedSomething) return null;
-      
+
+      // Get agent info for display
+      const agentName = message.agentName || "Assistant";
+      const isSidechain = message.isSidechain || false;
+
+      // Get agent background styling
+      const agentBgClass = getAgentBackgroundClass();
+
       return (
-        <Card className={cn("relative border-primary/20", className)}>
-          <DebugLabel label="AssistantMessage" />
-          <CardContent className="p-4">
-            <MessageHeader
-              role="assistant"
-              usage={msg.usage}
-            />
-            <div className="flex-1 space-y-2 min-w-0 mt-2">
-              {contentItems}
+        <Card className={cn("relative", agentBgClass, className)}>
+          <DebugLabel label="StreamMessage" />
+          <CardContent className="p-4 pb-2">
+            <div className="flex items-start gap-3">
+              <MessageRoleIcon role="assistant" className="mt-1" />
+              <div className="flex-1 min-w-0">
+                <div className="text-base font-semibold">{agentName}</div>
+                <div className="mt-3 space-y-2">{contentItems}</div>
+              </div>
             </div>
+            {(message.messageNumber || message.timestamp || (msg.usage && (msg.usage.input_tokens || msg.usage.output_tokens))) && (
+              <div className="flex items-center justify-end gap-3 text-xs text-muted-foreground mt-4">
+                {message.messageNumber && (
+                  <div className="flex items-center gap-1">
+                    <MessageSquare className="h-3 w-3" />
+                    {message.messageNumber.toString().padStart(3, "0")}
+                  </div>
+                )}
+                {msg.usage?.output_tokens && msg.usage.output_tokens > 0 && (
+                  <div className="flex items-center">
+                    <ArrowUpFromLine className="h-3 w-3" />
+                    {msg.usage.output_tokens}
+                  </div>
+                )}
+                {msg.usage?.input_tokens && msg.usage.input_tokens > 0 && (
+                  <div className="flex items-center">
+                    <ArrowDownToLine className="h-3 w-3" />
+                    {msg.usage.input_tokens}
+                  </div>
+                )}
+                {message.timestamp && (
+                  <div className="flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {new Date(message.timestamp).toLocaleTimeString()}
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       );
@@ -138,18 +242,24 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({ message, classNa
 
       // Handle different message structures
       const msg = message.message || message;
-      
+
       let renderedSomething = false;
       const contentItems: React.ReactNode[] = [];
-      
+
       // Handle string content
-      if (typeof msg.content === 'string' || (msg.content && !Array.isArray(msg.content))) {
-        const contentStr = typeof msg.content === 'string' ? msg.content : String(msg.content);
+      if (
+        typeof msg.content === "string" ||
+        (msg.content && !Array.isArray(msg.content))
+      ) {
+        const contentStr =
+          typeof msg.content === "string" ? msg.content : String(msg.content);
         if (contentStr.trim()) {
           renderedSomething = true;
-          
+
           // Check for command patterns
-          const commandMatch = contentStr.match(/<command-name>(.+?)<\/command-name>[\s\S]*?<command-message>(.+?)<\/command-message>[\s\S]*?<command-args>(.*?)<\/command-args>/);
+          const commandMatch = contentStr.match(
+            /<command-name>(.+?)<\/command-name>[\s\S]*?<command-message>(.+?)<\/command-message>[\s\S]*?<command-args>(.*?)<\/command-args>/,
+          );
           if (commandMatch) {
             const [, commandName, commandMessage, commandArgs] = commandMatch;
             contentItems.push(
@@ -159,18 +269,22 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({ message, classNa
                 commandContent={{
                   commandName: commandName.trim(),
                   commandMessage: commandMessage.trim(),
-                  commandArgs: commandArgs?.trim()
+                  commandArgs: commandArgs?.trim(),
                 }}
-              />
+              />,
             );
           } else {
             contentItems.push(
-              <MessageContent key="content" content={contentStr} onLinkDetected={onLinkDetected} />
+              <MessageContent
+                key="content"
+                content={contentStr}
+                onLinkDetected={onLinkDetected}
+              />,
             );
           }
         }
       }
-      
+
       // Handle array content
       if (Array.isArray(msg.content)) {
         msg.content.forEach((content: any, idx: number) => {
@@ -180,12 +294,36 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({ message, classNa
             if (content.tool_use_id && streamMessages) {
               for (let i = streamMessages.length - 1; i >= 0; i--) {
                 const prevMsg = streamMessages[i];
-                if (prevMsg.type === 'assistant' && prevMsg.message?.content && Array.isArray(prevMsg.message.content)) {
-                  const toolUse = prevMsg.message.content.find((c: any) => c.type === 'tool_use' && c.id === content.tool_use_id);
+                if (
+                  prevMsg.type === "assistant" &&
+                  prevMsg.message?.content &&
+                  Array.isArray(prevMsg.message.content)
+                ) {
+                  const toolUse = prevMsg.message.content.find(
+                    (c: any) =>
+                      c.type === "tool_use" && c.id === content.tool_use_id,
+                  );
                   if (toolUse) {
                     const toolName = toolUse.name?.toLowerCase();
-                    const toolsWithWidgets = ['task','edit','multiedit','todowrite','todoread','ls','read','glob','bash','write','grep','websearch','webfetch'];
-                    if (toolsWithWidgets.includes(toolName) || toolUse.name?.startsWith('mcp__')) {
+                    const toolsWithWidgets = [
+                      "task",
+                      "edit",
+                      "multiedit",
+                      "todowrite",
+                      "todoread",
+                      "ls",
+                      "read",
+                      "glob",
+                      "bash",
+                      "write",
+                      "grep",
+                      "websearch",
+                      "webfetch",
+                    ];
+                    if (
+                      toolsWithWidgets.includes(toolName) ||
+                      toolUse.name?.startsWith("mcp__")
+                    ) {
                       hasCorrespondingWidget = true;
                     }
                     break;
@@ -193,7 +331,7 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({ message, classNa
                 }
               }
             }
-            
+
             if (!hasCorrespondingWidget) {
               renderedSomething = true;
               contentItems.push(
@@ -204,74 +342,128 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({ message, classNa
                   isError={content.is_error}
                   streamMessages={streamMessages}
                   onLinkDetected={onLinkDetected}
-                />
+                />,
               );
             }
           } else if (content.type === "text") {
             renderedSomething = true;
             contentItems.push(
-              <MessageContent key={`text-${idx}`} content={content} onLinkDetected={onLinkDetected} />
+              <MessageContent
+                key={`text-${idx}`}
+                content={content}
+                onLinkDetected={onLinkDetected}
+              />,
             );
           }
         });
       }
-      
+
       if (!renderedSomething) return null;
-      
+
       return (
         <Card className={cn("relative border-muted-foreground/20", className)}>
-          <DebugLabel label="UserMessage" />
+          <DebugLabel label="StreamMessage" />
           <CardContent className="p-4">
-            <MessageHeader role="user" />
-            <div className="flex-1 space-y-2 min-w-0 mt-2">
-              {contentItems}
+            <div className="flex items-start gap-3">
+              <MessageRoleIcon role="user" className="mt-1" />
+              <div className="flex-1 min-w-0">
+                <div className="text-base font-semibold">User</div>
+                <div className="mt-3 space-y-2">{contentItems}</div>
+              </div>
             </div>
+            {(message.messageNumber || message.timestamp || (message.usage?.input_tokens && message.usage.input_tokens > 0)) && (
+              <div className="flex items-center justify-end gap-3 text-xs text-muted-foreground mt-4">
+                {message.messageNumber && (
+                  <div className="flex items-center gap-1">
+                    <MessageSquare className="h-3 w-3" />
+                    {message.messageNumber.toString().padStart(3, "0")}
+                  </div>
+                )}
+                {message.usage?.input_tokens && message.usage.input_tokens > 0 && (
+                  <div className="flex items-center">
+                    <ArrowDownToLine className="h-3 w-3" />
+                    {message.usage.input_tokens}
+                  </div>
+                )}
+                {message.timestamp && (
+                  <div className="flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {new Date(message.timestamp).toLocaleTimeString()}
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       );
     }
 
-
     // Result message - render with atomic components
     if (message.type === "result") {
       const isError = message.is_error || message.subtype?.includes("error");
-      
+
       return (
-        <Card className={cn(
-          "relative",
-          isError ? "border-destructive/20 bg-destructive/5" : "border-green-600/20 bg-green-600/5 dark:border-green-400/20 dark:bg-green-400/5",
-          className
-        )}>
-          <DebugLabel label="ResultMessage" />
+        <Card
+          className={cn(
+            "relative",
+            isError
+              ? "border-destructive/20 bg-destructive/5"
+              : "border-green-600/20 bg-green-600/5 dark:border-green-400/20 dark:bg-green-400/5",
+            className,
+          )}
+        >
+          <DebugLabel label="StreamMessage" />
           <CardContent className="p-4">
             <div className="flex items-start gap-3">
               {isError ? (
-                <AlertCircle className="h-5 w-5 text-destructive mt-0.5" />
+                <AlertCircle className="h-5 w-5 text-destructive mt-1" />
               ) : (
-                <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5" />
+                <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 mt-1" />
               )}
-              <div className="flex-1 space-y-2">
-                <h4 className="font-semibold text-sm">
+              <div className="flex-1 min-w-0">
+                <div className="text-base font-semibold">
                   {isError ? "Execution Failed" : "Execution Complete"}
-                </h4>
-                
-                {message.result && (
-                  <MarkdownRenderer content={message.result} compact />
-                )}
-                
-                {message.error && (
-                  <div className="text-sm text-destructive">{message.error}</div>
-                )}
-                
-                <MessageUsageStats
-                  usage={message.usage}
-                  costUsd={message.cost_usd || message.total_cost_usd}
-                  durationMs={message.duration_ms}
-                  numTurns={message.num_turns}
-                  className="mt-2"
-                />
+                </div>
+                <div className="mt-3 space-y-2">
+                  {message.result && (
+                    <MarkdownRenderer content={message.result} compact />
+                  )}
+                  {message.error && (
+                    <div className="text-sm text-destructive">
+                      {message.error}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
+            {(message.messageNumber || message.timestamp || (message.usage && (message.usage.input_tokens || message.usage.output_tokens))) && (
+              <div className="flex items-center justify-end gap-3 text-xs text-muted-foreground mt-4">
+                {message.messageNumber && (
+                  <div className="flex items-center gap-1">
+                    <MessageSquare className="h-3 w-3" />
+                    {message.messageNumber.toString().padStart(3, "0")}
+                  </div>
+                )}
+                {message.usage?.output_tokens && message.usage.output_tokens > 0 && (
+                  <div className="flex items-center gap-1">
+                    <ArrowUpFromLine className="h-3 w-3" />
+                    {message.usage.output_tokens}
+                  </div>
+                )}
+                {message.usage?.input_tokens && message.usage.input_tokens > 0 && (
+                  <div className="flex items-center">
+                    <ArrowDownToLine className="h-3 w-3" />
+                    {message.usage.input_tokens}
+                  </div>
+                )}
+                {message.timestamp && (
+                  <div className="flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {new Date(message.timestamp).toLocaleTimeString()}
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       );
@@ -290,7 +482,7 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({ message, classNa
             <div className="flex-1">
               <p className="text-sm font-medium">Error rendering message</p>
               <p className="text-xs text-muted-foreground mt-1">
-                {error instanceof Error ? error.message : 'Unknown error'}
+                {error instanceof Error ? error.message : "Unknown error"}
               </p>
             </div>
           </div>

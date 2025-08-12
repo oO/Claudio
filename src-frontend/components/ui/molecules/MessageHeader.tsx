@@ -11,6 +11,8 @@ interface MessageHeaderProps {
   costUsd?: number;
   durationMs?: number;
   numTurns?: number;
+  messageNumber?: number;
+  customTitle?: string; // Custom title to display instead of role
   actions?: Array<{
     id: string;
     icon: LucideIcon;
@@ -32,6 +34,8 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
   costUsd,
   durationMs,
   numTurns,
+  messageNumber,
+  customTitle,
   actions,
   className 
 }) => {
@@ -41,6 +45,9 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
+            {customTitle && (
+              <span className="font-medium text-sm">{customTitle}</span>
+            )}
             <MessageTimestamp timestamp={timestamp} />
           </div>
           {actions && actions.length > 0 && (
@@ -52,6 +59,7 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
           costUsd={costUsd}
           durationMs={durationMs}
           numTurns={numTurns}
+          messageNumber={messageNumber}
           className="mt-1"
         />
       </div>

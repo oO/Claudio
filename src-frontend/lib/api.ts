@@ -84,6 +84,34 @@ export interface ClaudeSettings {
 }
 
 /**
+ * Agent customization settings for message display
+ */
+export interface AgentSettings {
+  /** Name for the primary agent (default: "CloCo") */
+  primaryAgentName?: string;
+  /** Icon/emoji for the primary agent (default: "🤖") */
+  primaryAgentIcon?: string;
+  /** Color for the primary agent messages (hex color) */
+  primaryAgentColor?: string;
+  /** Whether to show agent names in messages */
+  showAgentNames?: boolean;
+  /** Whether to color-code messages by agent */
+  colorCodeAgents?: boolean;
+}
+
+/**
+ * Agent metadata from .md files
+ */
+export interface AgentMetadata {
+  name: string;
+  description?: string;
+  subagent_type: string;
+  icon?: string;
+  color?: string;
+  tools?: string[];
+}
+
+/**
  * Represents the Claude Code version status
  */
 export interface ClaudeVersionStatus {

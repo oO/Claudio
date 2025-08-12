@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.18] - 2025-08-12
+
+### Added
+- Comprehensive StreamMessage UI refactoring with improved message layout and visual hierarchy
+- Agent color system for subagent identification with background colors (general-purpose gets grey, project agents use defined colors)
+- Compact token display with directional arrow icons (ArrowUpFromLine for output, ArrowDownToLine for input)
+- Enhanced message headers with message numbers, timestamps, and compact token statistics
+- AgentAvatar component and useAgentMetadata hook for proper agent color mapping
+- MessageRoleIcon component for consistent role identification
+
+### Changed
+- Moved message numbers and timestamps to same line, right-aligned with proper icons (MessageSquare, Clock)
+- Redesigned token display with compact arrow icons and removed spaces for maximum compactness
+- Updated SummaryWidget to use neutral card styling instead of blue coloring
+- Improved agent type detection and color classification system
+- Enhanced visual hierarchy with better spacing and consistent theme compatibility
+
+### Fixed
+- Agent color backgrounds now properly apply for subagents with metadata-based color mapping
+- Message layout improvements for better readability and information density
+- Theme-compatible styling throughout message components
+
 ## [0.3.17] - 2025-08-12
 
 ### Fixed

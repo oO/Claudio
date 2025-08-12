@@ -1,5 +1,5 @@
 import React from "react";
-import { Info } from "lucide-react";
+import { Info, MessageSquare, Clock } from "lucide-react";
 import { DebugLabel } from "@/components/ui/atoms";
 
 /**
@@ -8,25 +8,29 @@ import { DebugLabel } from "@/components/ui/atoms";
 export const SummaryWidget: React.FC<{ 
   summary: string;
   leafUuid?: string;
-}> = ({ summary, leafUuid }) => {
+  messageNumber?: number;
+}> = ({ summary, leafUuid, messageNumber }) => {
   return (
-    <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 overflow-hidden relative">
+    <div className="rounded-lg border overflow-hidden relative">
       <DebugLabel label="SummaryWidget" />
-      <div className="px-4 py-3 flex items-start gap-3">
-        <div className="mt-0.5">
-          <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center">
-            <Info className="h-4 w-4 text-blue-500" />
+      <div className="px-4 py-4">
+        <div className="flex items-start gap-3">
+          <Info className="h-5 w-5 mt-1" />
+          <div className="flex-1 min-w-0">
+            <div className="text-base font-semibold">Session Summary</div>
+            <div className="mt-3">
+              <p className="text-sm text-foreground">{summary}</p>
+            </div>
           </div>
         </div>
-        <div className="flex-1 space-y-1">
-          <div className="text-xs font-medium text-blue-600 dark:text-blue-400">AI Summary</div>
-          <p className="text-sm text-foreground">{summary}</p>
-          {leafUuid && (
-            <div className="text-xs text-muted-foreground mt-2">
-              ID: <code className="font-mono">{leafUuid.slice(0, 8)}...</code>
+        {messageNumber && (
+          <div className="flex items-center justify-end gap-3 text-xs text-muted-foreground mt-4">
+            <div className="flex items-center gap-1">
+              <MessageSquare className="h-3 w-3" />
+              {messageNumber.toString().padStart(3, "0")}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

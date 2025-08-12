@@ -17,6 +17,13 @@ export interface ClaudeStreamMessage {
     input_tokens: number;
     output_tokens: number;
   };
+  // Agent identification fields
+  agentType?: "main" | "subagent";
+  agentName?: string; // "CloCo" (or user-configured) for main, subagent_type for subagents
+  subagentType?: string; // Only for subagents (e.g., "commit-expert")
+  isSidechain?: boolean; // True for subagent execution
+  parentUuid?: string; // Links messages in execution chain
+  messageNumber?: number; // Line number in original JSONL file for debugging
   [key: string]: any;
 }
 

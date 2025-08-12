@@ -11,6 +11,7 @@ interface MessageUsageStatsProps {
   costUsd?: number;
   durationMs?: number;
   numTurns?: number;
+  messageNumber?: number;
   className?: string;
 }
 
@@ -23,6 +24,7 @@ export const MessageUsageStats: React.FC<MessageUsageStatsProps> = ({
   costUsd, 
   durationMs, 
   numTurns,
+  messageNumber,
   className 
 }) => {
   const hasAnyUsage = usage || costUsd !== undefined || durationMs !== undefined || numTurns !== undefined;
@@ -41,6 +43,7 @@ export const MessageUsageStats: React.FC<MessageUsageStatsProps> = ({
     <div className={cn("text-xs text-muted-foreground space-y-1", className)}>
       {usage && (
         <div>
+          {messageNumber && `#${messageNumber.toString().padStart(3, '0')} `}
           Tokens: {usage.input_tokens} in, {usage.output_tokens} out
         </div>
       )}
