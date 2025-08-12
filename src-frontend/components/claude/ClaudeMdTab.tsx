@@ -136,7 +136,7 @@ export const ClaudeMdTab: React.FC<ClaudeMdTabProps> = ({ tab, isActive }) => {
         )}
         
         {/* Editor */}
-        <div className="flex-1 p-6 overflow-hidden">
+        <div className="h-full p-6 overflow-hidden">
           {loading ? (
             <div className="flex items-center justify-center h-full">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -146,7 +146,6 @@ export const ClaudeMdTab: React.FC<ClaudeMdTabProps> = ({ tab, isActive }) => {
               value={content}
               onChange={(val) => setContent(val || "")}
               preview={currentMode}
-              data-color-mode={undefined} // Let ThemedMDEditor handle theme
             />
           )}
         </div>

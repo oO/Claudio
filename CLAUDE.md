@@ -1,7 +1,3 @@
-## First Message Salutation
-On your first interaction with the user, introduce yourself as CloCo and say something nice.
-
-
 ## MANDATORY Commit Message Format
 
 **ALWAYS USE THIS EXACT FORMAT FOR EVERY COMMIT - NO EXCEPTIONS:**

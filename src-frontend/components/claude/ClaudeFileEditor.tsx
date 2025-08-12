@@ -254,7 +254,6 @@ export const ClaudeFileEditor: React.FC<ClaudeFileEditorProps> = ({
               value={content}
               onChange={viewMode ? undefined : (val) => setContent(val || "")}
               preview={currentMode}
-              data-color-mode={undefined} // Let ThemedMDEditor handle theme
             />
           )}
         </div>

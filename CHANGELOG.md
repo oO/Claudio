@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.17] - 2025-08-12
+
+### Fixed
+- User Memory (global ~/.claude/CLAUDE.md) now displays content correctly in View/preview mode
+- Resolved layout conflict where competing flex containers prevented MDEditor height calculations
+- Changed ClaudeMdTab editor container from "flex-1" to "h-full" to fix preview mode rendering
+- Removed deprecated data-color-mode props from MDEditor components for cleaner theme handling
+
 ## [0.3.16] - 2025-08-12
 
 ### Fixed
