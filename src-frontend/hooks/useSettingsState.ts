@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { api, type ClaudeSettings } from "@/lib/api";
 
@@ -21,6 +21,7 @@ export interface SettingsState {
   allowRules: PermissionRule[];
   denyRules: PermissionRule[];
   envVars: EnvironmentVariable[];
+  hasChanges: boolean;
 }
 
 export interface SettingsActions {
@@ -49,6 +50,12 @@ export const useSettingsState = (
   const [allowRules, setAllowRules] = useState<PermissionRule[]>([]);
   const [denyRules, setDenyRules] = useState<PermissionRule[]>([]);
   const [envVars, setEnvVars] = useState<EnvironmentVariable[]>([]);
+  
+  // Track original values to detect changes
+  const [originalSettings, setOriginalSettings] = useState<ClaudeSettings | null>(null);
+  const [originalAllowRules, setOriginalAllowRules] = useState<PermissionRule[]>([]);
+  const [originalDenyRules, setOriginalDenyRules] = useState<PermissionRule[]>([]);
+  const [originalEnvVars, setOriginalEnvVars] = useState<EnvironmentVariable[]>([]);
 
   // Track changes for external hooks/components
   const [userHooksChanged, setUserHooksChanged] = useState(false);
@@ -76,36 +83,40 @@ export const useSettingsState = (
       }
       
       setSettings(loadedSettings);
+      setOriginalSettings(loadedSettings);
 
       // Parse permissions
+      let parsedAllowRules: PermissionRule[] = [];
+      let parsedDenyRules: PermissionRule[] = [];
       if (loadedSettings.permissions && typeof loadedSettings.permissions === 'object') {
         if (Array.isArray(loadedSettings.permissions.allow)) {
-          setAllowRules(
-            loadedSettings.permissions.allow.map((rule: string, index: number) => ({
-              id: `allow-${index}`,
-              value: rule,
-            }))
-          );
+          parsedAllowRules = loadedSettings.permissions.allow.map((rule: string, index: number) => ({
+            id: `allow-${index}`,
+            value: rule,
+          }));
+          setAllowRules(parsedAllowRules);
+          setOriginalAllowRules(parsedAllowRules);
         }
         if (Array.isArray(loadedSettings.permissions.deny)) {
-          setDenyRules(
-            loadedSettings.permissions.deny.map((rule: string, index: number) => ({
-              id: `deny-${index}`,
-              value: rule,
-            }))
-          );
+          parsedDenyRules = loadedSettings.permissions.deny.map((rule: string, index: number) => ({
+            id: `deny-${index}`,
+            value: rule,
+          }));
+          setDenyRules(parsedDenyRules);
+          setOriginalDenyRules(parsedDenyRules);
         }
       }
 
       // Parse environment variables
+      let parsedEnvVars: EnvironmentVariable[] = [];
       if (loadedSettings.env && typeof loadedSettings.env === 'object' && !Array.isArray(loadedSettings.env)) {
-        setEnvVars(
-          Object.entries(loadedSettings.env).map(([key, value], index) => ({
-            id: `env-${index}`,
-            key,
-            value: value as string,
-          }))
-        );
+        parsedEnvVars = Object.entries(loadedSettings.env).map(([key, value], index) => ({
+          id: `env-${index}`,
+          key,
+          value: value as string,
+        }));
+        setEnvVars(parsedEnvVars);
+        setOriginalEnvVars(parsedEnvVars);
       }
     } catch (err) {
       console.error("Failed to load settings:", err);
@@ -141,6 +152,10 @@ export const useSettingsState = (
 
       await api.saveClaudeSettings(updatedSettings);
       setSettings(updatedSettings);
+      setOriginalSettings(updatedSettings);
+      setOriginalAllowRules([...allowRules]);
+      setOriginalDenyRules([...denyRules]);
+      setOriginalEnvVars([...envVars]);
 
       // Save user hooks if changed
       if (userHooksChanged && getUserHooks.current) {
@@ -279,6 +294,27 @@ export const useSettingsState = (
     onBinaryPathChanged?.(changed);
   };
 
+  // Calculate if there are any changes
+  const hasChanges = React.useMemo(() => {
+    // If still loading or no original settings, no changes
+    if (loading || !originalSettings) return false;
+    
+    // Check settings changes
+    const settingsChanged = JSON.stringify(settings) !== JSON.stringify(originalSettings);
+    
+    // Check permission rules changes
+    const allowRulesChanged = JSON.stringify(allowRules) !== JSON.stringify(originalAllowRules);
+    const denyRulesChanged = JSON.stringify(denyRules) !== JSON.stringify(originalDenyRules);
+    
+    // Check environment variables changes
+    const envVarsChanged = JSON.stringify(envVars) !== JSON.stringify(originalEnvVars);
+    
+    // Also check external components
+    return settingsChanged || allowRulesChanged || denyRulesChanged || envVarsChanged || 
+           userHooksChanged || proxySettingsChanged || binaryPathChanged;
+  }, [settings, originalSettings, allowRules, originalAllowRules, denyRules, originalDenyRules,
+      envVars, originalEnvVars, userHooksChanged, proxySettingsChanged, binaryPathChanged, loading]);
+
   return {
     // State
     settings,
@@ -288,6 +324,7 @@ export const useSettingsState = (
     allowRules,
     denyRules,
     envVars,
+    hasChanges,
     
     // Actions
     loadSettings,

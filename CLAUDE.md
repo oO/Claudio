@@ -1,3 +1,7 @@
+# Purpose
+
+Your name is **Claudio**   (they/them ) and you are  an expert   code  
+ 
 ## MANDATORY Commit Message Format
 
 **ALWAYS USE THIS EXACT FORMAT FOR EVERY COMMIT - NO EXCEPTIONS:**

@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Toast, ToastContainer } from "@/components/ui/toast";
 import { api, type Agent } from "@/lib/api";
-import { AGENT_COLORS, LEGACY_AGENT_COLORS, getAgentColor, type AgentColorName } from "@/lib/agentColors";
+import { AGENT_COLORS, AGENT_COLOR_OPTIONS, getAgentColor, type AgentColorName } from "@/lib/agentColors";
 import { cn } from "@/lib/utils";
 import { ThemedMDEditor } from "@/components/ui";
 import { ExampleEditor, type Example } from "@/components/common";
+import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 
 // Atomic Design System imports
 import { 
@@ -98,14 +99,29 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
   const [description, setDescription] = useState(agent?.description || "");
   // Ensure the color is valid - fallback to Blue if the agent color doesn't match our types
   const getValidColor = (colorValue?: string): AgentColorName => {
-    const validColors: AgentColorName[] = ['Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Orange', 'Pink', 'Cyan'];
-    if (colorValue && validColors.includes(colorValue as AgentColorName)) {
-      return colorValue as AgentColorName;
+    const validColors: AgentColorName[] = ['red', 'blue', 'green', 'yellow', 'purple', 'orange', 'pink', 'cyan'];
+    
+    // Normalize the color value
+    const normalizedColor = colorValue?.toLowerCase().trim();
+    
+    // Check if it's a valid color name
+    if (normalizedColor && validColors.includes(normalizedColor as AgentColorName)) {
+      return normalizedColor as AgentColorName;
     }
-    return "Blue";
+    
+    // Try to get color from getAgentColor (handles hex values)
+    const agentColor = getAgentColor(colorValue || '');
+    if (agentColor.value !== 'grey') {
+      return agentColor.value;
+    }
+    
+    // Default to blue for editing (grey is only for display fallback)
+    return "blue";
   };
   
-  const [color, setColor] = useState<AgentColorName>(getValidColor(agent?.color));
+  // Store the original color for comparison
+  const originalColor = React.useMemo(() => getValidColor(agent?.color), [agent?.color]);
+  const [color, setColor] = useState<AgentColorName>(originalColor);
   const [systemPrompt, setSystemPrompt] = useState(agent?.system_prompt || "");
   const [model, setModel] = useState(agent?.model || "inherit");
   const [saving, setSaving] = useState(false);
@@ -113,18 +129,19 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showToolPicker, setShowToolPicker] = useState(false);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [, setExamples] = useState<Example[]>([]);
   
-  // Tool selection state
+  // Tool selection state - initialize from agent data
+  const initialTools = agent?.tools ? new Set(agent.tools.split(',').map(t => t.trim())) : new Set<string>();
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
-  const [selectedTools, setSelectedTools] = useState<Set<string>>(new Set());
+  const [selectedTools, setSelectedTools] = useState<Set<string>>(initialTools);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  // Initialize tool selection from agent data
+  // Initialize category selection from agent data
   useEffect(() => {
     if (agent?.tools) {
       const toolsList = agent.tools.split(',').map(t => t.trim());
-      setSelectedTools(new Set(toolsList));
       
       // Check if all tools are selected (All tools category)
       if (toolsList.length === INDIVIDUAL_TOOLS.length && 
@@ -167,15 +184,28 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
     return Array.from(selectedTools).sort().join(', ');
   };
   
-  // Check if form has changes
+  // Check if form has changes - detailed comparison
+  const nameChanged = name !== (agent?.name || "");
+  const descriptionChanged = description !== (agent?.description || "");
+  const colorChanged = color !== originalColor;
+  const systemPromptChanged = systemPrompt !== (agent?.system_prompt || "");
+  const modelChanged = model !== (agent?.model || "inherit");
+  // Compare tools in sorted order since the order doesn't matter
+  const normalizeTools = (toolsStr: string) => toolsStr.split(',').map(t => t.trim()).sort().join(', ');
+  const toolsChanged = getToolsString() !== normalizeTools(agent?.tools || "");
+  
   const hasChanges = isEditMode && (
-    name !== (agent?.name || "") || 
-    description !== (agent?.description || "") ||
-    color !== (agent?.color || "Blue") ||
-    systemPrompt !== (agent?.system_prompt || "") ||
-    model !== (agent?.model || "inherit") ||
-    getToolsString() !== (agent?.tools || "")
+    nameChanged || 
+    descriptionChanged ||
+    colorChanged ||
+    systemPromptChanged ||
+    modelChanged ||
+    toolsChanged
   );
+  
+  // Automatically sync unsaved changes state with the tab
+  const { markAsSaved } = useUnsavedChanges(hasChanges);
+  
 
   // Tool management helpers
   const handleCategoryToggle = (categoryValue: string) => {
@@ -316,6 +346,7 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
         );
       }
       
+      markAsSaved(); // Clear the unsaved changes flag
       onAgentCreated();
     } catch (err) {
       console.error("Failed to save agent:", err);
@@ -330,15 +361,21 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
   };
 
   const handleBack = () => {
-    if ((name !== (agent?.name || "") || 
-         description !== (agent?.description || "") ||
-         color !== (agent?.color || "Blue") ||
-         systemPrompt !== (agent?.system_prompt || "") ||
-         model !== (agent?.model || "inherit")) && 
-        !confirm("You have unsaved changes. Are you sure you want to leave?")) {
-      return;
+    // Check if there are unsaved changes using the same logic as hasChanges
+    if (hasChanges) {
+      setShowUnsavedDialog(true);
+    } else {
+      onBack();
     }
+  };
+
+  const handleConfirmLeave = () => {
+    setShowUnsavedDialog(false);
     onBack();
+  };
+
+  const handleCancelLeave = () => {
+    setShowUnsavedDialog(false);
   };
 
   return (
@@ -369,7 +406,7 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
                     Edit the{' '}
                     <span className={cn(
                       "px-2 py-1 rounded text-white text-sm",
-                      getAgentColor(color || "Blue").solidClass
+                      getAgentColor(color || "blue").solidClass
                     )}>
                       {name || agent?.name}
                     </span>
@@ -434,11 +471,7 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g., Code Assistant"
                     required
-                    className={cn(
-                      "w-full",
-                      // Apply color background except for default state (when color is Blue and it's the initial value)
-                      color && (color !== "Blue" || agent?.color) && getAgentColor(color).cssClass
-                    )}
+                    className="w-full"
                   />
                 </div>
                 
@@ -556,7 +589,7 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
   <ColorPickerDialog
     isOpen={showColorPicker}
     selectedColor={color}
-    colors={LEGACY_AGENT_COLORS}
+    colors={AGENT_COLOR_OPTIONS}
     onColorSelect={(color: string) => setColor(color as AgentColorName)}
     onClose={() => setShowColorPicker(false)}
     title="Choose Agent Color"
@@ -573,6 +606,18 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
     onToolToggle={handleToolToggle}
     onClose={() => setShowToolPicker(false)}
     title="Choose Agent Tools"
+  />
+
+  {/* Unsaved Changes Dialog */}
+  <ConfirmationDialog
+    isOpen={showUnsavedDialog}
+    title="Unsaved Changes"
+    description="You have unsaved changes. Are you sure you want to leave?"
+    confirmText="Leave"
+    cancelText="Stay"
+    onConfirm={handleConfirmLeave}
+    onCancel={handleCancelLeave}
+    variant="destructive"
   />
 </div>
   );

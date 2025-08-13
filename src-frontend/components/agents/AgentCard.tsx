@@ -48,8 +48,8 @@ export const AgentCard: React.FC<AgentCardProps> = ({
   };
   
   const getColorClass = (color?: string) => {
-    if (!color) return getAgentColor('Blue').cssClass;
-    return getAgentColor(color as AgentColorName).cssClass;
+    if (!color) return getAgentColor('grey').cssClass;
+    return getAgentColor(color).cssClass;
   };
 
   const colorClass = getColorClass(agent.color);

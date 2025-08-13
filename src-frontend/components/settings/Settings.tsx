@@ -19,7 +19,7 @@ import {
   CommandsSettings,
   NetworkSettings,
 } from "@/components/settings";
-import { useSettingsState, useClaudeBinaryConfig } from "@/hooks";
+import { useSettingsState, useClaudeBinaryConfig, useUnsavedChanges } from "@/hooks";
 import { api } from "@/lib/api";
 
 interface SettingsProps {
@@ -53,6 +53,7 @@ export const Settings: React.FC<SettingsProps> = ({ className }) => {
     allowRules,
     denyRules,
     envVars,
+    hasChanges,
     loadSettings,
     saveSettings,
     updateSetting,
@@ -66,6 +67,9 @@ export const Settings: React.FC<SettingsProps> = ({ className }) => {
   } = useSettingsState((success, message) => {
     setToast({ message, type: success ? "success" : "error" });
   });
+  
+  // Automatically sync unsaved changes state with the tab
+  const { markAsSaved } = useUnsavedChanges(hasChanges);
 
   // Binary path management
   const { saveBinaryPath } = useClaudeBinaryConfig();
@@ -115,6 +119,9 @@ export const Settings: React.FC<SettingsProps> = ({ className }) => {
 
       // Save binary path if changed
       await saveBinaryPath();
+      
+      // Mark as saved after successful save
+      markAsSaved();
     } catch (err) {
       console.error("Failed to save settings:", err);
       setError("Failed to save settings.");
@@ -209,7 +216,7 @@ export const Settings: React.FC<SettingsProps> = ({ className }) => {
                         icon={Save}
                         label={saving ? "Saving..." : "Save Settings"}
                         onClick={handleSaveSettings}
-                        disabled={saving || loading}
+                        disabled={saving || loading || !hasChanges}
                         isLoading={saving}
                         size="sm"
                         className="bg-primary hover:bg-primary/90"

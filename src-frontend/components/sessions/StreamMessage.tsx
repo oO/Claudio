@@ -29,7 +29,7 @@ interface StreamMessageProps {
  * This is the only built-in subagent type in Claude Code
  */
 const getGeneralPurposeColorClass = (): string => {
-  return "bg-muted/30 border-muted-foreground/20";
+  return "agent-bg-grey";
 };
 
 /**
@@ -44,40 +44,29 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({
   // State to track tool results mapped by tool call ID
   const [toolResults, setToolResults] = useState<Map<string, any>>(new Map());
   
-  // Load agent metadata for project/personal agents
-  const { metadata: agentMetadata } = useAgentMetadata(
-    message.agentType === "subagent" ? message.subagentType : undefined
-  );
+  // Load agent metadata for project/personal agents  
+  const effectiveSubagentType = message.agentType === "subagent" ? (message.subagentType || message.agentName) : undefined;
+  const { metadata: agentMetadata } = useAgentMetadata(effectiveSubagentType);
   
   // Helper to get agent background class
   const getAgentBackgroundClass = (): string => {
     // For subagents
-    if (message.agentType === "subagent" && message.subagentType) {
-      // Special case: general-purpose is the only built-in subagent
-      if (message.subagentType === "general-purpose") {
+    if (message.agentType === "subagent") {
+      // Built-in Claude Code subagents
+      if (effectiveSubagentType === "general-purpose") {
         return getGeneralPurposeColorClass();
       }
       
       // All other subagents are project/personal agents with metadata
       if (agentMetadata?.color) {
-        // Convert hex color to agent color class
-        const hexToColorMap: Record<string, AgentColorName> = {
-          "#ef4444": "Red",
-          "#3b82f6": "Blue", 
-          "#10b981": "Green",
-          "#f59e0b": "Yellow",
-          "#8b5cf6": "Purple",
-          "#f97316": "Orange",
-          "#ec4899": "Pink",
-          "#06b6d4": "Cyan",
-        };
-        
-        const colorName = hexToColorMap[agentMetadata.color] || "Blue";
-        return getAgentColor(colorName).cssClass;
+        // Use existing color system but get background-only class
+        const agentColor = getAgentColor(agentMetadata.color);
+        // Convert agent-* class to agent-bg-* class
+        return agentColor.cssClass.replace('agent-', 'agent-bg-');
       }
       
       // Fallback for project/personal agents without color metadata
-      return getAgentColor("Blue").cssClass;
+      return "agent-bg-grey";
     }
     
     // Main agent uses default border styling
@@ -188,17 +177,17 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({
       const agentName = message.agentName || "Assistant";
       const isSidechain = message.isSidechain || false;
 
-      // Get agent background styling
+      // Get agent background styling for the agent name
       const agentBgClass = getAgentBackgroundClass();
 
       return (
-        <Card className={cn("relative", agentBgClass, className)}>
+        <Card className={cn("relative border-primary/20", className)}>
           <DebugLabel label="StreamMessage" />
           <CardContent className="p-4 pb-2">
             <div className="flex items-start gap-3">
               <MessageRoleIcon role="assistant" className="mt-1" />
               <div className="flex-1 min-w-0">
-                <div className="text-base font-semibold">{agentName}</div>
+                <span className={cn("text-base font-semibold px-2 py-1 rounded", agentBgClass)}>{agentName}</span>
                 <div className="mt-3 space-y-2">{contentItems}</div>
               </div>
             </div>

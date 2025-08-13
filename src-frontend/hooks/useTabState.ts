@@ -255,15 +255,8 @@ export const useTabState = (): UseTabStateReturn => {
     const tab = getTabById(id);
     if (!tab) return true;
 
-    // Check for unsaved changes
-    if (!force && tab.hasUnsavedChanges) {
-      // In a real implementation, you'd show a confirmation dialog here
-      const confirmed = window.confirm(`Tab "${tab.title}" has unsaved changes. Close anyway?`);
-      if (!confirmed) return false;
-    }
-
-    removeTab(id);
-    return true;
+    // removeTab now handles the unsaved changes check
+    return removeTab(id, force);
   }, [getTabById, removeTab]);
 
   const closeCurrentTab = useCallback(async (): Promise<boolean> => {

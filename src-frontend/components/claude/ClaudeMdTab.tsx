@@ -6,6 +6,7 @@ import { Toast, ToastContainer } from "@/components/ui/toast";
 import { TabPageLayout } from '@/components/common';
 import { ThemedMDEditor } from "@/components/ui";
 import { useScreenTracking } from '@/hooks/useAnalytics';
+import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 import { Tab } from '@/contexts/TabContext';
 import { DebugLabel } from '@/components/ui/atoms';
 import { api } from "@/lib/api";
@@ -29,6 +30,9 @@ export const ClaudeMdTab: React.FC<ClaudeMdTabProps> = ({ tab, isActive }) => {
   const [currentMode, setCurrentMode] = useState<"edit" | "preview" | "live">("preview");
   
   const hasChanges = content !== originalContent;
+  
+  // Automatically sync unsaved changes state with the tab
+  const { markAsSaved } = useUnsavedChanges(hasChanges);
   
   // Load the system prompt on mount
   useEffect(() => {
@@ -57,6 +61,7 @@ export const ClaudeMdTab: React.FC<ClaudeMdTabProps> = ({ tab, isActive }) => {
       setToast(null);
       await api.saveSystemPrompt(content);
       setOriginalContent(content);
+      markAsSaved(); // Clear the unsaved changes flag
       setToast({ message: "CLAUDE.md saved successfully", type: "success" });
     } catch (err) {
       console.error("Failed to save system prompt:", err);

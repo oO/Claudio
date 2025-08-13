@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.19] - 2025-08-13
+
+### Added
+- Comprehensive unsaved changes architecture with new useUnsavedChanges hook for automatic tab-level change tracking
+- Custom ConfirmationDialog components replacing all native confirm dialogs throughout the application  
+- Unified unsaved changes protection system across all editor components (Settings, ClaudeMdTab, ProjectToolsTab, ClaudeFileEditor, CreateAgent)
+- Enhanced TabContext and TabManager with unsaved changes handling and custom dialog support
+- Smart save button states that disable when no changes are present across all components
+
+### Changed
+- All editor components now use useUnsavedChanges hook for consistent change tracking behavior
+- TabManager now displays custom confirmation dialogs instead of native browser prompts
+- Settings component with useSettingsState hook now properly tracks hasChanges state
+- Agent color system updated to use lowercase color names (red, blue, green) instead of capitalized versions
+- Improved tools comparison logic to prevent false positive unsaved changes detection
+
+### Fixed
+- Agent color backgrounds now display correctly for subagent messages with proper color badge rendering
+- Tools comparison bug that was causing incorrect unsaved changes detection resolved
+- All save buttons now properly disable when there are no pending changes to save
+- Native confirm dialog inconsistencies replaced with themed custom dialogs
+
+### Technical
+- Created useUnsavedChanges hook with automatic tab state synchronization
+- Enhanced TabContext.removeTab method with force parameter for unsaved changes bypass
+- Updated all form validation logic to use detailed change comparison instead of shallow checks
+- Consistent unsaved changes UX pattern implemented across 5+ major editor components
+
 ## [0.3.18] - 2025-08-12
 
 ### Added

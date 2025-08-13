@@ -187,7 +187,7 @@
     --color-card: rgba(255, 255, 255, 0.08); /* fallback for dark theme */
     --color-foreground: rgba(255, 255, 255, 0.95); /* fallback */
     --color-border: rgba(255, 255, 255, 0.1); /* fallback */
-    --agent-background-opacity: 0.2; /* Single source of truth for agent transparency */
+    --agent-background-opacity: 0.5; /* Single source of truth for agent transparency */
 }
 
 /* Light or Dark CSS theme is set based on background color luminosity */
@@ -787,51 +787,121 @@ button:focus-visible,
 /* Single source of truth for Claude Code agent colors */
 /* Uses CSS custom properties for DRY transparency management */
 
+/* Agent background-only classes for text badges */
+.agent-bg-red {
+    --agent-color: 239, 68, 68; /* red-500 */
+    background-color: rgba(var(--agent-color), var(--agent-background-opacity)) !important;
+    border-color: rgba(var(--agent-color), 0.3) !important;
+}
+
+.agent-bg-blue {
+    --agent-color: 59, 130, 246; /* blue-500 */
+    background-color: rgba(var(--agent-color), var(--agent-background-opacity)) !important;
+    border-color: rgba(var(--agent-color), 0.3) !important;
+}
+
+.agent-bg-green {
+    --agent-color: 34, 197, 94; /* green-500 */
+    background-color: rgba(var(--agent-color), var(--agent-background-opacity)) !important;
+    border-color: rgba(var(--agent-color), 0.3) !important;
+}
+
+.agent-bg-yellow {
+    --agent-color: 234, 179, 8; /* yellow-500 */
+    background-color: rgba(var(--agent-color), var(--agent-background-opacity)) !important;
+    border-color: rgba(var(--agent-color), 0.3) !important;
+}
+
+.agent-bg-purple {
+    --agent-color: 168, 85, 247; /* purple-500 */
+    background-color: rgba(var(--agent-color), var(--agent-background-opacity)) !important;
+    border-color: rgba(var(--agent-color), 0.3) !important;
+}
+
+.agent-bg-orange {
+    --agent-color: 249, 115, 22; /* orange-500 */
+    background-color: rgba(var(--agent-color), var(--agent-background-opacity)) !important;
+    border-color: rgba(var(--agent-color), 0.3) !important;
+}
+
+.agent-bg-pink {
+    --agent-color: 236, 72, 153; /* pink-500 */
+    background-color: rgba(var(--agent-color), var(--agent-background-opacity)) !important;
+    border-color: rgba(var(--agent-color), 0.3) !important;
+}
+
+.agent-bg-cyan {
+    --agent-color: 6, 182, 212; /* cyan-500 */
+    background-color: rgba(var(--agent-color), var(--agent-background-opacity)) !important;
+    border-color: rgba(var(--agent-color), 0.3) !important;
+}
+
+.agent-bg-grey {
+    --agent-color: 107, 114, 128; /* gray-500 */
+    background-color: rgba(var(--agent-color), var(--agent-background-opacity)) !important;
+    border-color: rgba(var(--agent-color), 0.3) !important;
+}
+
 .agent-red {
     --agent-color: 239, 68, 68; /* red-500 */
-    background-color: rgba(var(--agent-color), var(--agent-background-opacity));
+    background-color: rgba(var(--agent-color), var(--agent-background-opacity)) !important;
+    border-color: rgba(var(--agent-color), 0.3) !important;
     color: rgb(var(--agent-color));
 }
 
 .agent-blue {
     --agent-color: 59, 130, 246; /* blue-500 */
-    background-color: rgba(var(--agent-color), var(--agent-background-opacity));
+    background-color: rgba(var(--agent-color), var(--agent-background-opacity)) !important;
+    border-color: rgba(var(--agent-color), 0.3) !important;
     color: rgb(var(--agent-color));
 }
 
 .agent-green {
     --agent-color: 34, 197, 94; /* green-500 */
-    background-color: rgba(var(--agent-color), var(--agent-background-opacity));
+    background-color: rgba(var(--agent-color), var(--agent-background-opacity)) !important;
+    border-color: rgba(var(--agent-color), 0.3) !important;
     color: rgb(var(--agent-color));
 }
 
 .agent-yellow {
     --agent-color: 234, 179, 8; /* yellow-500 */
-    background-color: rgba(var(--agent-color), var(--agent-background-opacity));
+    background-color: rgba(var(--agent-color), var(--agent-background-opacity)) !important;
+    border-color: rgba(var(--agent-color), 0.3) !important;
     color: rgb(var(--agent-color));
 }
 
 .agent-purple {
     --agent-color: 168, 85, 247; /* purple-500 */
-    background-color: rgba(var(--agent-color), var(--agent-background-opacity));
+    background-color: rgba(var(--agent-color), var(--agent-background-opacity)) !important;
+    border-color: rgba(var(--agent-color), 0.3) !important;
     color: rgb(var(--agent-color));
 }
 
 .agent-orange {
     --agent-color: 249, 115, 22; /* orange-500 */
-    background-color: rgba(var(--agent-color), var(--agent-background-opacity));
+    background-color: rgba(var(--agent-color), var(--agent-background-opacity)) !important;
+    border-color: rgba(var(--agent-color), 0.3) !important;
     color: rgb(var(--agent-color));
 }
 
 .agent-pink {
     --agent-color: 236, 72, 153; /* pink-500 */
-    background-color: rgba(var(--agent-color), var(--agent-background-opacity));
+    background-color: rgba(var(--agent-color), var(--agent-background-opacity)) !important;
+    border-color: rgba(var(--agent-color), 0.3) !important;
     color: rgb(var(--agent-color));
 }
 
 .agent-cyan {
     --agent-color: 6, 182, 212; /* cyan-500 */
-    background-color: rgba(var(--agent-color), var(--agent-background-opacity));
+    background-color: rgba(var(--agent-color), var(--agent-background-opacity)) !important;
+    border-color: rgba(var(--agent-color), 0.3) !important;
+    color: rgb(var(--agent-color));
+}
+
+.agent-grey {
+    --agent-color: 107, 114, 128; /* gray-500 */
+    background-color: rgba(var(--agent-color), var(--agent-background-opacity)) !important;
+    border-color: rgba(var(--agent-color), 0.3) !important;
     color: rgb(var(--agent-color));
 }
 
@@ -873,6 +943,11 @@ button:focus-visible,
 }
 .agent-cyan-solid {
     --agent-color: 6, 182, 212; /* cyan-500 */
+    background-color: rgb(var(--agent-color));
+    color: white;
+}
+.agent-grey-solid {
+    --agent-color: 107, 114, 128; /* gray-500 */
     background-color: rgb(var(--agent-color));
     color: white;
 }

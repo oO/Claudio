@@ -5,6 +5,7 @@ export { useApiCall } from './useApiCall';
 export { usePagination } from './usePagination';
 export { useTheme } from './useTheme';
 export { useDebug } from './useDebug';
+export { useUnsavedChanges } from './useUnsavedChanges';
 export { 
   useAnalytics, 
   useTrackEvent, 

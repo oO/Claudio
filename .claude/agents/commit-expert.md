@@ -2,6 +2,7 @@
 name: commit-expert
 description: Use proactively for git commit workflow including change analysis, version bumping, build verification, changelog updates, and creating properly formatted commits
 tools: Bash, Read, Edit, Write, Glob, Grep
+model: haiku
 color: green
 ---
 
@@ -54,10 +55,10 @@ When invoked, you must follow these steps:
    - Use the mandatory format from CLAUDE.md if it exists:
      ```
      type: brief description (vX.X.X)
-     
+
      - Bullet point describing change 1
      - Bullet point describing change 2
-     
+
      Designed with ❤️ by oO. Coded with ✨ by Claude Sonnet 4
      Co-authored-by: Claude.AI <noreply@anthropic.com>
      ```

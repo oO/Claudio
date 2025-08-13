@@ -15,6 +15,7 @@ import { ThemedMDEditor } from "@/components/ui";
 import { api, type ClaudeMdFile } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { DebugLabel } from "@/components/ui/atoms";
+import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 
 type PreviewMode = "edit" | "preview" | "live";
 
@@ -73,8 +74,12 @@ export const ClaudeFileEditor: React.FC<ClaudeFileEditorProps> = ({
   const [currentMode, setCurrentMode] = useState<PreviewMode>(initialMode);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [unsavedDialogOpen, setUnsavedDialogOpen] = useState(false);
   
   const hasChanges = content !== originalContent;
+  
+  // Automatically sync unsaved changes state with the tab
+  const { markAsSaved } = useUnsavedChanges(hasChanges);
   
   // Load the file content on mount
   useEffect(() => {
@@ -103,6 +108,7 @@ export const ClaudeFileEditor: React.FC<ClaudeFileEditorProps> = ({
       setToast(null);
       await api.saveClaudeMdFile(file.absolute_path, content);
       setOriginalContent(content);
+      markAsSaved(); // Clear the unsaved changes flag
       setToast({ message: "File saved successfully", type: "success" });
     } catch (err) {
       console.error("Failed to save file:", err);
@@ -115,12 +121,19 @@ export const ClaudeFileEditor: React.FC<ClaudeFileEditorProps> = ({
   
   const handleBack = () => {
     if (hasChanges) {
-      const confirmLeave = window.confirm(
-        "You have unsaved changes. Are you sure you want to leave?"
-      );
-      if (!confirmLeave) return;
+      setUnsavedDialogOpen(true);
+    } else {
+      onBack();
     }
+  };
+
+  const handleConfirmLeave = () => {
+    setUnsavedDialogOpen(false);
     onBack();
+  };
+
+  const handleCancelLeave = () => {
+    setUnsavedDialogOpen(false);
   };
   
   const handleDeleteClick = () => {
@@ -308,6 +321,26 @@ export const ClaudeFileEditor: React.FC<ClaudeFileEditorProps> = ({
                   Delete
                 </>
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Unsaved Changes Dialog */}
+      <Dialog open={unsavedDialogOpen} onOpenChange={setUnsavedDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Unsaved Changes</DialogTitle>
+            <DialogDescription>
+              You have unsaved changes. Are you sure you want to leave?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelLeave}>
+              Stay
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmLeave}>
+              Leave
             </Button>
           </DialogFooter>
         </DialogContent>

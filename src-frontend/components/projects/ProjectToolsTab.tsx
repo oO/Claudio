@@ -3,7 +3,7 @@ import { Save, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TriLevelPermissionsManager } from "@/components/common";
-import { useTriLevelSettings } from "@/hooks";
+import { useTriLevelSettings, useUnsavedChanges } from "@/hooks";
 import { api } from "@/lib/api";
 import { DebugLabel } from "@/components/ui/atoms";
 
@@ -24,6 +24,7 @@ export const ProjectToolsTab: React.FC<ProjectToolsTabProps> = ({
     saving,
     error,
     rules,
+    hasChanges,
     loadSettings,
     addRule,
     toggleRuleLevel,
@@ -33,6 +34,9 @@ export const ProjectToolsTab: React.FC<ProjectToolsTabProps> = ({
   } = useTriLevelSettings((success, message) => {
     setToast({ message, type: success ? "success" : "error" });
   });
+  
+  // Automatically sync unsaved changes state with the tab
+  const { markAsSaved } = useUnsavedChanges(hasChanges);
 
   // Load settings when component mounts or project changes
   useEffect(() => {
@@ -41,6 +45,7 @@ export const ProjectToolsTab: React.FC<ProjectToolsTabProps> = ({
 
   const handleSaveAllLevels = async () => {
     await saveAllLevels(projectPath);
+    markAsSaved(); // Clear the unsaved changes flag
   };
 
   return (
@@ -59,7 +64,7 @@ export const ProjectToolsTab: React.FC<ProjectToolsTabProps> = ({
             
             <Button
               onClick={handleSaveAllLevels}
-              disabled={loading || saving}
+              disabled={loading || saving || !hasChanges}
               size="sm"
               className="gap-2"
             >

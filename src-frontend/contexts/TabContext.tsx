@@ -43,7 +43,7 @@ interface TabContextType {
   tabs: Tab[];
   activeTabId: string | null;
   addTab: (tab: Omit<Tab, 'id' | 'order' | 'createdAt' | 'updatedAt'>) => string;
-  removeTab: (id: string) => void;
+  removeTab: (id: string, force?: boolean) => boolean;
   updateTab: (id: string, updates: Partial<Tab>) => void;
   setActiveTab: (id: string) => void;
   reorderTabs: (startIndex: number, endIndex: number) => void;
@@ -117,7 +117,14 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newTab.id;
   }, [tabs.length]);
 
-  const removeTab = useCallback((id: string) => {
+  const removeTab = useCallback((id: string, force: boolean = false) => {
+    // Check if tab has unsaved changes and we're not forcing removal
+    const tab = tabs.find(t => t.id === id);
+    if (tab?.hasUnsavedChanges && !force) {
+      // Return false to indicate the tab wasn't removed
+      return false;
+    }
+    
     setTabs(prevTabs => {
       const filteredTabs = prevTabs.filter(tab => tab.id !== id);
       
@@ -138,7 +145,9 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       return reorderedTabs;
     });
-  }, [activeTabId]);
+    
+    return true;
+  }, [activeTabId, tabs]);
 
   const updateTab = useCallback((id: string, updates: Partial<Tab>) => {
     setTabs(prevTabs => 

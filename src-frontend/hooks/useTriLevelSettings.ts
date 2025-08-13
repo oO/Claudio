@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import { api } from "@/lib/api";
 
 /**
@@ -30,6 +30,7 @@ export interface TriLevelSettingsState {
   saving: boolean;
   error: string | null;
   rules: TriLevelRule[];
+  hasChanges: boolean;
 }
 
 export interface TriLevelSettingsActions {
@@ -52,6 +53,7 @@ export const useTriLevelSettings = (
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rules, setRules] = useState<TriLevelRule[]>([]);
+  const [originalRules, setOriginalRules] = useState<TriLevelRule[]>([]);
 
   // Store current settings for each level
   const [userSettings, setUserSettings] = useState<SettingsLevel>({});
@@ -107,6 +109,7 @@ export const useTriLevelSettings = (
       // Merge all rules from all levels
       const mergedRules = mergeRulesFromAllLevels(userSettings, teamSettings, localSettings);
       setRules(mergedRules);
+      setOriginalRules(JSON.parse(JSON.stringify(mergedRules))); // Deep copy for comparison
       
     } catch (err) {
       console.error("Failed to load tri-level settings:", err);
@@ -249,6 +252,9 @@ export const useTriLevelSettings = (
       setTeamSettings(prev => ({ ...prev, permissions: newTeamSettings.permissions }));
       setLocalSettings(prev => ({ ...prev, permissions: newLocalSettings.permissions }));
       
+      // Reset original rules after successful save
+      setOriginalRules(JSON.parse(JSON.stringify(rules)));
+      
       onSaveComplete?.(true, "Settings saved to all levels successfully!");
       
     } catch (err) {
@@ -283,12 +289,16 @@ export const useTriLevelSettings = (
   // Auto-cleanup happens when rules are toggled off at all levels
   // This is handled in the toggleRuleLevel function instead of useEffect
 
+  // Calculate if there are changes by comparing current rules with original rules
+  const hasChanges = JSON.stringify(rules) !== JSON.stringify(originalRules);
+
   return {
     // State
     loading,
     saving, 
     error,
     rules,
+    hasChanges,
     
     // Actions
     loadSettings,

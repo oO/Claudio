@@ -8,6 +8,7 @@ import { useTrackEvent } from '@/hooks';
 import { LoadingSpinner } from '@/components/ui/atoms/LoadingSpinner';
 import { ActionButton } from '@/components/ui/atoms/ActionButton';
 import { DebugLabel } from '@/components/ui/atoms';
+import { ConfirmationDialog } from '@/components/ui/organisms';
 
 interface TabItemProps {
   tab: Tab;
@@ -156,6 +157,10 @@ export const TabManager: React.FC<TabManagerProps> = ({ className }) => {
   const [showRightScroll, setShowRightScroll] = useState(false);
   const [draggedTabId, setDraggedTabId] = useState<string | null>(null);
   
+  // State for unsaved changes dialog
+  const [pendingCloseTabId, setPendingCloseTabId] = useState<string | null>(null);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  
   // Analytics tracking
   const trackEvent = useTrackEvent();
 
@@ -277,9 +282,33 @@ export const TabManager: React.FC<TabManagerProps> = ({ className }) => {
   const handleCloseTab = async (id: string) => {
     const tab = tabs.find(t => t.id === id);
     if (tab) {
+      // Check if the tab has unsaved changes
+      if (tab.hasUnsavedChanges) {
+        setPendingCloseTabId(id);
+        setShowUnsavedDialog(true);
+        return;
+      }
+      
       trackEvent.tabClosed(tab.type);
     }
     await closeTab(id);
+  };
+  
+  const handleConfirmCloseTab = async () => {
+    if (pendingCloseTabId) {
+      const tab = tabs.find(t => t.id === pendingCloseTabId);
+      if (tab) {
+        trackEvent.tabClosed(tab.type);
+      }
+      await closeTab(pendingCloseTabId, true); // Force close
+      setPendingCloseTabId(null);
+      setShowUnsavedDialog(false);
+    }
+  };
+  
+  const handleCancelCloseTab = () => {
+    setPendingCloseTabId(null);
+    setShowUnsavedDialog(false);
   };
 
   const scrollTabs = (direction: 'left' | 'right') => {
@@ -298,8 +327,9 @@ export const TabManager: React.FC<TabManagerProps> = ({ className }) => {
   };
 
   return (
-    <div className={cn("flex items-stretch bg-muted/15 border-b relative", className)}>
-      <DebugLabel label="TabManager" />
+    <>
+      <div className={cn("flex items-stretch bg-muted/15 border-b relative", className)}>
+        <DebugLabel label="TabManager" />
       {/* Left fade gradient */}
       {showLeftScroll && (
         <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-muted/15 to-transparent pointer-events-none z-10" />
@@ -389,7 +419,20 @@ export const TabManager: React.FC<TabManagerProps> = ({ className }) => {
         )}
       </AnimatePresence>
 
-    </div>
+      </div>
+      
+      {/* Unsaved Changes Dialog */}
+      <ConfirmationDialog
+        isOpen={showUnsavedDialog}
+        title="Unsaved Changes"
+        description={`Tab "${tabs.find(t => t.id === pendingCloseTabId)?.title || ''}" has unsaved changes. Close anyway?`}
+        confirmText="Close Tab"
+        cancelText="Keep Open"
+        onConfirm={handleConfirmCloseTab}
+        onCancel={handleCancelCloseTab}
+        variant="destructive"
+      />
+    </>
   );
 };
 
