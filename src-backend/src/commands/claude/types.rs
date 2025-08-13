@@ -69,6 +69,8 @@ pub struct Session {
     pub todo_counts: Option<TodoCounts>,
     /// Unix timestamp when the session file was created
     pub created_at: u64,
+    /// Unix timestamp when the session file was last modified
+    pub modified_at: u64,
     /// First user message content (if available)
     pub first_message: Option<String>,
     /// Timestamp of the first user message (if available)

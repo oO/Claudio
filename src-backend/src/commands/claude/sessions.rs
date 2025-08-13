@@ -56,6 +56,14 @@ pub async fn get_project_sessions(project_id: String) -> Result<Vec<Session>, St
                     .unwrap_or_default()
                     .as_secs();
 
+                let modified_at = metadata
+                    .modified()
+                    .or_else(|_| metadata.created())
+                    .unwrap_or(SystemTime::UNIX_EPOCH)
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs();
+
                 // Extract first user message and timestamp
                 let (first_message, message_timestamp) = extract_first_user_message(&path);
 
@@ -83,6 +91,7 @@ pub async fn get_project_sessions(project_id: String) -> Result<Vec<Session>, St
                     todo_data,
                     todo_counts,
                     created_at,
+                    modified_at,
                     first_message,
                     message_timestamp,
                     size_bytes: Some(file_size),
@@ -94,8 +103,8 @@ pub async fn get_project_sessions(project_id: String) -> Result<Vec<Session>, St
         }
     }
 
-    // Sort sessions by creation time (newest first)
-    sessions.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+    // Sort sessions by modification time (newest first)
+    sessions.sort_by(|a, b| b.modified_at.cmp(&a.modified_at));
 
     log::info!(
         "Found {} sessions for project {}",

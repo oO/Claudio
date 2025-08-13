@@ -62,6 +62,8 @@ export interface Session {
   };
   /** Unix timestamp when the session file was created */
   created_at: number;
+  /** Unix timestamp when the session file was last modified */
+  modified_at: number;
   /** First user message content (if available) */
   first_message?: string;
   /** Timestamp of the first user message (if available) */

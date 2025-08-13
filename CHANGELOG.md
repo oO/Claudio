@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.20] - 2025-08-13
+
+### Added
+- Virtualized session list in ProjectSessionTab with dynamic scrolling and performance optimization
+- Enhanced session display with virtualization support using react-virtual
+- Sophisticated scroll position tracking and scroll-to-top button
+- New `modified_at` timestamp for session tracking in both frontend and backend
+- File size and time ago formatting utilities in date-utils
+- Dynamic session rendering with multi-line title support and improved information density
+
+### Changed
+- Completely refactored ProjectSessionTab to use virtualization for large session lists
+- Replaced static pagination with infinite scrolling and virtual rendering
+- Updated session management in frontend and backend to include `modified_at` timestamp
+- Improved session list performance for projects with many sessions
+- Enhanced session information display with more compact and informative layout
+
+### Fixed
+- Eliminated rendering performance bottlenecks in session lists with large number of sessions
+- Improved scrolling and rendering efficiency in ProjectSessionTab
+- Added proper line truncation for session titles to prevent layout breaks
+- Enhanced timestamp and file size display formatting
+
+### Technical
+- Integrated `@tanstack/react-virtual` for efficient list rendering
+- Optimized memory usage in session list component
+- Added sophisticated scroll tracking and positioning logic
+- Improved type definitions for session management
+
 ## [0.3.19] - 2025-08-13
 
 ### Added

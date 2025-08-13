@@ -149,4 +149,36 @@ export function formatTimeAgo(timestamp: number): string {
   }
   
   return 'just now';
+}
+
+/**
+ * Formats file size in bytes to human-readable format (B, KB, MB, GB, TB)
+ * Shows decimals for values under 10 units, no decimals for 10 and above
+ * @param bytes - File size in bytes
+ * @returns Human-readable file size string
+ * 
+ * @example
+ * formatFileSize(5529) // "5.4 KB"
+ * formatFileSize(129024) // "126 KB" 
+ * formatFileSize(1258291) // "1.2 MB"
+ * formatFileSize(374341632) // "357 MB"
+ */
+export function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const k = 1024;
+  
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  const size = bytes / Math.pow(k, i);
+  
+  // Don't show decimals for bytes
+  if (i === 0) {
+    return `${bytes} B`;
+  }
+  
+  // Show decimals only if size is under 10 units
+  const decimals = size < 10 ? 1 : 0;
+  
+  return `${size.toFixed(decimals)} ${units[i]}`;
 } 
