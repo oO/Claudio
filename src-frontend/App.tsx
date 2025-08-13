@@ -19,8 +19,10 @@ import { UsageDashboard } from "@/components/dashboard";
 import { MCPManager } from "@/components/mcp";
 import { NFOCredits } from "@/components/common";
 import { Toast, ToastContainer } from "@/components/ui/toast";
+import { MemoryDebugPanel } from "@/components/debug";
 import { useTabState } from "@/hooks/useTabState";
 import { useAppLifecycle, useTrackEvent } from "@/hooks";
+import { useMemoryMonitor } from "@/hooks/useMemoryMonitor";
 
 type View = 
   | "welcome" 
@@ -57,12 +59,60 @@ function AppContent() {
   useAppLifecycle();
   const trackEvent = useTrackEvent();
   
-  // Set window title with version using Tauri API
+  // Memory monitoring for the entire app
+  const { isLeakDetected, currentMemory, forceGC, getMemoryTrend, formatBytes } = useMemoryMonitor({
+    component: 'App',
+    interval: 10000, // Check every 10 seconds at app level
+    logToConsole: true,
+    trackLeaks: true
+  });
+  
+  // Show memory debug panel in development or when debugging
+  const [showMemoryDebug, setShowMemoryDebug] = useState(
+    false // Disabled - memory monitoring was stable, crashes not related to Claudio
+  );
+
+  // Show warning when memory leak is detected
   useEffect(() => {
-    const setWindowTitle = async () => {
+    if (isLeakDetected) {
+      setToast({
+        message: "⚠️ Memory leak detected! Check console for details.",
+        type: "error"
+      });
+    }
+  }, [isLeakDetected]);
+
+  // Keyboard shortcut to toggle memory debug panel
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'M') {
+        e.preventDefault();
+        setShowMemoryDebug(prev => {
+          const newValue = !prev;
+          localStorage.setItem('claudio-debug-memory', newValue.toString());
+          return newValue;
+        });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+  
+  // Set window title with version using Tauri API and restore window state
+  useEffect(() => {
+    const initializeWindow = async () => {
       try {
         const window = getCurrentWindow();
         await window.setTitle(`Claudio v${__APP_VERSION__}`);
+        
+        // Restore window state
+        try {
+          await api.restoreWindowState();
+          console.log('Window state restored successfully');
+        } catch (error) {
+          console.warn('Failed to restore window state, using defaults:', error);
+        }
       } catch (error) {
         console.error('Failed to set Tauri window title:', error);
         // Fallback to document.title
@@ -70,7 +120,25 @@ function AppContent() {
       }
     };
     
-    setWindowTitle();
+    initializeWindow();
+  }, []);
+
+  // Save window state when app is about to close
+  useEffect(() => {
+    const handleBeforeUnload = async () => {
+      try {
+        const currentState = await api.getCurrentWindowState();
+        await api.saveWindowState(currentState);
+        console.log('Window state saved before close');
+      } catch (error) {
+        console.warn('Failed to save window state on close:', error);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
   }, []);
   
   
@@ -580,6 +648,18 @@ function AppContent() {
           />
         )}
       </ToastContainer>
+      
+      {/* Memory Debug Panel - Only in dev or when debug flag is set */}
+      {showMemoryDebug && (
+        <MemoryDebugPanel
+          currentMemory={currentMemory}
+          isLeakDetected={isLeakDetected}
+          memoryTrend={getMemoryTrend()}
+          onForceGC={forceGC}
+          formatBytes={formatBytes}
+          onClose={() => setShowMemoryDebug(false)}
+        />
+      )}
     </div>
   );
 }

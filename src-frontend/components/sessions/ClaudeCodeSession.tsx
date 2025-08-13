@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   FolderOpen,
-  ChevronDown,
   ChevronUp,
-  Hash,
+  ChevronDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { type Session } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { open } from "@tauri-apps/plugin-dialog";
-import { FloatingPromptInput, type FloatingPromptInputRef } from "./FloatingPromptInput";
+import { type FloatingPromptInputRef } from "./FloatingPromptInput";
 import { ErrorBoundary } from "@/components/common";
 import { DebugLabel } from "@/components/ui/atoms";
 
@@ -23,9 +22,11 @@ import { useSessionActions } from "./SessionActions";
 import { SessionPreview } from "./SessionPreview";
 import { SessionSettings } from "./SessionSettings";
 import { SessionTimeline } from "./SessionTimeline";
-import { SessionQueuedPrompts } from "./SessionQueuedPrompts";
-import { SessionMessages } from "./SessionMessages";
+import { SessionMessages, type SessionMessagesRef } from "./SessionMessages";
 import { SessionHeader } from "./SessionHeader";
+import { SessionPromptControls } from "./SessionPromptControls";
+import { useSessionFileWatcher } from "@/hooks/useSessionFileWatcher";
+import { useScrollPinning } from "@/hooks/useScrollPinning";
 
 interface ClaudeCodeSessionProps {
   /**
@@ -143,6 +144,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   } = sessionState;
   
   const floatingPromptRef = useRef<FloatingPromptInputRef>(null);
+  const sessionMessagesRef = useRef<SessionMessagesRef>(null);
   const [copyPopoverOpen, setCopyPopoverOpen] = useState(false);
   
   // Initialize session actions hook
@@ -208,6 +210,45 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     await loadSessionHistory();
     setTimelineVersion((v) => v + 1);
   };
+  
+  const handleRefresh = useCallback(async () => {
+    if (!session) return; // Only refresh existing sessions
+    
+    try {
+      // Reload session data
+      await loadSessionHistory();
+    } catch (error) {
+      console.error('Failed to refresh session:', error);
+      setError('Failed to refresh session data');
+    }
+  }, [session, loadSessionHistory, setError]);
+  
+  // Generate a unique tab ID for this session tab
+  const tabId = useRef(`session-tab-${Math.random().toString(36).substr(2, 9)}`);
+  
+  // File watching for session changes (replaces polling)
+  const { isWatching, forceRefresh } = useSessionFileWatcher({
+    session: effectiveSession || undefined,
+    projectId: session?.project_id,
+    onSessionChanged: handleRefresh,
+    enabled: true,
+    tabId: tabId.current
+  });
+  
+  // Scroll navigation for virtualized messages
+  const scrollToTop = useCallback(() => {
+    console.log('Scrolling to top via SessionMessages ref');
+    sessionMessagesRef.current?.scrollToTop();
+  }, []);
+  
+  const scrollToBottom = useCallback(() => {
+    console.log('Scrolling to bottom via SessionMessages ref');
+    sessionMessagesRef.current?.scrollToBottom();
+  }, []);
+  
+  // For now, assume we're always pinned to bottom for the UI state
+  // TODO: We could track this with the virtualizer scroll position if needed
+  const isPinnedToBottom = false;
   
   const handleCheckpointCreated = () => {
     sessionMetrics.current.checkpointCount += 1;
@@ -299,6 +340,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
       {projectPathInput}
       
       <SessionMessages
+        ref={sessionMessagesRef}
         displayableMessages={displayableMessages}
         messages={messages}
         isLoading={isLoading}
@@ -335,10 +377,17 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
           copyPopoverOpen={copyPopoverOpen}
           onBack={onBack}
           onSelectPath={handleSelectPath}
-          onCopyAsJsonl={sessionActions.copyAsJsonl}
-          onCopyAsMarkdown={sessionActions.copyAsMarkdown}
+          onExportAsJson={() => sessionActions.exportSession('json')}
+          onExportAsMarkdown={() => sessionActions.exportSession('markdown')}
           onToggleTimeline={() => setShowTimeline(!showTimeline)}
           setCopyPopoverOpen={setCopyPopoverOpen}
+          sessionData={session}
+          isRefreshing={false} // File watching doesn't show a "refreshing" state
+          // Navigation
+          showNavigation={messages.length > 3}
+          isPinnedToBottom={isPinnedToBottom}
+          onScrollToTop={scrollToTop}
+          onScrollToBottom={scrollToBottom}
         />
 
         {/* Main Content Area */}
@@ -364,87 +413,24 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
 
         {/* Floating Prompt Input and Overlays */}
         <ErrorBoundary>
-          {/* Queued Prompts Display */}
-          <SessionQueuedPrompts
-            queuedPrompts={queuedPrompts}
-            queuedPromptsCollapsed={queuedPromptsCollapsed}
-            onToggleCollapsed={() => setQueuedPromptsCollapsed(!queuedPromptsCollapsed)}
-            onRemovePrompt={(id) => setQueuedPrompts(prev => prev.filter(p => p.id !== id))}
-          />
-
-          {/* Navigation Arrows - positioned above prompt bar with spacing */}
-          {displayableMessages.length > 5 && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              transition={{ delay: 0.5 }}
-              className="fixed bottom-32 right-6 z-50"
-            >
-              <div className="flex items-center bg-background/95 backdrop-blur-md border rounded-full shadow-lg overflow-hidden">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    // Simple scroll to top
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className="px-3 py-2 hover:bg-accent rounded-none"
-                  title="Scroll to top"
-                >
-                  <ChevronUp className="h-4 w-4" />
-                </Button>
-                <div className="w-px h-4 bg-border" />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    // Simple scroll to bottom
-                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-                  }}
-                  className="px-3 py-2 hover:bg-accent rounded-none"
-                  title="Scroll to bottom"
-                >
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </div>
-            </motion.div>
-          )}
-
-          <div className={cn(
-            "fixed bottom-0 left-0 right-0 transition-all duration-300 z-50",
-            showTimeline && "sm:right-96"
-          )}>
-            <FloatingPromptInput
-              ref={floatingPromptRef}
+          {/* All prompt controls - Only show for new sessions initiated by Claudio */}
+          {!session && (
+            <SessionPromptControls
+              floatingPromptRef={floatingPromptRef}
               onSend={handleSendPrompt}
               onCancel={handleCancelExecution}
               isLoading={isLoading}
-              disabled={!projectPath}
               projectPath={projectPath}
+              queuedPrompts={queuedPrompts}
+              queuedPromptsCollapsed={queuedPromptsCollapsed}
+              onToggleQueuedPromptsCollapsed={() => setQueuedPromptsCollapsed(!queuedPromptsCollapsed)}
+              onRemovePrompt={(id) => setQueuedPrompts(prev => prev.filter(p => p.id !== id))}
+              totalTokens={totalTokens}
+              displayableMessagesLength={displayableMessages.length}
+              onNavigateToTop={scrollToTop}
+              onNavigateToBottom={scrollToBottom}
+              showTimeline={showTimeline}
             />
-          </div>
-
-          {/* Token Counter - positioned under the Send button */}
-          {totalTokens > 0 && (
-            <div className="fixed bottom-0 left-0 right-0 z-30 pointer-events-none">
-              <div className="max-w-5xl mx-auto">
-                <div className="flex justify-end px-4 pb-2">
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    className="bg-background/95 backdrop-blur-md border rounded-full px-3 py-1 shadow-lg pointer-events-auto"
-                  >
-                    <div className="flex items-center gap-1.5 text-xs">
-                      <Hash className="h-3 w-3 text-muted-foreground" />
-                      <span className="font-mono">{totalTokens.toLocaleString()}</span>
-                      <span className="text-muted-foreground">tokens</span>
-                    </div>
-                  </motion.div>
-                </div>
-              </div>
-            </div>
           )}
         </ErrorBoundary>
 

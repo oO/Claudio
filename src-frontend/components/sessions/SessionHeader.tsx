@@ -2,21 +2,32 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { 
   ArrowLeft, 
-  Terminal, 
   MessagesSquare,
   FolderOpen, 
-  Copy, 
   GitBranch,
-  Settings,
   Hash,
-  Trash2
+  Clock,
+  Activity,
+  HardDrive,
+  MessageSquare,
+  ArrowUpFromLine,
+  ArrowDownToLine,
+  Download as LucideDownload,
+  MoreVertical,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover } from '@/components/ui/popover';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { DebugLabel } from '@/components/ui/atoms';
 import { cn } from '@/lib/utils';
+import { 
+  formatUnixTimestamp, 
+  formatTimeAgo, 
+  formatFileSize 
+} from '@/lib/date-utils';
+import type { Session } from '@/lib/api';
 
 interface SessionHeaderProps {
   projectPath: string;
@@ -28,11 +39,20 @@ interface SessionHeaderProps {
   copyPopoverOpen: boolean;
   onBack: () => void;
   onSelectPath: () => void;
-  onCopyAsJsonl: () => void;
-  onCopyAsMarkdown: () => void;
+  onExportAsJson: () => void;
+  onExportAsMarkdown: () => void;
   onToggleTimeline: () => void;
   onDeleteProject?: () => void;
   setCopyPopoverOpen: (open: boolean) => void;
+  // Session metadata
+  sessionData?: Session;
+  // Refresh state
+  isRefreshing?: boolean;
+  // Navigation
+  showNavigation?: boolean;
+  isPinnedToBottom?: boolean;
+  onScrollToTop?: () => void;
+  onScrollToBottom?: () => void;
 }
 
 export const SessionHeader: React.FC<SessionHeaderProps> = React.memo(({
@@ -45,12 +65,30 @@ export const SessionHeader: React.FC<SessionHeaderProps> = React.memo(({
   copyPopoverOpen,
   onBack,
   onSelectPath,
-  onCopyAsJsonl,
-  onCopyAsMarkdown,
+  onExportAsJson,
+  onExportAsMarkdown,
   onToggleTimeline,
   onDeleteProject,
-  setCopyPopoverOpen
+  setCopyPopoverOpen,
+  sessionData,
+  isRefreshing,
+  showNavigation,
+  isPinnedToBottom,
+  onScrollToTop,
+  onScrollToBottom
 }) => {
+  const handleCopySessionId = async () => {
+    if (claudeSessionId) {
+      try {
+        await navigator.clipboard.writeText(claudeSessionId);
+        // Could add a toast notification here if desired
+        console.log('Session ID copied to clipboard');
+      } catch (error) {
+        console.error('Failed to copy session ID:', error);
+      }
+    }
+  };
+
   return (
       <motion.div 
       initial={{ opacity: 0, y: -20 }}
@@ -59,89 +97,127 @@ export const SessionHeader: React.FC<SessionHeaderProps> = React.memo(({
     >
       <DebugLabel label="SessionHeader" />
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
           <Button
             variant="ghost"
             size="icon"
             onClick={onBack}
-            className="h-8 w-8"
+            className="h-8 w-8 flex-shrink-0"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           
-          <div className="flex items-center gap-2">
-            <MessagesSquare className="h-5 w-5 text-primary" />
-            <span className="font-semibold">Claude Code Session</span>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-3xl font-bold tracking-tight text-accent flex items-center gap-3">
+              Claude Code Session
+              {claudeSessionId && (
+                <span 
+                  className="inline-flex items-center gap-1 px-2 py-1 text-xs font-normal border border-border rounded cursor-pointer text-accent hover:text-foreground hover:bg-accent transition-colors"
+                  onClick={handleCopySessionId}
+                  title="Click to copy full session ID"
+                >
+                  {claudeSessionId.slice(0, 8)}
+                </span>
+              )}
+            </h1>
+            {projectPath && (
+              <p className="mt-1 text-sm text-muted-foreground flex items-center gap-2">
+                <FolderOpen className="h-4 w-4" />
+                <span className="font-mono truncate">{projectPath}</span>
+              </p>
+            )}
+            {!projectPath && (
+              <p className="mt-1 text-sm text-muted-foreground">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onSelectPath}
+                  className="h-auto p-0 text-sm text-muted-foreground hover:text-foreground"
+                >
+                  <FolderOpen className="h-4 w-4 mr-2" />
+                  Select Project
+                </Button>
+              </p>
+            )}
+            
+            {/* Session metadata */}
+            {sessionData && (
+              <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                {sessionData?.message_count !== undefined && (
+                  <div className="flex items-center gap-1 bg-accent px-2 py-1 rounded-full text-xs">
+                    <MessageSquare className="h-3 w-3" />
+                    <span>{sessionData.message_count}</span>
+                  </div>
+                )}
+                {totalTokens > 0 && (
+                  <div className="flex items-center gap-1">
+                    <ArrowUpFromLine className="h-3 w-3" />
+                    <span>
+                      {totalTokens.toLocaleString()} tokens
+                    </span>
+                  </div>
+                )}
+                {sessionData.size_bytes !== undefined && (
+                  <div className="flex items-center gap-1">
+                    <HardDrive className="h-3 w-3" />
+                    <span>
+                      {formatFileSize(sessionData.size_bytes)}
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  <span>
+                    {formatUnixTimestamp(sessionData.created_at)}
+                  </span>
+                </div>
+                {sessionData.modified_at && (
+                  <div className={cn(
+                    "flex items-center gap-1 transition-colors duration-200",
+                    isRefreshing && "text-accent animate-pulse"
+                  )}>
+                    <Activity className="h-3 w-3" />
+                    <span>
+                      {formatTimeAgo(sessionData.modified_at * 1000)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-
-          {projectPath && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <FolderOpen className="h-4 w-4" />
-              <span className="font-mono max-w-md truncate">{projectPath}</span>
-            </div>
-          )}
-          
-          {!projectPath && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onSelectPath}
-              className="flex items-center gap-2"
-            >
-              <FolderOpen className="h-4 w-4" />
-              Select Project
-            </Button>
-          )}
         </div>
 
         <div className="flex items-center gap-2">
-          {claudeSessionId && (
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-xs">
-                <Hash className="h-3 w-3 mr-1" />
-                {claudeSessionId.slice(0, 8)}
-              </Badge>
-              {totalTokens > 0 && (
-                <Badge variant="secondary" className="text-xs">
-                  {totalTokens.toLocaleString()} tokens
-                </Badge>
-              )}
-            </div>
+          {/* Navigation buttons */}
+          {showNavigation && onScrollToTop && onScrollToBottom && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  console.log('Top button clicked');
+                  onScrollToTop?.();
+                }}
+                className="h-8 w-8"
+                title="Jump to first message"
+              >
+                <ArrowUp className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={isPinnedToBottom ? "default" : "ghost"}
+                size="icon"
+                onClick={() => {
+                  console.log('Bottom button clicked, isPinnedToBottom:', isPinnedToBottom);
+                  onScrollToBottom?.();
+                }}
+                className="h-8 w-8"
+                title={isPinnedToBottom ? "Following new messages" : "Jump to latest message"}
+              >
+                <ArrowDown className="h-4 w-4" />
+              </Button>
+            </>
           )}
-
-          {hasMessages && !isStreaming && (
-            <Popover
-              open={copyPopoverOpen}
-              onOpenChange={setCopyPopoverOpen}
-              trigger={
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <Copy className="h-4 w-4" />
-                </Button>
-              }
-              content={
-                <div className="space-y-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={onCopyAsJsonl}
-                  >
-                    Copy as JSONL
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={onCopyAsMarkdown}
-                  >
-                    Copy as Markdown
-                  </Button>
-                </div>
-              }
-              className="w-48 p-2"
-            />
-          )}
-
+          
           <Button
             variant="ghost"
             size="icon"
@@ -154,24 +230,40 @@ export const SessionHeader: React.FC<SessionHeaderProps> = React.memo(({
             <GitBranch className="h-4 w-4" />
           </Button>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <Settings className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              {onDeleteProject && projectPath && (
-                <DropdownMenuItem 
-                  onClick={onDeleteProject}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete Project
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {hasMessages && !isStreaming && claudeSessionId && (
+            <Popover
+              open={copyPopoverOpen}
+              onOpenChange={setCopyPopoverOpen}
+              trigger={
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              }
+              content={
+                <div className="space-y-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start"
+                    onClick={onExportAsJson}
+                  >
+                    <LucideDownload className="h-4 w-4 mr-2" />
+                    Export as JSON
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start"
+                    onClick={onExportAsMarkdown}
+                  >
+                    <LucideDownload className="h-4 w-4 mr-2" />
+                    Export as Markdown
+                  </Button>
+                </div>
+              }
+              className="w-48 p-2"
+            />
+          )}
         </div>
       </div>
     </motion.div>

@@ -24,6 +24,7 @@ import {
 } from "@/lib/date-utils";
 import type { Session } from "@/lib/api";
 import { DebugLabel } from "@/components/ui/atoms";
+// import { useMemoryMonitor } from "@/hooks/useMemoryMonitor"; // Disabled - memory monitoring was stable
 
 interface ProjectSessionTabProps {
   sessions: Session[];
@@ -51,6 +52,14 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
     overscan: 5, // Keep 5 items rendered outside of view
   });
 
+  // Memory monitoring disabled - was stable, crashes not related to Claudio
+  // const { takeSnapshot, isLeakDetected, getMemoryTrend, currentMemory } = useMemoryMonitor({
+  //   component: 'ProjectSessionTab',
+  //   interval: 3000, // Check every 3 seconds
+  //   logToConsole: true,
+  //   trackLeaks: true
+  // });
+
   // Calculate container height based on actual position
   useEffect(() => {
     const calculateHeight = () => {
@@ -70,10 +79,11 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
     const timeoutId = setTimeout(calculateHeight, 100);
     
     return () => {
+      console.log('🧹 ProjectSessionTab: Cleaning up height calculation listeners');
       window.removeEventListener('resize', calculateHeight);
       clearTimeout(timeoutId);
     };
-  }, [sessions.length]);
+  }, [sessions.length, virtualizer]);
 
   // Update scroll position and show scroll to top button
   useEffect(() => {
@@ -94,7 +104,10 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
 
     element.addEventListener('scroll', handleScroll);
     handleScroll(); // Set initial position
-    return () => element.removeEventListener('scroll', handleScroll);
+    return () => {
+      console.log('🧹 ProjectSessionTab: Cleaning up scroll listeners');
+      element.removeEventListener('scroll', handleScroll);
+    };
   }, [virtualizer, sessions.length]);
 
   const scrollToTop = () => {
@@ -238,7 +251,7 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
                     <div className="flex items-center gap-2">
                       {/* Message count badge */}
                       {session.message_count !== undefined && (
-                        <div className="flex items-center gap-1 bg-accent px-2 py-1 rounded-full text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1 bg-accent px-2 py-1 rounded-full text-xs">
                           <MessageSquare className="h-3 w-3" />
                           <span>{session.message_count}</span>
                         </div>

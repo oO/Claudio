@@ -30,6 +30,9 @@ use commands::claude::{
     delete_claude_project, delete_session, prune_old_sessions, check_project_settings,
     preview_session_deletion_by_age, delete_sessions_by_age, get_session_age_range,
     ClaudeProcessState,
+    // Session watcher functionality
+    init_session_watcher, start_session_watching, stop_session_watching, 
+    stop_all_session_watching, get_session_watching_status, SessionWatcherState,
 };
 use commands::mcp::{
     mcp_add, mcp_add_from_claude_desktop, mcp_add_json, mcp_get, mcp_get_server_status, mcp_list,
@@ -45,13 +48,68 @@ use commands::storage::{
     storage_insert_row, storage_execute_sql, storage_reset_database,
 };
 use commands::proxy::{get_proxy_settings, save_proxy_settings, apply_proxy_settings, get_setting, save_setting};
+use commands::window::{save_window_state, load_window_state, get_current_window_state, restore_window_state, setup_window_state_tracking};
+use commands::system::{get_system_memory_info};
 use process::ProcessRegistryState;
 use std::sync::Mutex;
 use tauri::Manager;
+use std::io::Write;
+
+fn setup_logging() {
+    use env_logger::{Builder, Target};
+    use std::fs::OpenOptions;
+    
+    let mut builder = Builder::from_default_env();
+    
+    // Check if we should log to file
+    if std::env::var("CLAUDIO_LOG_FILE").is_ok() {
+        // Create logs directory in home/.claude/
+        if let Some(home_dir) = dirs::home_dir() {
+            let log_dir = home_dir.join(".claude").join("logs");
+            if let Err(e) = std::fs::create_dir_all(&log_dir) {
+                eprintln!("Failed to create log directory: {}", e);
+                env_logger::init();
+                return;
+            }
+            
+            let log_file_path = log_dir.join("claudio.log");
+            
+            match OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&log_file_path)
+            {
+                Ok(file) => {
+                    println!("Logging to: {:?}", log_file_path);
+                    builder.target(Target::Pipe(Box::new(file)));
+                    builder.format(|buf, record| {
+                        writeln!(buf, "{} [{}] {} - {}", 
+                            chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f"),
+                            record.level(),
+                            record.target(),
+                            record.args()
+                        )
+                    });
+                }
+                Err(e) => {
+                    eprintln!("Failed to open log file: {}", e);
+                    env_logger::init();
+                    return;
+                }
+            }
+        } else {
+            eprintln!("Could not find home directory for logging");
+            env_logger::init();
+            return;
+        }
+    }
+    
+    builder.init();
+}
 
 fn main() {
-    // Initialize logger
-    env_logger::init();
+    // Initialize logger with file output support
+    setup_logging();
 
 
     tauri::Builder::default()
@@ -120,6 +178,15 @@ fn main() {
 
             // Initialize Claude process state
             app.manage(ClaudeProcessState::default());
+
+            // Initialize session file watcher
+            let session_watcher_state = init_session_watcher(app.handle().clone());
+            app.manage(session_watcher_state);
+
+            // Setup window state tracking
+            if let Err(e) = setup_window_state_tracking(app.handle().clone()) {
+                log::warn!("Failed to setup window state tracking: {}", e);
+            }
 
             Ok(())
         })
@@ -247,6 +314,21 @@ fn main() {
             // General Settings
             get_setting,
             save_setting,
+            
+            // Window Management
+            save_window_state,
+            load_window_state,
+            get_current_window_state,
+            restore_window_state,
+            
+            // System Information
+            get_system_memory_info,
+            
+            // Session File Watching
+            start_session_watching,
+            stop_session_watching,
+            stop_all_session_watching,
+            get_session_watching_status,
             
         ])
         .run(tauri::generate_context!())
