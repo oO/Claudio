@@ -32,7 +32,7 @@ export const ProjectAgentsTab: React.FC<ProjectAgentsTabProps> = ({
       <CardContent className="p-6">
         <div className="space-y-4">
           <div>
-            <h3 className="text-lg font-semibold mb-2">Project Agents</h3>
+            <h3 className="text-lg font-semibold mb-2 text-accent">Project Agents</h3>
             <p className="text-sm text-muted-foreground mb-4">
               Manage agents specific to this project.
             </p>

@@ -187,7 +187,7 @@ export const ProjectMemoriesTab: React.FC<ProjectMemoriesTabProps> = ({
           {/* Header with search and add button */}
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold mb-2">Memories</h3>
+              <h3 className="text-lg font-semibold mb-2 text-accent">Memories</h3>
               <p className="text-sm text-muted-foreground">
                 Manage CLAUDE.md files containing project context and memories.
               </p>

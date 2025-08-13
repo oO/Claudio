@@ -138,11 +138,11 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
 
   const handleProjectClick = async (project: Project) => {
     try {
+      setSelectedProject(project);
       setLoading(true);
       setError(null);
       const sessionList = await api.getProjectSessions(project.id);
       setSessions(sessionList);
-      setSelectedProject(project);
 
       // Update tab title to project name
       const projectName = getProjectName(project.path);
@@ -150,6 +150,8 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
     } catch (err) {
       console.error("Failed to load sessions:", err);
       setError("Failed to load sessions for this project.");
+      // Reset selectedProject on error
+      setSelectedProject(null);
     } finally {
       setLoading(false);
     }
@@ -474,8 +476,15 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
 
           {/* Loading state */}
           {loading && (
-            <div className="flex items-center justify-center py-8">
-              <LoadingSpinner message="Loading projects..." />
+            <div className="flex items-center justify-center gap-2 py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">
+                {selectedProject ? (
+                  <>Loading the <strong className="text-accent">{getProjectName(selectedProject.path)}</strong> project...</>
+                ) : (
+                  "Loading projects..."
+                )}
+              </span>
             </div>
           )}
 
@@ -602,7 +611,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                     transition={{ duration: 0.5 }}
                     className="mb-4 flex justify-end"
                   >
-                    <Button onClick={handleNewSession} size="default">
+                    <Button onClick={handleNewSession} size="default" className="accent-button">
                       <Plus className="mr-2 h-4 w-4" />
                       New Claude Code Project
                     </Button>

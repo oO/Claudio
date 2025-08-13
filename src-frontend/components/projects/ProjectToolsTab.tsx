@@ -56,7 +56,7 @@ export const ProjectToolsTab: React.FC<ProjectToolsTabProps> = ({
           {/* Header with Save Button */}
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold mb-2">Tool Permissions</h3>
+              <h3 className="text-lg font-semibold mb-2 text-accent">Tool Permissions</h3>
               <p className="text-sm text-muted-foreground mb-4">
                 Manage tool permissions across user, team, and local project levels. Click toggles to enable/disable rules at each level.
               </p>

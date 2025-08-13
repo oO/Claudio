@@ -81,7 +81,7 @@ export const TabPageLayout: React.FC<TabPageLayoutProps> = ({
                 </Button>
               )}
               <div className="min-w-0 flex-1">
-                <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
+                <h1 className="text-3xl font-bold tracking-tight text-accent">{title}</h1>
                 {subtitle && (
                   <p className="mt-1 text-sm text-muted-foreground">
                     {subtitle}
@@ -108,7 +108,7 @@ export const TabPageLayout: React.FC<TabPageLayoutProps> = ({
         {/* Content */}
         <div
           id="TabContent"
-          className={cn("flex-1 overflow-hidden", contentPadding && "p-6")}
+          className={cn("flex-1 overflow-auto", contentPadding && "p-6")}
         >
           {children}
         </div>

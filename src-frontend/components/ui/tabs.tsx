@@ -47,7 +47,7 @@ const Tabs: React.FC<TabsProps> = ({
 }) => {
   return (
     <TabsContext.Provider value={{ value, onValueChange }}>
-      <div className={cn("w-full", className)}>{children}</div>
+      <div className={cn("w-full flex flex-col", className)}>{children}</div>
     </TabsContext.Provider>
   );
 };
@@ -137,7 +137,7 @@ const TabsContent = React.forwardRef<
       ref={ref}
       role="tabpanel"
       className={cn(
-        "mt-2",
+        "mt-2 flex-1",
         className
       )}
       {...props}

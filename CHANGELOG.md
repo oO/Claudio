@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.21] - 2025-08-13
+
+### Added
+- Unified accent color theme with orange highlights for enhanced visual hierarchy and brand consistency
+- Dynamic session list height calculation that adapts to actual viewport space
+- Memory optimization with increased Node.js heap allocation from 8GB to 16GB for large projects
+- Project-specific loading states with enhanced messaging and accent styling
+- Accent button component with elegant hover inversion styling
+
+### Changed
+- Applied consistent accent color (#FF9500) across all project headers and key UI elements
+- Enhanced session list with compact card design and improved spacing efficiency
+- Implemented flex-based responsive layouts for better content overflow handling
+- Updated tab system to use flex column layouts for optimal space utilization
+- Improved virtual scrolling performance with reduced item heights and better viewport usage
+- Enhanced color theme with proper light/dark mode accent color variations
+
+### Fixed
+- Resolved tab content overflow issues by switching from overflow-hidden to overflow-auto
+- Fixed session list height calculation to utilize full available viewport space
+- Improved session card visual hierarchy with better spacing and typography
+- Enhanced hover states with consistent accent color theming throughout interface
+
+### Technical
+- Increased Node.js memory allocation across all npm scripts (dev, build, preview, check)
+- Updated Rust backend version synchronization to 0.3.21
+- Enhanced CSS custom properties for accent color theming in both light and dark modes
+- Improved component layout architecture with flex-based responsive design patterns
+
 ## [0.3.20] - 2025-08-13
 
 ### Added

@@ -42,13 +42,38 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
   const parentRef = useRef<HTMLDivElement>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [scrollPosition, setScrollPosition] = useState({ start: 0, end: 0 });
+  const [containerHeight, setContainerHeight] = useState(600);
 
   const virtualizer = useVirtualizer({
     count: sessions.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 120, // Increased height to account for 2-line titles
+    estimateSize: () => 100, // Reduced height for more compact cards
     overscan: 5, // Keep 5 items rendered outside of view
   });
+
+  // Calculate container height based on actual position
+  useEffect(() => {
+    const calculateHeight = () => {
+      if (!parentRef.current) return;
+      
+      const rect = parentRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const availableHeight = viewportHeight - rect.top - 20; // 20px padding from bottom
+      
+      setContainerHeight(Math.max(200, availableHeight)); // Minimum 200px
+    };
+
+    calculateHeight();
+    window.addEventListener('resize', calculateHeight);
+    
+    // Recalculate when component mounts or sessions change
+    const timeoutId = setTimeout(calculateHeight, 100);
+    
+    return () => {
+      window.removeEventListener('resize', calculateHeight);
+      clearTimeout(timeoutId);
+    };
+  }, [sessions.length]);
 
   // Update scroll position and show scroll to top button
   useEffect(() => {
@@ -102,23 +127,36 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
   }
 
   return (
-    <Card className="relative">
+    <Card className="relative flex flex-col h-full">
       <DebugLabel label="ProjectSessionTab" />
       
-      {/* Scroll position counter */}
-      <div className="absolute top-4 right-4 z-10 bg-background/80 backdrop-blur-sm border rounded-lg px-3 py-1 text-xs text-muted-foreground">
-        {scrollPosition.start === scrollPosition.end 
-          ? `${scrollPosition.start} of ${sessions.length}`
-          : `${scrollPosition.start}-${scrollPosition.end} of ${sessions.length}`
-        }
-      </div>
-      
-      <CardContent className="p-0">
+      <CardContent className="p-0 flex flex-col flex-1">
+        {/* Header */}
+        <div className="p-6 pb-4">
+          <div className="flex items-start justify-between">
+            <div>
+              <h3 className="text-lg font-semibold mb-2 text-accent">Sessions</h3>
+              <p className="text-sm text-muted-foreground">
+                Browse and manage Claude Code sessions for this project.
+              </p>
+            </div>
+            
+            {/* Scroll position counter */}
+            <div className="self-end bg-muted px-3 py-1 rounded-lg text-xs text-muted-foreground">
+              {scrollPosition.start === scrollPosition.end 
+                ? `${scrollPosition.start} of ${sessions.length}`
+                : `${scrollPosition.start}-${scrollPosition.end} of ${sessions.length}`
+              }
+            </div>
+          </div>
+        </div>
+        
         <div
           ref={parentRef}
-          className="h-[600px] overflow-auto"
+          className="overflow-auto p-6 pt-0"
           style={{
             contain: "strict",
+            height: `${containerHeight}px`,
           }}
         >
           <div
@@ -144,18 +182,18 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
                     height: `${virtualRow.size}px`,
                     transform: `translateY(${virtualRow.start}px)`,
                   }}
-                  className="p-3"
+                  className="px-0 py-1.5"
                 >
                   <div
                     className={cn(
-                      "group flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-card-hover hover:border-hover transition-colors cursor-pointer h-full",
+                      "group flex items-center justify-between px-3 py-2 rounded-lg border bg-card hover:bg-card-hover hover:border-hover transition-colors cursor-pointer h-full",
                       className
                     )}
                     onClick={() => onSessionClick?.(session)}
                   >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className="flex-shrink-0">
-                        <MessagesSquare className="h-4 w-4 text-muted-foreground" />
+                        <MessagesSquare className="h-5 w-5 text-muted-foreground" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
@@ -200,7 +238,7 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
                     <div className="flex items-center gap-2">
                       {/* Message count badge */}
                       {session.message_count !== undefined && (
-                        <div className="flex items-center gap-1 bg-muted px-2 py-1 rounded text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1 bg-accent px-2 py-1 rounded-full text-xs text-muted-foreground">
                           <MessageSquare className="h-3 w-3" />
                           <span>{session.message_count}</span>
                         </div>

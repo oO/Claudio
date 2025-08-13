@@ -156,37 +156,37 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
 
 
   return (
-    <div className={cn("space-y-6 relative", className)}>
+    <div className={cn("flex flex-col h-full relative", className)}>
       <DebugLabel label="ProjectDetail" />
       <Tabs value={activeTab} onValueChange={(value) => {
         setActiveTab(value);
         onActiveTabChange?.(value);
-      }} className="w-full">
+      }} className="w-full flex flex-col flex-1">
         <TabsList className="grid w-full max-w-2xl grid-cols-5">
-          <TabsTrigger value="sessions" className="gap-2">
+          <TabsTrigger value="sessions" className="gap-2 hover:bg-accent">
             <MessagesSquare className="h-4 w-4" />
             Sessions
           </TabsTrigger>
-          <TabsTrigger value="memories" className="gap-2">
+          <TabsTrigger value="memories" className="gap-2 hover:bg-accent">
             <FileText className="h-4 w-4" />
             Memories
           </TabsTrigger>
-          <TabsTrigger value="agents" className="gap-2">
+          <TabsTrigger value="agents" className="gap-2 hover:bg-accent">
             <Bot className="h-4 w-4" />
             Agents
           </TabsTrigger>
-          <TabsTrigger value="tools" className="gap-2">
+          <TabsTrigger value="tools" className="gap-2 hover:bg-accent">
             <Shield className="h-4 w-4" />
             Tools
           </TabsTrigger>
-          <TabsTrigger value="commands" className="gap-2">
+          <TabsTrigger value="commands" className="gap-2 hover:bg-accent">
             <Command className="h-4 w-4" />
             Commands
           </TabsTrigger>
         </TabsList>
 
         {/* Sessions Tab */}
-        <TabsContent value="sessions" className="mt-2">
+        <TabsContent value="sessions" className="mt-2 flex-1 flex flex-col">
           <ProjectSessionTab
             sessions={sessions}
             onSessionClick={onSessionClick}

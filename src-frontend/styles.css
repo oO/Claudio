@@ -107,7 +107,7 @@
     color: var(--color-muted-foreground);
 }
 .text-accent {
-    color: var(--color-accent);
+    color: var(--color-accent-foreground);
 }
 .text-accent-foreground {
     color: var(--color-accent-foreground);
@@ -205,8 +205,8 @@
     --color-secondary-foreground: rgba(255, 255, 255, 0.95);
     --color-muted: rgba(255, 255, 255, 0.06);
     --color-muted-foreground: rgba(255, 255, 255, 0.6);
-    --color-accent: rgba(255, 255, 255, 0.1);
-    --color-accent-foreground: rgba(255, 255, 255, 0.95);
+    --color-accent: rgba(255, 149, 0, 0.3);
+    --color-accent-foreground: rgba(255, 149, 0, 1);
     --color-border: rgba(255, 255, 255, 0.1);
     --color-input: rgba(255, 255, 255, 0.06);
     --color-ring: rgba(255, 255, 255, 0.2);
@@ -238,8 +238,8 @@
     --color-secondary-foreground: rgba(0, 0, 0, 0.9);
     --color-muted: rgba(0, 0, 0, 0.04);
     --color-muted-foreground: rgba(0, 0, 0, 0.55);
-    --color-accent: rgba(0, 0, 0, 0.06);
-    --color-accent-foreground: rgba(0, 0, 0, 0.9);
+    --color-accent: rgba(255, 149, 0, 0.2);
+    --color-accent-foreground: rgba(255, 127, 0, 1);
     --color-border: rgba(0, 0, 0, 0.1);
     --color-input: rgba(0, 0, 0, 0.04);
     --color-ring: rgba(0, 0, 0, 0.15);
@@ -950,6 +950,19 @@ button:focus-visible,
     --agent-color: 107, 114, 128; /* gray-500 */
     background-color: rgb(var(--agent-color));
     color: white;
+}
+
+/* === ACCENT BUTTON === */
+/* Reusable accent button styling with elegant hover inversion */
+.accent-button {
+    background-color: var(--color-accent);
+    color: var(--color-accent-foreground);
+    transition: all 0.2s ease;
+}
+
+.accent-button:hover {
+    background-color: var(--color-accent-foreground);
+    color: var(--color-foreground);
 }
 
 /* === SWITCH COMPONENT === */

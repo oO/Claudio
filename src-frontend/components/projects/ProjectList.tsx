@@ -111,7 +111,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                     {project.sessions.length > 0 && (
                       <Badge
                         variant="secondary"
-                        className="shrink-0 ml-2 flex items-center gap-1"
+                        className="shrink-0 ml-2 flex items-center gap-1 bg-accent"
                       >
                         <MessagesSquare className="h-3 w-3" />
                         {project.sessions.length}

@@ -306,7 +306,7 @@ export const SlashCommandsManager: React.FC<SlashCommandsManagerProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold">
+          <h3 className="text-lg font-semibold text-accent">
             {scopeFilter === 'project' ? 'Project Slash Commands' : 'Slash Commands'}
           </h3>
           <p className="text-sm text-muted-foreground mt-1">

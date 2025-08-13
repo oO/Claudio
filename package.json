@@ -1,15 +1,15 @@
 {
   "name": "claudio",
   "private": true,
-  "version": "0.3.20",
+  "version": "0.3.21",
   "license": "AGPL-3.0",
   "type": "module",
   "scripts": {
-    "dev": "NODE_OPTIONS='--max-old-space-size=8192' vite",
-    "build": "NODE_OPTIONS='--max-old-space-size=8192' tsc && NODE_OPTIONS='--max-old-space-size=8192' vite build",
-    "preview": "NODE_OPTIONS='--max-old-space-size=8192' vite preview",
+    "dev": "NODE_OPTIONS='--max-old-space-size=16384' vite",
+    "build": "NODE_OPTIONS='--max-old-space-size=16384' tsc && NODE_OPTIONS='--max-old-space-size=16384' vite build",
+    "preview": "NODE_OPTIONS='--max-old-space-size=16384' vite preview",
     "tauri": "tauri",
-    "check": "NODE_OPTIONS='--max-old-space-size=8192' tsc --noEmit && cd src-backend && cargo check",
+    "check": "NODE_OPTIONS='--max-old-space-size=16384' tsc --noEmit && cd src-backend && cargo check",
     "sync-version": "node scripts/sync-version.js",
     "prebuild": "npm run sync-version",
     "predev": "npm run sync-version"
