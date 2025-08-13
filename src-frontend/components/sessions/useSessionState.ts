@@ -3,6 +3,13 @@ import { api, type Session } from '@/lib/api';
 import type { ClaudeStreamMessage } from '@/components/agents';
 import { useTrackEvent, useComponentMetrics, useWorkflowTracking } from '@/hooks';
 
+// Queued prompt type for external use
+export interface QueuedPrompt {
+  id: string;
+  prompt: string;
+  model: "sonnet" | "opus";
+}
+
 interface UseSessionStateOptions {
   session?: Session;
   initialProjectPath?: string;
@@ -44,7 +51,7 @@ export function useSessionState({
   
   
   // Queued prompts state
-  const [queuedPrompts, setQueuedPrompts] = useState<Array<{ id: string; prompt: string; model: "sonnet" | "opus" }>>([]);
+  const [queuedPrompts, setQueuedPrompts] = useState<QueuedPrompt[]>([]);
   const [queuedPromptsCollapsed, setQueuedPromptsCollapsed] = useState(false);
   
   // Refs for managing component lifecycle

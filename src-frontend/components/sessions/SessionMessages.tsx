@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useImperativeHandle, forwardRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { StreamMessage } from './StreamMessage';
@@ -13,13 +13,18 @@ interface SessionMessagesProps {
   onLinkDetected?: (url: string) => void;
 }
 
-export const SessionMessages: React.FC<SessionMessagesProps> = ({
+export interface SessionMessagesRef {
+  scrollToTop: () => void;
+  scrollToBottom: () => void;
+}
+
+export const SessionMessages = forwardRef<SessionMessagesRef, SessionMessagesProps>(({
   displayableMessages,
   messages,
   isLoading,
   error,
   onLinkDetected,
-}) => {
+}, ref) => {
   const parentRef = useRef<HTMLDivElement>(null);
 
   const rowVirtualizer = useVirtualizer({
@@ -28,6 +33,22 @@ export const SessionMessages: React.FC<SessionMessagesProps> = ({
     estimateSize: () => 150, // Estimate, will be dynamically measured
     overscan: 5,
   });
+
+  // Expose scroll methods via ref
+  useImperativeHandle(ref, () => ({
+    scrollToTop: () => {
+      console.log('Scrolling virtualizer to top (index 0)');
+      if (displayableMessages.length > 0) {
+        rowVirtualizer.scrollToIndex(0, { align: 'start' });
+      }
+    },
+    scrollToBottom: () => {
+      console.log('Scrolling virtualizer to bottom (index', displayableMessages.length - 1, ')');
+      if (displayableMessages.length > 0) {
+        rowVirtualizer.scrollToIndex(displayableMessages.length - 1, { align: 'end' });
+      }
+    }
+  }), [rowVirtualizer, displayableMessages.length]);
 
   return (
     <>
@@ -98,6 +119,8 @@ export const SessionMessages: React.FC<SessionMessagesProps> = ({
     </div>
     </>
   );
-};
+});
+
+SessionMessages.displayName = 'SessionMessages';
 
 export default SessionMessages;

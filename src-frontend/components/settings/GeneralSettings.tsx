@@ -216,6 +216,26 @@ export const GeneralSettings: React.FC<GeneralSettingsProps> = ({
             />
           </div>
           
+          {/* Session Polling Interval */}
+          <div className="space-y-2">
+            <Label htmlFor="sessionPollingInterval">Session Polling Interval (seconds)</Label>
+            <p className="text-xs text-muted-foreground">
+              How often to check for session file updates (3-30 seconds)
+            </p>
+            <Input
+              id="sessionPollingInterval"
+              type="number"
+              min="3"
+              max="30"
+              value={settings?.sessionPollingInterval || 5}
+              onChange={(e) => {
+                const value = Math.max(3, Math.min(30, parseInt(e.target.value) || 5));
+                onUpdateSetting("sessionPollingInterval", value);
+              }}
+              className="w-24"
+            />
+          </div>
+          
           {/* Cleanup Period */}
           <div className="space-y-2">
             <Label htmlFor="cleanup">Chat Transcript Retention (days)</Label>

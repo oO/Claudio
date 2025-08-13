@@ -27,6 +27,10 @@ export {
 } from './usePerformanceMonitor';
 export { TAB_SCREEN_NAMES } from './useAnalytics';
 
+// Session file watching hooks
+export { useSessionFileWatcher, useSessionListWatcher } from './useSessionFileWatcher';
+export { useScrollPinning } from './useScrollPinning';
+
 // Prompt input hooks
 export { usePromptInput } from './usePromptInput';
 export { useSlashCommands } from './useSlashCommands';

@@ -126,6 +126,27 @@ export interface ClaudeVersionStatus {
 }
 
 /**
+ * Window state for persistence
+ */
+export interface WindowState {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  maximized: boolean;
+}
+
+/**
+ * System memory information from backend
+ */
+export interface SystemMemoryInfo {
+  process_memory_mb: number;
+  system_total_mb: number;
+  system_available_mb: number;
+  process_cpu_percent: number;
+}
+
+/**
  * Represents a CLAUDE.md file found in the project
  */
 export interface ClaudeMdFile {
@@ -2152,6 +2173,70 @@ export const api = {
       return await invoke("prune_old_sessions", { projectId, daysOld, keepMin });
     } catch (error) {
       console.error("Failed to prune old sessions:", error);
+      throw error;
+    }
+  },
+
+  // === Window Management ===
+
+  /**
+   * Saves the current window state to persistence
+   */
+  async saveWindowState(state: WindowState): Promise<void> {
+    try {
+      await invoke("save_window_state", { state });
+    } catch (error) {
+      console.error("Failed to save window state:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Loads the saved window state
+   */
+  async loadWindowState(): Promise<WindowState> {
+    try {
+      return await invoke<WindowState>("load_window_state");
+    } catch (error) {
+      console.error("Failed to load window state:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Gets the current window state
+   */
+  async getCurrentWindowState(): Promise<WindowState> {
+    try {
+      return await invoke<WindowState>("get_current_window_state");
+    } catch (error) {
+      console.error("Failed to get current window state:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Restores the window to the saved state
+   */
+  async restoreWindowState(): Promise<void> {
+    try {
+      await invoke("restore_window_state");
+    } catch (error) {
+      console.error("Failed to restore window state:", error);
+      throw error;
+    }
+  },
+
+  // === System Information ===
+
+  /**
+   * Gets current system memory information
+   */
+  async getSystemMemoryInfo(): Promise<SystemMemoryInfo> {
+    try {
+      return await invoke<SystemMemoryInfo>("get_system_memory_info");
+    } catch (error) {
+      console.error("Failed to get system memory info:", error);
       throw error;
     }
   }
