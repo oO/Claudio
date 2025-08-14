@@ -24,6 +24,15 @@ export interface ClaudeStreamMessage {
   isSidechain?: boolean; // True for subagent execution
   parentUuid?: string; // Links messages in execution chain
   messageNumber?: number; // Line number in original JSONL file for debugging
+  // Command bundling for native Claude Code commands
+  _bundledCommand?: {
+    commandName: string;
+    commandMessage: string;
+    commandArgs?: string;
+    output?: string;
+  };
+  // Array of UUIDs for all messages that contribute to this displayed card
+  _contributingMessageUuids?: string[];
   [key: string]: any;
 }
 

@@ -32,7 +32,7 @@ use commands::claude::{
     ClaudeProcessState,
     // Session watcher functionality
     init_session_watcher, start_session_watching, stop_session_watching, 
-    stop_all_session_watching, get_session_watching_status, SessionWatcherState,
+    stop_all_session_watching, get_session_watching_status,
 };
 use commands::mcp::{
     mcp_add, mcp_add_from_claude_desktop, mcp_add_json, mcp_get, mcp_get_server_status, mcp_list,

@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
-import { api, type Session } from '@/lib/api';
+import { api, type Session, type SessionWithContent } from '@/lib/api';
 import type { ClaudeStreamMessage } from '@/components/agents';
 import { useTrackEvent, useComponentMetrics, useWorkflowTracking } from '@/hooks';
 
@@ -31,6 +31,8 @@ export function useSessionState({
   const [claudeSessionId, setClaudeSessionId] = useState<string | null>(null);
   const [isFirstPrompt, setIsFirstPrompt] = useState(!session);
   const [totalTokens, setTotalTokens] = useState(0);
+  const [collapsedMessageUuids, setCollapsedMessageUuids] = useState<string[]>([]);
+  const [sessionFilePath, setSessionFilePath] = useState<string | undefined>(undefined);
   
   // Timeline and UI state
   const [showTimeline, setShowTimeline] = useState(false);
@@ -103,23 +105,99 @@ export function useSessionState({
     return null;
   }, [session, extractedSessionInfo, projectPath]);
 
-  // Filter out messages that shouldn't be displayed
+  // Filter and bundle messages that should be displayed
   const displayableMessages = useMemo(() => {
-    return messages.filter((message, index) => {
-      // Skip meta messages that don't have meaningful content
-      if (message.isMeta && !message.leafUuid && !message.summary) {
-        return false;
+    const processedMessages: ClaudeStreamMessage[] = [];
+    const skipIndexes = new Set<number>();
+    const filteredUuids: string[] = [];
+    let filteredCount = 0;
+
+    console.log(`Processing ${messages.length} messages for display filtering`);
+
+    for (let index = 0; index < messages.length; index++) {
+      // Skip if already processed as part of a bundle
+      if (skipIndexes.has(index)) {
+        continue;
       }
 
-      // Skip user messages that only contain tool results that are already displayed
+      const message = messages[index];
+
+      // Skip meta messages that don't have meaningful content
+      if (message.isMeta && !message.leafUuid && !message.summary) {
+        filteredCount++;
+        if (message.uuid) filteredUuids.push(message.uuid);
+        console.log(`Filtered meta message ${index}:`, message.type, message.message?.content);
+        continue;
+      }
+
+      // Handle command bundling for user messages
       if (message.type === "user" && message.message) {
-        if (message.isMeta) return false;
+        if (message.isMeta) {
+          filteredCount++;
+          if (message.uuid) filteredUuids.push(message.uuid);
+          console.log(`Filtered user meta message ${index}:`, message.message?.content);
+          continue;
+        }
 
         const msg = message.message;
         if (!msg.content || (Array.isArray(msg.content) && msg.content.length === 0)) {
-          return false;
+          filteredCount++;
+          if (message.uuid) filteredUuids.push(message.uuid);
+          console.log(`Filtered empty user message ${index}:`, msg);
+          continue;
         }
 
+        // Check for command pattern in string content
+        if (typeof msg.content === "string") {
+          const commandMatch = msg.content.match(
+            /<command-name>(.+?)<\/command-name>[\s\S]*?<command-message>(.+?)<\/command-message>[\s\S]*?<command-args>(.*?)<\/command-args>/,
+          );
+          
+          if (commandMatch) {
+            const [, commandName, commandMessage, commandArgs] = commandMatch;
+            
+            // Look for the next message with stdout
+            let stdout = "";
+            if (index + 1 < messages.length) {
+              const nextMessage = messages[index + 1];
+              if (nextMessage.type === "user" && typeof nextMessage.message?.content === "string") {
+                const stdoutMatch = nextMessage.message.content.match(
+                  /<local-command-stdout>(.*?)<\/local-command-stdout>/s
+                );
+                if (stdoutMatch) {
+                  stdout = stdoutMatch[1];
+                  skipIndexes.add(index + 1); // Mark next message as processed
+                  // Add the stdout message UUID to filtered list since it's bundled
+                  if (nextMessage.uuid) filteredUuids.push(nextMessage.uuid);
+                }
+              }
+            }
+
+            // Create bundled command message with all contributing UUIDs
+            const contributingUuids = [message.uuid];
+            if (index + 1 < messages.length && skipIndexes.has(index + 1)) {
+              // Include the stdout message UUID that was bundled
+              const stdoutMessage = messages[index + 1];
+              if (stdoutMessage.uuid) contributingUuids.push(stdoutMessage.uuid);
+            }
+            
+            const bundledMessage: ClaudeStreamMessage = {
+              ...message,
+              _bundledCommand: {
+                commandName: commandName.trim(),
+                commandMessage: commandMessage.trim(),
+                commandArgs: commandArgs?.trim(),
+                output: stdout
+              },
+              _contributingMessageUuids: contributingUuids.filter(Boolean)
+            };
+            
+            processedMessages.push(bundledMessage);
+            continue;
+          }
+        }
+
+        // Handle regular user messages with tool results filtering
         if (Array.isArray(msg.content)) {
           let hasVisibleContent = false;
           for (const content of msg.content) {
@@ -158,27 +236,37 @@ export function useSessionState({
             }
           }
           if (!hasVisibleContent) {
-            return false;
+            filteredCount++;
+            if (message.uuid) filteredUuids.push(message.uuid);
+            console.log(`Filtered user message with only tool results ${index}:`, msg.content);
+            continue;
           }
         }
       }
-      return true;
-    });
+
+      // Add message to processed list with contributing UUIDs
+      const messageWithUuids = {
+        ...message,
+        _contributingMessageUuids: message.uuid ? [message.uuid] : []
+      };
+      processedMessages.push(messageWithUuids);
+    }
+
+    // Renumber messages sequentially for display
+    const renumberedMessages = processedMessages.map((msg, index) => ({
+      ...msg,
+      messageNumber: index + 1 // Sequential numbering starting from 1
+    }));
+
+    console.log(`Final result: ${renumberedMessages.length} displayable messages out of ${messages.length} total (filtered ${filteredCount})`);
+    
+    // Store filtered UUIDs for debugging purposes
+    setCollapsedMessageUuids(filteredUuids);
+    
+    return renumberedMessages;
   }, [messages]);
 
-  // Calculate total tokens from messages
-  useEffect(() => {
-    const tokens = messages.reduce((total, msg) => {
-      if (msg.message?.usage) {
-        return total + msg.message.usage.input_tokens + msg.message.usage.output_tokens;
-      }
-      if (msg.usage) {
-        return total + msg.usage.input_tokens + msg.usage.output_tokens;
-      }
-      return total;
-    }, 0);
-    setTotalTokens(tokens);
-  }, [messages]);
+  // Note: Token calculation moved to SessionMessages for single source of truth
 
   // Report streaming state changes
   useEffect(() => {
@@ -193,7 +281,11 @@ export function useSessionState({
       setIsLoading(true);
       setError(null);
       
-      const history = await api.loadSessionHistory(session.id, session.project_id);
+      const sessionWithContent = await api.loadSessionHistory(session.id, session.project_id);
+      const history = sessionWithContent.content;
+      
+      // Store the file path from the API response
+      setSessionFilePath(sessionWithContent.file_path);
       
       // Convert history to messages format with agent identification
       let currentSubagentType: string | undefined;
@@ -445,6 +537,8 @@ export function useSessionState({
     // Computed values
     effectiveSession,
     displayableMessages,
+    collapsedMessageUuids,
+    sessionFilePath,
     
     // Refs
     isMountedRef,

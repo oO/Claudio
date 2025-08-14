@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { AlertCircle, CheckCircle2, MessageSquare, Clock, ArrowUpFromLine, ArrowDownToLine } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  MessageSquare,
+  Clock,
+  ArrowUpFromLine,
+  ArrowDownToLine,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import {
@@ -22,6 +29,9 @@ interface StreamMessageProps {
   className?: string;
   streamMessages: ClaudeStreamMessage[];
   onLinkDetected?: (url: string) => void;
+  sessionFilePath?: string;
+  projectId?: string;
+  sessionId?: string;
 }
 
 /**
@@ -40,14 +50,20 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({
   className,
   streamMessages,
   onLinkDetected,
+  sessionFilePath,
+  projectId,
+  sessionId,
 }) => {
   // State to track tool results mapped by tool call ID
   const [toolResults, setToolResults] = useState<Map<string, any>>(new Map());
-  
-  // Load agent metadata for project/personal agents  
-  const effectiveSubagentType = message.agentType === "subagent" ? (message.subagentType || message.agentName) : undefined;
+
+  // Load agent metadata for project/personal agents
+  const effectiveSubagentType =
+    message.agentType === "subagent"
+      ? message.subagentType || message.agentName
+      : undefined;
   const { metadata: agentMetadata } = useAgentMetadata(effectiveSubagentType);
-  
+
   // Helper to get agent background class
   const getAgentBackgroundClass = (): string => {
     // For subagents
@@ -56,19 +72,19 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({
       if (effectiveSubagentType === "general-purpose") {
         return getGeneralPurposeColorClass();
       }
-      
+
       // All other subagents are project/personal agents with metadata
       if (agentMetadata?.color) {
         // Use existing color system but get background-only class
         const agentColor = getAgentColor(agentMetadata.color);
         // Convert agent-* class to agent-bg-* class
-        return agentColor.cssClass.replace('agent-', 'agent-bg-');
+        return agentColor.cssClass.replace("agent-", "agent-bg-");
       }
-      
+
       // Fallback for project/personal agents without color metadata
       return "agent-bg-grey";
     }
-    
+
     // Main agent uses default border styling
     return "border-primary/20";
   };
@@ -187,18 +203,22 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({
             <div className="flex items-start gap-3">
               <MessageRoleIcon role="assistant" className="mt-1" />
               <div className="flex-1 min-w-0">
-                <span className={cn("text-base font-semibold px-2 py-1 rounded", agentBgClass)}>{agentName}</span>
+                <span
+                  className={cn(
+                    "text-base font-semibold px-2 py-1 rounded",
+                    agentBgClass,
+                  )}
+                >
+                  {agentName}
+                </span>
                 <div className="mt-3 space-y-2">{contentItems}</div>
               </div>
             </div>
-            {(message.messageNumber || message.timestamp || (msg.usage && (msg.usage.input_tokens || msg.usage.output_tokens))) && (
+            {(message.messageNumber ||
+              message.timestamp ||
+              (msg.usage &&
+                (msg.usage.input_tokens || msg.usage.output_tokens))) && (
               <div className="flex items-center justify-end gap-3 text-xs text-muted-foreground mt-4">
-                {message.messageNumber && (
-                  <div className="flex items-center gap-1">
-                    <MessageSquare className="h-3 w-3" />
-                    {message.messageNumber.toString().padStart(3, "0")}
-                  </div>
-                )}
                 {msg.usage?.output_tokens && msg.usage.output_tokens > 0 && (
                   <div className="flex items-center">
                     <ArrowUpFromLine className="h-3 w-3" />
@@ -217,6 +237,43 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({
                     {new Date(message.timestamp).toLocaleTimeString()}
                   </div>
                 )}
+                {message.messageNumber && (
+                  <div
+                    className="flex items-center gap-1 cursor-pointer bg-accent text-muted-foreground hover:!text-accent-foreground px-2 py-1 rounded transition-colors"
+                    onClick={async () => {
+                      const contributingUuids = message._contributingMessageUuids || (message.uuid ? [message.uuid] : []);
+                      
+                      if (contributingUuids.length > 0 && projectId && sessionId && sessionFilePath) {
+                        try {
+                          // Build complete message location object (Single Source of Truth)
+                          const messageLocation = {
+                            project: projectId,
+                            session: sessionId,
+                            messages: contributingUuids,
+                            session_path: sessionFilePath
+                          };
+                          const locationJson = JSON.stringify(messageLocation, null, 2);
+                          await navigator.clipboard.writeText(locationJson);
+                          console.log(`Copied message location JSON to clipboard:`, messageLocation);
+                        } catch (error) {
+                          console.error("Failed to copy message location:", error);
+                        }
+                      } else if (message.uuid) {
+                        // Fallback to just UUID if missing data
+                        try {
+                          await navigator.clipboard.writeText(message.uuid);
+                          console.log(`Copied message UUID to clipboard: ${message.uuid}`);
+                        } catch (error) {
+                          console.error("Failed to copy message UUID:", error);
+                        }
+                      }
+                    }}
+                    title={projectId && sessionId && sessionFilePath ? "Click to copy message location JSON (all contributing messages)" : "Click to copy message UUID"}
+                  >
+                    <MessageSquare className="h-3 w-3" />
+                    {message.messageNumber.toString().padStart(3, "0")}
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
@@ -229,14 +286,48 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({
       // Don't render meta messages, which are for system use
       if (message.isMeta) return null;
 
+      // Handle compact summaries with SummaryWidget
+      if ((message as any).isCompactSummary) {
+        const msg = message.message || message;
+        const content = typeof msg.content === 'string' ? msg.content : 
+          Array.isArray(msg.content) ? msg.content.map(c => c.text || c).join('') :
+          JSON.stringify(msg.content);
+        
+        return (
+          <SummaryWidget 
+            summary={content}
+            leafUuid={message.uuid}
+            messageNumber={message.messageNumber}
+            sessionFilePath={sessionFilePath}
+            projectId={projectId}
+            sessionId={sessionId}
+            contributingMessageUuids={message._contributingMessageUuids}
+          />
+        );
+      }
+
       // Handle different message structures
       const msg = message.message || message;
 
       let renderedSomething = false;
       const contentItems: React.ReactNode[] = [];
 
-      // Handle string content
-      if (
+      // Check for bundled command first, then handle regular content
+      if (message._bundledCommand) {
+        renderedSomething = true;
+        contentItems.push(
+          <ToolCallRenderer
+            key="bundled-command"
+            toolCall={{ type: "command" }}
+            commandContent={{
+              commandName: message._bundledCommand.commandName,
+              commandMessage: message._bundledCommand.commandMessage,
+              commandArgs: message._bundledCommand.commandArgs,
+              output: message._bundledCommand.output,
+            }}
+          />,
+        );
+      } else if (
         typeof msg.content === "string" ||
         (msg.content && !Array.isArray(msg.content))
       ) {
@@ -245,7 +336,7 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({
         if (contentStr.trim()) {
           renderedSomething = true;
 
-          // Check for command patterns
+          // Check for command patterns (fallback for non-bundled commands)
           const commandMatch = contentStr.match(
             /<command-name>(.+?)<\/command-name>[\s\S]*?<command-message>(.+?)<\/command-message>[\s\S]*?<command-args>(.*?)<\/command-args>/,
           );
@@ -360,20 +451,55 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({
                 <div className="mt-3 space-y-2">{contentItems}</div>
               </div>
             </div>
-            {(message.messageNumber || message.timestamp || (message.usage?.input_tokens && message.usage.input_tokens > 0)) && (
+            {(message.messageNumber ||
+              message.timestamp ||
+              (message.usage?.input_tokens &&
+                message.usage.input_tokens > 0)) && (
               <div className="flex items-center justify-end gap-3 text-xs text-muted-foreground mt-4">
                 {message.messageNumber && (
-                  <div className="flex items-center gap-1">
+                  <div
+                    className="flex items-center gap-1 cursor-pointer bg-accent text-foreground hover:text-accent-foreground px-2 py-1 rounded transition-colors"
+                    onClick={async () => {
+                      const contributingUuids = message._contributingMessageUuids || (message.uuid ? [message.uuid] : []);
+                      
+                      if (contributingUuids.length > 0 && projectId && sessionId && sessionFilePath) {
+                        try {
+                          // Build complete message location object (Single Source of Truth)
+                          const messageLocation = {
+                            project: projectId,
+                            session: sessionId,
+                            messages: contributingUuids,
+                            session_path: sessionFilePath
+                          };
+                          const locationJson = JSON.stringify(messageLocation, null, 2);
+                          await navigator.clipboard.writeText(locationJson);
+                          console.log(`Copied message location JSON to clipboard:`, messageLocation);
+                        } catch (error) {
+                          console.error("Failed to copy message location:", error);
+                        }
+                      } else if (message.uuid) {
+                        // Fallback to just UUID if missing data
+                        try {
+                          await navigator.clipboard.writeText(message.uuid);
+                          console.log(`Copied message UUID to clipboard: ${message.uuid}`);
+                        } catch (error) {
+                          console.error("Failed to copy message UUID:", error);
+                        }
+                      }
+                    }}
+                    title={projectId && sessionId && sessionFilePath ? "Click to copy message location JSON (all contributing messages)" : "Click to copy message UUID"}
+                  >
                     <MessageSquare className="h-3 w-3" />
                     {message.messageNumber.toString().padStart(3, "0")}
                   </div>
                 )}
-                {message.usage?.input_tokens && message.usage.input_tokens > 0 && (
-                  <div className="flex items-center">
-                    <ArrowDownToLine className="h-3 w-3" />
-                    {message.usage.input_tokens}
-                  </div>
-                )}
+                {message.usage?.input_tokens &&
+                  message.usage.input_tokens > 0 && (
+                    <div className="flex items-center">
+                      <ArrowDownToLine className="h-3 w-3" />
+                      {message.usage.input_tokens}
+                    </div>
+                  )}
                 {message.timestamp && (
                   <div className="flex items-center gap-1">
                     <Clock className="h-3 w-3" />
@@ -425,26 +551,63 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({
                 </div>
               </div>
             </div>
-            {(message.messageNumber || message.timestamp || (message.usage && (message.usage.input_tokens || message.usage.output_tokens))) && (
+            {(message.messageNumber ||
+              message.timestamp ||
+              (message.usage &&
+                (message.usage.input_tokens ||
+                  message.usage.output_tokens))) && (
               <div className="flex items-center justify-end gap-3 text-xs text-muted-foreground mt-4">
                 {message.messageNumber && (
-                  <div className="flex items-center gap-1">
+                  <div
+                    className="flex items-center gap-1 cursor-pointer bg-accent text-foreground hover:text-accent-foreground px-2 py-1 rounded transition-colors"
+                    onClick={async () => {
+                      const contributingUuids = message._contributingMessageUuids || (message.uuid ? [message.uuid] : []);
+                      
+                      if (contributingUuids.length > 0 && projectId && sessionId && sessionFilePath) {
+                        try {
+                          // Build complete message location object (Single Source of Truth)
+                          const messageLocation = {
+                            project: projectId,
+                            session: sessionId,
+                            messages: contributingUuids,
+                            session_path: sessionFilePath
+                          };
+                          const locationJson = JSON.stringify(messageLocation, null, 2);
+                          await navigator.clipboard.writeText(locationJson);
+                          console.log(`Copied message location JSON to clipboard:`, messageLocation);
+                        } catch (error) {
+                          console.error("Failed to copy message location:", error);
+                        }
+                      } else if (message.uuid) {
+                        // Fallback to just UUID if missing data
+                        try {
+                          await navigator.clipboard.writeText(message.uuid);
+                          console.log(`Copied message UUID to clipboard: ${message.uuid}`);
+                        } catch (error) {
+                          console.error("Failed to copy message UUID:", error);
+                        }
+                      }
+                    }}
+                    title={projectId && sessionId && sessionFilePath ? "Click to copy message location JSON (all contributing messages)" : "Click to copy message UUID"}
+                  >
                     <MessageSquare className="h-3 w-3" />
                     {message.messageNumber.toString().padStart(3, "0")}
                   </div>
                 )}
-                {message.usage?.output_tokens && message.usage.output_tokens > 0 && (
-                  <div className="flex items-center gap-1">
-                    <ArrowUpFromLine className="h-3 w-3" />
-                    {message.usage.output_tokens}
-                  </div>
-                )}
-                {message.usage?.input_tokens && message.usage.input_tokens > 0 && (
-                  <div className="flex items-center">
-                    <ArrowDownToLine className="h-3 w-3" />
-                    {message.usage.input_tokens}
-                  </div>
-                )}
+                {message.usage?.output_tokens &&
+                  message.usage.output_tokens > 0 && (
+                    <div className="flex items-center gap-1">
+                      <ArrowUpFromLine className="h-3 w-3" />
+                      {message.usage.output_tokens}
+                    </div>
+                  )}
+                {message.usage?.input_tokens &&
+                  message.usage.input_tokens > 0 && (
+                    <div className="flex items-center">
+                      <ArrowDownToLine className="h-3 w-3" />
+                      {message.usage.input_tokens}
+                    </div>
+                  )}
                 {message.timestamp && (
                   <div className="flex items-center gap-1">
                     <Clock className="h-3 w-3" />

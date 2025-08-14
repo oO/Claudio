@@ -114,12 +114,78 @@ pub async fn get_project_sessions(project_id: String) -> Result<Vec<Session>, St
     Ok(sessions)
 }
 
+/// Helper function to build session metadata for a single session file
+fn build_session_metadata(session_path: &std::path::Path, session_id: &str, project_id: &str) -> Result<Session, String> {
+    let metadata = fs::metadata(session_path)
+        .map_err(|e| format!("Failed to get file metadata: {}", e))?;
+
+    let created_at = metadata
+        .created()
+        .or_else(|_| metadata.modified())
+        .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
+        .duration_since(std::time::SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+
+    let modified_at = metadata
+        .modified()
+        .or_else(|_| metadata.created())
+        .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
+        .duration_since(std::time::SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+
+    let file_size = metadata.len();
+
+    // Get project path (reuse the logic from get_project_sessions)
+    let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
+    let project_sessions_dir = claude_dir.join("projects").join(project_id);
+    let project_path = get_project_path_from_sessions(&project_sessions_dir)?;
+
+    // Extract first user message and timestamp
+    let session_path_buf = session_path.to_path_buf();
+    let (first_message, message_timestamp) = extract_first_user_message(&session_path_buf);
+
+    // Try to load associated todo data
+    let todos_dir = claude_dir.join("todos");
+    let todo_path = todos_dir.join(format!("{}.json", session_id));
+    let todo_data = if todo_path.exists() {
+        fs::read_to_string(&todo_path)
+            .ok()
+            .and_then(|content| serde_json::from_str(&content).ok())
+    } else {
+        None
+    };
+
+    // Parse session analytics
+    let analytics = parse_session_analytics(&session_path_buf);
+
+    // Aggregate todo counts from agent executions
+    let todo_counts = aggregate_session_todos(&claude_dir, session_id);
+
+    Ok(Session {
+        id: session_id.to_string(),
+        project_id: project_id.to_string(),
+        project_path,
+        todo_data,
+        todo_counts,
+        created_at,
+        modified_at,
+        first_message,
+        message_timestamp,
+        size_bytes: Some(file_size),
+        token_count: if analytics.token_count > 0 { Some(analytics.token_count) } else { None },
+        cost_usd: if analytics.cost_usd > 0.0 { Some(analytics.cost_usd) } else { None },
+        message_count: if analytics.message_count > 0 { Some(analytics.message_count) } else { None },
+    })
+}
+
 /// Loads the JSONL history for a specific session
 #[command]
 pub async fn load_session_history(
     session_id: String,
     project_id: String,
-) -> Result<Vec<serde_json::Value>, String> {
+) -> Result<SessionWithContent, String> {
     log::info!(
         "Loading session history for session: {} in project: {}",
         session_id,
@@ -136,9 +202,13 @@ pub async fn load_session_history(
         return Err(format!("Session file not found: {}", session_id));
     }
 
-    let file =
-        fs::File::open(&session_path).map_err(|e| format!("Failed to open session file: {}", e))?;
+    // Get session metadata
+    let session_metadata = build_session_metadata(&session_path, &session_id, &project_id)?;
 
+    // Load and parse JSONL content
+    let file = fs::File::open(&session_path)
+        .map_err(|e| format!("Failed to open session file: {}", e))?;
+    
     let reader = BufReader::new(file);
     let mut messages = Vec::new();
 
@@ -150,7 +220,11 @@ pub async fn load_session_history(
         }
     }
 
-    Ok(messages)
+    Ok(SessionWithContent {
+        session: session_metadata,
+        file_path: session_path.to_string_lossy().to_string(),
+        content: messages,
+    })
 }
 
 /// Track session messages from the frontend for checkpointing

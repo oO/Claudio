@@ -23,11 +23,23 @@ export const SyntaxHighlighter: React.FC<SyntaxHighlighterProps> = ({
 }) => {
   const { theme } = useTheme();
   const syntaxTheme = getClaudeSyntaxTheme(theme);
+  
+  // Provide fallback styling if theme is empty
+  const fallbackStyle = Object.keys(syntaxTheme).length === 0 ? {
+    'pre[class*="language-"]': {
+      background: 'var(--muted)',
+      color: 'var(--foreground)',
+    },
+    'code[class*="language-"]': {
+      background: 'transparent',
+      color: 'var(--info)',
+    }
+  } : syntaxTheme;
 
   return (
     <div className={cn("rounded-md overflow-hidden", className)}>
       <PrismSyntaxHighlighter
-        style={syntaxTheme}
+        style={fallbackStyle}
         language={language}
         PreTag="div"
         showLineNumbers={showLineNumbers}

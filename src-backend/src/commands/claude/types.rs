@@ -85,6 +85,16 @@ pub struct Session {
     pub message_count: Option<u64>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SessionWithContent {
+    /// Session metadata
+    pub session: Session,
+    /// Full path to the session file
+    pub file_path: String,
+    /// Parsed JSONL content
+    pub content: Vec<serde_json::Value>,
+}
+
 /// Represents a message entry in the JSONL file
 #[derive(Debug, Deserialize)]
 struct JsonlEntry {

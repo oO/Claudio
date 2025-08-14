@@ -32,6 +32,7 @@ interface ToolCallRendererProps {
     commandName: string;
     commandMessage: string; 
     commandArgs?: string;
+    output?: string;
   };
 }
 
@@ -61,6 +62,7 @@ export const ToolCallRenderer: React.FC<ToolCallRendererProps> = ({
         commandName={commandContent.commandName} 
         commandMessage={commandContent.commandMessage}
         commandArgs={commandContent.commandArgs}
+        output={commandContent.output}
       />
     );
   }

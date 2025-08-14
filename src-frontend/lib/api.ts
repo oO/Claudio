@@ -78,6 +78,15 @@ export interface Session {
   message_count?: number;
 }
 
+export interface SessionWithContent {
+  /** Session metadata */
+  session: Session;
+  /** Full path to the session file */
+  file_path: string;
+  /** Parsed JSONL content */
+  content: any[];
+}
+
 /**
  * Represents the settings from ~/.claude/settings.json
  */
@@ -1103,9 +1112,9 @@ export const api = {
   },
 
   /**
-   * Loads the JSONL history for a specific session
+   * Loads the JSONL history for a specific session with full metadata
    */
-  async loadSessionHistory(sessionId: string, projectId: string): Promise<any[]> {
+  async loadSessionHistory(sessionId: string, projectId: string): Promise<SessionWithContent> {
     return invoke("load_session_history", { sessionId, projectId });
   },
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   FolderOpen,
@@ -76,6 +76,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     onStreamingChange,
   });
   
+  
   const {
     // Core state
     projectPath,
@@ -127,6 +128,8 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     // Computed values
     effectiveSession,
     displayableMessages,
+    collapsedMessageUuids,
+    sessionFilePath,
     
     // Refs
     isMountedRef,
@@ -146,6 +149,16 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   const floatingPromptRef = useRef<FloatingPromptInputRef>(null);
   const sessionMessagesRef = useRef<SessionMessagesRef>(null);
   const [copyPopoverOpen, setCopyPopoverOpen] = useState(false);
+  const [actualDisplayedMessageCount, setActualDisplayedMessageCount] = useState(0);
+  const [actualTokenCount, setActualTokenCount] = useState(0);
+  
+  // Debug logging
+  useEffect(() => {
+    console.log(`ClaudeCodeSession DEBUG:
+      - raw messages.length: ${messages.length}
+      - displayableMessages.length: ${displayableMessages.length} 
+      - actualDisplayedMessageCount from SessionMessages: ${actualDisplayedMessageCount}`);
+  }, [messages.length, displayableMessages.length, actualDisplayedMessageCount]);
   
   // Initialize session actions hook
   const sessionActions = useSessionActions({
@@ -246,9 +259,8 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     sessionMessagesRef.current?.scrollToBottom();
   }, []);
   
-  // For now, assume we're always pinned to bottom for the UI state
-  // TODO: We could track this with the virtualizer scroll position if needed
-  const isPinnedToBottom = false;
+  // Track pinned state from SessionMessages component
+  const [isPinnedToBottom, setIsPinnedToBottom] = useState(true);
   
   const handleCheckpointCreated = () => {
     sessionMetrics.current.checkpointCount += 1;
@@ -346,6 +358,12 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
         isLoading={isLoading}
         error={error}
         onLinkDetected={handleLinkDetected}
+        onDisplayedCountChange={setActualDisplayedMessageCount}
+        onTokenCountChange={setActualTokenCount}
+        onPinnedStateChange={setIsPinnedToBottom}
+        sessionFilePath={sessionFilePath}
+        projectId={effectiveSession?.project_id}
+        sessionId={effectiveSession?.id}
       />
       
       {isLoading && messages.length === 0 && (
@@ -370,9 +388,9 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
         <SessionHeader
           projectPath={projectPath}
           claudeSessionId={claudeSessionId}
-          totalTokens={totalTokens}
+          totalTokens={actualTokenCount}
           isStreaming={isLoading}
-          hasMessages={messages.length > 0}
+          hasMessages={displayableMessages.length > 0}
           showTimeline={showTimeline}
           copyPopoverOpen={copyPopoverOpen}
           onBack={onBack}
@@ -382,9 +400,12 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
           onToggleTimeline={() => setShowTimeline(!showTimeline)}
           setCopyPopoverOpen={setCopyPopoverOpen}
           sessionData={session}
+          sessionFilePath={sessionFilePath}
+          displayableMessageCount={actualDisplayedMessageCount}
+          collapsedMessageUuids={collapsedMessageUuids}
           isRefreshing={false} // File watching doesn't show a "refreshing" state
           // Navigation
-          showNavigation={messages.length > 3}
+          showNavigation={displayableMessages.length > 3}
           isPinnedToBottom={isPinnedToBottom}
           onScrollToTop={scrollToTop}
           onScrollToBottom={scrollToBottom}

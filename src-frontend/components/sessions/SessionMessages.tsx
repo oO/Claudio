@@ -1,4 +1,4 @@
-import React, { useRef, useImperativeHandle, forwardRef } from 'react';
+import React, { useRef, useImperativeHandle, forwardRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { StreamMessage } from './StreamMessage';
@@ -11,6 +11,12 @@ interface SessionMessagesProps {
   isLoading: boolean;
   error: string | null;
   onLinkDetected?: (url: string) => void;
+  onDisplayedCountChange?: (count: number) => void;
+  onTokenCountChange?: (tokens: number) => void;
+  onPinnedStateChange?: (isPinned: boolean) => void;
+  sessionFilePath?: string;
+  projectId?: string;
+  sessionId?: string;
 }
 
 export interface SessionMessagesRef {
@@ -24,8 +30,16 @@ export const SessionMessages = forwardRef<SessionMessagesRef, SessionMessagesPro
   isLoading,
   error,
   onLinkDetected,
+  onDisplayedCountChange,
+  onTokenCountChange,
+  onPinnedStateChange,
+  sessionFilePath,
+  projectId,
+  sessionId,
 }, ref) => {
   const parentRef = useRef<HTMLDivElement>(null);
+  const [isPinnedToBottom, setIsPinnedToBottom] = useState(true);
+  const previousMessageCountRef = useRef(displayableMessages.length);
 
   const rowVirtualizer = useVirtualizer({
     count: displayableMessages.length,
@@ -34,21 +48,105 @@ export const SessionMessages = forwardRef<SessionMessagesRef, SessionMessagesPro
     overscan: 5,
   });
 
+  // Track scroll position to detect if user is pinned to bottom
+  const handleScroll = () => {
+    const element = parentRef.current;
+    if (!element) return;
+    
+    const { scrollTop, scrollHeight, clientHeight } = element;
+    const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
+    const isAtBottom = distanceFromBottom < 50; // 50px threshold
+    
+    setIsPinnedToBottom(isAtBottom);
+    onPinnedStateChange?.(isAtBottom);
+  };
+
   // Expose scroll methods via ref
   useImperativeHandle(ref, () => ({
     scrollToTop: () => {
       console.log('Scrolling virtualizer to top (index 0)');
       if (displayableMessages.length > 0) {
         rowVirtualizer.scrollToIndex(0, { align: 'start' });
+        setIsPinnedToBottom(false);
       }
     },
     scrollToBottom: () => {
       console.log('Scrolling virtualizer to bottom (index', displayableMessages.length - 1, ')');
       if (displayableMessages.length > 0) {
         rowVirtualizer.scrollToIndex(displayableMessages.length - 1, { align: 'end' });
+        setIsPinnedToBottom(true);
       }
     }
   }), [rowVirtualizer, displayableMessages.length]);
+
+  // Report the actual displayed count and tokens to parent
+  useEffect(() => {
+    const virtualItems = rowVirtualizer.getVirtualItems();
+    const actualRenderedCount = virtualItems.length;
+    const totalDisplayableCount = displayableMessages.length;
+    
+    const messageNumbers = displayableMessages.map(msg => msg.messageNumber).filter(Boolean);
+    const firstMsgNum = messageNumbers[0];
+    const lastMsgNum = messageNumbers[messageNumbers.length - 1];
+    
+    console.log(`SessionMessages DEBUG:
+      - displayableMessages.length: ${totalDisplayableCount}
+      - virtual items rendered: ${actualRenderedCount}
+      - virtual items range: ${virtualItems.length > 0 ? `${virtualItems[0].index}-${virtualItems[virtualItems.length - 1].index}` : 'none'}
+      - rowVirtualizer.count: ${rowVirtualizer.options.count}
+      - message numbers: ${firstMsgNum} to ${lastMsgNum} (${messageNumbers.length} total)`);
+    
+    // Report the count we're supposed to display (not what's currently rendered)
+    onDisplayedCountChange?.(totalDisplayableCount);
+    
+    // Calculate tokens from actually displayed messages
+    const tokens = displayableMessages.reduce((total, msg) => {
+      if (msg.message?.usage) {
+        return total + msg.message.usage.input_tokens + msg.message.usage.output_tokens;
+      }
+      if (msg.usage) {
+        return total + msg.usage.input_tokens + msg.usage.output_tokens;
+      }
+      return total;
+    }, 0);
+    
+    onTokenCountChange?.(tokens);
+  }, [displayableMessages, rowVirtualizer, onDisplayedCountChange, onTokenCountChange]);
+
+  // Auto-scroll to bottom when new messages arrive (if pinned)
+  useEffect(() => {
+    const hasNewMessages = displayableMessages.length > previousMessageCountRef.current;
+    
+    if (hasNewMessages && isPinnedToBottom && !isLoading) {
+      console.log(`Auto-scrolling to new message: ${displayableMessages.length}`);
+      setTimeout(() => {
+        rowVirtualizer.scrollToIndex(displayableMessages.length - 1, { align: 'end' });
+      }, 100); // Small delay to ensure content is rendered
+    }
+    
+    previousMessageCountRef.current = displayableMessages.length;
+  }, [displayableMessages.length, isPinnedToBottom, isLoading, rowVirtualizer]);
+
+  // Initial scroll to bottom when messages first load
+  useEffect(() => {
+    if (displayableMessages.length > 0) {
+      setTimeout(() => {
+        rowVirtualizer.scrollToIndex(displayableMessages.length - 1, { align: 'end' });
+      }, 100);
+    }
+  }, [displayableMessages.length > 0 ? displayableMessages.length : 0]);
+
+  // Set up scroll listener
+  useEffect(() => {
+    const element = parentRef.current;
+    if (!element) return;
+
+    element.addEventListener('scroll', handleScroll, { passive: true });
+    
+    return () => {
+      element.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
 
   return (
     <>
@@ -88,6 +186,9 @@ export const SessionMessages = forwardRef<SessionMessagesRef, SessionMessagesPro
                   message={message} 
                   streamMessages={messages}
                   onLinkDetected={onLinkDetected}
+                  sessionFilePath={sessionFilePath}
+                  projectId={projectId}
+                  sessionId={sessionId}
                 />
               </motion.div>
             );
