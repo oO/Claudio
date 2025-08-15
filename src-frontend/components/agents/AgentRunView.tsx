@@ -17,7 +17,7 @@ import { Popover } from "@/components/ui/popover";
 import { api, type AgentRunWithMetrics } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { formatISOTimestamp } from "@/lib/date-utils";
-import { StreamMessage } from "@/components/sessions/StreamMessage";
+import { MessageRouter } from "@/components/messages";
 import { ICON_MAP as AGENT_ICONS, ErrorBoundary } from "@/components/common";
 import type { ClaudeStreamMessage } from "@/hooks/useAgentExecution";
 import { DebugLabel } from "@/components/ui/atoms";
@@ -374,7 +374,7 @@ export const AgentRunView: React.FC<AgentRunViewProps> = ({
                 transition={{ duration: 0.2, delay: index * 0.02 }}
               >
                 <ErrorBoundary>
-                  <StreamMessage message={message} streamMessages={messages} />
+                  <MessageRouter message={message} streamMessages={messages} />
                 </ErrorBoundary>
               </motion.div>
             ))}

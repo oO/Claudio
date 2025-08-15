@@ -149,7 +149,8 @@ export function useSessionState({
 
         // Check for command pattern in string content
         if (typeof msg.content === "string") {
-          const commandMatch = msg.content.match(
+          const contentStr = msg.content as string;
+          const commandMatch = contentStr.match(
             /<command-name>(.+?)<\/command-name>[\s\S]*?<command-message>(.+?)<\/command-message>[\s\S]*?<command-args>(.*?)<\/command-args>/,
           );
           
@@ -161,7 +162,8 @@ export function useSessionState({
             if (index + 1 < messages.length) {
               const nextMessage = messages[index + 1];
               if (nextMessage.type === "user" && typeof nextMessage.message?.content === "string") {
-                const stdoutMatch = nextMessage.message.content.match(
+                const nextContentStr = nextMessage.message.content as string;
+                const stdoutMatch = nextContentStr.match(
                   /<local-command-stdout>(.*?)<\/local-command-stdout>/s
                 );
                 if (stdoutMatch) {

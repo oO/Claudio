@@ -16,7 +16,7 @@ import { ErrorBoundary } from "@/components/common";
 import { DebugLabel } from "@/components/ui/atoms";
 
 // Import extracted components
-import { useSessionState } from "./useSessionState";
+import { useSessionState } from "@/hooks/useSessionState";
 import { SessionMessageHandler } from "./SessionMessageHandler";
 import { useSessionActions } from "./SessionActions";
 import { SessionPreview } from "./SessionPreview";

@@ -7,7 +7,7 @@ import { Popover } from '@/components/ui/popover';
 import { api, type AgentRunWithMetrics } from '@/lib/api';
 import { useOutputCache } from '@/lib/outputCache';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-import { StreamMessage } from '@/components/sessions/StreamMessage';
+import { MessageRouter } from '@/components/messages';
 import { ErrorBoundary, ICON_MAP as AGENT_ICONS } from '@/components/common';
 import { formatISOTimestamp } from '@/lib/date-utils';
 import type { ClaudeStreamMessage } from '@/hooks/useAgentExecution';

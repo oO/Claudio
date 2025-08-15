@@ -49,3 +49,13 @@ export { useTriLevelSettings } from './useTriLevelSettings';
 export { useAgentExecution, type ClaudeStreamMessage } from './useAgentExecution';
 export { useAgentMetadata } from './useAgentMetadata';
 export { useExecutionOutput } from './useExecutionOutput';
+
+// Message hooks
+export { useMessageContent } from './useMessageContent';
+export { useMessageClipboard } from './useMessageClipboard';
+export { useAgentStyling } from './useAgentStyling';
+
+// Session hooks
+export { useClaudeMessages } from './useClaudeMessages';
+export { useCheckpoints } from './useCheckpoints';
+export { useSessionState } from './useSessionState';

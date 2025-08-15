@@ -1,24 +1,27 @@
 import React from "react";
 import { ChevronRight } from "lucide-react";
 import { detectLinks, makeLinksClickable } from "@/lib/linkDetector";
+import { useLinkNotification } from "@/contexts/LinkNotificationContext";
 
 /**
  * Widget for command output/stdout
+ * Handles its own link detection and notification
  */
 export const CommandOutputWidget: React.FC<{ 
   output: string;
-  onLinkDetected?: (url: string) => void;
-}> = ({ output, onLinkDetected }) => {
+}> = ({ output }) => {
+  const notifyLinkDetected = useLinkNotification();
+
   // Check for links on mount and when output changes
   React.useEffect(() => {
-    if (output && onLinkDetected) {
+    if (output) {
       const links = detectLinks(output);
       if (links.length > 0) {
         // Notify about the first detected link
-        onLinkDetected(links[0].fullUrl);
+        notifyLinkDetected(links[0].fullUrl);
       }
     }
-  }, [output, onLinkDetected]);
+  }, [output, notifyLinkDetected]);
 
   // Parse ANSI codes for basic styling
   const parseAnsiToReact = (text: string) => {
@@ -42,9 +45,7 @@ export const CommandOutputWidget: React.FC<{
       if (!part) return;
       
       // Make links clickable within this part
-      const linkElements = makeLinksClickable(part, (url) => {
-        onLinkDetected?.(url);
-      });
+      const linkElements = makeLinksClickable(part, notifyLinkDetected);
       
       if (isBold) {
         elements.push(

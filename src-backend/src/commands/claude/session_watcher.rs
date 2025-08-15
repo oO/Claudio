@@ -127,10 +127,6 @@ impl SessionWatcherManager {
         Ok(())
     }
 
-    /// Get a receiver for session file events
-    pub fn subscribe(&self) -> broadcast::Receiver<SessionFileEvent> {
-        self.event_sender.subscribe()
-    }
 
     /// Handle file system events and emit session file events
     async fn handle_file_events(

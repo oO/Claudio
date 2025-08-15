@@ -4,7 +4,7 @@ import { RefreshCw } from "lucide-react";
 import { LoadingSpinner } from "@/components/ui/atoms/LoadingSpinner";
 import { StatusMessage } from "@/components/ui/molecules/StatusMessage";
 import { ScrollIndicator } from "@/components/ui/atoms/ScrollIndicator";
-import { StreamMessage } from "@/components/sessions/StreamMessage";
+import { MessageRouter } from "@/components/messages";
 import { ErrorBoundary } from "@/components/common";
 import type { ClaudeStreamMessage } from "@/hooks/useAgentExecution";
 import { cn } from "@/lib/utils";
@@ -167,7 +167,7 @@ export const OutputViewer: React.FC<OutputViewerProps> = ({
                   </p>
                 </div>
               )}>
-                <StreamMessage 
+                <MessageRouter 
                   message={message} 
                   streamMessages={messages} 
                 />

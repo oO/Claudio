@@ -16,7 +16,6 @@ interface ToolResultProps {
   toolUseId?: string;
   isError?: boolean;
   streamMessages?: any[];
-  onLinkDetected?: (url: string) => void;
 }
 
 /**
@@ -28,7 +27,6 @@ export const ToolResultRenderer: React.FC<ToolResultProps> = ({
   toolUseId,
   isError,
   streamMessages,
-  onLinkDetected
 }) => {
   // Extract the actual content string
   const extractContentText = (content: any): string => {
@@ -210,12 +208,10 @@ export const ToolResultRenderer: React.FC<ToolResultProps> = ({
   }
 
   // Handle command output
-  if (onLinkDetected) {
-    const stdoutMatch = contentText.match(/<local-command-stdout>([\s\S]*?)<\/local-command-stdout>/);
-    if (stdoutMatch) {
-      const output = stdoutMatch[1];
-      return <CommandOutputWidget output={output} onLinkDetected={onLinkDetected} />;
-    }
+  const stdoutMatch = contentText.match(/<local-command-stdout>([\s\S]*?)<\/local-command-stdout>/);
+  if (stdoutMatch) {
+    const output = stdoutMatch[1];
+    return <CommandOutputWidget output={output} />;
   }
 
   // Default tool result display

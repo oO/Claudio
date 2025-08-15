@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Copy, ChevronDown, X, Terminal, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover } from "@/components/ui/popover";
-import { StreamMessage } from "@/components/sessions/StreamMessage";
+import { MessageRouter } from "@/components/messages";
 import { ErrorBoundary, ICON_MAP as AGENT_ICONS } from "@/components/common";
 import { ActionButton } from "@/components/ui/atoms/ActionButton";
 import { LoadingSpinner } from "@/components/ui/atoms/LoadingSpinner";
@@ -156,7 +156,7 @@ export const FullscreenModal: React.FC<FullscreenModalProps> = ({
                     style={{ top: virtualItem.start }}
                   >
                     <ErrorBoundary>
-                      <StreamMessage message={message} streamMessages={messages} />
+                      <MessageRouter message={message} streamMessages={messages} />
                     </ErrorBoundary>
                   </motion.div>
                 );

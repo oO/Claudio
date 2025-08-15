@@ -1,5 +1,5 @@
 import React from "react";
-import { StreamMessage } from "@/components/sessions/StreamMessage";
+import { MessageRouter } from "@/components/messages";
 import type { ClaudeStreamMessage } from "@/hooks/useAgentExecution";
 
 /**
@@ -174,7 +174,7 @@ body {
       <h1 className="text-2xl font-bold mb-6">Agent Execution Demo</h1>
       
       {messages.map((message, idx) => (
-        <StreamMessage key={idx} message={message} streamMessages={messages} />
+        <MessageRouter key={idx} message={message} streamMessages={messages} />
       ))}
     </div>
   );

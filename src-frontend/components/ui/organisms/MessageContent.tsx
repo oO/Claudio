@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils";
 
 interface MessageContentProps {
   content: any;
-  onLinkDetected?: (url: string) => void;
   className?: string;
 }
 
@@ -14,7 +13,6 @@ interface MessageContentProps {
  */
 export const MessageContent: React.FC<MessageContentProps> = ({
   content,
-  onLinkDetected,
   className
 }) => {
   // Extract text content from various formats
@@ -46,7 +44,6 @@ export const MessageContent: React.FC<MessageContentProps> = ({
                 key={idx}
                 content={textContent}
                 compact
-                onLinkDetected={onLinkDetected}
               />
             );
           }
@@ -80,7 +77,6 @@ export const MessageContent: React.FC<MessageContentProps> = ({
     <MarkdownRenderer
       content={textContent}
       compact
-      onLinkDetected={onLinkDetected}
       className={className}
     />
   );

@@ -2,25 +2,25 @@ import React, { useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { SyntaxHighlighter } from "../atoms/SyntaxHighlighter";
+import { useLinkNotification } from "@/contexts/LinkNotificationContext";
 import { cn } from "@/lib/utils";
 
 interface MarkdownRendererProps {
   content: string;
   className?: string;
   compact?: boolean;
-  onLinkDetected?: (url: string) => void;
 }
 
 /**
  * Molecule component for rendering Markdown content with syntax highlighting
- * Integrates ReactMarkdown with our atomic SyntaxHighlighter component
+ * Handles its own link detection and notification
  */
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   content,
   className,
   compact = false,
-  onLinkDetected
 }) => {
+  const notifyLinkDetected = useLinkNotification();
   const markdownComponents = useMemo(() => ({
     code({ node, inline, className, children, ...props }: any) {
       const match = /language-(\w+)/.exec(className || '');
@@ -43,9 +43,9 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
       );
     },
     a({ href, children, ...props }: any) {
-      // Detect and report links if callback provided
-      if (onLinkDetected && href) {
-        onLinkDetected(href);
+      // Detect and report links
+      if (href) {
+        notifyLinkDetected(href);
       }
       
       return (
@@ -60,7 +60,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         </a>
       );
     }
-  }), [onLinkDetected]);
+  }), [notifyLinkDetected]);
 
   return (
     <div className={cn(

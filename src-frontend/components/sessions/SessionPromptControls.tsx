@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { FloatingPromptInput, type FloatingPromptInputRef } from './FloatingPromptInput';
 import { SessionQueuedPrompts } from './SessionQueuedPrompts';
-import type { QueuedPrompt } from './useSessionState';
+import type { QueuedPrompt } from '@/hooks/useSessionState';
 
 interface SessionPromptControlsProps {
   // Prompt input props

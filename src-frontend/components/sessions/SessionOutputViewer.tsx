@@ -10,7 +10,10 @@ import { api } from '@/lib/api';
 import { useOutputCache } from '@/lib/outputCache';
 import type { AgentRun } from '@/lib/api';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-import { StreamMessage } from './StreamMessage';
+import { MessageRouter } from '../messages';
+import { SessionProvider } from '@/contexts/SessionContext';
+import { StreamDataProvider } from '@/contexts/StreamDataContext';
+import { LinkNotificationProvider } from '@/contexts/LinkNotificationContext';
 import { ErrorBoundary } from '@/components/common';
 import { DebugLabel } from '@/components/ui/atoms';
 
@@ -530,7 +533,13 @@ export function SessionOutputViewer({ session, onClose, className }: SessionOutp
                           transition={{ duration: 0.2 }}
                         >
                           <ErrorBoundary>
-                            <StreamMessage message={message} streamMessages={messages} />
+                            <SessionProvider>
+                              <StreamDataProvider streamMessages={messages}>
+                                <LinkNotificationProvider onLinkDetected={() => {}}>
+                                  <MessageRouter message={message} streamMessages={messages} />
+                                </LinkNotificationProvider>
+                              </StreamDataProvider>
+                            </SessionProvider>
                           </ErrorBoundary>
                         </motion.div>
                       ))}
@@ -654,7 +663,13 @@ export function SessionOutputViewer({ session, onClose, className }: SessionOutp
                         transition={{ duration: 0.2 }}
                       >
                         <ErrorBoundary>
-                          <StreamMessage message={message} streamMessages={messages} />
+                          <SessionProvider>
+                            <StreamDataProvider streamMessages={messages}>
+                              <LinkNotificationProvider onLinkDetected={() => {}}>
+                                <MessageRouter message={message} streamMessages={messages} />
+                              </LinkNotificationProvider>
+                            </StreamDataProvider>
+                          </SessionProvider>
                         </ErrorBoundary>
                       </motion.div>
                     ))}

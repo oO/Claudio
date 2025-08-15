@@ -5,16 +5,15 @@ export { ExecutionControlBar } from './ExecutionControlBar';
 export { TimelineNavigator } from './TimelineNavigator';
 export { CheckpointSettings } from './CheckpointSettings';
 export { SessionHeader } from './SessionHeader';
-export { MessageList } from './MessageList';
 export { FloatingPromptInput, type FloatingPromptInputRef } from './FloatingPromptInput';
 export { PromptQueue } from './PromptQueue';
-export { StreamMessage } from './StreamMessage';
+export { MessageRouter } from '../messages';
 export { SessionOutputViewer } from './SessionOutputViewer';
 
-// Hooks
-export { useClaudeMessages } from './useClaudeMessages';
-export { useCheckpoints } from './useCheckpoints';
-export { useSessionState } from './useSessionState';
+// Hooks (re-exported from hooks folder)
+export { useClaudeMessages } from '@/hooks/useClaudeMessages';
+export { useCheckpoints } from '@/hooks/useCheckpoints';
+export { useSessionState } from '@/hooks/useSessionState';
 
 // Extracted session components
 export { SessionMessageHandler, useSessionMessageHandler } from './SessionMessageHandler';

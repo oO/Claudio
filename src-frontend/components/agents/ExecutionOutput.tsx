@@ -1,7 +1,7 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Terminal, Loader2 } from "lucide-react";
-import { StreamMessage } from "@/components/sessions/StreamMessage";
+import { MessageRouter } from "@/components/messages";
 import { ErrorBoundary } from "@/components/common";
 import { LoadingSpinner, DebugLabel } from "@/components/ui/atoms";
 import type { ClaudeStreamMessage } from "@/hooks/useAgentExecution";
@@ -71,7 +71,7 @@ export const ExecutionOutput: React.FC<ExecutionOutputProps> = ({
                     style={{ top: virtualItem.start }}
                   >
                     <ErrorBoundary>
-                      <StreamMessage message={message} streamMessages={messages} />
+                      <MessageRouter message={message} streamMessages={messages} />
                     </ErrorBoundary>
                   </motion.div>
                 );
