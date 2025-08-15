@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex};
 use std::sync::mpsc;
 use tauri::{command, AppHandle, State, Emitter};
 use tokio::sync::broadcast;
+use tokio::time::{sleep, Duration};
 use serde::{Deserialize, Serialize};
 
 /// Event types for session file changes
@@ -31,6 +32,26 @@ pub enum SessionFileEvent {
         project_id: String,
         file_path: String,
     },
+}
+
+impl SessionFileEvent {
+    /// Get the project ID for this event
+    pub fn get_project_id(&self) -> &str {
+        match self {
+            SessionFileEvent::Modified { project_id, .. } => project_id,
+            SessionFileEvent::Created { project_id, .. } => project_id,
+            SessionFileEvent::Removed { project_id, .. } => project_id,
+        }
+    }
+    
+    /// Get the session ID for this event
+    pub fn get_session_id(&self) -> &str {
+        match self {
+            SessionFileEvent::Modified { session_id, .. } => session_id,
+            SessionFileEvent::Created { session_id, .. } => session_id,
+            SessionFileEvent::Removed { session_id, .. } => session_id,
+        }
+    }
 }
 
 /// Manages session file watchers for multiple projects
@@ -128,23 +149,76 @@ impl SessionWatcherManager {
     }
 
 
-    /// Handle file system events and emit session file events
+    /// Handle file system events with 5-second debouncing and emit session file events
     async fn handle_file_events(
         rx: mpsc::Receiver<SessionFileEvent>,
         event_sender: broadcast::Sender<SessionFileEvent>,
         app_handle: AppHandle,
     ) {
-        for session_event in rx {
-            // Send event via broadcast channel
-            if let Err(e) = event_sender.send(session_event.clone()) {
-                log::error!("Failed to send session event via broadcast: {}", e);
-            }
+        use std::sync::Arc;
+        use std::sync::Mutex as StdMutex;
+        
+        let debounce_duration = Duration::from_secs(5);
+        let pending_timers: Arc<StdMutex<HashMap<String, tokio::task::JoinHandle<()>>>> = Arc::new(StdMutex::new(HashMap::new()));
+        
+        // Use blocking task to handle the synchronous receiver
+        tokio::task::spawn_blocking(move || {
+            let rt = tokio::runtime::Handle::current();
+            
+            // Process events as they come in
+            for session_event in rx {
+                let key = format!("{}:{}", session_event.get_project_id(), session_event.get_session_id());
+                log::debug!("Received session event for debouncing: {} ({})", key, session_event.get_session_id());
+                
+                rt.block_on(async {
+                    // Cancel any existing timer for this session
+                    if let Ok(mut timers) = pending_timers.lock() {
+                        if let Some(existing_timer) = timers.remove(&key) {
+                            existing_timer.abort();
+                            log::debug!("Cancelled existing debounce timer for {}", key);
+                        }
+                    }
+                    
+                    // Start a new debounce timer for this specific event
+                    let event_sender_clone = event_sender.clone();
+                    let app_handle_clone = app_handle.clone();
+                    let pending_timers_clone = pending_timers.clone();
+                    let key_clone = key.clone();
+                    
+                    let timer_handle = tokio::spawn(async move {
+                        sleep(debounce_duration).await;
+                        
+                        // Remove ourselves from pending timers
+                        if let Ok(mut timers) = pending_timers_clone.lock() {
+                            timers.remove(&key_clone);
+                        }
+                        
+                        // After debounce period, emit the event
+                        log::info!("📁 Emitting debounced session file change: {} in project {}", 
+                                   session_event.get_session_id(), session_event.get_project_id());
+                        
+                        // Send event via broadcast channel
+                        if let Err(e) = event_sender_clone.send(session_event.clone()) {
+                            log::error!("Failed to send session event via broadcast: {}", e);
+                        }
 
-            // Also emit as Tauri event to frontend
-            if let Err(e) = app_handle.emit("session-file-changed", &session_event) {
-                log::error!("Failed to emit session file event: {}", e);
+                        // Also emit as Tauri event to frontend
+                        if let Err(e) = app_handle_clone.emit("session-file-changed", &session_event) {
+                            log::error!("Failed to emit session file event: {}", e);
+                        }
+                    });
+                    
+                    // Store the timer handle
+                    if let Ok(mut timers) = pending_timers.lock() {
+                        timers.insert(key, timer_handle);
+                    }
+                });
             }
-        }
+            
+            log::info!("Session file event handler terminated");
+        }).await.unwrap_or_else(|e| {
+            log::error!("Session file event handler task failed: {:?}", e);
+        });
     }
 
     /// Create a SessionFileEvent from a notify Event (new API)

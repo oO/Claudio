@@ -6,6 +6,7 @@ import { AssistantMessage } from "./AssistantMessage";
 import { SubAgentMessage } from "./SubAgentMessage";
 import { ResultMessage } from "./ResultMessage";
 import { ErrorMessage } from "./ErrorMessage";
+import { SummaryMessage } from "./SummaryMessage";
 
 interface MessageRouterProps {
   message: ClaudeStreamMessage;
@@ -13,7 +14,37 @@ interface MessageRouterProps {
   sessionFilePath?: string;
   projectId?: string;
   sessionId?: string;
+  messageIndex?: number;
 }
+
+/**
+ * Utility function to detect and bundle consecutive summary messages
+ */
+const shouldBundleSummaries = (
+  messages: ClaudeStreamMessage[],
+  startIndex: number
+): { shouldBundle: boolean; bundleCount: number; summaries: string[] } => {
+  let bundleCount = 0;
+  const summaries: string[] = [];
+  
+  // Count consecutive summary messages starting from startIndex
+  for (let i = startIndex; i < messages.length; i++) {
+    const msg = messages[i];
+    if (msg.leafUuid && msg.summary && (msg as any).type === "summary") {
+      bundleCount++;
+      summaries.push(msg.summary);
+    } else {
+      break;
+    }
+  }
+  
+  // Only bundle if we have 2 or more consecutive summaries
+  return {
+    shouldBundle: bundleCount >= 2,
+    bundleCount,
+    summaries
+  };
+};
 
 /**
  * Clean message router that delegates to specialized message components
@@ -25,6 +56,7 @@ const MessageRouterComponent: React.FC<MessageRouterProps> = ({
   sessionFilePath,
   projectId,
   sessionId,
+  messageIndex = 0,
 }) => {
   try {
     // Skip rendering for meta messages that don't have meaningful content
@@ -32,19 +64,45 @@ const MessageRouterComponent: React.FC<MessageRouterProps> = ({
       return null;
     }
 
-    // Handle summary messages - delegate to SummaryWidget
+    // Skip rendering if this message is part of a bundle that was already rendered
+    if (message.leafUuid && message.summary && (message as any).type === "summary") {
+      // Simple check: if previous message is also a summary, this one should be skipped
+      if (messageIndex > 0) {
+        const prevMsg = streamMessages[messageIndex - 1];
+        if (prevMsg?.leafUuid && prevMsg?.summary && (prevMsg as any).type === "summary") {
+          return null;
+        }
+      }
+    }
+
+    // Handle summary messages - check if we should bundle consecutive ones
     if (
       message.leafUuid &&
       message.summary &&
       (message as any).type === "summary"
     ) {
-      return (
-        <SummaryWidget
-          summary={message.summary}
-          leafUuid={message.leafUuid}
-          messageNumber={message.messageNumber}
-        />
-      );
+      const bundleInfo = shouldBundleSummaries(streamMessages, messageIndex);
+      
+      if (bundleInfo.shouldBundle) {
+        // Collect all contributing UUIDs
+        const contributingUuids = streamMessages
+          .slice(messageIndex, messageIndex + bundleInfo.bundleCount)
+          .map(msg => msg.leafUuid)
+          .filter(Boolean) as string[];
+        
+        // Create a bundled summary message object
+        const bundledMessage = {
+          ...message,
+          summary: bundleInfo.summaries, // Pass array of summaries
+          _contributingMessageUuids: contributingUuids,
+          _bundleCount: bundleInfo.bundleCount,
+          _isBundle: true
+        };
+        
+        return <SummaryMessage message={bundledMessage} />;
+      } else {
+        return <SummaryMessage message={message} />;
+      }
     }
 
     // System initialization message - delegate to SystemInitializedWidget
@@ -59,7 +117,7 @@ const MessageRouterComponent: React.FC<MessageRouterProps> = ({
       );
     }
 
-    // Handle compact summaries with SummaryWidget (user message context)
+    // Handle compact summaries with SummaryWidget (preserves multi-message functionality)
     if (message.type === "user" && (message as any).isCompactSummary) {
       const msg = message.message || message;
       const content = typeof msg.content === 'string' ? msg.content : 

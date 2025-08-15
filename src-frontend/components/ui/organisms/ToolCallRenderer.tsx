@@ -2,7 +2,6 @@ import React from "react";
 import { Terminal } from "lucide-react";
 import { 
   TasksWidget,
-  TodoReadWidget,
   LSWidget,
   GlobWidget,
   BashWidget,
@@ -97,10 +96,6 @@ export const ToolCallRenderer: React.FC<ToolCallRendererProps> = ({
       return <TasksWidget todos={input.todos} result={toolResult} />;
     }
     
-    // TodoRead tool
-    if (toolName === "todoread") {
-      return <TodoReadWidget todos={input?.todos} result={toolResult} />;
-    }
     
     // LS tool
     if (toolName === "ls" && input?.path) {

@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.24] - 2025-08-15
+
+### Refactored
+- Comprehensive message component architecture overhaul
+- Implemented template-based architecture for Messages and ToolWidgets
+- Refactored all message types to use new MessageTemplate.tsx
+- Standardized message and tool widget components for better maintainability
+- Enhanced SessionMessages, SessionHeader, and ClaudeCodeSession components
+- Updated context providers and hooks for improved type safety
+
+### Removed
+- Obsolete components: LSResultWidget, TodoReadWidget, MessageRoleIcon, MessageHeader
+- Cleaned up unnecessary imports and type declarations
+
+### Added
+- New SummaryMessage component
+- ToolWidgetTemplate.tsx for consistent tool widget design
+- Enhanced type safety and component organization
+
+### Technical
+- Improved frontend component architecture following Atomic Design principles
+- Updated file exports and component composition
+- Removed circular dependencies and improved import structure
+
 ## [0.3.21] - 2025-08-13
 
 ### Added

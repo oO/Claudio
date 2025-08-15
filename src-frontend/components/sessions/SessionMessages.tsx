@@ -2,7 +2,6 @@ import React, { useRef, useImperativeHandle, forwardRef, useEffect, useState } f
 import { motion, AnimatePresence } from 'framer-motion';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { MessageRouter } from '../messages';
-import { SessionProvider } from '@/contexts/SessionContext';
 import { StreamDataProvider } from '@/contexts/StreamDataContext';
 import { LinkNotificationProvider } from '@/contexts/LinkNotificationContext';
 import { DebugLabel } from '@/components/ui/atoms';
@@ -152,12 +151,7 @@ export const SessionMessages = forwardRef<SessionMessagesRef, SessionMessagesPro
   }, []);
 
   return (
-    <SessionProvider 
-      projectId={projectId} 
-      sessionId={sessionId} 
-      sessionFilePath={sessionFilePath}
-    >
-      <StreamDataProvider streamMessages={messages}>
+    <StreamDataProvider streamMessages={messages}>
         <LinkNotificationProvider onLinkDetected={onLinkDetected || (() => {})}>
           <DebugLabel label="SessionMessages" />
         <div
@@ -197,6 +191,7 @@ export const SessionMessages = forwardRef<SessionMessagesRef, SessionMessagesPro
                       sessionFilePath={sessionFilePath}
                       projectId={projectId}
                       sessionId={sessionId}
+                      messageIndex={virtualItem.index}
                     />
                   </motion.div>
                 );
@@ -228,7 +223,6 @@ export const SessionMessages = forwardRef<SessionMessagesRef, SessionMessagesPro
         </div>
         </LinkNotificationProvider>
       </StreamDataProvider>
-    </SessionProvider>
   );
 });
 

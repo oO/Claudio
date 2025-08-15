@@ -151,6 +151,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   const [copyPopoverOpen, setCopyPopoverOpen] = useState(false);
   const [actualDisplayedMessageCount, setActualDisplayedMessageCount] = useState(0);
   const [actualTokenCount, setActualTokenCount] = useState(0);
+  const [isCompactMode, setIsCompactMode] = useState(false);
   
   // Debug logging
   useEffect(() => {
@@ -409,6 +410,9 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
           isPinnedToBottom={isPinnedToBottom}
           onScrollToTop={scrollToTop}
           onScrollToBottom={scrollToBottom}
+          // Compact mode
+          isCompactMode={isCompactMode}
+          onToggleCompactMode={() => setIsCompactMode(!isCompactMode)}
         />
 
         {/* Main Content Area */}

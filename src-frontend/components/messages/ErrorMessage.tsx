@@ -1,7 +1,7 @@
 import React from 'react';
 import { AlertCircle } from 'lucide-react';
 import { DebugLabel } from '@/components/ui/atoms';
-import { Message } from './Message';
+import { MessageTemplate } from './MessageTemplate';
 import type { ClaudeStreamMessage } from '@/components/agents';
 
 interface ErrorMessageProps {
@@ -17,19 +17,20 @@ export const ErrorMessage: React.FC<ErrorMessageProps> = ({
   error,
 }) => {
   return (
-    <Message.Container message={message}>
+    <MessageTemplate.Container message={message}>
       <DebugLabel label="ErrorMessage" />
-      <Message.Header
-        icon={<AlertCircle className="h-5 w-5 text-destructive" />}
+      <MessageTemplate.Header
+        IconComponent={AlertCircle}
+        iconClassName="bg-destructive"
         title="Error rendering message"
         titleClassName="text-sm font-medium"
       >
-        <Message.Content>
+        <MessageTemplate.Content>
           <p className="text-xs text-muted-foreground">
             {error instanceof Error ? error.message : "Unknown error"}
           </p>
-        </Message.Content>
-      </Message.Header>
-    </Message.Container>
+        </MessageTemplate.Content>
+      </MessageTemplate.Header>
+    </MessageTemplate.Container>
   );
 };

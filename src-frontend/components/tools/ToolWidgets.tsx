@@ -1,6 +1,8 @@
+// Tool widget template for consistent structure
+export * from './ToolWidgetTemplate';
+
 // Tool output widgets collection - export from individual widget files
 export * from './LSWidget';
-export * from './LSResultWidget';
 export * from './FileWidget';
 export * from './GlobWidget';
 export * from './EditWidget';
@@ -14,7 +16,6 @@ export * from './CommandOutputWidget';
 export * from './MCPWidget';
 export * from './TasksWidget';
 export * from './SubAgentTaskWidget';
-export * from './TodoReadWidget';
 export * from './WebSearchWidget';
 export * from './WebFetchWidget';
 export * from './SystemReminderWidget';

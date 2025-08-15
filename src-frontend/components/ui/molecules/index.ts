@@ -17,7 +17,6 @@ export { StreamControls } from './StreamControls';
 export { DropdownSelector } from './DropdownSelector';
 
 // Message-specific molecule components
-export { MessageHeader } from './MessageHeader';
 export { MarkdownRenderer } from './MarkdownRenderer';
 
 export type { SearchInputProps } from "./SearchInput";

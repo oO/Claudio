@@ -20,7 +20,6 @@ export { ColorSwatch } from './ColorSwatch';
 export { RadioOption } from './RadioOption';
 
 // Message-specific atomic components
-export { MessageRoleIcon } from './MessageRoleIcon';
 export { MessageTimestamp } from './MessageTimestamp';
 export { MessageUsageStats } from './MessageUsageStats';
 export { SyntaxHighlighter } from './SyntaxHighlighter';
@@ -49,4 +48,3 @@ export type { ColorSwatchProps } from './ColorSwatch';
 export type { RadioOptionProps } from './RadioOption';
 
 // Message-specific type exports
-export type { MessageRole } from './MessageRoleIcon';

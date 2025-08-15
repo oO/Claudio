@@ -2,7 +2,7 @@ import React from 'react';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import { MarkdownRenderer } from '@/components/ui';
 import { DebugLabel } from '@/components/ui/atoms';
-import { Message } from './Message';
+import { MessageTemplate } from './MessageTemplate';
 import type { ClaudeStreamMessage } from '@/components/agents';
 
 interface ResultMessageProps {
@@ -31,22 +31,16 @@ export const ResultMessage: React.FC<ResultMessageProps> = ({
   );
 
   return (
-    <Message.Container message={message}>
+    <MessageTemplate.Container message={message}>
       <DebugLabel label="ResultMessage" />
-      <Message.Header
-        icon={
-          isError ? (
-            <AlertCircle className="h-5 w-5 text-destructive" />
-          ) : (
-            <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-          )
-        }
+      <MessageTemplate.Header
+        IconComponent={isError ? AlertCircle : CheckCircle2}
+        iconClassName={isError ? "bg-destructive" : "bg-green-600"}
         title={isError ? "Execution Failed" : "Execution Complete"}
-        titleClassName="text-base font-semibold"
       >
-        <Message.Content>{resultContent}</Message.Content>
-      </Message.Header>
-      <Message.Footer message={message} />
-    </Message.Container>
+        <MessageTemplate.Content>{resultContent}</MessageTemplate.Content>
+      </MessageTemplate.Header>
+      <MessageTemplate.Footer message={message} />
+    </MessageTemplate.Container>
   );
 };

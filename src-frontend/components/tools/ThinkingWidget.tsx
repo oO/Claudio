@@ -1,50 +1,52 @@
-import React, { useState } from "react";
-import { Bot, Sparkles, ChevronDown } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { DebugLabel } from "@/components/ui/atoms";
+import React from "react";
+import { Brain } from "lucide-react";
+import { ToolWidgetTemplate } from "./ToolWidgetTemplate";
+import { MarkdownRenderer } from "@/components/ui/molecules";
 
 /**
  * Widget for displaying AI thinking/reasoning content
- * Collapsible and closed by default
  */
 export const ThinkingWidget: React.FC<{ 
   thinking: string;
   signature?: string;
 }> = ({ thinking }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  
   // Strip whitespace from thinking content
   const trimmedThinking = thinking.trim();
+  const lineCount = trimmedThinking.split('\n').filter(line => line.trim()).length;
   
   return (
-    <div className="rounded-lg border border-gray-500/20 bg-gray-500/5 overflow-hidden relative">
-      <DebugLabel label="ThinkingWidget" />
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-500/10 transition-colors"
-      >
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Bot className="h-4 w-4 text-gray-500" />
-            <Sparkles className="h-2.5 w-2.5 text-gray-400 absolute -top-1 -right-1 animate-pulse" />
-          </div>
-          <span className="text-sm font-medium text-gray-600 dark:text-gray-400 italic">
-            Thinking...
-          </span>
-        </div>
-        <ChevronDown className={cn(
-          "h-4 w-4 text-gray-500 transition-transform",
-          isExpanded && "rotate-180"
-        )} />
-      </button>
+    <ToolWidgetTemplate>
+      <ToolWidgetTemplate.Debug label="ThinkingWidget" />
       
-      {isExpanded && (
-        <div className="px-4 pb-4 pt-2 border-t border-gray-500/20">
-          <pre className="text-xs font-mono text-gray-600 dark:text-gray-400 whitespace-pre-wrap bg-gray-500/5 p-3 rounded-lg italic">
-            {trimmedThinking}
-          </pre>
-        </div>
-      )}
-    </div>
+      <ToolWidgetTemplate.Header
+        icon={Brain}
+        title="Thinking..."
+        isLoading={false}
+      />
+      
+      <ToolWidgetTemplate.ExpandableResult
+        initiallyExpanded={false}
+        largeContentThreshold={10}
+        lineCount={lineCount}
+        rawContent={trimmedThinking}
+        headerContent={
+          <span className="text-xs font-mono text-muted-foreground">
+            AI reasoning
+          </span>
+        }
+      >
+        {(excerptedContent, isShowingExcerpt) => (
+          <>
+            <ToolWidgetTemplate.PlainOutput>
+              <MarkdownRenderer
+                content={excerptedContent}
+                compact={true}
+                className="text-sm"
+              />
+            </ToolWidgetTemplate.PlainOutput>
+          </>
+        )}
+      </ToolWidgetTemplate.ExpandableResult>
+    </ToolWidgetTemplate>
   );
 };

@@ -4,6 +4,9 @@ interface SessionContextValue {
   projectId?: string;
   sessionId?: string;
   sessionFilePath?: string;
+  isCompactMode?: boolean;
+  setIsCompactMode?: (mode: boolean) => void;
+  toggleCompactMode?: () => void;
 }
 
 interface SessionProviderProps {
@@ -11,6 +14,9 @@ interface SessionProviderProps {
   projectId?: string;
   sessionId?: string;
   sessionFilePath?: string;
+  isCompactMode?: boolean;
+  setIsCompactMode?: (mode: boolean) => void;
+  toggleCompactMode?: () => void;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -24,11 +30,17 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
   projectId,
   sessionId,
   sessionFilePath,
+  isCompactMode = false,
+  setIsCompactMode,
+  toggleCompactMode,
 }) => {
   const value: SessionContextValue = {
     projectId,
     sessionId,
     sessionFilePath,
+    isCompactMode,
+    setIsCompactMode: setIsCompactMode || (() => {}),
+    toggleCompactMode: toggleCompactMode || (() => {}),
   };
 
   return (

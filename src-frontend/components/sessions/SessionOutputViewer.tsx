@@ -533,7 +533,11 @@ export function SessionOutputViewer({ session, onClose, className }: SessionOutp
                           transition={{ duration: 0.2 }}
                         >
                           <ErrorBoundary>
-                            <SessionProvider>
+                            <SessionProvider
+                              projectId={session.project_id}
+                              sessionId={session.session_id}
+                              sessionFilePath={session.session_path}
+                            >
                               <StreamDataProvider streamMessages={messages}>
                                 <LinkNotificationProvider onLinkDetected={() => {}}>
                                   <MessageRouter message={message} streamMessages={messages} />
@@ -663,7 +667,11 @@ export function SessionOutputViewer({ session, onClose, className }: SessionOutp
                         transition={{ duration: 0.2 }}
                       >
                         <ErrorBoundary>
-                          <SessionProvider>
+                          <SessionProvider
+                            projectId={session.project_id}
+                            sessionId={session.session_id}
+                            sessionFilePath={session.session_path}
+                          >
                             <StreamDataProvider streamMessages={messages}>
                               <LinkNotificationProvider onLinkDetected={() => {}}>
                                 <MessageRouter message={message} streamMessages={messages} />

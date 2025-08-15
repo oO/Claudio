@@ -1,10 +1,11 @@
-import React from 'react';
-import { cn } from '@/lib/utils';
-import { MessageRoleIcon, DebugLabel } from '@/components/ui/atoms';
-import { Message } from './Message';
-import { useMessageContent } from '@/hooks/useMessageContent';
-import { useAgentStyling } from '@/hooks/useAgentStyling';
-import type { ClaudeStreamMessage } from '@/components/agents';
+import React from "react";
+import { Bot } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { DebugLabel } from "@/components/ui/atoms";
+import { MessageTemplate } from "./MessageTemplate";
+import { useMessageContent } from "@/hooks/useMessageContent";
+import { useAgentStyling } from "@/hooks/useAgentStyling";
+import type { ClaudeStreamMessage } from "@/components/agents";
 
 interface SubAgentMessageProps {
   message: ClaudeStreamMessage;
@@ -21,19 +22,20 @@ export const SubAgentMessage: React.FC<SubAgentMessageProps> = ({
   const { agentName, agentBackgroundClass } = useAgentStyling(message);
 
   return (
-    <Message.Container message={message} contentClassName="pb-2">
+    <MessageTemplate.Container message={message} contentClassName="pb-2">
       <DebugLabel label="SubAgentMessage" />
-      <Message.Header
-        icon={<MessageRoleIcon role="assistant" />}
+      <MessageTemplate.Header
+        IconComponent={Bot}
+        iconClassName="bg-background"
         title={agentName}
         titleClassName={cn(
-          "text-base font-semibold px-2 py-1 rounded",
+          "text-base font-semibold px-2 py-0.5 pb-1 rounded",
           agentBackgroundClass,
         )}
       >
-        <Message.Content>{contentItems}</Message.Content>
-      </Message.Header>
-      <Message.Footer message={message} />
-    </Message.Container>
+        <MessageTemplate.Content>{contentItems}</MessageTemplate.Content>
+      </MessageTemplate.Header>
+      <MessageTemplate.Footer message={message} />
+    </MessageTemplate.Container>
   );
 };

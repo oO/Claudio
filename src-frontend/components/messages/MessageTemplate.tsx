@@ -1,8 +1,9 @@
-import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
-import type { ClaudeStreamMessage } from '@/components/agents';
-import { MessageFooter } from './MessageFooter';
+import React from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import type { ClaudeStreamMessage } from "@/components/agents";
+import { MessageFooter } from "./MessageFooter";
+import type { LucideIcon } from "lucide-react";
 
 interface MessageContainerProps {
   message: ClaudeStreamMessage;
@@ -12,7 +13,8 @@ interface MessageContainerProps {
 }
 
 interface MessageHeaderProps {
-  icon: React.ReactNode;
+  IconComponent: LucideIcon;
+  iconClassName?: string;
   title: string;
   titleClassName?: string;
   children?: React.ReactNode;
@@ -22,15 +24,12 @@ interface MessageContentProps {
   children: React.ReactNode;
 }
 
-
 /**
  * Compound Message components using the dot notation pattern
  * Provides a clean, composable API for building message UI
  */
-
 /**
  * Generic container component that provides consistent Card layout
- * No variant-specific styling - each message component controls its own styling
  */
 const Container: React.FC<MessageContainerProps> = ({
   message,
@@ -39,8 +38,8 @@ const Container: React.FC<MessageContainerProps> = ({
   contentClassName,
 }) => {
   return (
-    <Card className={cn('relative', className)}>
-      <CardContent className={cn('p-4', contentClassName)}>
+    <Card className={cn("relative", className)}>
+      <CardContent className={cn("p-3", contentClassName)}>
         {children}
       </CardContent>
     </Card>
@@ -49,33 +48,34 @@ const Container: React.FC<MessageContainerProps> = ({
 
 /**
  * Header component with icon + title layout
+ * Applies standard icon classes while allowing color customization
  */
 const Header: React.FC<MessageHeaderProps> = ({
-  icon,
+  IconComponent,
+  iconClassName = "bg-accent",
   title,
-  titleClassName = 'text-base font-semibold',
+  titleClassName = "text-foreground",
   children,
 }) => {
   return (
     <div className="flex items-start gap-3">
-      {/* Icon with consistent positioning */}
-      <div className="mt-1">
-        {icon}
+      {/* Icon with consistent positioning and standard classes */}
+      <div
+        className={cn(
+          "rounded-full p-2 flex items-center justify-center -mt-1 -ml-1",
+          iconClassName,
+        )}
+      >
+        <IconComponent className="h-4 w-4 text-foreground" />
       </div>
-      
+
       {/* Content wrapper with flex-1 min-w-0 for text truncation */}
       <div className="flex-1 min-w-0">
         {/* Title with customizable styling */}
-        <div className={cn(titleClassName)}>
-          {title}
-        </div>
-        
+        <span className={cn("font-semibold", titleClassName)}>{title}</span>
+
         {/* Main content area */}
-        {children && (
-          <div className="mt-3 space-y-2">
-            {children}
-          </div>
-        )}
+        {children && <div className="mt-3 space-y-2">{children}</div>}
       </div>
     </div>
   );
@@ -94,7 +94,7 @@ const Footer = MessageFooter;
 /**
  * Export compound components using dot notation
  */
-export const Message = {
+export const MessageTemplate = {
   Container,
   Header,
   Content,

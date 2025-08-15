@@ -126,7 +126,6 @@ export const useMessageContent = (message: ClaudeStreamMessage): React.ReactNode
                     "edit",
                     "multiedit",
                     "todowrite",
-                    "todoread",
                     "ls",
                     "read",
                     "glob",

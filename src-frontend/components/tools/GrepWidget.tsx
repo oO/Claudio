@@ -1,7 +1,52 @@
-import React, { useState } from "react";
-import { Search, ChevronRight, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { DebugLabel } from "@/components/ui/atoms";
+import React from "react";
+import { Search } from "lucide-react";
+import { ToolWidgetTemplate } from "./ToolWidgetTemplate";
+
+/**
+ * Component to render parsed grep results with proper formatting
+ */
+const GrepResultsContent: React.FC<{
+  parsedContent: Array<{type: 'file' | 'match' | 'context' | 'separator' | 'text', content: string, filename?: string}>;
+  isExpanded?: boolean;
+  isLargeContent?: boolean;
+}> = ({ parsedContent, isExpanded = true, isLargeContent = false }) => {
+  // Determine how many items to show based on expand state
+  const displayContent = (!isExpanded && isLargeContent) ? parsedContent.slice(0, 12) : parsedContent;
+  const isPreviewTruncated = (!isExpanded && isLargeContent) && displayContent.length < parsedContent.length;
+
+  return (
+    <div className="space-y-0.5">
+      {displayContent.map((item, index) => (
+        <div key={index}>
+          {item.type === 'file' && (
+            <div className="font-bold text-primary mt-2 first:mt-0">
+              {item.content}
+            </div>
+          )}
+          {item.type === 'match' && (
+            <div className="text-foreground ml-4 whitespace-pre-wrap bg-accent/20 px-2 py-0.5 rounded">
+              {item.content}
+            </div>
+          )}
+          {item.type === 'context' && (
+            <div className="text-muted-foreground ml-4 whitespace-pre-wrap text-xs">
+              {item.content}
+            </div>
+          )}
+          {item.type === 'separator' && (
+            <div className="border-t border-muted my-2"></div>
+          )}
+          {item.type === 'text' && (
+            <div className="text-foreground whitespace-pre-wrap">{item.content}</div>
+          )}
+        </div>
+      ))}
+      {isPreviewTruncated && (
+        <div className="text-muted-foreground italic mt-2">...</div>
+      )}
+    </div>
+  );
+};
 
 /**
  * Widget for Grep tool
@@ -13,14 +58,11 @@ export const GrepWidget: React.FC<{
   exclude?: string;
   result?: any;
 }> = ({ pattern, include, path, exclude, result }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isExpanding, setIsExpanding] = useState(false);
   
   // Extract result content if available
   let resultContent = '';
   let isError = false;
   let lineCount = 0;
-  let isLargeResult = false;
   
   if (result) {
     isError = result.is_error || false;
@@ -38,10 +80,9 @@ export const GrepWidget: React.FC<{
       }
     }
     
-    // Count lines and determine if large
+    // Count lines
     const lines = resultContent.split('\n').filter(line => line.trim());
     lineCount = lines.length;
-    isLargeResult = lineCount > 5; // Show collapsed view for more than 5 results
   }
   
   // Parse grep output for better formatting
@@ -107,14 +148,6 @@ export const GrepWidget: React.FC<{
 
   const parsedContent = isError ? [] : parseGrepOutput(resultContent);
   
-  // Create preview for collapsed view
-  const createPreview = (parsed: Array<{type: 'file' | 'match' | 'context' | 'separator' | 'text', content: string, filename?: string}>, limit: number) => {
-    const preview = parsed.slice(0, limit);
-    return preview.length < parsed.length;
-  };
-  
-  const isPreviewTruncated = createPreview(parsedContent, 12);
-  
   // Build search description
   const searchDesc = [];
   if (path) searchDesc.push(`in ${path}`);
@@ -123,31 +156,30 @@ export const GrepWidget: React.FC<{
   const searchContext = searchDesc.length > 0 ? ` (${searchDesc.join(', ')})` : '';
   
   return (
-    <div className="space-y-1 relative">
-      <DebugLabel label="GrepWidget" />
-      {/* Command section - outside the expand box */}
-      <div className="flex items-center gap-2 rounded-lg bg-muted/50">
-        <Search className="h-4 w-4 text-primary" />
-        <span className="text-sm">Searching for pattern:</span>
+    <ToolWidgetTemplate>
+      <ToolWidgetTemplate.Debug label="GrepWidget" />
+      
+      <ToolWidgetTemplate.Header
+        icon={Search}
+        title="Searching with pattern:"
+        isLoading={!result}
+        loadingText="Searching..."
+      >
         <code className="text-sm font-mono bg-background px-2 py-0.5 rounded">
           {pattern}
         </code>
         {searchContext && (
           <span className="text-xs text-muted-foreground">{searchContext}</span>
         )}
-        {!result && (
-          <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
-            <div className="h-2 w-2 bg-primary rounded-full animate-pulse" />
-            <span>Searching...</span>
-          </div>
-        )}
-      </div>
+      </ToolWidgetTemplate.Header>
       
-      {/* Results section - expandable box */}
       {result && (
-        <div className="rounded-lg border bg-card overflow-hidden">
-          <div className="px-4 py-2 border-b bg-muted/30 flex items-center justify-between">
-            <div className="flex items-center gap-2">
+        <ToolWidgetTemplate.ExpandableResult
+          largeContentThreshold={5}
+          lineCount={lineCount}
+          rawContent={resultContent}
+          headerContent={
+            <>
               <span className="text-xs font-mono text-muted-foreground">
                 {isError ? "Search failed" : "Results"}
               </span>
@@ -156,83 +188,36 @@ export const GrepWidget: React.FC<{
                   ({lineCount} {lineCount === 1 ? 'match' : 'matches'})
                 </span>
               )}
-            </div>
+            </>
+          }
+        >
+          {(excerptedContent, isShowingExcerpt) => {
+            const displayContent = isShowingExcerpt ? excerptedContent : resultContent;
+            const displayParsedContent = parseGrepOutput(displayContent);
             
-            {isLargeResult && !isError && (
-              <button
-                onClick={async () => {
-                  if (!isExpanded) {
-                    setIsExpanding(true);
-                    await new Promise(resolve => setTimeout(resolve, 50));
-                    setIsExpanded(true);
-                    setIsExpanding(false);
-                  } else {
-                    setIsExpanded(false);
-                  }
-                }}
-                disabled={isExpanding}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-              >
-                {isExpanding ? (
-                  <>
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    Loading...
-                  </>
-                ) : (
-                  <>
-                    <ChevronRight className={cn("h-3 w-3 transition-transform", isExpanded && "rotate-90")} />
-                    {isExpanded ? "Collapse" : "Expand"}
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-          
-          {/* Content area */}
-          <div className="relative">
-            <div className="p-3 text-xs font-mono bg-background overflow-auto">
-              {isError ? (
-                <div className="text-destructive whitespace-pre-wrap">
-                  {resultContent || "Search failed"}
-                </div>
-              ) : parsedContent.length === 0 ? (
-                <div className="text-muted-foreground">No matches found</div>
-              ) : (
-                <div className="space-y-0.5">
-                  {(!isExpanded && isLargeResult ? parsedContent.slice(0, 12) : parsedContent).map((item, index) => (
-                    <div key={index}>
-                      {item.type === 'file' && (
-                        <div className="font-bold text-primary mt-2 first:mt-0">
-                          {item.content}
-                        </div>
-                      )}
-                      {item.type === 'match' && (
-                        <div className="text-foreground ml-4 whitespace-pre-wrap bg-accent/20 px-2 py-0.5 rounded">
-                          {item.content}
-                        </div>
-                      )}
-                      {item.type === 'context' && (
-                        <div className="text-muted-foreground ml-4 whitespace-pre-wrap text-xs">
-                          {item.content}
-                        </div>
-                      )}
-                      {item.type === 'separator' && (
-                        <div className="border-t border-muted my-2"></div>
-                      )}
-                      {item.type === 'text' && (
-                        <div className="text-foreground whitespace-pre-wrap">{item.content}</div>
-                      )}
+            return (
+              <>
+                <ToolWidgetTemplate.CodeOutput>
+                  {isError ? (
+                    <div className="text-destructive whitespace-pre-wrap">
+                      {displayContent || "Search failed"}
                     </div>
-                  ))}
-                  {!isExpanded && isLargeResult && isPreviewTruncated && (
-                    <div className="text-muted-foreground italic mt-2">...</div>
+                  ) : displayParsedContent.length === 0 ? (
+                    <div className="text-muted-foreground">No matches found</div>
+                  ) : (
+                    <GrepResultsContent parsedContent={displayParsedContent} />
                   )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+                </ToolWidgetTemplate.CodeOutput>
+                {isShowingExcerpt && (
+                  <div className="mt-3 pt-2 border-t border-border text-xs text-muted-foreground text-center">
+                    --- {resultContent.split('\n').length - 5} more lines, {resultContent.length - excerptedContent.length} more characters ---
+                  </div>
+                )}
+              </>
+            );
+          }}
+        </ToolWidgetTemplate.ExpandableResult>
       )}
-    </div>
+    </ToolWidgetTemplate>
   );
 };

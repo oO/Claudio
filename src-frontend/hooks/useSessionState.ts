@@ -112,7 +112,6 @@ export function useSessionState({
     const filteredUuids: string[] = [];
     let filteredCount = 0;
 
-    console.log(`Processing ${messages.length} messages for display filtering`);
 
     for (let index = 0; index < messages.length; index++) {
       // Skip if already processed as part of a bundle
@@ -126,7 +125,6 @@ export function useSessionState({
       if (message.isMeta && !message.leafUuid && !message.summary) {
         filteredCount++;
         if (message.uuid) filteredUuids.push(message.uuid);
-        console.log(`Filtered meta message ${index}:`, message.type, message.message?.content);
         continue;
       }
 
@@ -135,7 +133,6 @@ export function useSessionState({
         if (message.isMeta) {
           filteredCount++;
           if (message.uuid) filteredUuids.push(message.uuid);
-          console.log(`Filtered user meta message ${index}:`, message.message?.content);
           continue;
         }
 
@@ -143,7 +140,6 @@ export function useSessionState({
         if (!msg.content || (Array.isArray(msg.content) && msg.content.length === 0)) {
           filteredCount++;
           if (message.uuid) filteredUuids.push(message.uuid);
-          console.log(`Filtered empty user message ${index}:`, msg);
           continue;
         }
 
@@ -240,7 +236,6 @@ export function useSessionState({
           if (!hasVisibleContent) {
             filteredCount++;
             if (message.uuid) filteredUuids.push(message.uuid);
-            console.log(`Filtered user message with only tool results ${index}:`, msg.content);
             continue;
           }
         }
@@ -260,7 +255,6 @@ export function useSessionState({
       messageNumber: index + 1 // Sequential numbering starting from 1
     }));
 
-    console.log(`Final result: ${renumberedMessages.length} displayable messages out of ${messages.length} total (filtered ${filteredCount})`);
     
     // Store filtered UUIDs for debugging purposes
     setCollapsedMessageUuids(filteredUuids);

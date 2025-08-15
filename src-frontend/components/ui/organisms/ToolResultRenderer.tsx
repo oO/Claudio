@@ -5,9 +5,9 @@ import { cn } from "@/lib/utils";
 import {
   EditResultWidget,
   MultiEditResultWidget,
-  LSResultWidget,
   SystemReminderWidget,
-  CommandOutputWidget
+  CommandOutputWidget,
+  LSWidget
 } from "@/components/tools/ToolWidgets";
 import { FileWidget } from "@/components/tools";
 
@@ -168,7 +168,7 @@ export const ToolResultRenderer: React.FC<ToolResultProps> = ({
           <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
           <span className="text-sm font-medium">Directory Contents</span>
         </div>
-        <LSResultWidget content={contentText} />
+        <LSWidget content={contentText} />
       </div>
     );
   }

@@ -1,8 +1,9 @@
-import React from 'react';
-import { MessageRoleIcon, DebugLabel } from '@/components/ui/atoms';
-import { Message } from './Message';
-import { useMessageContent } from '@/hooks/useMessageContent';
-import type { ClaudeStreamMessage } from '@/components/agents';
+import React from "react";
+import { CircleUser } from "lucide-react";
+import { DebugLabel } from "@/components/ui/atoms";
+import { MessageTemplate } from "./MessageTemplate";
+import { useMessageContent } from "@/hooks/useMessageContent";
+import type { ClaudeStreamMessage } from "@/components/agents";
 
 interface UserMessageProps {
   message: ClaudeStreamMessage;
@@ -12,22 +13,21 @@ interface UserMessageProps {
  * Self-contained component for rendering user messages
  * Handles its own content processing and styling
  */
-export const UserMessage: React.FC<UserMessageProps> = ({
-  message,
-}) => {
+export const UserMessage: React.FC<UserMessageProps> = ({ message }) => {
   const contentItems = useMessageContent(message);
 
   return (
-    <Message.Container message={message}>
+    <MessageTemplate.Container message={message}>
       <DebugLabel label="UserMessage" />
-      <Message.Header
-        icon={<MessageRoleIcon role="user" />}
+      <MessageTemplate.Header
+        IconComponent={CircleUser}
+        iconClassName="bg-accent"
         title="User"
-        titleClassName="text-base font-semibold"
+        titleClassName="text-accent"
       >
-        <Message.Content>{contentItems}</Message.Content>
-      </Message.Header>
-      <Message.Footer message={message} />
-    </Message.Container>
+        <MessageTemplate.Content>{contentItems}</MessageTemplate.Content>
+      </MessageTemplate.Header>
+      <MessageTemplate.Footer message={message} />
+    </MessageTemplate.Container>
   );
 };

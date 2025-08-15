@@ -3,15 +3,12 @@ import {
   Globe,
   AlertCircle,
   ChevronRight,
-  ChevronDown,
-  ChevronUp,
   Info,
-  FileText,
-  Loader2
+  FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { open } from "@tauri-apps/plugin-shell";
-import { DebugLabel } from "@/components/ui/atoms";
+import { ToolWidgetTemplate } from "./ToolWidgetTemplate";
 
 /**
  * Widget for WebFetch tool - displays URL fetching with optional prompts
@@ -21,9 +18,7 @@ export const WebFetchWidget: React.FC<{
   prompt?: string;
   result?: any;
 }> = ({ url, prompt, result }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [showFullContent, setShowFullContent] = useState(false);
-  const [isExpanding, setIsExpanding] = useState(false);
+  const [isPromptExpanded, setIsPromptExpanded] = useState(false);
   
   // Extract result content if available
   let fetchedContent = '';
@@ -51,12 +46,8 @@ export const WebFetchWidget: React.FC<{
                fetchedContent.toLowerCase().includes('failed');
   }
   
-  // Truncate content for preview
-  const maxPreviewLength = 500;
-  const isTruncated = fetchedContent.length > maxPreviewLength;
-  const previewContent = isTruncated && !showFullContent
-    ? fetchedContent.substring(0, maxPreviewLength) + '...'
-    : fetchedContent;
+  // Calculate line count for ExpandableResult
+  const lineCount = fetchedContent ? fetchedContent.split('\n').length : 0;
   
   // Extract domain from URL for display
   const getDomain = (urlString: string) => {
@@ -77,134 +68,84 @@ export const WebFetchWidget: React.FC<{
   };
   
   return (
-    <div className="flex flex-col gap-2 relative">
-      <DebugLabel label="WebFetchWidget" />
-      {/* Header with URL and optional prompt */}
-      <div className="space-y-2">
-        {/* URL Display */}
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-500/5 border border-purple-500/10">
-          <Globe className="h-4 w-4 text-purple-500/70" />
-          <span className="text-xs font-medium uppercase tracking-wider text-purple-600/70 dark:text-purple-400/70">Fetching</span>
-          <button
-            onClick={handleUrlClick}
-            className="text-sm text-foreground/80 hover:text-foreground flex-1 truncate text-left hover:underline decoration-purple-500/50"
-          >
-            {url}
-          </button>
-        </div>
-        
-        {/* Prompt Display */}
-        {prompt && (
-          <div className="ml-6 space-y-1">
-            <button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ChevronRight className={cn("h-3 w-3 transition-transform", isExpanded && "rotate-90")} />
-              <Info className="h-3 w-3" />
-              <span>Analysis Prompt</span>
-            </button>
-            
-            {isExpanded && (
-              <div className="rounded-lg border bg-muted/30 p-3 ml-4">
-                <p className="text-sm text-foreground/90">
-                  {prompt}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+    <ToolWidgetTemplate>
+      <ToolWidgetTemplate.Debug label="WebFetchWidget" />
       
-      {/* Results */}
-      {isLoading ? (
-        <div className="rounded-lg border bg-background/50 backdrop-blur-sm overflow-hidden">
-          <div className="px-3 py-2 flex items-center gap-2 text-muted-foreground">
-            <div className="animate-pulse flex items-center gap-1">
-              <div className="h-1 w-1 bg-purple-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-              <div className="h-1 w-1 bg-purple-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-              <div className="h-1 w-1 bg-purple-500 rounded-full animate-bounce"></div>
+      <ToolWidgetTemplate.Header 
+        icon={Globe} 
+        title="Fetching from:"
+        isLoading={isLoading}
+        loadingText={`Fetching content from ${getDomain(url)}...`}
+      >
+        <button
+          onClick={handleUrlClick}
+          className="text-sm text-foreground/80 hover:text-foreground truncate text-left hover:underline ml-2 flex-1 min-w-0"
+        >
+          {url}
+        </button>
+      </ToolWidgetTemplate.Header>
+
+      {/* Prompt Display */}
+      {prompt && (
+        <div className="ml-6 space-y-1">
+          <button
+            onClick={() => setIsPromptExpanded(!isPromptExpanded)}
+            className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ChevronRight className={cn("h-3 w-3 transition-transform", isPromptExpanded && "rotate-90")} />
+            <Info className="h-3 w-3" />
+            <span>Analysis Prompt</span>
+          </button>
+          
+          {isPromptExpanded && (
+            <div className="rounded-lg border bg-muted/30 p-3 ml-4">
+              <p className="text-sm text-foreground/90">
+                {prompt}
+              </p>
             </div>
-            <span className="text-sm">Fetching content from {getDomain(url)}...</span>
-          </div>
+          )}
         </div>
-      ) : fetchedContent ? (
-        <div className="rounded-lg border bg-background/50 backdrop-blur-sm overflow-hidden">
-          {hasError ? (
-            <div className="px-3 py-2">
+      )}
+
+      {/* Results */}
+      {!isLoading && (
+        <ToolWidgetTemplate.ExpandableResult
+          lineCount={lineCount}
+          rawContent={fetchedContent}
+          headerContent={
+            hasError ? (
               <div className="flex items-center gap-2 text-destructive">
                 <AlertCircle className="h-4 w-4" />
                 <span className="text-sm font-medium">Failed to fetch content</span>
               </div>
-              <pre className="mt-2 text-xs font-mono text-muted-foreground whitespace-pre-wrap">
-                {fetchedContent}
-              </pre>
-            </div>
-          ) : (
-            <div className="p-3 space-y-2">
-              {/* Content Header */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <FileText className="h-3.5 w-3.5" />
-                  <span>Content from {getDomain(url)}</span>
-                </div>
-                {isTruncated && (
-                  <button
-                    onClick={async () => {
-                      if (!showFullContent) {
-                        setIsExpanding(true);
-                        // Small delay to allow UI to update before heavy rendering
-                        await new Promise(resolve => setTimeout(resolve, 50));
-                        setShowFullContent(true);
-                        setIsExpanding(false);
-                      } else {
-                        setShowFullContent(false);
-                      }
-                    }}
-                    disabled={isExpanding}
-                    className="text-xs text-purple-500 hover:text-purple-600 transition-colors flex items-center gap-1 disabled:opacity-50"
-                  >
-                    {isExpanding ? (
-                      <>
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                        Loading...
-                      </>
-                    ) : showFullContent ? (
-                      <>
-                        <ChevronUp className="h-3 w-3" />
-                        Show less
-                      </>
-                    ) : (
-                      <>
-                        <ChevronDown className="h-3 w-3" />
-                        Show full content
-                      </>
-                    )}
-                  </button>
-                )}
+            ) : fetchedContent ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <FileText className="h-3.5 w-3.5" />
+                <span>Content from {getDomain(url)}</span>
               </div>
-              
-              {/* Fetched Content */}
-              <div className="relative">
-                <div className="rounded-lg bg-muted/30 p-3 overflow-hidden">
-                  <pre className="text-sm font-mono text-foreground/90 whitespace-pre-wrap">
-                    {previewContent}
-                  </pre>
-                </div>
+            ) : (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Info className="h-4 w-4" />
+                <span className="text-sm">No content returned</span>
               </div>
-            </div>
+            )
+          }
+        >
+          {(excerptedContent, isShowingExcerpt) => (
+            <>
+              {fetchedContent ? (
+                <ToolWidgetTemplate.CodeOutput>
+                  {excerptedContent}
+                </ToolWidgetTemplate.CodeOutput>
+              ) : (
+                <div className="p-3 text-sm text-muted-foreground">
+                  No content available
+                </div>
+              )}
+            </>
           )}
-        </div>
-      ) : (
-        <div className="rounded-lg border bg-background/50 backdrop-blur-sm overflow-hidden">
-          <div className="px-3 py-2">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Info className="h-4 w-4" />
-              <span className="text-sm">No content returned</span>
-            </div>
-          </div>
-        </div>
+        </ToolWidgetTemplate.ExpandableResult>
       )}
-    </div>
+    </ToolWidgetTemplate>
   );
 };

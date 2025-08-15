@@ -25,9 +25,8 @@ import {
   Cpu
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { DebugLabel } from "@/components/ui/atoms";
+import { ToolWidgetTemplate } from "./ToolWidgetTemplate";
 
 /**
  * Widget for displaying system initialization information in a visually appealing way
@@ -60,7 +59,6 @@ export const SystemInitializedWidget: React.FC<{
     'notebookread': Book,
     'notebookedit': BookOpen,
     'webfetch': Globe,
-    'todoread': ListChecks,
     'todowrite': ListPlus,
     'websearch': Globe2,
   };
@@ -110,13 +108,12 @@ export const SystemInitializedWidget: React.FC<{
   }, {} as Record<string, string[]>);
   
   return (
-    <Card className="border-blue-500/20 bg-blue-500/5 relative">
-      <DebugLabel label="SystemInitializedWidget" />
-      <CardContent className="p-4">
-        <div className="flex items-start gap-3">
-          <Settings className="h-5 w-5 text-blue-500 mt-0.5" />
-          <div className="flex-1 space-y-4">
-            <h4 className="font-semibold text-sm">System Initialized</h4>
+    <ToolWidgetTemplate>
+      <ToolWidgetTemplate.Debug label="SystemInitializedWidget" />
+      <ToolWidgetTemplate.Header icon={Settings} title="System Initialized" />
+      
+      <ToolWidgetTemplate.PlainOutput>
+        <div className="space-y-4">
             
             {/* Session Info */}
             <div className="space-y-2">
@@ -223,15 +220,14 @@ export const SystemInitializedWidget: React.FC<{
               </div>
             )}
             
-            {/* Show message if no tools */}
-            {tools.length === 0 && (
-              <div className="text-xs text-muted-foreground italic">
-                No tools available
-              </div>
-            )}
-          </div>
+          {/* Show message if no tools */}
+          {tools.length === 0 && (
+            <div className="text-xs text-muted-foreground italic">
+              No tools available
+            </div>
+          )}
         </div>
-      </CardContent>
-    </Card>
+      </ToolWidgetTemplate.PlainOutput>
+    </ToolWidgetTemplate>
   );
 };

@@ -2,7 +2,7 @@ import React from "react";
 import { CheckCircle2, Circle, Clock, FileEdit } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { DebugLabel } from "@/components/ui/atoms";
+import { ToolWidgetTemplate } from "./ToolWidgetTemplate";
 
 /**
  * Widget for TodoWrite tool - displays a beautiful task list
@@ -21,18 +21,15 @@ export const TasksWidget: React.FC<{ todos: any[]; result?: any }> = ({ todos, r
   };
 
   return (
-    <div className="space-y-1 relative">
-      <DebugLabel label="TasksWidget" />
+    <ToolWidgetTemplate>
+      <ToolWidgetTemplate.Debug label="TasksWidget" />
+      <ToolWidgetTemplate.Header 
+        icon={FileEdit} 
+        title={`Tasks (${todos.length} ${todos.length === 1 ? 'item' : 'items'})`}
+      />
       
-      {/* Command section - outside the card */}
-      <div className="flex items-center gap-2 rounded-lg bg-muted/50">
-        <FileEdit className="h-4 w-4 text-primary" />
-        <span className="text-sm font-medium">Tasks ({todos.length} {todos.length === 1 ? 'item' : 'items'})</span>
-      </div>
-      
-      {/* Single card containing all todos */}
-      <div className="rounded-lg border bg-card overflow-hidden">
-        <div className="p-3 bg-background space-y-2">
+      <ToolWidgetTemplate.PlainOutput>
+        <div className="space-y-2">
           {todos.map((todo, idx) => (
             <div
               key={todo.id || idx}
@@ -63,7 +60,7 @@ export const TasksWidget: React.FC<{ todos: any[]; result?: any }> = ({ todos, r
             </div>
           ))}
         </div>
-      </div>
-    </div>
+      </ToolWidgetTemplate.PlainOutput>
+    </ToolWidgetTemplate>
   );
 };

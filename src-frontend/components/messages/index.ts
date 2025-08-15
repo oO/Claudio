@@ -1,5 +1,5 @@
 // Core message components
-export { Message } from './Message';
+export { MessageTemplate } from './MessageTemplate';
 export { MessageRouter } from './MessageRouter';
 export { MessageFooter } from './MessageFooter';
 
@@ -9,3 +9,4 @@ export { AssistantMessage } from './AssistantMessage';
 export { SubAgentMessage } from './SubAgentMessage';
 export { ResultMessage } from './ResultMessage';
 export { ErrorMessage } from './ErrorMessage';
+export { SummaryMessage } from './SummaryMessage';

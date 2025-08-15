@@ -1,7 +1,6 @@
-import React, { useState } from "react";
-import { Bot, Sparkles, Zap, ChevronRight } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { DebugLabel } from "@/components/ui/atoms";
+import React from "react";
+import { Bot, Sparkles, Zap } from "lucide-react";
+import { ToolWidgetTemplate } from "./ToolWidgetTemplate";
 
 /**
  * Widget for Task tool - displays sub-agent task information
@@ -11,50 +10,57 @@ export const SubAgentTaskWidget: React.FC<{
   prompt?: string;
   result?: any;
 }> = ({ description, prompt, result: _result }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  
+  // Create the icon with sparkles overlay
+  const SubAgentIcon = () => (
+    <div className="relative">
+      <Bot className="h-4 w-4" />
+      <Sparkles className="h-2.5 w-2.5 absolute -top-1 -right-1" />
+    </div>
+  );
+
   return (
-    <div className="space-y-2 relative">
-      <DebugLabel label="SubAgentTaskWidget" />
-      <div className="flex items-center gap-2 mb-2">
-        <div className="relative">
-          <Bot className="h-4 w-4 text-purple-500" />
-          <Sparkles className="h-2.5 w-2.5 text-purple-400 absolute -top-1 -right-1" />
-        </div>
-        <span className="text-sm font-medium">Spawning Sub-Agent Task</span>
-      </div>
+    <ToolWidgetTemplate>
+      <ToolWidgetTemplate.Debug label="SubAgentTaskWidget" />
+      <ToolWidgetTemplate.Header 
+        icon={Bot} 
+        title="Spawning Sub-Agent Task" 
+      />
       
-      <div className="ml-6 space-y-3">
-        {description && (
-          <div className="rounded-lg border border-purple-500/20 bg-purple-500/5 p-3">
-            <div className="flex items-center gap-2 mb-1">
-              <Zap className="h-3.5 w-3.5 text-purple-500" />
-              <span className="text-xs font-medium text-purple-600 dark:text-purple-400">Task Description</span>
-            </div>
-            <p className="text-sm text-foreground ml-5">{description}</p>
+      <ToolWidgetTemplate.ExpandableResult
+        headerContent={
+          <div className="flex items-center gap-2">
+            <Zap className="h-3.5 w-3.5 text-purple-500" />
+            <span className="text-xs font-medium text-purple-600 dark:text-purple-400">Task Details</span>
           </div>
-        )}
-        
-        {prompt && (
-          <div className="space-y-2">
-            <button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ChevronRight className={cn("h-3 w-3 transition-transform", isExpanded && "rotate-90")} />
-              <span>Task Instructions</span>
-            </button>
+        }
+        isExpandable={!!prompt}
+        initiallyExpanded={true}
+      >
+        <ToolWidgetTemplate.PlainOutput>
+          <div className="space-y-3">
+            {description && (
+              <div className="rounded-lg border border-purple-500/20 bg-purple-500/5 p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <Zap className="h-3.5 w-3.5 text-purple-500" />
+                  <span className="text-xs font-medium text-purple-600 dark:text-purple-400">Task Description</span>
+                </div>
+                <p className="text-sm text-foreground ml-5">{description}</p>
+              </div>
+            )}
             
-            {isExpanded && (
+            {prompt && (
               <div className="rounded-lg border bg-muted/30 p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-medium text-muted-foreground">Task Instructions</span>
+                </div>
                 <pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap">
                   {prompt}
                 </pre>
               </div>
             )}
           </div>
-        )}
-      </div>
-    </div>
+        </ToolWidgetTemplate.PlainOutput>
+      </ToolWidgetTemplate.ExpandableResult>
+    </ToolWidgetTemplate>
   );
 };

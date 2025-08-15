@@ -1,20 +1,16 @@
-import React, { useState } from "react";
-import { Search, ChevronRight, Loader2 } from "lucide-react";
+import React from "react";
+import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DebugLabel } from "@/components/ui/atoms";
+import { ToolWidgetTemplate } from "./ToolWidgetTemplate";
 
 /**
  * Widget for Glob tool
  */
 export const GlobWidget: React.FC<{ pattern: string; result?: any }> = ({ pattern, result }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isExpanding, setIsExpanding] = useState(false);
-  
   // Extract result content if available
   let resultContent = '';
   let isError = false;
   let lineCount = 0;
-  let isLargeResult = false;
   
   if (result) {
     isError = result.is_error || false;
@@ -32,38 +28,33 @@ export const GlobWidget: React.FC<{ pattern: string; result?: any }> = ({ patter
       }
     }
     
-    // Count lines and determine if large
+    // Count lines
     const lines = resultContent.split('\n').filter(line => line.trim());
     lineCount = lines.length;
-    isLargeResult = lineCount > 5; // Show collapsed view for more than 5 results
   }
   
-  // Get first few lines for preview
-  const previewLines = resultContent.split('\n').slice(0, 3).join('\n');
-  
   return (
-    <div className="space-y-1 relative">
-      <DebugLabel label="GlobWidget" />
-      {/* Command section - outside the expand box */}
-      <div className="flex items-center gap-2 rounded-lg bg-muted/50">
-        <Search className="h-4 w-4 text-primary" />
-        <span className="text-sm">Searching for pattern:</span>
+    <ToolWidgetTemplate>
+      <ToolWidgetTemplate.Debug label="GlobWidget" />
+      
+      <ToolWidgetTemplate.Header
+        icon={Search}
+        title="Searching for pattern:"
+        isLoading={!result}
+        loadingText="Searching..."
+      >
         <code className="text-sm font-mono bg-background px-2 py-0.5 rounded">
           {pattern}
         </code>
-        {!result && (
-          <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
-            <div className="h-2 w-2 bg-primary rounded-full animate-pulse" />
-            <span>Searching...</span>
-          </div>
-        )}
-      </div>
+      </ToolWidgetTemplate.Header>
       
-      {/* Results section - expandable box */}
       {result && (
-        <div className="rounded-lg border bg-card overflow-hidden">
-          <div className="px-4 py-2 border-b bg-muted/30 flex items-center justify-between">
-            <div className="flex items-center gap-2">
+        <ToolWidgetTemplate.ExpandableResult
+          largeContentThreshold={5}
+          lineCount={lineCount}
+          rawContent={resultContent}
+          headerContent={
+            <>
               <span className="text-xs font-mono text-muted-foreground">
                 {isError ? "Search failed" : "Results"}
               </span>
@@ -72,58 +63,32 @@ export const GlobWidget: React.FC<{ pattern: string; result?: any }> = ({ patter
                   ({lineCount} {lineCount === 1 ? 'match' : 'matches'})
                 </span>
               )}
-            </div>
-            
-            {isLargeResult && !isError && (
-              <button
-                onClick={async () => {
-                  if (!isExpanded) {
-                    setIsExpanding(true);
-                    await new Promise(resolve => setTimeout(resolve, 50));
-                    setIsExpanded(true);
-                    setIsExpanding(false);
-                  } else {
-                    setIsExpanded(false);
+            </>
+          }
+        >
+          {(excerptedContent, isShowingExcerpt) => (
+            <>
+              <ToolWidgetTemplate.CodeOutput>
+                <div className={cn(
+                  isError 
+                    ? "text-destructive" 
+                    : "text-foreground"
+                )}>
+                  {isError 
+                    ? (excerptedContent || "Search failed")
+                    : (excerptedContent || "No matches found")
                   }
-                }}
-                disabled={isExpanding}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-              >
-                {isExpanding ? (
-                  <>
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    Loading...
-                  </>
-                ) : (
-                  <>
-                    <ChevronRight className={cn("h-3 w-3 transition-transform", isExpanded && "rotate-90")} />
-                    {isExpanded ? "Collapse" : "Expand"}
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-          
-          {/* Content area */}
-          <div className="relative">
-            <div className="p-3 text-xs font-mono whitespace-pre-wrap bg-background overflow-auto">
-              <div className={cn(
-                isError 
-                  ? "text-destructive" 
-                  : "text-foreground"
-              )}>
-                {isError 
-                  ? (resultContent || "Search failed")
-                  : (!isExpanded && isLargeResult 
-                      ? previewLines + (lineCount > 3 ? '\n...' : '')
-                      : (resultContent || "No matches found")
-                    )
-                }
-              </div>
-            </div>
-          </div>
-        </div>
+                </div>
+              </ToolWidgetTemplate.CodeOutput>
+              {isShowingExcerpt && (
+                <div className="mt-3 pt-2 border-t border-border text-xs text-muted-foreground text-center">
+                  --- {resultContent.split('\n').length - 5} more lines, {resultContent.length - excerptedContent.length} more characters ---
+                </div>
+              )}
+            </>
+          )}
+        </ToolWidgetTemplate.ExpandableResult>
       )}
-    </div>
+    </ToolWidgetTemplate>
   );
 };

@@ -1,10 +1,9 @@
-import React, { useState } from "react";
-import { FileText, ChevronRight, Loader2 } from "lucide-react";
-import { DebugLabel } from "@/components/ui/atoms";
-import { cn } from "@/lib/utils";
+import React from "react";
+import { FileText } from "lucide-react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneLight, oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useTheme } from "@/hooks";
+import { ToolWidgetTemplate } from "./ToolWidgetTemplate";
 
 // Constants
 const PREVIEW_LINES = 4; // Number of lines to show when collapsed
@@ -19,8 +18,6 @@ export const FileWidget: React.FC<{
   content?: string;
   result?: any;
 }> = ({ type, filePath, content, result }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isExpanding, setIsExpanding] = useState(false);
   const { theme } = useTheme();
 
   // Customize oneLight theme to have better contrast
@@ -239,68 +236,59 @@ export const FileWidget: React.FC<{
   const language = getLanguage(filePath);
   const lineCount = codeContent.split('\n').filter(line => line.trim()).length;
   const isLargeFile = lineCount > LARGE_FILE_THRESHOLD;
-  
-  // When collapsed, only show first N lines to help renderer performance
-  const displayContent = (!isLargeFile || isExpanded) 
-    ? codeContent 
-    : codeContent.split('\n').slice(0, PREVIEW_LINES).join('\n');
 
   // Get header text based on type
-  const headerText = type === 'read' ? 'File content:' : 'Writing to file:';
-  const debugLabel = 'FileWidget';
+  const headerText = type === 'read' ? 'File content' : 'Writing to file';
 
   // Loading state for read type
   if (type === 'read' && !result) {
     return (
-      <div className="flex items-center gap-2 rounded-lg bg-muted/50 relative">
-        <DebugLabel label={debugLabel} />
-        <FileText className="h-4 w-4 text-primary" />
-        <span className="text-sm">Reading file:</span>
-        <code className="text-sm font-mono bg-background px-2 py-0.5 rounded flex-1 truncate">
-          {filePath}
-        </code>
-        <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
-          <div className="h-2 w-2 bg-primary rounded-full animate-pulse" />
-          <span>Loading...</span>
-        </div>
-      </div>
+      <ToolWidgetTemplate>
+        <ToolWidgetTemplate.Debug label="FileWidget" />
+        <ToolWidgetTemplate.Header 
+          icon={FileText} 
+          title="Reading file" 
+          isLoading={true}
+          loadingText="Loading..."
+        >
+          <code className="text-sm font-mono bg-background px-2 py-0.5 rounded flex-1 truncate">
+            {filePath}
+          </code>
+        </ToolWidgetTemplate.Header>
+      </ToolWidgetTemplate>
     );
   }
 
   // No content available
   if (!codeContent && type === 'read') {
     return (
-      <div className="space-y-1 relative">
-        <DebugLabel label={debugLabel} />
-        <div className="flex items-center gap-2 rounded-lg bg-muted/50">
-          <FileText className="h-4 w-4 text-primary" />
-          <span className="text-sm">{headerText}</span>
+      <ToolWidgetTemplate>
+        <ToolWidgetTemplate.Debug label="FileWidget" />
+        <ToolWidgetTemplate.Header icon={FileText} title={headerText}>
           <code className="text-sm font-mono bg-background px-2 py-0.5 rounded flex-1 truncate">
             {filePath}
           </code>
-        </div>
-        <div className="text-center py-4 text-sm text-muted-foreground">
-          No content available
-        </div>
-      </div>
+        </ToolWidgetTemplate.Header>
+        <ToolWidgetTemplate.PlainOutput>
+          <div className="text-center text-muted-foreground">
+            No content available
+          </div>
+        </ToolWidgetTemplate.PlainOutput>
+      </ToolWidgetTemplate>
     );
   }
 
   return (
-    <div className="space-y-1 relative">
-      <DebugLabel label={debugLabel} />
-      {/* Command section - outside the expand box */}
-      <div className="flex items-center gap-2 rounded-lg bg-muted/50">
-        <FileText className="h-4 w-4 text-primary" />
-        <span className="text-sm">{headerText}</span>
+    <ToolWidgetTemplate>
+      <ToolWidgetTemplate.Debug label="FileWidget" />
+      <ToolWidgetTemplate.Header icon={FileText} title={headerText}>
         <code className="text-sm font-mono bg-background px-2 py-0.5 rounded flex-1 truncate">
           {filePath}
         </code>
-      </div>
+      </ToolWidgetTemplate.Header>
       
-      {/* Results section - expandable box */}
-      <div className="rounded-lg border bg-card overflow-hidden">
-        <div className="px-4 py-2 border-b bg-muted/30 flex items-center justify-between">
+      <ToolWidgetTemplate.ExpandableResult
+        headerContent={
           <div className="flex items-center gap-2">
             <span className="text-xs font-mono text-muted-foreground">
               {isError ? "Error" : (type === 'read' ? "File content" : "Preview")}
@@ -311,77 +299,53 @@ export const FileWidget: React.FC<{
               </span>
             )}
           </div>
-          
-          {isLargeFile && !isError && (
-            <button
-              onClick={async () => {
-                if (!isExpanded) {
-                  setIsExpanding(true);
-                  // Small delay to allow UI to update before heavy rendering
-                  await new Promise(resolve => setTimeout(resolve, 50));
-                  setIsExpanded(true);
-                  setIsExpanding(false);
-                } else {
-                  setIsExpanded(false);
-                }
-              }}
-              disabled={isExpanding}
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-            >
-              {isExpanding ? (
-                <>
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  Loading...
-                </>
-              ) : (
-                <>
-                  <ChevronRight className={cn("h-3 w-3 transition-transform", isExpanded && "rotate-90")} />
-                  {isExpanded ? "Collapse" : "Expand"}
-                </>
-              )}
-            </button>
-          )}
-        </div>
-        
-        {/* Content area */}
-        <div className="relative">
-          <div className="relative overflow-x-auto bg-background">
-            <SyntaxHighlighter
-              language={language}
-              style={syntaxTheme}
-              showLineNumbers
-              startingLineNumber={startLineNumber}
-              wrapLongLines={false}
-              customStyle={{
-                margin: 0,
-                background: 'transparent',
-                lineHeight: '1.2',
-                fontSize: '0.75rem',
-                padding: '0.75rem',
-                color: isDarkTheme ? '#ffffff' : '#000000' // Force the right base color
-              }}
-              codeTagProps={{
-                style: {
-                  fontSize: '0.75rem'
-                }
-              }}
-              lineNumberStyle={{
-                minWidth: "3.5rem",
-                paddingRight: "1rem",
-                textAlign: "right",
-                opacity: 0.5,
-              }}
-            >
-              {isError ? (codeContent || "Error occurred") : displayContent}
-            </SyntaxHighlighter>
-            {isLargeFile && !isExpanded && !isError && (
-              <div className="px-3 py-2 text-xs text-muted-foreground text-center bg-muted/20 border-t">
-                ... {lineCount - PREVIEW_LINES} more lines ...
+        }
+        isExpandable={isLargeFile && !isError}
+        initiallyExpanded={!isLargeFile}
+        largeContentThreshold={LARGE_FILE_THRESHOLD}
+        lineCount={lineCount}
+        rawContent={codeContent}
+      >
+        {(excerptedContent, isShowingExcerpt) => (
+          <>
+            <div className="relative overflow-x-auto bg-background">
+              <SyntaxHighlighter
+                language={language}
+                style={syntaxTheme}
+                showLineNumbers
+                startingLineNumber={startLineNumber}
+                wrapLongLines={false}
+                customStyle={{
+                  margin: 0,
+                  background: 'transparent',
+                  lineHeight: '1.2',
+                  fontSize: '0.75rem',
+                  padding: '0.75rem',
+                  color: isDarkTheme ? '#ffffff' : '#000000' // Force the right base color
+                }}
+                codeTagProps={{
+                  style: {
+                    fontSize: '0.75rem'
+                  }
+                }}
+                lineNumberStyle={{
+                  minWidth: "3.5rem",
+                  paddingRight: "1rem",
+                  textAlign: "right",
+                  opacity: 0.5,
+                }}
+              >
+                {isError ? (excerptedContent || "Error occurred") : excerptedContent}
+              </SyntaxHighlighter>
+            </div>
+            {isShowingExcerpt && (
+              <div className="mt-3 pt-2 border-t border-border text-xs text-muted-foreground text-center">
+                --- {codeContent.split('\n').length - 5} more lines, {codeContent.length - excerptedContent.length} more characters ---
               </div>
             )}
-          </div>
-        </div>
-      </div>
-    </div>
+          </>
+        )}
+      </ToolWidgetTemplate.ExpandableResult>
+    </ToolWidgetTemplate>
   );
 };

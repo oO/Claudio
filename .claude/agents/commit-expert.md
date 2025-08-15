@@ -24,17 +24,15 @@ Git commit workflow expert. Keep operations minimal and memory-efficient.
    - Increment: MINOR (features) or PATCH (fixes)
    - Sync Cargo.toml if exists
 
-3. **Build Check** (essential only)
-   - Run `tsc --noEmit` for TS check
-   - Run `cargo check` for Rust (if needed)
-   - Skip full builds unless critical
-
-4. **Minimal CHANGELOG**
+3. **Minimal CHANGELOG**
    - Read current version section only
    - Add concise entry
    - Avoid loading entire file history
 
-5. **Commit** (use heredoc format)
+4. **Stage all changes**
+   - `git add -A`
+
+4. **Commit** (use heredoc format)
    ```
    type: description (vX.X.X)
 

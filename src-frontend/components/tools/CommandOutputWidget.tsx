@@ -1,7 +1,8 @@
 import React from "react";
-import { ChevronRight } from "lucide-react";
+import { Terminal } from "lucide-react";
 import { detectLinks, makeLinksClickable } from "@/lib/linkDetector";
 import { useLinkNotification } from "@/contexts/LinkNotificationContext";
+import { ToolWidgetTemplate } from "./ToolWidgetTemplate";
 
 /**
  * Widget for command output/stdout
@@ -62,16 +63,25 @@ export const CommandOutputWidget: React.FC<{
   };
 
   return (
-    <div className="rounded-lg border bg-card overflow-hidden">
-      <div className="px-4 py-2 bg-muted/30 flex items-center gap-2">
-        <ChevronRight className="h-3 w-3 text-green-600 dark:text-green-400" />
-        <span className="text-xs font-mono text-green-600 dark:text-green-400">Output</span>
-      </div>
-      <div className="p-3">
-        <pre className="text-sm font-mono text-foreground whitespace-pre-wrap">
-          {output ? parseAnsiToReact(output) : <span className="text-muted-foreground italic">No output</span>}
-        </pre>
-      </div>
-    </div>
+    <ToolWidgetTemplate>
+      <ToolWidgetTemplate.Debug label="CommandOutputWidget" />
+      <ToolWidgetTemplate.Header icon={Terminal} title="Command output" />
+      
+      <ToolWidgetTemplate.ExpandableResult
+        headerContent={
+          <span className="text-xs font-mono text-green-600 dark:text-green-400">Output</span>
+        }
+        rawContent={output}
+        lineCount={output ? output.split('\n').length : 0}
+      >
+        {(excerptedContent, isShowingExcerpt) => (
+          <>
+            <ToolWidgetTemplate.CodeOutput>
+              {output ? parseAnsiToReact(excerptedContent) : <span className="text-muted-foreground italic">No output</span>}
+            </ToolWidgetTemplate.CodeOutput>
+          </>
+        )}
+      </ToolWidgetTemplate.ExpandableResult>
+    </ToolWidgetTemplate>
   );
 };

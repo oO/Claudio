@@ -1,6 +1,5 @@
 // File System Widgets
 export { LSWidget } from './LSWidget';
-export { LSResultWidget } from './LSResultWidget';
 export { FileWidget } from './FileWidget';
 export { GlobWidget } from './GlobWidget';
 
@@ -20,7 +19,6 @@ export { MCPWidget } from './MCPWidget';
 // Task Management Widgets
 export { TasksWidget } from './TasksWidget';
 export { SubAgentTaskWidget } from './SubAgentTaskWidget';
-export { TodoReadWidget } from './TodoReadWidget';
 
 // Web & Search Widgets
 export { WebSearchWidget } from './WebSearchWidget';
