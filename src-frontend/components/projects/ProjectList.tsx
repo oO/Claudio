@@ -9,7 +9,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { Project } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { cn, prettifyProjectName } from "@/lib/utils";
 import { formatTimeAgo } from "@/lib/date-utils";
 import { Pagination } from "@/components/ui/pagination";
 import { DebugLabel } from "@/components/ui/atoms";
@@ -35,13 +35,6 @@ interface ProjectListProps {
 
 const ITEMS_PER_PAGE = 12;
 
-/**
- * Extracts the project name from the full path
- */
-const getProjectName = (path: string): string => {
-  const parts = path.split("/").filter(Boolean);
-  return parts[parts.length - 1] || path;
-};
 
 /**
  * ProjectList component - Displays a paginated list of projects with hover animations
@@ -105,7 +98,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <Folder className="h-5 w-5 text-primary shrink-0" />
                       <h3 className="font-semibold text-base truncate">
-                        {getProjectName(project.path)}
+                        {prettifyProjectName(project.path)}
                       </h3>
                     </div>
                     {project.sessions.length > 0 && (
@@ -119,7 +112,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                     )}
                   </div>
 
-                  <p className="text-sm text-muted-foreground mb-3 font-mono truncate">
+                  <p className="text-sm text-muted-foreground mb-3 font-mono truncate" title={project.path}>
                     {project.path}
                   </p>
                 </div>

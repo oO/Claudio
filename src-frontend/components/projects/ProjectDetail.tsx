@@ -83,6 +83,14 @@ interface ProjectDetailProps {
    */
   onProjectDeleted?: (projectId: string) => void;
   /**
+   * Callback for showing toast notifications
+   */
+  onToast?: (message: string, type: "success" | "error") => void;
+  /**
+   * Callback when sessions are deleted (bulk operation)
+   */
+  onSessionsDeleted?: () => void;
+  /**
    * Optional className for styling
    */
   className?: string;
@@ -109,6 +117,8 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
   onImportAgent,
   onSessionDeleted,
   onProjectDeleted,
+  onToast,
+  onSessionsDeleted,
   className,
 }) => {
   const [activeTab, setActiveTab] = useState(initialActiveTab);
@@ -190,8 +200,20 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
         <TabsContent value="sessions" className="mt-2 flex-1 flex flex-col">
           <ProjectSessionTab
             sessions={sessions}
+            projectId={projectId}
+            projectName={projectPath.split("/").pop() || "Project"}
             onSessionClick={onSessionClick}
             onSessionDelete={handleSessionDelete}
+            onSessionsDeleted={(result) => {
+              // Show success toast with deletion details
+              const message = `Deleted ${result.sessions_deleted} session${result.sessions_deleted !== 1 ? 's' : ''}, ${result.todos_deleted} todo file${result.todos_deleted !== 1 ? 's' : ''}, freed ${result.size_freed_mb.toFixed(2)} MB`;
+              onToast?.(message, "success");
+              
+              // Trigger parent to reload sessions
+              onSessionsDeleted?.();
+              logger.log("Sessions deleted, parent should refresh");
+            }}
+            onToast={onToast}
           />
         </TabsContent>
 

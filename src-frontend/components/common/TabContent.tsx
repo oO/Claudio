@@ -15,6 +15,7 @@ import { MCPTab } from "@/components/mcp";
 import { ClaudeMdTab } from "@/components/claude";
 import { WelcomeScreen } from "./Welcome";
 import { invoke } from "@tauri-apps/api/core";
+import { prettifyProjectName } from "@/lib/utils";
 
 // Lazy load heavy components
 const ClaudeCodeSession = lazy(() =>
@@ -201,7 +202,7 @@ export const TabContent: React.FC = () => {
         // Update existing tab with session data and switch to it
         updateTab(existingTab.id, {
           sessionData: session,
-          title: session.project_path.split("/").pop() || "Session",
+          title: prettifyProjectName(session.project_path),
         });
         window.dispatchEvent(
           new CustomEvent("switch-to-tab", {
@@ -269,7 +270,7 @@ export const TabContent: React.FC = () => {
       if (existingTab) {
         updateTab(existingTab.id, {
           sessionData: session,
-          title: session.project_path.split("/").pop() || "Session",
+          title: prettifyProjectName(session.project_path),
         });
         window.dispatchEvent(
           new CustomEvent("switch-to-tab", {

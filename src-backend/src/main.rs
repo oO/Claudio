@@ -33,9 +33,8 @@ use commands::claude::{
     // Session watcher functionality
     init_session_watcher, start_session_watching, stop_session_watching, 
     stop_all_session_watching, get_session_watching_status,
-    // Frontend debug logging
-    log_frontend_debug,
 };
+use commands::logger::log_frontend_debug;
 use commands::mcp::{
     mcp_add, mcp_add_from_claude_desktop, mcp_add_json, mcp_get, mcp_get_server_status, mcp_list,
     mcp_read_project_config, mcp_remove, mcp_reset_project_choices, mcp_save_project_config,

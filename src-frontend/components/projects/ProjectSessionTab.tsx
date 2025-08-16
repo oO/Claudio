@@ -10,11 +10,12 @@ import {
   Trash2,
   Activity,
   ChevronUp,
+  Plus,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { logger } from '@/lib/logger';
+import { logger } from "@/lib/logger";
 import {
   formatUnixTimestamp,
   formatISOTimestamp,
@@ -25,26 +26,37 @@ import {
 } from "@/lib/date-utils";
 import type { Session } from "@/lib/api";
 import { DebugLabel } from "@/components/ui/atoms";
+import { SessionDeleteDialog } from "./SessionDeleteDialog";
 // import { useMemoryMonitor } from "@/hooks/useMemoryMonitor"; // Disabled - memory monitoring was stable
 
 interface ProjectSessionTabProps {
   sessions: Session[];
+  projectId: string;
+  projectName: string;
   onSessionClick?: (session: Session) => void;
   onSessionDelete?: (session: Session) => void;
+  onStartNewSession?: () => void;
+  onSessionsDeleted?: () => void;
+  onToast?: (message: string, type: "success" | "error") => void;
   className?: string;
 }
 
-
 export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
   sessions,
+  projectId,
+  projectName,
   onSessionClick,
   onSessionDelete,
+  onStartNewSession,
+  onSessionsDeleted,
+  onToast,
   className,
 }) => {
   const parentRef = useRef<HTMLDivElement>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [scrollPosition, setScrollPosition] = useState({ start: 0, end: 0 });
   const [containerHeight, setContainerHeight] = useState(600);
+  const [showSessionDeleteDialog, setShowSessionDeleteDialog] = useState(false);
 
   const virtualizer = useVirtualizer({
     count: sessions.length,
@@ -65,23 +77,23 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
   useEffect(() => {
     const calculateHeight = () => {
       if (!parentRef.current) return;
-      
+
       const rect = parentRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
       const availableHeight = viewportHeight - rect.top - 20; // 20px padding from bottom
-      
+
       setContainerHeight(Math.max(200, availableHeight)); // Minimum 200px
     };
 
     calculateHeight();
-    window.addEventListener('resize', calculateHeight);
-    
+    window.addEventListener("resize", calculateHeight);
+
     // Recalculate when component mounts or sessions change
     const timeoutId = setTimeout(calculateHeight, 100);
-    
+
     return () => {
-      logger.log('🧹 ProjectSessionTab: Cleaning up height calculation listeners');
-      window.removeEventListener('resize', calculateHeight);
+      logger.log("ProjectSessionTab: Cleaning up height calculation listeners");
+      window.removeEventListener("resize", calculateHeight);
       clearTimeout(timeoutId);
     };
   }, [sessions.length, virtualizer]);
@@ -93,26 +105,44 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
 
     const handleScroll = () => {
       setShowScrollTop(element.scrollTop > 200);
-      
+
       // Calculate visible range based on virtual items
       const virtualItems = virtualizer.getVirtualItems();
       if (virtualItems.length > 0) {
         const start = virtualItems[0].index + 1; // 1-based indexing for display
-        const end = Math.min(virtualItems[virtualItems.length - 1].index + 1, sessions.length);
+        const end = Math.min(
+          virtualItems[virtualItems.length - 1].index + 1,
+          sessions.length,
+        );
         setScrollPosition({ start, end });
       }
     };
 
-    element.addEventListener('scroll', handleScroll);
+    element.addEventListener("scroll", handleScroll);
     handleScroll(); // Set initial position
     return () => {
-      logger.log('🧹 ProjectSessionTab: Cleaning up scroll listeners');
-      element.removeEventListener('scroll', handleScroll);
+      logger.log("ProjectSessionTab: Cleaning up scroll listeners");
+      element.removeEventListener("scroll", handleScroll);
     };
   }, [virtualizer, sessions.length]);
 
   const scrollToTop = () => {
-    parentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    parentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleSessionsDeleted = (result: {
+    sessions_deleted: number;
+    todos_deleted: number;
+    timelines_deleted: number;
+    size_freed_mb: number;
+    sessions_remaining: number;
+  }) => {
+    // Show success toast
+    const message = `Deleted ${result.sessions_deleted} session${result.sessions_deleted !== 1 ? "s" : ""}, ${result.todos_deleted} todo file${result.todos_deleted !== 1 ? "s" : ""}, freed ${result.size_freed_mb.toFixed(2)} MB`;
+    onToast?.(message, "success");
+
+    // Notify parent to refresh sessions
+    onSessionsDeleted?.();
   };
 
   if (sessions.length === 0) {
@@ -131,9 +161,13 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
             <h3 className="text-lg font-medium text-muted-foreground mb-2">
               No sessions found
             </h3>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground mb-4">
               Start a new Claude Code session in this project to see it here.
             </p>
+            <Button onClick={onStartNewSession} size="sm" className="gap-2">
+              <Plus className="h-4 w-4" />
+              Start New Session
+            </Button>
           </motion.div>
         </CardContent>
       </Card>
@@ -143,28 +177,48 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
   return (
     <Card className="relative flex flex-col h-full">
       <DebugLabel label="ProjectSessionTab" />
-      
+
       <CardContent className="p-0 flex flex-col flex-1">
         {/* Header */}
-        <div className="p-6 pb-4">
-          <div className="flex items-start justify-between">
+        <div className="p-6 pb-2">
+          <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold mb-2 text-accent">Sessions</h3>
+              <h3 className="text-lg font-semibold mb-2 text-accent">
+                Sessions
+              </h3>
               <p className="text-sm text-muted-foreground">
                 Browse and manage Claude Code sessions for this project.
               </p>
             </div>
-            
-            {/* Scroll position counter */}
-            <div className="self-end bg-muted px-3 py-1 rounded-lg text-xs text-muted-foreground">
-              {scrollPosition.start === scrollPosition.end 
+
+            <div className="flex items-center gap-2">
+              <Button onClick={onStartNewSession} size="sm" className="gap-2">
+                <Plus className="h-4 w-4" />
+                Start New Session
+              </Button>
+
+              <Button
+                onClick={() => setShowSessionDeleteDialog(true)}
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                title="Delete Sessions"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Scroll position counter */}
+          <div className="flex justify-end">
+            <div className="bg-muted px-3 py-1 rounded-lg text-xs text-muted-foreground">
+              {scrollPosition.start === scrollPosition.end
                 ? `${scrollPosition.start} of ${sessions.length}`
-                : `${scrollPosition.start}-${scrollPosition.end} of ${sessions.length}`
-              }
+                : `${scrollPosition.start}-${scrollPosition.end} of ${sessions.length}`}
             </div>
           </div>
         </div>
-        
+
         <div
           ref={parentRef}
           className="overflow-auto p-6 pt-0"
@@ -201,7 +255,7 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
                   <div
                     className={cn(
                       "group flex items-center justify-between px-3 py-2 rounded-lg border bg-card hover:bg-card-hover hover:border-hover transition-colors cursor-pointer h-full",
-                      className
+                      className,
                     )}
                     onClick={() => onSessionClick?.(session)}
                   >
@@ -211,13 +265,16 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <p className="text-sm font-medium leading-tight" style={{
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                            wordBreak: 'break-word'
-                          }}>
+                          <p
+                            className="text-sm font-medium leading-tight"
+                            style={{
+                              display: "-webkit-box",
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: "vertical",
+                              overflow: "hidden",
+                              wordBreak: "break-word",
+                            }}
+                          >
                             {session.first_message || "Untitled Session"}
                           </p>
                         </div>
@@ -241,9 +298,7 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
                           {session.size_bytes !== undefined && (
                             <div className="flex items-center gap-1">
                               <HardDrive className="h-3 w-3" />
-                              <span>
-                                {formatFileSize(session.size_bytes)}
-                              </span>
+                              <span>{formatFileSize(session.size_bytes)}</span>
                             </div>
                           )}
                         </div>
@@ -257,7 +312,7 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
                           <span>{session.message_count}</span>
                         </div>
                       )}
-                      
+
                       <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                         <Button
                           variant="ghost"
@@ -278,7 +333,7 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
             })}
           </div>
         </div>
-        
+
         {/* Scroll to top button */}
         <AnimatePresence>
           {showScrollTop && (
@@ -300,6 +355,15 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
           )}
         </AnimatePresence>
       </CardContent>
+
+      {/* Session Delete Dialog */}
+      <SessionDeleteDialog
+        open={showSessionDeleteDialog}
+        onOpenChange={setShowSessionDeleteDialog}
+        projectId={projectId}
+        projectName={projectName}
+        onSessionsDeleted={handleSessionsDeleted}
+      />
     </Card>
   );
 };

@@ -7,18 +7,13 @@ import {
   FolderOpen,
   FileCode,
   Plus,
-  Search,
   Loader2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { logger } from '@/lib/logger';
-import {
-  formatUnixTimestamp,
-  truncateText,
-} from "@/lib/date-utils";
+import { logger } from "@/lib/logger";
+import { formatUnixTimestamp, truncateText } from "@/lib/date-utils";
 import type { ClaudeMdFile } from "@/lib/api";
 import { api } from "@/lib/api";
 import { DebugLabel } from "@/components/ui/atoms";
@@ -48,7 +43,6 @@ export const ProjectMemoriesTab: React.FC<ProjectMemoriesTabProps> = ({
 }) => {
   const [claudeFiles, setClaudeFiles] = useState<ClaudeMdFile[]>([]);
   const [claudeFilesLoading, setClaudeFilesLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showFilePicker, setShowFilePicker] = useState(false);
   const [selectedPath, setSelectedPath] = useState<string>("");
@@ -59,7 +53,9 @@ export const ProjectMemoriesTab: React.FC<ProjectMemoriesTabProps> = ({
     try {
       const files = await api.findClaudeMdFiles(projectPath);
       // Sort by relative path for consistent ordering
-      const sortedFiles = files.sort((a, b) => a.relative_path.localeCompare(b.relative_path));
+      const sortedFiles = files.sort((a, b) =>
+        a.relative_path.localeCompare(b.relative_path),
+      );
       setClaudeFiles(sortedFiles);
     } catch (error) {
       logger.error("Failed to load Claude files:", error);
@@ -84,10 +80,13 @@ export const ProjectMemoriesTab: React.FC<ProjectMemoriesTabProps> = ({
       }
     };
 
-    window.addEventListener('file-deleted', handleFileDeleted as EventListener);
-    
+    window.addEventListener("file-deleted", handleFileDeleted as EventListener);
+
     return () => {
-      window.removeEventListener('file-deleted', handleFileDeleted as EventListener);
+      window.removeEventListener(
+        "file-deleted",
+        handleFileDeleted as EventListener,
+      );
     };
   }, [projectPath, loadClaudeFiles]);
 
@@ -104,8 +103,11 @@ export const ProjectMemoriesTab: React.FC<ProjectMemoriesTabProps> = ({
 
   // Check if a directory already contains a CLAUDE.md file
   const hasExistingMemory = (directoryPath: string): boolean => {
-    return claudeFiles.some(file => {
-      const fileDir = file.absolute_path.substring(0, file.absolute_path.lastIndexOf('/'));
+    return claudeFiles.some((file) => {
+      const fileDir = file.absolute_path.substring(
+        0,
+        file.absolute_path.lastIndexOf("/"),
+      );
       return fileDir === directoryPath;
     });
   };
@@ -117,10 +119,12 @@ export const ProjectMemoriesTab: React.FC<ProjectMemoriesTabProps> = ({
       // Check if this directory already has a CLAUDE.md file
       if (hasExistingMemory(entry.path)) {
         // Show error or prevent selection, but don't close picker
-        logger.warn(`Directory ${entry.path} already contains a CLAUDE.md file`);
+        logger.warn(
+          `Directory ${entry.path} already contains a CLAUDE.md file`,
+        );
         return;
       }
-      
+
       setSelectedPath(entry.path);
       setShowFilePicker(false);
     }
@@ -133,26 +137,26 @@ export const ProjectMemoriesTab: React.FC<ProjectMemoriesTabProps> = ({
     setCreating(true);
     try {
       const fullPath = `${selectedPath}/CLAUDE.md`;
-      
+
       // Create the file with initial content
       const initialContent = `# Memory: CLAUDE.md\n\nThis is a project-specific memory file. Add context, notes, or instructions here.\n`;
-      
+
       await api.saveClaudeMdFile(fullPath, initialContent);
-      
+
       // Refresh the file list
       await loadClaudeFiles();
-      
+
       // Close dialog
       setShowAddDialog(false);
-      
+
       // Open the new file in editor
       const newFile: ClaudeMdFile = {
         absolute_path: fullPath,
-        relative_path: fullPath.replace(projectPath, '').replace(/^\//, ''),
+        relative_path: fullPath.replace(projectPath, "").replace(/^\//, ""),
         size: initialContent.length,
         modified: Date.now() / 1000,
       };
-      
+
       onViewClaudeFile?.(newFile);
     } catch (error) {
       logger.error("Failed to create memory file:", error);
@@ -172,49 +176,31 @@ export const ProjectMemoriesTab: React.FC<ProjectMemoriesTabProps> = ({
   // Get display path for selected directory
   const getDisplayPath = () => {
     if (!selectedPath) return "Select a directory...";
-    return selectedPath.replace(projectPath, '').replace(/^\//, '') || '(project root)';
+    return (
+      selectedPath.replace(projectPath, "").replace(/^\//, "") ||
+      "(project root)"
+    );
   };
-
-  // Filter memories based on search query
-  const filteredFiles = claudeFiles.filter((file) =>
-    file.relative_path.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   return (
     <Card className="relative">
       <DebugLabel label="ProjectMemoriesTab" />
       <CardContent className="p-6">
         <div className="space-y-4">
-          {/* Header with search and add button */}
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold mb-2 text-accent">Memories</h3>
+              <h3 className="text-lg font-semibold mb-2 text-accent">
+                Memories
+              </h3>
               <p className="text-sm text-muted-foreground">
                 Manage CLAUDE.md files containing project context and memories.
               </p>
             </div>
-            <Button
-              onClick={handleCreateMemory}
-              size="sm"
-              className="gap-2"
-            >
+            <Button onClick={handleCreateMemory} size="sm" className="gap-2">
               <Plus className="h-4 w-4" />
               Add Memory
             </Button>
           </div>
-
-          {/* Search bar */}
-          {claudeFiles.length > 0 && (
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search memories..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          )}
 
           {claudeFilesLoading ? (
             <div className="flex items-center justify-center py-8">
@@ -222,7 +208,7 @@ export const ProjectMemoriesTab: React.FC<ProjectMemoriesTabProps> = ({
             </div>
           ) : (
             <AnimatePresence mode="popLayout">
-              {filteredFiles.length === 0 ? (
+              {claudeFiles.length === 0 ? (
                 <motion.div
                   key="no-files"
                   initial={{ opacity: 0 }}
@@ -231,29 +217,23 @@ export const ProjectMemoriesTab: React.FC<ProjectMemoriesTabProps> = ({
                   className="text-center py-8"
                 >
                   <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  {claudeFiles.length === 0 ? (
-                    <>
-                      <h3 className="text-lg font-medium text-muted-foreground mb-2">
-                        No memories found
-                      </h3>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Create your first CLAUDE.md file to store project context and memories.
-                      </p>
-                      <Button onClick={handleCreateMemory} size="sm" className="gap-2">
-                        <Plus className="h-4 w-4" />
-                        Create First Memory
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <h3 className="text-lg font-medium text-muted-foreground mb-2">
-                        No memories match your search
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        Try adjusting your search query or clear the filter.
-                      </p>
-                    </>
-                  )}
+                  <>
+                    <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                      No memories found
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Create your first CLAUDE.md file to store project context
+                      and memories.
+                    </p>
+                    <Button
+                      onClick={handleCreateMemory}
+                      size="sm"
+                      className="gap-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Create First Memory
+                    </Button>
+                  </>
                 </motion.div>
               ) : (
                 <motion.div
@@ -263,7 +243,7 @@ export const ProjectMemoriesTab: React.FC<ProjectMemoriesTabProps> = ({
                   exit={{ opacity: 0 }}
                   className="space-y-3"
                 >
-                  {filteredFiles.map((file, index) => (
+                  {claudeFiles.map((file, index) => (
                     <motion.div
                       key={file.absolute_path}
                       initial={{ opacity: 0, y: 20 }}
@@ -272,21 +252,25 @@ export const ProjectMemoriesTab: React.FC<ProjectMemoriesTabProps> = ({
                       onClick={() => handleCardClick(file)}
                       className={cn(
                         "group flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-card-hover hover:border-hover transition-colors cursor-pointer",
-                        className
+                        className,
                       )}
                     >
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         <div className="flex-shrink-0">
-                          <FileText className="h-4 w-4 text-blue-500" />
+                          <FileText className="h-4 w-4" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <p className="text-sm font-medium truncate">
-                              {file.relative_path.split('/').pop() || file.relative_path}
+                              {file.relative_path.split("/").pop() ||
+                                file.relative_path}
                             </p>
-                            {file.relative_path.includes('/') && (
+                            {file.relative_path.includes("/") && (
                               <span className="text-xs text-muted-foreground font-mono">
-                                {file.relative_path.split('/').slice(0, -1).join('/')}
+                                {file.relative_path
+                                  .split("/")
+                                  .slice(0, -1)
+                                  .join("/")}
                               </span>
                             )}
                           </div>
@@ -320,10 +304,12 @@ export const ProjectMemoriesTab: React.FC<ProjectMemoriesTabProps> = ({
               Create a new CLAUDE.md file to store project context and memories.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 relative">
             <div>
-              <label className="text-sm font-medium mb-2 block">Directory</label>
+              <label className="text-sm font-medium mb-2 block">
+                Directory
+              </label>
               <div className="flex gap-2">
                 <div className="flex-1 px-3 py-2 border border-border rounded-md bg-muted text-sm font-mono">
                   {getDisplayPath()}
@@ -337,11 +323,15 @@ export const ProjectMemoriesTab: React.FC<ProjectMemoriesTabProps> = ({
                 </Button>
               </div>
             </div>
-            
+
             <div className="text-sm text-muted-foreground">
-              A new <code className="bg-muted px-1 py-0.5 rounded font-mono text-xs">CLAUDE.md</code> file will be created in the selected directory.
+              A new{" "}
+              <code className="bg-muted px-1 py-0.5 rounded font-mono text-xs">
+                CLAUDE.md
+              </code>{" "}
+              file will be created in the selected directory.
             </div>
-            
+
             {/* File Picker */}
             {showFilePicker && (
               <div className="absolute top-0 left-0 right-0 z-50">
@@ -357,13 +347,17 @@ export const ProjectMemoriesTab: React.FC<ProjectMemoriesTabProps> = ({
               </div>
             )}
           </div>
-          
+
           <DialogFooter>
-            <Button variant="outline" onClick={handleCancel} disabled={creating}>
+            <Button
+              variant="outline"
+              onClick={handleCancel}
+              disabled={creating}
+            >
               Cancel
             </Button>
-            <Button 
-              onClick={handleCreateFile} 
+            <Button
+              onClick={handleCreateFile}
               disabled={!selectedPath || creating}
             >
               {creating ? (

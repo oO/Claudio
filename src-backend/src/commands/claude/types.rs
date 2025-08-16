@@ -1,11 +1,10 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::sync::Arc;
-use tauri::{AppHandle, command};
+use tauri::AppHandle;
 use tokio::process::Child;
 use tokio::sync::Mutex;
 
@@ -495,22 +494,3 @@ pub fn parse_session_analytics(file_path: &PathBuf) -> SessionAnalytics {
     analytics
 }
 
-/// Frontend logging command that respects log levels
-#[command]
-pub async fn log_frontend_debug(component: String, data: Value) -> Result<(), String> {
-    let formatted_data = serde_json::to_string_pretty(&data).unwrap_or_else(|_| "Failed to serialize data".to_string());
-    
-    // Extract log level from component name if present
-    if component.contains(":ERROR") {
-        log::error!("🖥️  [FRONTEND:{}] {}", component, formatted_data);
-    } else if component.contains(":WARN") {
-        log::warn!("🖥️  [FRONTEND:{}] {}", component, formatted_data);
-    } else if component.contains(":DEBUG") {
-        log::debug!("🖥️  [FRONTEND:{}] {}", component, formatted_data);
-    } else {
-        // Default to info level
-        log::info!("🖥️  [FRONTEND:{}] {}", component, formatted_data);
-    }
-    
-    Ok(())
-}

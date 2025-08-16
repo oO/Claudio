@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Plus, MoreVertical, Trash2, Settings } from "lucide-react";
 import { api, type Project, type Session, type ClaudeMdFile } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import { prettifyProjectName } from "@/lib/utils";
 import { ProjectList, ProjectDetail } from "@/components/projects";
 import { RunningClaudeSessions } from "@/components/sessions";
 import { Button } from "@/components/ui/button";
@@ -47,8 +48,6 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   const [error, setError] = useState<string | null>(null);
   const [projectDeleteDialogOpen, setProjectDeleteDialogOpen] = useState(false);
   const [isDeletingProject, setIsDeletingProject] = useState(false);
-  const [sessionDeleteDialogOpen, setSessionDeleteDialogOpen] = useState(false);
-  const [isDeletingSessions, setIsDeletingSessions] = useState(false);
 
   // Delete options state
   const [deleteOptions, setDeleteOptions] = useState({
@@ -66,25 +65,6 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
     loading: false,
   });
 
-  // State for session deletion
-  const [sessionDeletionAge, setSessionDeletionAge] = useState(30); // Default 30 days
-  const [sessionDeletionPreview, setSessionDeletionPreview] = useState<{
-    sessions_to_delete: Session[];
-    sessions_to_keep: Session[];
-    total_sessions: number;
-    sessions_to_delete_count: number;
-    sessions_to_keep_count: number;
-    size_to_free_mb: number;
-  } | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [sessionAgeRange, setSessionAgeRange] = useState<{
-    newest_age_days: number;
-    oldest_age_days: number;
-    total_sessions: number;
-    has_sessions: boolean;
-  } | null>(null);
-  const [ageRangeLoading, setAgeRangeLoading] = useState(false);
-
   // Track screen when tab becomes active
   useScreenTracking(
     isActive ? tab.type : undefined,
@@ -94,22 +74,10 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   // Debug dialog state changes
   useEffect(() => {
     logger.log(
-      "📊 projectDeleteDialogOpen state changed to:",
+      "projectDeleteDialogOpen state changed to:",
       projectDeleteDialogOpen,
     );
   }, [projectDeleteDialogOpen]);
-
-  // Load preview when age range is loaded
-  useEffect(() => {
-    if (sessionAgeRange && selectedProject && sessionDeleteDialogOpen) {
-      loadSessionDeletionPreview(selectedProject.id, sessionDeletionAge);
-    }
-  }, [
-    sessionAgeRange,
-    selectedProject,
-    sessionDeleteDialogOpen,
-    sessionDeletionAge,
-  ]);
 
   // Load projects when tab becomes active and is of type 'projects'
   useEffect(() => {
@@ -175,8 +143,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
 
   // Get project name from path
   const getProjectName = (path: string): string => {
-    const parts = path.split("/").filter(Boolean);
-    return parts[parts.length - 1] || path;
+    return prettifyProjectName(path);
   };
 
   // Calculate deletion counts from existing data
@@ -320,102 +287,6 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
     }));
   };
 
-  // Session deletion handlers
-  const loadSessionDeletionPreview = async (
-    projectId: string,
-    daysOld: number,
-  ) => {
-    setPreviewLoading(true);
-    try {
-      const preview = await api.previewSessionDeletionByAge(projectId, daysOld);
-      setSessionDeletionPreview(preview);
-    } catch (error) {
-      logger.error("Failed to load session deletion preview:", error);
-      setSessionDeletionPreview(null);
-    } finally {
-      setPreviewLoading(false);
-    }
-  };
-
-  const loadSessionAgeRange = async (projectId: string) => {
-    setAgeRangeLoading(true);
-    try {
-      const ageRange = await api.getSessionAgeRange(projectId);
-      setSessionAgeRange(ageRange);
-
-      // Set initial age to middle of the range, but at least the newest + some buffer
-      if (ageRange.has_sessions) {
-        const middleAge = Math.floor(
-          (ageRange.newest_age_days + ageRange.oldest_age_days) / 2,
-        );
-        const defaultAge = Math.max(middleAge, ageRange.newest_age_days + 1);
-        setSessionDeletionAge(defaultAge);
-      }
-    } catch (error) {
-      logger.error("Failed to load session age range:", error);
-      setSessionAgeRange(null);
-    } finally {
-      setAgeRangeLoading(false);
-    }
-  };
-
-  const handleSessionDeleteClick = async () => {
-    if (!selectedProject) return;
-
-    setSessionDeleteDialogOpen(true);
-
-    // Load age range first, then preview
-    await loadSessionAgeRange(selectedProject.id);
-  };
-
-  const handleSessionDeleteCancel = () => {
-    setSessionDeleteDialogOpen(false);
-    setSessionDeletionPreview(null);
-    setSessionAgeRange(null);
-  };
-
-  const handleSessionsDeleted = async (projectId: string) => {
-    setIsDeletingSessions(true);
-    try {
-      logger.log("🗑️ Deleting sessions older than", sessionDeletionAge, "days");
-
-      const result = await api.deleteSessionsByAge(
-        projectId,
-        sessionDeletionAge,
-      );
-
-      logger.log("✅ Session deletion completed:", result);
-
-      // Reload sessions for the project
-      if (selectedProject) {
-        const updatedSessions = await api.getProjectSessions(
-          selectedProject.id,
-        );
-        setSessions(updatedSessions);
-      }
-
-      setSessionDeleteDialogOpen(false);
-      setSessionDeletionPreview(null);
-
-      // Show success feedback
-      alert(
-        `Sessions deleted successfully!\n\nDeleted:\n- ${result.sessions_deleted} sessions\n- ${result.todos_deleted} todo files\n- ${result.timelines_deleted} timelines\n- ${result.size_freed_mb.toFixed(2)} MB freed\n\nRemaining: ${result.sessions_remaining} sessions`,
-      );
-    } catch (error) {
-      logger.error("❌ Failed to delete sessions:", error);
-      alert(`Failed to delete sessions: ${error}`);
-    } finally {
-      setIsDeletingSessions(false);
-    }
-  };
-
-  const handleSessionAgeChange = async (newAge: number) => {
-    setSessionDeletionAge(newAge);
-    if (selectedProject && sessionDeleteDialogOpen) {
-      await loadSessionDeletionPreview(selectedProject.id, newAge);
-    }
-  };
-
   const handleNewSession = () => {
     // Create a new chat tab
     createChatTab();
@@ -464,17 +335,6 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                   logger.log("🔒 Menu closing, focus:", e)
                 }
               >
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleSessionDeleteClick();
-                  }}
-                  className="hover:bg-accent"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete Sessions
-                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={(e) => {
                     logger.log("🎯 DropdownMenuItem clicked - onClick fired");
@@ -636,6 +496,29 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                       }}
                       onSessionDeleted={handleSessionDeleted}
                       onProjectDeleted={handleProjectDeleted}
+                      onToast={(message, type) => {
+                        // Simple toast implementation - could be enhanced with a proper toast system
+                        logger.log(`Toast (${type}):`, message);
+                        // TODO: Integrate with a proper toast notification system
+                      }}
+                      onSessionsDeleted={async () => {
+                        // Refresh sessions after bulk deletion
+                        if (selectedProject) {
+                          try {
+                            const updatedSessions =
+                              await api.getProjectSessions(selectedProject.id);
+                            setSessions(updatedSessions);
+                            logger.log(
+                              "Sessions refreshed after bulk deletion",
+                            );
+                          } catch (error) {
+                            logger.error(
+                              "Failed to refresh sessions after deletion:",
+                              error,
+                            );
+                          }
+                        }
+                      }}
                     />
                   </motion.div>
                 ) : (
@@ -846,194 +729,6 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                 disabled={isDeletingProject || deletionCounts.loading}
               >
                 {isDeletingProject ? "Deleting..." : "Delete Selected Data"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Session deletion dialog */}
-        <Dialog
-          open={sessionDeleteDialogOpen}
-          onOpenChange={(open) => {
-            setSessionDeleteDialogOpen(open);
-            if (!open) {
-              setSessionDeletionPreview(null);
-              setSessionAgeRange(null);
-            }
-          }}
-        >
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Delete Old Sessions</DialogTitle>
-              <DialogDescription>
-                {selectedProject && (
-                  <>
-                    Delete sessions older than a specified number of days for
-                    project "{getProjectName(selectedProject.path)}".
-                    <br />
-                    <br />
-                    <strong>Note:</strong> This will permanently delete
-                    sessions, their todos, and timelines. Your project source
-                    code remains untouched.
-                  </>
-                )}
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-6 py-4">
-              {/* Age selector */}
-              <div className="space-y-4">
-                {ageRangeLoading ? (
-                  <div className="flex items-center justify-center py-4">
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    <span className="text-sm text-muted-foreground">
-                      Loading session ages...
-                    </span>
-                  </div>
-                ) : sessionAgeRange?.has_sessions ? (
-                  <div>
-                    <Label className="text-sm font-medium">
-                      Delete sessions older than {sessionDeletionAge} days:
-                    </Label>
-
-                    {/* Dynamic slider based on actual session range */}
-                    <div className="mt-4 space-y-3">
-                      <div className="relative">
-                        <input
-                          type="range"
-                          min={sessionAgeRange.newest_age_days}
-                          max={sessionAgeRange.oldest_age_days}
-                          value={sessionDeletionAge}
-                          onChange={(e) =>
-                            handleSessionAgeChange(parseInt(e.target.value))
-                          }
-                          className="w-full h-3 rounded-lg appearance-none cursor-pointer"
-                          style={{
-                            background:
-                              "linear-gradient(to right, #22c55e 0%, #f97316 50%, #ef4444 100%)",
-                            outline: "none",
-                          }}
-                        />
-                        <div className="flex justify-between text-xs text-muted-foreground mt-2">
-                          <span>
-                            Newest ({sessionAgeRange.newest_age_days}d)
-                          </span>
-                          <span>
-                            Oldest ({sessionAgeRange.oldest_age_days}d)
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Age indicator */}
-                      <div className="text-center">
-                        <div className="inline-flex items-center space-x-2 bg-muted px-3 py-1 rounded-full">
-                          <span className="text-sm font-medium">
-                            Deleting sessions older than {sessionDeletionAge}{" "}
-                            days
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : sessionAgeRange && !sessionAgeRange.has_sessions ? (
-                  <div className="text-center py-8">
-                    <p className="text-sm text-muted-foreground">
-                      No sessions found in this project.
-                    </p>
-                  </div>
-                ) : null}
-              </div>
-
-              {/* Preview section */}
-              {previewLoading ? (
-                <div className="flex items-center justify-center py-6">
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  <span className="text-sm text-muted-foreground">
-                    Loading preview...
-                  </span>
-                </div>
-              ) : sessionDeletionPreview ? (
-                <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
-                  <h4 className="text-sm font-medium">Deletion Preview:</h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">
-                          Sessions to delete:
-                        </span>
-                        <span className="font-medium text-destructive">
-                          {sessionDeletionPreview.sessions_to_delete_count}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">
-                          Sessions to keep:
-                        </span>
-                        <span className="font-medium text-green-600">
-                          {sessionDeletionPreview.sessions_to_keep_count}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">
-                          Total sessions:
-                        </span>
-                        <span className="font-medium">
-                          {sessionDeletionPreview.total_sessions}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">
-                          Storage freed:
-                        </span>
-                        <span className="font-medium">
-                          {sessionDeletionPreview.size_to_free_mb.toFixed(2)} MB
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {sessionDeletionPreview.sessions_to_delete_count === 0 && (
-                    <div className="text-sm text-muted-foreground mt-3 p-3 bg-background rounded border">
-                      No sessions older than {sessionDeletionAge} days found.
-                    </div>
-                  )}
-                </div>
-              ) : null}
-            </div>
-
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={handleSessionDeleteCancel}
-                disabled={isDeletingSessions}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() =>
-                  selectedProject && handleSessionsDeleted(selectedProject.id)
-                }
-                disabled={
-                  isDeletingSessions ||
-                  !sessionDeletionPreview ||
-                  sessionDeletionPreview.sessions_to_delete_count === 0
-                }
-              >
-                {isDeletingSessions ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Deleting...
-                  </>
-                ) : (
-                  <>
-                    Delete{" "}
-                    {sessionDeletionPreview?.sessions_to_delete_count || 0}{" "}
-                    Sessions
-                  </>
-                )}
               </Button>
             </DialogFooter>
           </DialogContent>
