@@ -147,6 +147,33 @@ function AppContent() {
     initializeWindow();
   }, []);
 
+  // Global debug mode setup - runs once on app start
+  useEffect(() => {
+    const debugFlag = localStorage.getItem("claudio_debug_mode");
+    const isDebugEnabled = debugFlag === "true";
+    
+    // Set up global toggle function
+    (window as any).toggleDebug = () => {
+      const currentDebug = localStorage.getItem("claudio_debug_mode") === "true";
+      const newDebugMode = !currentDebug;
+      localStorage.setItem("claudio_debug_mode", newDebugMode.toString());
+      logger.log(`Debug mode ${newDebugMode ? "enabled" : "disabled"}`);
+      
+      // Trigger a custom event to notify debug components
+      window.dispatchEvent(new CustomEvent('debugModeChanged', { detail: newDebugMode }));
+    };
+
+    // Log current debug state only once on app start
+    if (isDebugEnabled) {
+      logger.log("Debug mode is enabled. Use toggleDebug() in console to disable.");
+    }
+
+    // Cleanup global function on unmount
+    return () => {
+      delete (window as any).toggleDebug;
+    };
+  }, []);
+
   // Save window state when app is about to close
   useEffect(() => {
     const handleBeforeUnload = async () => {

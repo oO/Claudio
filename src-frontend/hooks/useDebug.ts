@@ -1,39 +1,41 @@
 import { useState, useEffect } from "react";
-import { logger } from '@/lib/logger';
 
 /**
  * Hook for debug mode - shows component labels and other debug info
- * Controlled by localStorage flag and can be toggled via console
+ * Controlled by localStorage flag and global toggleDebug() function in App.tsx
  */
 export const useDebug = () => {
-  const [isDebugMode, setIsDebugMode] = useState(false);
+  const [isDebugMode, setIsDebugMode] = useState(() => {
+    // Initialize from localStorage
+    return localStorage.getItem("claudio_debug_mode") === "true";
+  });
 
   useEffect(() => {
-    // Check localStorage for debug flag
-    const debugFlag = localStorage.getItem("claudio_debug_mode");
-    setIsDebugMode(debugFlag === "true");
-
-    // Add global debug toggle function
-    (window as any).toggleDebug = () => {
-      const newDebugMode = !isDebugMode;
-      setIsDebugMode(newDebugMode);
-      localStorage.setItem("claudio_debug_mode", newDebugMode.toString());
-      logger.log(`Debug mode ${newDebugMode ? "enabled" : "disabled"}`);
+    // Listen for debug mode changes from the global toggle
+    const handleDebugModeChanged = (event: CustomEvent<boolean>) => {
+      setIsDebugMode(event.detail);
     };
 
-    // Log current debug state
-    if (debugFlag === "true") {
-      logger.log("Debug mode is enabled. Use toggleDebug() in console to disable.");
-    }
-  }, [isDebugMode]);
+    window.addEventListener('debugModeChanged', handleDebugModeChanged as EventListener);
+    
+    return () => {
+      window.removeEventListener('debugModeChanged', handleDebugModeChanged as EventListener);
+    };
+  }, []);
 
   return {
     isDebugMode,
     toggleDebug: () => {
-      const newDebugMode = !isDebugMode;
-      setIsDebugMode(newDebugMode);
-      localStorage.setItem("claudio_debug_mode", newDebugMode.toString());
-      logger.log(`Debug mode ${newDebugMode ? "enabled" : "disabled"}`);
+      // Use the global toggle function if available
+      if ((window as any).toggleDebug) {
+        (window as any).toggleDebug();
+      } else {
+        // Fallback for direct component usage
+        const newDebugMode = !isDebugMode;
+        localStorage.setItem("claudio_debug_mode", newDebugMode.toString());
+        setIsDebugMode(newDebugMode);
+        window.dispatchEvent(new CustomEvent('debugModeChanged', { detail: newDebugMode }));
+      }
     }
   };
 };

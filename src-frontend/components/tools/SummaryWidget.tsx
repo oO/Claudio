@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Info, MessageSquare } from "lucide-react";
 import { MarkdownRenderer } from "@/components/ui/molecules";
 import { ToolWidgetTemplate } from "./ToolWidgetTemplate";
+import { useSessionContext } from "@/contexts/SessionContext";
 import { logger } from '@/lib/logger';
 
 // Constants
@@ -16,21 +17,16 @@ export const SummaryWidget: React.FC<{
   summary: string;
   leafUuid?: string;
   messageNumber?: number;
-  sessionFilePath?: string;
-  projectId?: string;
-  sessionId?: string;
   contributingMessageUuids?: string[];
   isBundle?: boolean;
 }> = ({
   summary,
   leafUuid,
   messageNumber,
-  sessionFilePath,
-  projectId,
-  sessionId,
   contributingMessageUuids,
   isBundle = false,
 }) => {
+  const { projectId, sessionId, sessionFilePath } = useSessionContext();
   const lineCount = summary.split("\n").filter((line) => line.trim()).length;
   const isLargeSummary = lineCount > LARGE_SUMMARY_THRESHOLD;
 

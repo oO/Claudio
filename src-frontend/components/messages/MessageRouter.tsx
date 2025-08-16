@@ -12,9 +12,6 @@ import { logger } from '@/lib/logger';
 interface MessageRouterProps {
   message: ClaudeStreamMessage;
   streamMessages: ClaudeStreamMessage[];
-  sessionFilePath?: string;
-  projectId?: string;
-  sessionId?: string;
   messageIndex?: number;
 }
 
@@ -54,9 +51,6 @@ const shouldBundleSummaries = (
 const MessageRouterComponent: React.FC<MessageRouterProps> = ({
   message,
   streamMessages,
-  sessionFilePath,
-  projectId,
-  sessionId,
   messageIndex = 0,
 }) => {
   try {
@@ -130,9 +124,6 @@ const MessageRouterComponent: React.FC<MessageRouterProps> = ({
           summary={content}
           leafUuid={message.uuid}
           messageNumber={message.messageNumber}
-          sessionFilePath={sessionFilePath}
-          projectId={projectId}
-          sessionId={sessionId}
           contributingMessageUuids={message._contributingMessageUuids}
         />
       );

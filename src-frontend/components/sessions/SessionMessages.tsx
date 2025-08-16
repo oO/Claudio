@@ -4,6 +4,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { MessageRouter } from '../messages';
 import { StreamDataProvider } from '@/contexts/StreamDataContext';
 import { LinkNotificationProvider } from '@/contexts/LinkNotificationContext';
+import { SessionProvider } from '@/contexts/SessionContext';
 import { DebugLabel } from '@/components/ui/atoms';
 import { logger } from '@/lib/logger';
 import type { ClaudeStreamMessage } from '@/components/agents';
@@ -153,6 +154,11 @@ export const SessionMessages = forwardRef<SessionMessagesRef, SessionMessagesPro
 
   return (
     <StreamDataProvider streamMessages={messages}>
+      <SessionProvider 
+        projectId={projectId}
+        sessionId={sessionId}
+        sessionFilePath={sessionFilePath}
+      >
         <LinkNotificationProvider onLinkDetected={onLinkDetected || (() => {})}>
           <DebugLabel label="SessionMessages" />
         <div
@@ -189,9 +195,6 @@ export const SessionMessages = forwardRef<SessionMessagesRef, SessionMessagesPro
                     <MessageRouter 
                       message={message} 
                       streamMessages={messages}
-                      sessionFilePath={sessionFilePath}
-                      projectId={projectId}
-                      sessionId={sessionId}
                       messageIndex={virtualItem.index}
                     />
                   </motion.div>
@@ -223,6 +226,7 @@ export const SessionMessages = forwardRef<SessionMessagesRef, SessionMessagesPro
           )}
         </div>
         </LinkNotificationProvider>
+      </SessionProvider>
       </StreamDataProvider>
   );
 });
