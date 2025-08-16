@@ -205,9 +205,11 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
             onSessionClick={onSessionClick}
             onSessionDelete={handleSessionDelete}
             onSessionsDeleted={(result) => {
-              // Show success toast with deletion details
-              const message = `Deleted ${result.sessions_deleted} session${result.sessions_deleted !== 1 ? 's' : ''}, ${result.todos_deleted} todo file${result.todos_deleted !== 1 ? 's' : ''}, freed ${result.size_freed_mb.toFixed(2)} MB`;
-              onToast?.(message, "success");
+              if (result) {
+                // Show success toast with deletion details
+                const message = `Deleted ${result.sessions_deleted} session${result.sessions_deleted !== 1 ? 's' : ''}, ${result.todos_deleted} todo file${result.todos_deleted !== 1 ? 's' : ''}, freed ${result.size_freed_mb.toFixed(2)} MB`;
+                onToast?.(message, "success");
+              }
               
               // Trigger parent to reload sessions
               onSessionsDeleted?.();

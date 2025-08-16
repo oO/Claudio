@@ -1,0 +1,153 @@
+/* Custom scrollbar hiding */
+.scrollbar-hide {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+/* Fix for select dropdown in portals */
+[data-radix-select-content],
+.select-dropdown {
+    background: var(--color-background) !important;
+    color: var(--color-foreground) !important;
+}
+
+/* Reset and base styles */
+* {
+    border-color: var(--color-border);
+}
+
+html {
+    color-scheme: dark;
+}
+
+body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+}
+
+/* Placeholder text styling */
+input::placeholder,
+textarea::placeholder {
+    color: var(--color-muted-foreground);
+    opacity: 0.6;
+}
+
+/* Cursor pointer for all interactive elements */
+button,
+a,
+[role="button"],
+[role="link"],
+[role="menuitem"],
+[role="tab"],
+[tabindex]:not([tabindex="-1"]),
+.cursor-pointer {
+    cursor: pointer;
+}
+
+/* Ensure disabled elements don't have pointer cursor */
+button:disabled,
+[disabled],
+.disabled {
+    cursor: not-allowed !important;
+}
+
+/* Remove all focus styles globally */
+* {
+    outline: none !important;
+    outline-offset: 0 !important;
+}
+
+*:focus,
+*:focus-visible,
+*:focus-within {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* Specifically remove focus styles from form elements */
+input:focus,
+input:focus-visible,
+textarea:focus,
+textarea:focus-visible,
+select:focus,
+select:focus-visible,
+button:focus,
+button:focus-visible,
+[role="button"]:focus,
+[role="button"]:focus-visible,
+[role="combobox"]:focus,
+[role="combobox"]:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+    border-color: var(--color-input) !important;
+}
+
+/* Remove ring styles */
+.ring-0,
+.ring-1,
+.ring-2,
+.ring,
+.ring-offset-0,
+.ring-offset-1,
+.ring-offset-2,
+.ring-offset {
+    box-shadow: none !important;
+}
+
+/* --- ELEGANT SCROLLBARS --- */
+
+/* Firefox - thin and minimal */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
+}
+
+/* Global webkit scrollbar - ultra thin and elegant */
+::-webkit-scrollbar {
+    width: 3px;
+    height: 3px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: rgba(156, 163, 175, 0.5);
+    border-radius: 2px;
+    transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(156, 163, 175, 0.6);
+}
+
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* Code blocks - slightly larger for better usability */
+pre::-webkit-scrollbar,
+.w-md-editor-content::-webkit-scrollbar,
+code::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+pre::-webkit-scrollbar-thumb,
+.w-md-editor-content::-webkit-scrollbar-thumb,
+code::-webkit-scrollbar-thumb {
+    background-color: var(--color-muted);
+    border-radius: 4px;
+}
+
+pre::-webkit-scrollbar-thumb:hover,
+.w-md-editor-content::-webkit-scrollbar-thumb:hover,
+code::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-border);
+}

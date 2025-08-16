@@ -19,7 +19,7 @@ interface ToolWidgetTemplateProps {
 
 interface ToolHeaderProps {
   icon: LucideIcon;
-  title: string;
+  title: string | ReactNode;
   children?: ReactNode;
   isLoading?: boolean;
   loadingText?: string;

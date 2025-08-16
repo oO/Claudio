@@ -36,7 +36,7 @@ interface ProjectSessionTabProps {
   onSessionClick?: (session: Session) => void;
   onSessionDelete?: (session: Session) => void;
   onStartNewSession?: () => void;
-  onSessionsDeleted?: () => void;
+  onSessionsDeleted?: (result?: { sessions_deleted: number; todos_deleted: number; size_freed_mb: number }) => void;
   onToast?: (message: string, type: "success" | "error") => void;
   className?: string;
 }

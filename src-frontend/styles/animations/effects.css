@@ -1,0 +1,237 @@
+/* === ACCENT BUTTON === */
+/* Reusable accent button styling with elegant hover inversion */
+.accent-button {
+    background-color: var(--color-accent);
+    color: var(--color-accent-foreground);
+    transition: all 0.2s ease;
+}
+
+.accent-button:hover {
+    background-color: var(--color-accent-foreground);
+    color: var(--color-foreground);
+}
+
+/* Rotating symbol animation */
+@keyframes rotate-symbol {
+    0% {
+        content: "◐";
+        transform: scale(1);
+    }
+    25% {
+        content: "◓";
+        transform: scale(1);
+    }
+    50% {
+        content: "◑";
+        transform: scale(1);
+    }
+    75% {
+        content: "◒";
+        transform: scale(1);
+    }
+    100% {
+        content: "◐";
+        transform: scale(1);
+    }
+}
+
+@keyframes fade-in {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.rotating-symbol {
+    display: inline-block;
+    vertical-align: middle;
+    line-height: 1;
+    animation: fade-in 0.2s ease-out;
+    font-weight: normal;
+    font-size: 1.5rem; /* Make it bigger! */
+    position: relative;
+    top: -2px;
+}
+
+.rotating-symbol::before {
+    content: "◐";
+    animation: rotate-symbol 1.6s steps(4, end) infinite;
+    display: inline-block;
+    font-size: inherit;
+    line-height: 1;
+    vertical-align: baseline;
+    transform-origin: center;
+}
+
+/* Removed special font-weight for larger sizes to maintain consistency */
+
+/* Shimmer hover effect */
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+.shimmer-hover {
+    position: relative;
+    overflow: hidden;
+}
+
+.shimmer-hover::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.05),
+        transparent
+    );
+    transition: left 0.5s;
+}
+
+.shimmer-hover:hover::before {
+    left: 100%;
+    animation: shimmer 0.5s;
+}
+
+/* Trailing border effect */
+@property --angle {
+    syntax: "<angle>";
+    initial-value: 0deg;
+    inherits: false;
+}
+
+@keyframes trail-rotate {
+    to {
+        --angle: 360deg;
+    }
+}
+
+.trailing-border {
+    position: relative;
+    background: var(--color-card);
+    z-index: 0;
+    overflow: visible;
+}
+
+/* The correctly traveling border line */
+.trailing-border::after {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    padding: 2px;
+    border-radius: inherit;
+    background: conic-gradient(
+        from var(--angle),
+        transparent 0%,
+        transparent 85%,
+        var(--color-accent-alt) 90%,
+        rgb(255, 154, 122) 92.5%,
+        var(--color-accent-alt) 95%,
+        transparent 100%
+    );
+    -webkit-mask:
+        linear-gradient(rgb(255, 255, 255) 0 0) content-box,
+        linear-gradient(rgb(255, 255, 255) 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: -1;
+}
+
+.trailing-border:hover::after {
+    opacity: 1;
+    animation: trail-rotate 2s linear infinite;
+}
+
+/* Ensure the card content stays above the border effect */
+.trailing-border > * {
+    position: relative;
+    z-index: 1;
+}
+
+/* NFO Credits Scanlines Animation */
+@keyframes scanlines {
+    0% {
+        transform: translateY(-100%);
+    }
+    100% {
+        transform: translateY(100%);
+    }
+}
+
+.animate-scanlines {
+    animation: scanlines 8s linear infinite;
+}
+
+/* Screenshot Shutter Animation */
+@keyframes shutterFlash {
+    0% {
+        opacity: 0;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+.shutter-flash {
+    animation: shutterFlash 0.5s ease-in-out;
+}
+
+/* Image Move to Input Animation */
+@keyframes moveToInput {
+    0% {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(0.3) translateY(50%);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(0.1) translateY(100vh);
+        opacity: 0;
+    }
+}
+
+.image-move-to-input {
+    animation: moveToInput 0.8s ease-in-out forwards;
+}
+
+/* Debug Label - Controls all debug label styling */
+.debug-label {
+    position: absolute;
+    top: 0.5rem; /* top-1 */
+    right: 0; /* right-1 */
+    font-size: 9px; /* text-[8px] */
+    color: var(--color-destructive-foreground);
+    background-color: var(--color-destructive);
+    padding: 0.125rem 0.25rem; /* px-1 py-0.5 */
+    border-radius: 0.25rem 0 0 0.25rem; /* rounded */
+    z-index: 10;
+    font-family: var(--font-mono);
+    font-weight: 800;
+    pointer-events: none;
+    user-select: none;
+    transition: opacity 0.2s ease;
+}
+
+/* Make debug labels slightly more visible on hover */
+.debug-label:hover {
+    opacity: 1;
+}

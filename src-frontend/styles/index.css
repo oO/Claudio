@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+/* Foundation Layer - Core system styles */
+@import "./foundation/theme.css";
+@import "./foundation/utilities.css";
+@import "./foundation/base.css";
+
+/* Component Layer - Feature-specific styles */
+@import "./components/markdown.css";
+@import "./components/agents.css";
+@import "./components/forms.css";
+@import "./components/syntax.css";
+
+/* Animation Layer - Visual effects and interactions */
+@import "./animations/effects.css";
