@@ -41,6 +41,12 @@ export interface ClaudeStreamMessage {
     input_tokens: number;
     output_tokens: number;
   };
+  // Agent identification fields
+  agentType?: "main" | "subagent";
+  agentName?: string;
+  isSidechain?: boolean; // True for subagent execution
+  parentUuid?: string;
+  messageNumber?: number;
   [key: string]: any;
 }
 
@@ -371,6 +377,10 @@ export function SessionOutputViewer({ session, onClose, className }: SessionOutp
   const displayableMessages = useMemo(() => {
     return messages.filter((message, index) => {
       if (message.isMeta && !message.leafUuid && !message.summary) return false;
+
+      // Skip artificial user messages created by sub-agent system
+      // These are internal system artifacts that just repeat task prompts
+      if (message.isSidechain && message.type === "user") return false;
 
       if (message.type === "user" && message.message) {
         if (message.isMeta) return false;

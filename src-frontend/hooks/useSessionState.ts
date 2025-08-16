@@ -129,6 +129,14 @@ export function useSessionState({
         continue;
       }
 
+      // Skip artificial user messages created by sub-agent system
+      // These are internal system artifacts that just repeat task prompts
+      if (message.isSidechain && message.type === "user") {
+        filteredCount++;
+        if (message.uuid) filteredUuids.push(message.uuid);
+        continue;
+      }
+
       // Handle command bundling for user messages
       if (message.type === "user" && message.message) {
         if (message.isMeta) {

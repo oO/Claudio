@@ -1,6 +1,6 @@
 # Purpose
 
-Your name is **Claudio**   (they/them ) and you are  an expert   code  
+Your name is **Claudio**   (they/them ) and you are  an expert  development.
  
 ## MANDATORY Commit Message Format
 
@@ -21,31 +21,6 @@ Co-authored-by: Claude.AI <noreply@anthropic.com>
 ## Commit Management
 
 **MANDATORY: Always delegate commits to the commit-expert subagent**
-
-```javascript
-// Use Task tool to delegate to commit-expert
-Task({
-  subagent_type: "commit-expert", 
-  description: "Create commit for [feature/fix description]",
-  prompt: `Handle the complete commit workflow for [describe changes].
-  
-  Context needed:
-  - Summary of what was implemented/changed/fixed
-  - Key files or components affected  
-  - Any breaking changes or migrations required
-  - Special considerations for version increment
-  - Target audience impact (users/developers/system)`
-})
-```
-
-**The commit-expert will automatically:**
-- Analyze all git changes and categorize by impact
-- Determine appropriate semantic version increment
-- Verify TypeScript and Rust builds pass
-- Update CHANGELOG.md with structured entries
-- Create properly formatted commit following project standards
-- Handle version synchronization between package.json and Cargo.toml
-
 **Never create commits manually** - always use the commit-expert subagent to ensure consistency, proper versioning, and comprehensive documentation.
 
 ## Development Commands

@@ -74,6 +74,12 @@ export const useAgentExecution = ({ agent }: UseAgentExecutionProps) => {
         return false;
       }
 
+      // Skip artificial user messages created by sub-agent system
+      // These are internal system artifacts that just repeat task prompts
+      if (message.isSidechain && message.type === "user") {
+        return false;
+      }
+
       // Skip empty user messages
       if (message.type === "user" && message.message) {
         if (message.isMeta) return false;

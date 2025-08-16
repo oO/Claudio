@@ -73,7 +73,7 @@ export const ToolCallRenderer: React.FC<ToolCallRendererProps> = ({
     
     // Task tool - for sub-agent tasks
     if (toolName === "task" && input) {
-      return <SubAgentTaskWidget description={input.description} prompt={input.prompt} result={toolResult} />;
+      return <SubAgentTaskWidget description={input.description} prompt={input.prompt} subagent_type={input.subagent_type} result={toolResult} />;
     }
     
     // Edit tool

@@ -1,65 +1,106 @@
 import React from "react";
-import { Bot, Sparkles, Zap } from "lucide-react";
+import { Bot, ChevronRight, ListCheck } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { MarkdownRenderer } from "@/components/ui/molecules";
 import { ToolWidgetTemplate } from "./ToolWidgetTemplate";
+import { useAgentMetadata } from "@/hooks";
+import { getAgentColor } from "@/lib/agentColors";
 
 /**
  * Widget for Task tool - displays sub-agent task information
  */
-export const SubAgentTaskWidget: React.FC<{ 
-  description?: string; 
+export const SubAgentTaskWidget: React.FC<{
+  description?: string;
   prompt?: string;
+  subagent_type?: string;
   result?: any;
-}> = ({ description, prompt, result: _result }) => {
-  // Create the icon with sparkles overlay
-  const SubAgentIcon = () => (
-    <div className="relative">
-      <Bot className="h-4 w-4" />
-      <Sparkles className="h-2.5 w-2.5 absolute -top-1 -right-1" />
-    </div>
-  );
+}> = ({ description, prompt, subagent_type, result: _result }) => {
+  // Get agent metadata for styling (similar to useAgentStyling hook)
+  const { metadata: agentMetadata } = useAgentMetadata(subagent_type);
+
+  // Get agent name and background class
+  const getAgentInfo = () => {
+    if (!subagent_type) {
+      return {
+        agentName: "Sub-Agent Task",
+        agentBackgroundClass: "agent-bg-grey",
+      };
+    }
+
+    // Built-in Claude Code subagents
+    if (subagent_type === "general-purpose") {
+      return {
+        agentName: "General Purpose",
+        agentBackgroundClass: "agent-bg-grey",
+      };
+    }
+
+    // Project/personal agents with metadata
+    if (agentMetadata?.name) {
+      const agentBackgroundClass = agentMetadata.color
+        ? getAgentColor(agentMetadata.color).cssClass.replace(
+            "agent-",
+            "agent-bg-",
+          )
+        : "agent-bg-grey";
+      return { agentName: agentMetadata.name, agentBackgroundClass };
+    }
+
+    // Fallback: use subagent_type as display name
+    const formattedName = subagent_type
+      .split("-")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+    return { agentName: formattedName, agentBackgroundClass: "agent-bg-grey" };
+  };
+
+  const { agentName, agentBackgroundClass } = getAgentInfo();
 
   return (
     <ToolWidgetTemplate>
       <ToolWidgetTemplate.Debug label="SubAgentTaskWidget" />
-      <ToolWidgetTemplate.Header 
-        icon={Bot} 
-        title="Spawning Sub-Agent Task" 
-      />
-      
+      <ToolWidgetTemplate.Header
+        icon={ListCheck}
+        title={
+          <span
+            className={cn("px-1 py-0.5 rounded text-sm", agentBackgroundClass)}
+          >
+            {agentName}
+          </span>
+        }
+      >
+        {description && (
+          <>
+            <ChevronRight className="h-3 w-3 text-muted-foreground" />
+            <div className="text-sm text-muted-foreground">{description}</div>
+          </>
+        )}
+      </ToolWidgetTemplate.Header>
+
       <ToolWidgetTemplate.ExpandableResult
         headerContent={
-          <div className="flex items-center gap-2">
-            <Zap className="h-3.5 w-3.5 text-purple-500" />
-            <span className="text-xs font-medium text-purple-600 dark:text-purple-400">Task Details</span>
-          </div>
+          <span className="text-xs font-medium text-muted-foreground">
+            Task Details
+          </span>
         }
         isExpandable={!!prompt}
-        initiallyExpanded={true}
+        lineCount={prompt ? prompt.split("\n").length : 0}
+        rawContent={prompt || ""}
+        initiallyExpanded={false}
       >
-        <ToolWidgetTemplate.PlainOutput>
-          <div className="space-y-3">
-            {description && (
-              <div className="rounded-lg border border-purple-500/20 bg-purple-500/5 p-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <Zap className="h-3.5 w-3.5 text-purple-500" />
-                  <span className="text-xs font-medium text-purple-600 dark:text-purple-400">Task Description</span>
-                </div>
-                <p className="text-sm text-foreground ml-5">{description}</p>
-              </div>
-            )}
-            
-            {prompt && (
-              <div className="rounded-lg border bg-muted/30 p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-medium text-muted-foreground">Task Instructions</span>
-                </div>
-                <pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap">
-                  {prompt}
-                </pre>
-              </div>
-            )}
-          </div>
-        </ToolWidgetTemplate.PlainOutput>
+        {(excerptedContent, isShowingExcerpt) => (
+          <ToolWidgetTemplate.PlainOutput>
+            <div className="space-y-3">
+              {excerptedContent && (
+                <MarkdownRenderer
+                  content={excerptedContent}
+                  compact={true}
+                  className="text-sm"
+                />
+              )}
+            </div>
+          </ToolWidgetTemplate.PlainOutput>
+        )}
       </ToolWidgetTemplate.ExpandableResult>
     </ToolWidgetTemplate>
   );
