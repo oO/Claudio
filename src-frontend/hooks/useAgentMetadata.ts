@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api, type AgentMetadata } from '@/lib/api';
+import { logger } from '@/lib/logger';
 
 /**
  * Hook to load agent metadata from .md files
@@ -67,7 +68,7 @@ export function useAgentMetadata(agentType: string | undefined) {
           setMetadata(fallback);
         }
       } catch (err) {
-        console.error(`Failed to load metadata for agent ${agentType}:`, err);
+        logger.error(`Failed to load metadata for agent ${agentType}:`, err);
         setError(err instanceof Error ? err.message : 'Failed to load agent metadata');
         
         // Set fallback on error

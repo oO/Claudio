@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { api, type CheckpointStrategy } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { DebugLabel } from "@/components/ui/atoms";
+import { logger } from '@/lib/logger';
 
 interface CheckpointSettingsProps {
   sessionId: string;
@@ -71,7 +72,7 @@ export const CheckpointSettings: React.FC<CheckpointSettingsProps> = ({
       setCheckpointStrategy(settings.checkpoint_strategy);
       setTotalCheckpoints(settings.total_checkpoints);
     } catch (err) {
-      console.error("Failed to load checkpoint settings:", err);
+      logger.error("Failed to load checkpoint settings:", err);
       setError("Failed to load checkpoint settings");
     } finally {
       setIsLoading(false);
@@ -95,7 +96,7 @@ export const CheckpointSettings: React.FC<CheckpointSettingsProps> = ({
       setSuccessMessage("Settings saved successfully");
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
-      console.error("Failed to save checkpoint settings:", err);
+      logger.error("Failed to save checkpoint settings:", err);
       setError("Failed to save checkpoint settings");
     } finally {
       setIsSaving(false);
@@ -121,7 +122,7 @@ export const CheckpointSettings: React.FC<CheckpointSettingsProps> = ({
       // Reload settings to get updated count
       await loadSettings();
     } catch (err) {
-      console.error("Failed to cleanup checkpoints:", err);
+      logger.error("Failed to cleanup checkpoints:", err);
       setError("Failed to cleanup checkpoints");
     } finally {
       setIsLoading(false);

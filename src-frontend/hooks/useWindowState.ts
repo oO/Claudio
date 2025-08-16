@@ -1,15 +1,16 @@
 import { useEffect, useCallback } from 'react';
 import { api, type WindowState } from '@/lib/api';
+import { logger } from '@/lib/logger';
 
 export const useWindowState = () => {
   const saveCurrentWindowState = useCallback(async () => {
     try {
       const currentState = await api.getCurrentWindowState();
       await api.saveWindowState(currentState);
-      console.log('Window state saved manually:', currentState);
+      logger.log('Window state saved manually:', currentState);
       return currentState;
     } catch (error) {
-      console.error('Failed to save window state manually:', error);
+      logger.error('Failed to save window state manually:', error);
       throw error;
     }
   }, []);
@@ -17,9 +18,9 @@ export const useWindowState = () => {
   const restoreWindowState = useCallback(async () => {
     try {
       await api.restoreWindowState();
-      console.log('Window state restored manually');
+      logger.log('Window state restored manually');
     } catch (error) {
-      console.error('Failed to restore window state manually:', error);
+      logger.error('Failed to restore window state manually:', error);
       throw error;
     }
   }, []);
@@ -27,10 +28,10 @@ export const useWindowState = () => {
   const loadWindowState = useCallback(async (): Promise<WindowState> => {
     try {
       const state = await api.loadWindowState();
-      console.log('Loaded window state:', state);
+      logger.log('Loaded window state:', state);
       return state;
     } catch (error) {
-      console.error('Failed to load window state:', error);
+      logger.error('Failed to load window state:', error);
       throw error;
     }
   }, []);
@@ -41,7 +42,7 @@ export const useWindowState = () => {
       try {
         await restoreWindowState();
       } catch (error) {
-        console.warn('Auto-restore failed, using defaults:', error);
+        logger.warn('Auto-restore failed, using defaults:', error);
       }
     };
 
@@ -57,7 +58,7 @@ export const useWindowState = () => {
         await saveCurrentWindowState();
       } catch (error) {
         // Silent fail for periodic saves
-        console.debug('Periodic window state save failed:', error);
+        logger.debug('Periodic window state save failed:', error);
       }
     };
 

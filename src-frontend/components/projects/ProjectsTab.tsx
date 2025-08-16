@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Plus, MoreVertical, Trash2, Settings } from "lucide-react";
 import { api, type Project, type Session, type ClaudeMdFile } from "@/lib/api";
+import { logger } from '@/lib/logger';
 import { ProjectList, ProjectDetail } from "@/components/projects";
 import { RunningClaudeSessions } from "@/components/sessions";
 import { Button } from "@/components/ui/button";
@@ -93,7 +94,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
 
   // Debug dialog state changes
   useEffect(() => {
-    console.log("📊 projectDeleteDialogOpen state changed to:", projectDeleteDialogOpen);
+    logger.log("📊 projectDeleteDialogOpen state changed to:", projectDeleteDialogOpen);
   }, [projectDeleteDialogOpen]);
 
   // Load preview when age range is loaded
@@ -127,7 +128,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
       const projectList = await api.listProjects();
       setProjects(projectList);
     } catch (err) {
-      console.error("Failed to load projects:", err);
+      logger.error("Failed to load projects:", err);
       setError(
         "Failed to load projects. Please ensure ~/.claude directory exists.",
       );
@@ -148,7 +149,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
       const projectName = getProjectName(project.path);
       updateTab(tab.id, { title: projectName });
     } catch (err) {
-      console.error("Failed to load sessions:", err);
+      logger.error("Failed to load sessions:", err);
       setError("Failed to load sessions for this project.");
       // Reset selectedProject on error
       setSelectedProject(null);
@@ -212,7 +213,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
         loading: false,
       });
     } catch (error) {
-      console.error("Failed to load deletion counts:", error);
+      logger.error("Failed to load deletion counts:", error);
       setDeletionCounts({
         agents: 0,
         memories: 0,
@@ -229,13 +230,13 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   const handleProjectDeleted = async (projectId: string) => {
     setIsDeletingProject(true);
     try {
-      console.log("🗑️ Deleting project with options:", deleteOptions);
+      logger.log("🗑️ Deleting project with options:", deleteOptions);
       
       // Call the deletion API and get the results
       const result = await api.deleteClaudeProject(projectId, deleteOptions);
       
-      console.log("✅ Project deletion completed:", result);
-      console.log(`📊 Deletion summary:
+      logger.log("✅ Project deletion completed:", result);
+      logger.log(`📊 Deletion summary:
         - Sessions: ${result.sessions_deleted}
         - Todos: ${result.todos_deleted} 
         - Timelines: ${result.timelines_deleted}
@@ -268,7 +269,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
       alert(`Project deleted successfully!\n\nDeleted:\n${deletionSummary}`);
       
     } catch (error) {
-      console.error("❌ Failed to delete project:", error);
+      logger.error("❌ Failed to delete project:", error);
       alert(`Failed to delete project: ${error}`);
     } finally {
       setIsDeletingProject(false);
@@ -276,9 +277,9 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   };
 
   const handleProjectDeleteClick = async () => {
-    console.log("🔥 DELETE BUTTON CLICKED - handleProjectDeleteClick called");
-    console.log("Current selectedProject:", selectedProject);
-    console.log("Current projectDeleteDialogOpen state:", projectDeleteDialogOpen);
+    logger.log("🔥 DELETE BUTTON CLICKED - handleProjectDeleteClick called");
+    logger.log("Current selectedProject:", selectedProject);
+    logger.log("Current projectDeleteDialogOpen state:", projectDeleteDialogOpen);
     
     if (!selectedProject) return;
     
@@ -291,7 +292,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
     });
     
     setProjectDeleteDialogOpen(true);
-    console.log("✅ setProjectDeleteDialogOpen(true) called");
+    logger.log("✅ setProjectDeleteDialogOpen(true) called");
     
     // Load the deletion counts
     await loadDeletionCounts(selectedProject.path);
@@ -315,7 +316,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
       const preview = await api.previewSessionDeletionByAge(projectId, daysOld);
       setSessionDeletionPreview(preview);
     } catch (error) {
-      console.error("Failed to load session deletion preview:", error);
+      logger.error("Failed to load session deletion preview:", error);
       setSessionDeletionPreview(null);
     } finally {
       setPreviewLoading(false);
@@ -335,7 +336,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
         setSessionDeletionAge(defaultAge);
       }
     } catch (error) {
-      console.error("Failed to load session age range:", error);
+      logger.error("Failed to load session age range:", error);
       setSessionAgeRange(null);
     } finally {
       setAgeRangeLoading(false);
@@ -360,11 +361,11 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   const handleSessionsDeleted = async (projectId: string) => {
     setIsDeletingSessions(true);
     try {
-      console.log("🗑️ Deleting sessions older than", sessionDeletionAge, "days");
+      logger.log("🗑️ Deleting sessions older than", sessionDeletionAge, "days");
       
       const result = await api.deleteSessionsByAge(projectId, sessionDeletionAge);
       
-      console.log("✅ Session deletion completed:", result);
+      logger.log("✅ Session deletion completed:", result);
       
       // Reload sessions for the project
       if (selectedProject) {
@@ -379,7 +380,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
       alert(`Sessions deleted successfully!\n\nDeleted:\n- ${result.sessions_deleted} sessions\n- ${result.todos_deleted} todo files\n- ${result.timelines_deleted} timelines\n- ${result.size_freed_mb.toFixed(2)} MB freed\n\nRemaining: ${result.sessions_remaining} sessions`);
       
     } catch (error) {
-      console.error("❌ Failed to delete sessions:", error);
+      logger.error("❌ Failed to delete sessions:", error);
       alert(`Failed to delete sessions: ${error}`);
     } finally {
       setIsDeletingSessions(false);
@@ -399,7 +400,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   };
 
   // Debug rendering
-  console.log("🎪 Rendering ProjectsTab, selectedProject:", selectedProject?.path || "none");
+  logger.log("🎪 Rendering ProjectsTab, selectedProject:", selectedProject?.path || "none");
 
   return (
     <>
@@ -417,7 +418,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
       contentPadding={false}
       actions={
         selectedProject ? (
-          <DropdownMenu onOpenChange={(open) => console.log("🎪 Dropdown onOpenChange:", open)}>
+          <DropdownMenu onOpenChange={(open) => logger.log("🎪 Dropdown onOpenChange:", open)}>
             <DropdownMenuTrigger asChild>
               <ActionButton
                 icon={MoreVertical}
@@ -430,7 +431,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
             </DropdownMenuTrigger>
             <DropdownMenuContent 
               align="end"
-              onCloseAutoFocus={(e) => console.log("🔒 Menu closing, focus:", e)}
+              onCloseAutoFocus={(e) => logger.log("🔒 Menu closing, focus:", e)}
             >
               <DropdownMenuItem
                 onClick={(e) => {
@@ -445,8 +446,8 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={(e) => {
-                  console.log("🎯 DropdownMenuItem clicked - onClick fired");
-                  console.log("Event:", e);
+                  logger.log("🎯 DropdownMenuItem clicked - onClick fired");
+                  logger.log("Event:", e);
                   e.preventDefault();
                   e.stopPropagation();
                   handleProjectDeleteClick();
@@ -646,7 +647,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
       <Dialog 
         open={projectDeleteDialogOpen} 
         onOpenChange={(open) => {
-          console.log("🔔 Dialog onOpenChange called with:", open);
+          logger.log("🔔 Dialog onOpenChange called with:", open);
           setProjectDeleteDialogOpen(open);
         }}
       >

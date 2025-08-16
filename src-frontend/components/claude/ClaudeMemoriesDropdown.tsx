@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { api, type ClaudeMdFile } from "@/lib/api";
 import { formatUnixTimestamp } from "@/lib/date-utils";
 import { DebugLabel } from "@/components/ui/atoms";
+import { logger } from '@/lib/logger';
 
 interface ClaudeMemoriesDropdownProps {
   /**
@@ -29,7 +30,7 @@ interface ClaudeMemoriesDropdownProps {
  * @example
  * <ClaudeMemoriesDropdown
  *   projectPath="/Users/example/project"
- *   onEditFile={(file) => console.log('Edit file:', file)}
+ *   onEditFile={(file) => logger.log('Edit file:', file)}
  * />
  */
 export const ClaudeMemoriesDropdown: React.FC<ClaudeMemoriesDropdownProps> = ({
@@ -56,7 +57,7 @@ export const ClaudeMemoriesDropdown: React.FC<ClaudeMemoriesDropdownProps> = ({
       const foundFiles = await api.findClaudeMdFiles(projectPath);
       setFiles(foundFiles);
     } catch (err) {
-      console.error("Failed to load CLAUDE.md files:", err);
+      logger.error("Failed to load CLAUDE.md files:", err);
       setError("Failed to load CLAUDE.md files");
     } finally {
       setLoading(false);

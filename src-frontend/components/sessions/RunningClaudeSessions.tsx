@@ -7,6 +7,7 @@ import { api, type ProcessInfo, type Session } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { formatISOTimestamp } from "@/lib/date-utils";
 import { DebugLabel } from "@/components/ui/atoms";
+import { logger } from '@/lib/logger';
 
 interface RunningClaudeSessionsProps {
   /**
@@ -44,7 +45,7 @@ export const RunningClaudeSessions: React.FC<RunningClaudeSessionsProps> = ({
       setRunningSessions(sessions);
       setError(null);
     } catch (err) {
-      console.error("Failed to load running sessions:", err);
+      logger.error("Failed to load running sessions:", err);
       setError("Failed to load running sessions");
     } finally {
       setLoading(false);

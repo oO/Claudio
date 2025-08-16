@@ -1,5 +1,7 @@
 import { useCallback } from 'react';
 import type { ClaudeStreamMessage } from '@/components/agents';
+import { invoke } from '@tauri-apps/api/core';
+import { logger } from '@/lib/logger';
 
 interface UseMessageClipboardProps {
   message: ClaudeStreamMessage;
@@ -21,6 +23,23 @@ export const useMessageClipboard = ({
   return useCallback(async () => {
     const contributingUuids = message._contributingMessageUuids || (message.uuid ? [message.uuid] : []);
     
+    // Debug logging to see what's missing
+    const debugData = {
+      contributingUuids,
+      contributingUuidsLength: contributingUuids.length,
+      projectId,
+      sessionId,
+      sessionFilePath,
+      allConditionsMet: contributingUuids.length > 0 && projectId && sessionId && sessionFilePath,
+      timestamp: new Date().toISOString()
+    };
+    
+    // Send debug info to backend log
+    invoke('log_frontend_debug', {
+      component: 'useMessageClipboard',
+      data: debugData
+    }).catch(err => logger.error('Failed to send debug to backend:', err));
+    
     if (contributingUuids.length > 0 && projectId && sessionId && sessionFilePath) {
       try {
         // Build complete message location object (Single Source of Truth)
@@ -32,17 +51,17 @@ export const useMessageClipboard = ({
         };
         const locationJson = JSON.stringify(messageLocation, null, 2);
         await navigator.clipboard.writeText(locationJson);
-        console.log(`Copied message location JSON to clipboard:`, messageLocation);
+        logger.log(`Copied message location JSON to clipboard:`, messageLocation);
       } catch (error) {
-        console.error("Failed to copy message location:", error);
+        logger.error("Failed to copy message location:", error);
       }
     } else if (message.uuid) {
       // Fallback to just UUID if missing data
       try {
         await navigator.clipboard.writeText(message.uuid);
-        console.log(`Copied message UUID to clipboard: ${message.uuid}`);
+        logger.log(`Copied message UUID to clipboard: ${message.uuid}`);
       } catch (error) {
-        console.error("Failed to copy message UUID:", error);
+        logger.error("Failed to copy message UUID:", error);
       }
     }
   }, [message, projectId, sessionId, sessionFilePath]);

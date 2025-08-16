@@ -9,6 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 import { open } from "@tauri-apps/plugin-shell";
 import { ToolWidgetTemplate } from "./ToolWidgetTemplate";
+import { logger } from '@/lib/logger';
 
 /**
  * Widget for WebFetch tool - displays URL fetching with optional prompts
@@ -63,7 +64,7 @@ export const WebFetchWidget: React.FC<{
     try {
       await open(url);
     } catch (error) {
-      console.error('Failed to open URL:', error);
+      logger.error('Failed to open URL:', error);
     }
   };
   

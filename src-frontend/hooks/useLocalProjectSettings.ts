@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { api } from "@/lib/api";
 import type { PermissionRule } from "./useSettingsState";
+import { logger } from '@/lib/logger';
 
 /**
  * Project settings interface (base + local merge)
@@ -96,7 +97,7 @@ export const useLocalProjectSettings = (
         const baseContent = await api.readClaudeMdFile(baseSettingsPath);
         baseSettings = JSON.parse(baseContent);
       } catch (err) {
-        console.log("Base settings file doesn't exist, using empty settings");
+        logger.log("Base settings file doesn't exist, using empty settings");
         baseSettings = {};
       }
       
@@ -105,7 +106,7 @@ export const useLocalProjectSettings = (
         const localContent = await api.readClaudeMdFile(localSettingsPath);
         localSettings = JSON.parse(localContent);
       } catch (err) {
-        console.log("Local settings file doesn't exist, using empty settings");
+        logger.log("Local settings file doesn't exist, using empty settings");
         localSettings = {};
       }
       
@@ -155,7 +156,7 @@ export const useLocalProjectSettings = (
         setLocalDenyRules([]);
       }
     } catch (err) {
-      console.error("Failed to load project settings:", err);
+      logger.error("Failed to load project settings:", err);
       setError("Failed to load project settings.");
       setBaseSettings({});
       setLocalSettings({});
@@ -197,7 +198,7 @@ export const useLocalProjectSettings = (
 
       onSaveComplete?.(true, "Local settings saved successfully!");
     } catch (err) {
-      console.error("Failed to save local settings:", err);
+      logger.error("Failed to save local settings:", err);
       setError("Failed to save local project settings.");
       onSaveComplete?.(false, "Failed to save local settings");
     } finally {

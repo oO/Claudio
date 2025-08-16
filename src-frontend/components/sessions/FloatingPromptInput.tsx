@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { FilePicker, SlashCommandPicker, ImagePreview } from "@/components/common";
 import { DebugLabel } from "@/components/ui/atoms";
 import { type FileEntry, type SlashCommand } from "@/lib/api";
+import { logger } from '@/lib/logger';
 
 // Import our extracted components and hooks
 import { PromptTextarea } from "./PromptTextarea";
@@ -62,7 +63,7 @@ export interface FloatingPromptInputRef {
  * const promptRef = useRef<FloatingPromptInputRef>(null);
  * <FloatingPromptInput
  *   ref={promptRef}
- *   onSend={(prompt, model) => console.log('Send:', prompt, model)}
+ *   onSend={(prompt, model) => logger.log('Send:', prompt, model)}
  *   isLoading={false}
  * />
  */
@@ -218,7 +219,7 @@ const FloatingPromptInputInner = (
     }
 
     if (atPosition === -1) {
-      console.error('[FloatingPromptInput] @ position not found');
+      logger.error('[FloatingPromptInput] @ position not found');
       return;
     }
 
@@ -261,7 +262,7 @@ const FloatingPromptInputInner = (
     }
 
     if (slashPosition === -1) {
-      console.error('[FloatingPromptInput] / position not found');
+      logger.error('[FloatingPromptInput] / position not found');
       return;
     }
 

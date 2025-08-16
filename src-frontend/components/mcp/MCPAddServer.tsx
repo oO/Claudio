@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { DebugLabel } from "@/components/ui/atoms";
 import { api } from "@/lib/api";
 import { useTrackEvent } from "@/hooks";
+import { logger } from '@/lib/logger';
 
 interface MCPAddServerProps {
   /**
@@ -154,7 +155,7 @@ export const MCPAddServer: React.FC<MCPAddServerProps> = ({
       }
     } catch (error) {
       onError("Failed to add server");
-      console.error("Failed to add stdio server:", error);
+      logger.error("Failed to add stdio server:", error);
     } finally {
       setSaving(false);
     }
@@ -213,7 +214,7 @@ export const MCPAddServer: React.FC<MCPAddServerProps> = ({
       }
     } catch (error) {
       onError("Failed to add server");
-      console.error("Failed to add SSE server:", error);
+      logger.error("Failed to add SSE server:", error);
     } finally {
       setSaving(false);
     }

@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { api } from "@/lib/api";
+import { logger } from '@/lib/logger';
 
 /**
  * Represents a permission rule that can exist at multiple levels
@@ -74,7 +75,7 @@ export const useTriLevelSettings = (
         const userSettingsData = await api.getClaudeSettings();
         userSettings = userSettingsData.data || {};
       } catch (err) {
-        console.log("User settings not found, using empty settings");
+        logger.log("User settings not found, using empty settings");
       }
       
       // Load team settings (<project>/.claude/settings.json)
@@ -83,9 +84,9 @@ export const useTriLevelSettings = (
         const teamSettingsPath = `${projectPath}/.claude/settings.json`;
         const teamContent = await api.readClaudeMdFile(teamSettingsPath);
         teamSettings = JSON.parse(teamContent);
-        console.log("✅ Team settings loaded successfully from:", teamSettingsPath);
+        logger.log("✅ Team settings loaded successfully from:", teamSettingsPath);
       } catch (err) {
-        console.log("⚠️ Team settings not found, using empty settings. Error:", err);
+        logger.log("⚠️ Team settings not found, using empty settings. Error:", err);
       }
       
       // Load local settings (<project>/.claude/settings.local.json)
@@ -94,11 +95,11 @@ export const useTriLevelSettings = (
         const localSettingsPath = `${projectPath}/.claude/settings.local.json`;
         const localContent = await api.readClaudeMdFile(localSettingsPath);
         localSettings = JSON.parse(localContent);
-        console.log("✅ Local settings loaded successfully from:", localSettingsPath);
-        console.log("  Local content:", localContent);
-        console.log("  Parsed local settings:", localSettings);
+        logger.log("✅ Local settings loaded successfully from:", localSettingsPath);
+        logger.log("  Local content:", localContent);
+        logger.log("  Parsed local settings:", localSettings);
       } catch (err) {
-        console.log("⚠️ Local settings not found, using empty settings. Error:", err);
+        logger.log("⚠️ Local settings not found, using empty settings. Error:", err);
       }
       
       // Store settings for later saving
@@ -112,7 +113,7 @@ export const useTriLevelSettings = (
       setOriginalRules(JSON.parse(JSON.stringify(mergedRules))); // Deep copy for comparison
       
     } catch (err) {
-      console.error("Failed to load tri-level settings:", err);
+      logger.error("Failed to load tri-level settings:", err);
       setError("Failed to load settings from all levels.");
     } finally {
       setLoading(false);
@@ -258,7 +259,7 @@ export const useTriLevelSettings = (
       onSaveComplete?.(true, "Settings saved to all levels successfully!");
       
     } catch (err) {
-      console.error("Failed to save tri-level settings:", err);
+      logger.error("Failed to save tri-level settings:", err);
       setError("Failed to save settings.");
       onSaveComplete?.(false, "Failed to save settings");
     } finally {

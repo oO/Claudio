@@ -14,6 +14,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { logger } from '@/lib/logger';
 import {
   formatUnixTimestamp,
   truncateText,
@@ -61,7 +62,7 @@ export const ProjectMemoriesTab: React.FC<ProjectMemoriesTabProps> = ({
       const sortedFiles = files.sort((a, b) => a.relative_path.localeCompare(b.relative_path));
       setClaudeFiles(sortedFiles);
     } catch (error) {
-      console.error("Failed to load Claude files:", error);
+      logger.error("Failed to load Claude files:", error);
       setClaudeFiles([]);
     } finally {
       setClaudeFilesLoading(false);
@@ -116,7 +117,7 @@ export const ProjectMemoriesTab: React.FC<ProjectMemoriesTabProps> = ({
       // Check if this directory already has a CLAUDE.md file
       if (hasExistingMemory(entry.path)) {
         // Show error or prevent selection, but don't close picker
-        console.warn(`Directory ${entry.path} already contains a CLAUDE.md file`);
+        logger.warn(`Directory ${entry.path} already contains a CLAUDE.md file`);
         return;
       }
       
@@ -154,7 +155,7 @@ export const ProjectMemoriesTab: React.FC<ProjectMemoriesTabProps> = ({
       
       onViewClaudeFile?.(newFile);
     } catch (error) {
-      console.error("Failed to create memory file:", error);
+      logger.error("Failed to create memory file:", error);
       // Could add toast notification here
     } finally {
       setCreating(false);

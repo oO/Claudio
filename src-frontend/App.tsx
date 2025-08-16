@@ -3,7 +3,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Loader2, Bot, FolderCode } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
-import { api, type Project, type Session, type ClaudeMdFile, type Agent } from "@/lib/api";
+import {
+  api,
+  type Project,
+  type Session,
+  type ClaudeMdFile,
+  type Agent,
+} from "@/lib/api";
 import { OutputCacheProvider } from "@/lib/outputCache";
 import { TabProvider } from "@/contexts/TabContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
@@ -13,6 +19,7 @@ import { ProjectList, ProjectDetail } from "@/components/projects";
 import { RunningClaudeSessions } from "@/components/sessions";
 import { Topbar, TabManager, TabContent } from "@/components/common";
 import { ClaudeFileEditor, ClaudeBinaryDialog } from "@/components/claude";
+import { logger } from "@/lib/logger";
 import { Settings, AnalyticsConsentBanner } from "@/components/settings";
 import { CCAgents } from "@/components/agents";
 import { UsageDashboard } from "@/components/dashboard";
@@ -24,10 +31,10 @@ import { useTabState } from "@/hooks/useTabState";
 import { useAppLifecycle, useTrackEvent } from "@/hooks";
 import { useMemoryMonitor } from "@/hooks/useMemoryMonitor";
 
-type View = 
-  | "welcome" 
-  | "projects" 
-  | "claude-file-editor" 
+type View =
+  | "welcome"
+  | "projects"
+  | "claude-file-editor"
   | "settings"
   | "cc-agents"
   | "create-agent"
@@ -43,33 +50,50 @@ type View =
  */
 function AppContent() {
   const [view, setView] = useState<View>("tabs");
-  const { createClaudeMdTab, createSettingsTab, createUsageTab, createMCPTab, createAgentsTab, createProjectsTab } = useTabState();
+  const {
+    createClaudeMdTab,
+    createSettingsTab,
+    createUsageTab,
+    createMCPTab,
+    createAgentsTab,
+    createProjectsTab,
+  } = useTabState();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [editingClaudeFile, setEditingClaudeFile] = useState<ClaudeMdFile | null>(null);
+  const [editingClaudeFile, setEditingClaudeFile] =
+    useState<ClaudeMdFile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showNFO, setShowNFO] = useState(false);
   const [showClaudeBinaryDialog, setShowClaudeBinaryDialog] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error" | "info";
+  } | null>(null);
   const [previousView] = useState<View>("welcome");
-  
+
   // Initialize analytics lifecycle tracking
   useAppLifecycle();
   const trackEvent = useTrackEvent();
-  
+
   // Memory monitoring for the entire app
-  const { isLeakDetected, currentMemory, forceGC, getMemoryTrend, formatBytes } = useMemoryMonitor({
-    component: 'App',
-    interval: 10000, // Check every 10 seconds at app level
+  const {
+    isLeakDetected,
+    currentMemory,
+    forceGC,
+    getMemoryTrend,
+    formatBytes,
+  } = useMemoryMonitor({
+    component: "App",
+    interval: 60000, // Check every 10 seconds at app level
     logToConsole: true,
-    trackLeaks: true
+    trackLeaks: true,
   });
-  
+
   // Show memory debug panel in development or when debugging
   const [showMemoryDebug, setShowMemoryDebug] = useState(
-    false // Disabled - memory monitoring was stable, crashes not related to Claudio
+    false, // Disabled - memory monitoring was stable, crashes not related to Claudio
   );
 
   // Show warning when memory leak is detected
@@ -77,7 +101,7 @@ function AppContent() {
     if (isLeakDetected) {
       setToast({
         message: "⚠️ Memory leak detected! Check console for details.",
-        type: "error"
+        type: "error",
       });
     }
   }, [isLeakDetected]);
@@ -85,41 +109,41 @@ function AppContent() {
   // Keyboard shortcut to toggle memory debug panel
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && e.key === 'M') {
+      if (e.ctrlKey && e.shiftKey && e.key === "M") {
         e.preventDefault();
-        setShowMemoryDebug(prev => {
+        setShowMemoryDebug((prev) => {
           const newValue = !prev;
-          localStorage.setItem('claudio-debug-memory', newValue.toString());
+          localStorage.setItem("claudio-debug-memory", newValue.toString());
           return newValue;
         });
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
-  
+
   // Set window title with version using Tauri API and restore window state
   useEffect(() => {
     const initializeWindow = async () => {
       try {
         const window = getCurrentWindow();
         await window.setTitle(`Claudio v${__APP_VERSION__}`);
-        
+
         // Restore window state
         try {
           await api.restoreWindowState();
-          console.log('Window state restored successfully');
+          logger.log("Window state restored successfully");
         } catch (error) {
-          console.warn('Failed to restore window state, using defaults:', error);
+          logger.warn("Failed to restore window state, using defaults:", error);
         }
       } catch (error) {
-        console.error('Failed to set Tauri window title:', error);
+        logger.error("Failed to set Tauri window title:", error);
         // Fallback to document.title
         document.title = `Claudio v${__APP_VERSION__}`;
       }
     };
-    
+
     initializeWindow();
   }, []);
 
@@ -129,31 +153,30 @@ function AppContent() {
       try {
         const currentState = await api.getCurrentWindowState();
         await api.saveWindowState(currentState);
-        console.log('Window state saved before close');
+        logger.log("Window state saved before close");
       } catch (error) {
-        console.warn('Failed to save window state on close:', error);
+        logger.warn("Failed to save window state on close:", error);
       }
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener("beforeunload", handleBeforeUnload);
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, []);
-  
-  
+
   // Track user journey milestones
   const [hasTrackedFirstChat] = useState(false);
   // const [hasTrackedFirstAgent] = useState(false);
-  
+
   // Track when user reaches different journey stages
   useEffect(() => {
     if (view === "projects" && projects.length > 0 && !hasTrackedFirstChat) {
       // User has projects - they're past onboarding
       trackEvent.journeyMilestone({
-        journey_stage: 'onboarding',
-        milestone_reached: 'projects_created',
-        time_to_milestone_ms: Date.now() - performance.timing.navigationStart
+        journey_stage: "onboarding",
+        milestone_reached: "projects_created",
+        time_to_milestone_ms: Date.now() - performance.timing.navigationStart,
       });
     }
   }, [view, projects.length, hasTrackedFirstChat, trackEvent]);
@@ -171,43 +194,47 @@ function AppContent() {
   // Keyboard shortcuts for tab navigation
   useEffect(() => {
     if (view !== "tabs") return;
-    
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
       const modKey = isMac ? e.metaKey : e.ctrlKey;
-      
+
       if (modKey) {
         switch (e.key) {
-          case 't':
+          case "t":
             e.preventDefault();
-            window.dispatchEvent(new CustomEvent('create-chat-tab'));
+            window.dispatchEvent(new CustomEvent("create-chat-tab"));
             break;
-          case 'w':
+          case "w":
             e.preventDefault();
-            window.dispatchEvent(new CustomEvent('close-current-tab'));
+            window.dispatchEvent(new CustomEvent("close-current-tab"));
             break;
-          case 'Tab':
+          case "Tab":
             e.preventDefault();
             if (e.shiftKey) {
-              window.dispatchEvent(new CustomEvent('switch-to-previous-tab'));
+              window.dispatchEvent(new CustomEvent("switch-to-previous-tab"));
             } else {
-              window.dispatchEvent(new CustomEvent('switch-to-next-tab'));
+              window.dispatchEvent(new CustomEvent("switch-to-next-tab"));
             }
             break;
           default:
             // Handle number keys 1-9
-            if (e.key >= '1' && e.key <= '9') {
+            if (e.key >= "1" && e.key <= "9") {
               e.preventDefault();
               const index = parseInt(e.key) - 1;
-              window.dispatchEvent(new CustomEvent('switch-to-tab-by-index', { detail: { index } }));
+              window.dispatchEvent(
+                new CustomEvent("switch-to-tab-by-index", {
+                  detail: { index },
+                }),
+              );
             }
             break;
         }
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [view]);
 
   // Listen for Claude not found events
@@ -216,9 +243,15 @@ function AppContent() {
       setShowClaudeBinaryDialog(true);
     };
 
-    window.addEventListener('claude-not-found', handleClaudeNotFound as EventListener);
+    window.addEventListener(
+      "claude-not-found",
+      handleClaudeNotFound as EventListener,
+    );
     return () => {
-      window.removeEventListener('claude-not-found', handleClaudeNotFound as EventListener);
+      window.removeEventListener(
+        "claude-not-found",
+        handleClaudeNotFound as EventListener,
+      );
     };
   }, []);
 
@@ -232,8 +265,10 @@ function AppContent() {
       const projectList = await api.listProjects();
       setProjects(projectList);
     } catch (err) {
-      console.error("Failed to load projects:", err);
-      setError("Failed to load projects. Please ensure ~/.claude directory exists.");
+      logger.error("Failed to load projects:", err);
+      setError(
+        "Failed to load projects. Please ensure ~/.claude directory exists.",
+      );
     } finally {
       setLoading(false);
     }
@@ -250,7 +285,7 @@ function AppContent() {
       setSessions(sessionList);
       setSelectedProject(project);
     } catch (err) {
-      console.error("Failed to load sessions:", err);
+      logger.error("Failed to load sessions:", err);
       setError("Failed to load sessions for this project.");
     } finally {
       setLoading(false);
@@ -297,12 +332,11 @@ function AppContent() {
     setView(newView);
   };
 
-
   /**
    * Handles project deletion
    */
   const handleProjectDeleted = (projectId: string) => {
-    setProjects(prev => prev.filter(p => p.id !== projectId));
+    setProjects((prev) => prev.filter((p) => p.id !== projectId));
     setToast({ message: "Project deleted successfully", type: "success" });
   };
 
@@ -310,7 +344,7 @@ function AppContent() {
    * Handles session deletion
    */
   const handleSessionDeleted = (sessionId: string) => {
-    setSessions(prev => prev.filter(s => s.id !== sessionId));
+    setSessions((prev) => prev.filter((s) => s.id !== sessionId));
     setToast({ message: "Session deleted successfully", type: "success" });
   };
 
@@ -318,7 +352,7 @@ function AppContent() {
    * Handles session click - TODO: Implement session navigation
    */
   const handleSessionClick = (session: Session) => {
-    console.log("Session clicked:", session.id);
+    logger.log("Session clicked:", session.id);
     // TODO: Implement session navigation logic
   };
 
@@ -326,7 +360,7 @@ function AppContent() {
    * Handles agent execution - TODO: Implement agent execution
    */
   const handleExecuteAgent = (agent: Agent) => {
-    console.log("Execute agent:", agent.name);
+    logger.log("Execute agent:", agent.name);
     // TODO: Implement agent execution logic
   };
 
@@ -334,7 +368,7 @@ function AppContent() {
    * Handles agent editing - TODO: Implement agent editing
    */
   const handleEditAgent = (agent: Agent) => {
-    console.log("Edit agent:", agent.name);
+    logger.log("Edit agent:", agent.name);
     // TODO: Implement agent editing logic
   };
 
@@ -342,7 +376,7 @@ function AppContent() {
    * Handles agent export - TODO: Implement agent export
    */
   const handleExportAgent = (agent: Agent) => {
-    console.log("Export agent:", agent.name);
+    logger.log("Export agent:", agent.name);
     // TODO: Implement agent export logic
   };
 
@@ -350,7 +384,7 @@ function AppContent() {
    * Handles agent deletion - TODO: Implement agent deletion
    */
   const handleDeleteAgent = (agent: Agent) => {
-    console.log("Delete agent:", agent.name);
+    logger.log("Delete agent:", agent.name);
     // TODO: Implement agent deletion logic
   };
 
@@ -358,7 +392,7 @@ function AppContent() {
    * Handles agent creation - TODO: Implement agent creation
    */
   const handleCreateAgent = () => {
-    console.log("Create agent");
+    logger.log("Create agent");
     // TODO: Implement agent creation logic
   };
 
@@ -366,16 +400,18 @@ function AppContent() {
    * Handles agent import - TODO: Implement agent import
    */
   const handleImportAgent = () => {
-    console.log("Import agent");
+    logger.log("Import agent");
     // TODO: Implement agent import logic
   };
-
 
   const renderContent = () => {
     switch (view) {
       case "welcome":
         return (
-          <div className="flex items-center justify-center p-4" style={{ height: "100%" }}>
+          <div
+            className="flex items-center justify-center p-4"
+            style={{ height: "100%" }}
+          >
             <div className="w-full max-w-4xl">
               {/* Welcome Header */}
               <motion.div
@@ -398,7 +434,7 @@ function AppContent() {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.5, delay: 0.1 }}
                 >
-                  <Card 
+                  <Card
                     className="h-64 cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-lg border border-border/50 shimmer-hover trailing-border"
                     onClick={() => handleViewChange("cc-agents")}
                   >
@@ -415,7 +451,7 @@ function AppContent() {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.5, delay: 0.2 }}
                 >
-                  <Card 
+                  <Card
                     className="h-64 cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-lg border border-border/50 shimmer-hover trailing-border"
                     onClick={() => handleViewChange("projects")}
                   >
@@ -425,18 +461,13 @@ function AppContent() {
                     </div>
                   </Card>
                 </motion.div>
-
               </div>
             </div>
           </div>
         );
 
       case "cc-agents":
-        return (
-          <CCAgents 
-            onBack={() => handleViewChange("welcome")} 
-          />
-        );
+        return <CCAgents onBack={() => handleViewChange("welcome")} />;
 
       case "settings":
         return (
@@ -444,7 +475,7 @@ function AppContent() {
             <Settings onBack={() => handleViewChange("welcome")} />
           </div>
         );
-      
+
       case "projects":
         return (
           <div className="flex-1 overflow-y-auto">
@@ -465,7 +496,9 @@ function AppContent() {
                   ← Back to Home
                 </Button>
                 <div className="mb-4">
-                  <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
+                  <h1 className="text-3xl font-bold tracking-tight">
+                    Projects
+                  </h1>
                   <p className="mt-1 text-sm text-muted-foreground">
                     Browse your Claude Code sessions
                   </p>
@@ -567,7 +600,7 @@ function AppContent() {
             </div>
           </div>
         );
-      
+
       case "claude-file-editor":
         return editingClaudeFile ? (
           <ClaudeFileEditor
@@ -575,7 +608,7 @@ function AppContent() {
             onBack={handleBackFromClaudeFileEditor}
           />
         ) : null;
-      
+
       case "tabs":
         return (
           <div className="h-full flex flex-col">
@@ -585,18 +618,13 @@ function AppContent() {
             </div>
           </div>
         );
-      
+
       case "usage-dashboard":
-        return (
-          <UsageDashboard onBack={() => handleViewChange("welcome")} />
-        );
-      
+        return <UsageDashboard onBack={() => handleViewChange("welcome")} />;
+
       case "mcp":
-        return (
-          <MCPManager onBack={() => handleViewChange("welcome")} />
-        );
-      
-      
+        return <MCPManager onBack={() => handleViewChange("welcome")} />;
+
       default:
         return null;
     }
@@ -613,31 +641,31 @@ function AppContent() {
         onMCPClick={() => createMCPTab()}
         onSettingsClick={() => createSettingsTab()}
       />
-      
+
       {/* Analytics Consent Banner */}
       <AnalyticsConsentBanner />
-      
+
       {/* Main Content */}
-      <div className="flex-1 overflow-hidden">
-        {renderContent()}
-      </div>
-      
+      <div className="flex-1 overflow-hidden">{renderContent()}</div>
+
       {/* NFO Credits Modal */}
       {showNFO && <NFOCredits onClose={() => setShowNFO(false)} />}
-      
-      
+
       {/* Claude Binary Dialog */}
       <ClaudeBinaryDialog
         open={showClaudeBinaryDialog}
         onOpenChange={setShowClaudeBinaryDialog}
         onSuccess={() => {
-          setToast({ message: "Claude binary path saved successfully", type: "success" });
+          setToast({
+            message: "Claude binary path saved successfully",
+            type: "success",
+          });
           // Trigger a refresh of the Claude version check
           window.location.reload();
         }}
         onError={(message) => setToast({ message, type: "error" })}
       />
-      
+
       {/* Toast Container */}
       <ToastContainer>
         {toast && (
@@ -648,7 +676,7 @@ function AppContent() {
           />
         )}
       </ToastContainer>
-      
+
       {/* Memory Debug Panel - Only in dev or when debug flag is set */}
       {showMemoryDebug && (
         <MemoryDebugPanel

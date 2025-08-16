@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api } from "@/lib/api";
+import { logger } from '@/lib/logger';
 import { 
   X, 
   Command,
@@ -68,7 +69,7 @@ const getCommandIcon = (command: SlashCommand) => {
  * @example
  * <SlashCommandPicker
  *   projectPath="/Users/example/project"
- *   onSelect={(command) => console.log('Selected:', command)}
+ *   onSelect={(command) => logger.log('Selected:', command)}
  *   onClose={() => setShowPicker(false)}
  * />
  */
@@ -220,7 +221,7 @@ export const SlashCommandPicker: React.FC<SlashCommandPickerProps> = ({
       const loadedCommands = await api.slashCommandsList(projectPath);
       setCommands(loadedCommands);
     } catch (err) {
-      console.error("Failed to load slash commands:", err);
+      logger.error("Failed to load slash commands:", err);
       setError(err instanceof Error ? err.message : 'Failed to load commands');
       setCommands([]);
     } finally {

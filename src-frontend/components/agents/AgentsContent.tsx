@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { api, type Agent } from "@/lib/api";
 import { AgentCard } from "./AgentCard";
 import { DebugLabel } from "@/components/ui/atoms";
+import { logger } from '@/lib/logger';
 
 interface AgentsContentProps {
   /**
@@ -71,7 +72,7 @@ export const AgentsContent: React.FC<AgentsContentProps> = ({
       const foundAgents = await api.listAgents(projectPath);
       setAgents(foundAgents);
     } catch (err) {
-      console.error("Failed to load agents:", err);
+      logger.error("Failed to load agents:", err);
       setError("Failed to load agents");
     } finally {
       setLoading(false);

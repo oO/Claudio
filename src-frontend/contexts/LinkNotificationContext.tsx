@@ -1,4 +1,5 @@
 import React, { useContext, createContext } from 'react';
+import { logger } from '@/lib/logger';
 
 interface LinkNotificationContextValue {
   notifyLinkDetected: (url: string) => void;
@@ -39,7 +40,7 @@ export const useLinkNotification = (): ((url: string) => void) => {
   if (!context) {
     // Graceful degradation - if no provider, just log
     return (url: string) => {
-      console.log('Link detected but no notification handler:', url);
+      logger.log('Link detected but no notification handler:', url);
     };
   }
   return context.notifyLinkDetected;

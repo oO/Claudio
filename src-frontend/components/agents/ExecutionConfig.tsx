@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { open } from "@tauri-apps/plugin-dialog";
+import { logger } from '@/lib/logger';
 
 interface ExecutionConfigProps {
   projectPath: string;
@@ -43,7 +44,7 @@ export const ExecutionConfig: React.FC<ExecutionConfigProps> = ({
         setProjectPath(selected as string);
       }
     } catch (err) {
-      console.error("Failed to select directory:", err);
+      logger.error("Failed to select directory:", err);
     }
   };
 

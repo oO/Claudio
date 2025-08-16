@@ -34,7 +34,7 @@ const ITEMS_PER_PAGE = 5;
  * @example
  * <AgentRunsList
  *   runs={runs}
- *   onRunClick={(run) => console.log('Selected:', run)}
+ *   onRunClick={(run) => logger.log('Selected:', run)}
  * />
  */
 export const AgentRunsList: React.FC<AgentRunsListProps> = ({

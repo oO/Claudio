@@ -16,6 +16,7 @@ import { api, type ClaudeMdFile } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { DebugLabel } from "@/components/ui/atoms";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
+import { logger } from '@/lib/logger';
 
 type PreviewMode = "edit" | "preview" | "live";
 
@@ -94,7 +95,7 @@ export const ClaudeFileEditor: React.FC<ClaudeFileEditorProps> = ({
       setContent(fileContent);
       setOriginalContent(fileContent);
     } catch (err) {
-      console.error("Failed to load file:", err);
+      logger.error("Failed to load file:", err);
       setError("Failed to load CLAUDE.md file");
     } finally {
       setLoading(false);
@@ -111,7 +112,7 @@ export const ClaudeFileEditor: React.FC<ClaudeFileEditorProps> = ({
       markAsSaved(); // Clear the unsaved changes flag
       setToast({ message: "File saved successfully", type: "success" });
     } catch (err) {
-      console.error("Failed to save file:", err);
+      logger.error("Failed to save file:", err);
       setError("Failed to save CLAUDE.md file");
       setToast({ message: "Failed to save file", type: "error" });
     } finally {
@@ -148,7 +149,7 @@ export const ClaudeFileEditor: React.FC<ClaudeFileEditorProps> = ({
       onDelete?.();
       onBack(); // Go back after successful deletion
     } catch (error) {
-      console.error("Failed to delete memory file:", error);
+      logger.error("Failed to delete memory file:", error);
       setToast({ message: "Failed to delete file", type: "error" });
     } finally {
       setDeleting(false);

@@ -21,6 +21,7 @@ import {
 } from "@/components/settings";
 import { useSettingsState, useClaudeBinaryConfig, useUnsavedChanges } from "@/hooks";
 import { api } from "@/lib/api";
+import { logger } from '@/lib/logger';
 
 interface SettingsProps {
   /**
@@ -89,13 +90,13 @@ export const Settings: React.FC<SettingsProps> = ({ className }) => {
         
         // Set up event listener for file changes
         const unlisten = await listen("settings-file-changed", () => {
-          console.log("Settings file changed externally, reloading...");
+          logger.log("Settings file changed externally, reloading...");
           loadSettings();
         });
         
         unlistenRef.current = unlisten;
       } catch (error) {
-        console.error("Failed to start settings file watcher:", error);
+        logger.error("Failed to start settings file watcher:", error);
       }
     };
     
@@ -123,7 +124,7 @@ export const Settings: React.FC<SettingsProps> = ({ className }) => {
       // Mark as saved after successful save
       markAsSaved();
     } catch (err) {
-      console.error("Failed to save settings:", err);
+      logger.error("Failed to save settings:", err);
       setError("Failed to save settings.");
       setToast({ message: "Failed to save settings", type: "error" });
     }

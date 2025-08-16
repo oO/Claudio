@@ -29,6 +29,7 @@ import {
   formatFileSize,
 } from "@/lib/date-utils";
 import type { Session } from "@/lib/api";
+import { logger } from '@/lib/logger';
 
 interface SessionHeaderProps {
   projectPath: string;
@@ -96,11 +97,11 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
     if (sessionFilePath) {
       try {
         await navigator.clipboard.writeText(sessionFilePath);
-        console.log(
+        logger.log(
           `Session absolute path copied to clipboard: ${sessionFilePath}`,
         );
       } catch (error) {
-        console.error("Failed to copy session path:", error);
+        logger.error("Failed to copy session path:", error);
       }
     }
   };
@@ -110,11 +111,11 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
       try {
         const uuidList = collapsedMessageUuids.join("\n");
         await navigator.clipboard.writeText(uuidList);
-        console.log(
+        logger.log(
           `Copied ${collapsedMessageUuids.length} collapsed message UUIDs to clipboard`,
         );
       } catch (error) {
-        console.error("Failed to copy UUID list:", error);
+        logger.error("Failed to copy UUID list:", error);
       }
     }
   };
@@ -224,7 +225,7 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
                 variant="ghost"
                 size="icon"
                 onClick={() => {
-                  console.log("Top button clicked");
+                  logger.log("Top button clicked");
                   onScrollToTop?.();
                 }}
                 className="h-8 w-8"
@@ -236,7 +237,7 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
                 variant={isPinnedToBottom ? "default" : "ghost"}
                 size="icon"
                 onClick={() => {
-                  console.log(
+                  logger.log(
                     "Bottom button clicked, isPinnedToBottom:",
                     isPinnedToBottom,
                   );

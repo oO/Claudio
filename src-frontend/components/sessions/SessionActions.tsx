@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { api, type Session } from '@/lib/api';
 import { DebugLabel } from '@/components/ui/atoms';
 import type { ClaudeStreamMessage } from '@/components/agents';
+import { logger } from '@/lib/logger';
 
 interface SessionActionsProps {
   messages: ClaudeStreamMessage[];
@@ -27,7 +28,7 @@ export const SessionActions: React.FC<SessionActionsProps> = ({
       const jsonl = rawJsonlOutput.join('\n');
       await navigator.clipboard.writeText(jsonl);
     } catch (err) {
-      console.error('Failed to copy JSONL:', err);
+      logger.error('Failed to copy JSONL:', err);
       onError('Failed to copy JSONL to clipboard');
     }
   }, [rawJsonlOutput, onError]);
@@ -104,7 +105,7 @@ export const SessionActions: React.FC<SessionActionsProps> = ({
 
       await navigator.clipboard.writeText(markdown);
     } catch (err) {
-      console.error('Failed to copy markdown:', err);
+      logger.error('Failed to copy markdown:', err);
       onError('Failed to copy markdown to clipboard');
     }
   }, [messages, projectPath, onError]);
@@ -136,7 +137,7 @@ export const SessionActions: React.FC<SessionActionsProps> = ({
       // Fork operation completed
       return newSessionId;
     } catch (err) {
-      console.error("Failed to fork checkpoint:", err);
+      logger.error("Failed to fork checkpoint:", err);
       onError("Failed to fork checkpoint");
       throw err;
     } finally {
@@ -214,7 +215,7 @@ export const SessionActions: React.FC<SessionActionsProps> = ({
       URL.revokeObjectURL(url);
       
     } catch (err) {
-      console.error('Failed to export session:', err);
+      logger.error('Failed to export session:', err);
       onError('Failed to export session');
     }
   }, [messages, rawJsonlOutput, projectPath, effectiveSession, onError]);
@@ -236,7 +237,7 @@ export function useSessionActions(props: SessionActionsProps) {
       const jsonl = rawJsonlOutput.join('\n');
       await navigator.clipboard.writeText(jsonl);
     } catch (err) {
-      console.error('Failed to copy JSONL:', err);
+      logger.error('Failed to copy JSONL:', err);
       onError('Failed to copy JSONL to clipboard');
     }
   }, [rawJsonlOutput, onError]);
@@ -312,7 +313,7 @@ export function useSessionActions(props: SessionActionsProps) {
 
       await navigator.clipboard.writeText(markdown);
     } catch (err) {
-      console.error('Failed to copy markdown:', err);
+      logger.error('Failed to copy markdown:', err);
       onError('Failed to copy markdown to clipboard');
     }
   }, [messages, projectPath, onError]);
@@ -343,7 +344,7 @@ export function useSessionActions(props: SessionActionsProps) {
       // Fork operation completed
       return newSessionId;
     } catch (err) {
-      console.error("Failed to fork checkpoint:", err);
+      logger.error("Failed to fork checkpoint:", err);
       onError("Failed to fork checkpoint");
       throw err;
     } finally {
@@ -404,7 +405,7 @@ export function useSessionActions(props: SessionActionsProps) {
       URL.revokeObjectURL(url);
       
     } catch (err) {
-      console.error('Failed to export session:', err);
+      logger.error('Failed to export session:', err);
       onError('Failed to export session');
     }
   }, [messages, rawJsonlOutput, projectPath, effectiveSession, onError]);

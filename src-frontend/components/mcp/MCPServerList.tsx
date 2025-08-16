@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { DebugLabel } from "@/components/ui/atoms";
 import { api, type MCPServer } from "@/lib/api";
 import { useTrackEvent } from "@/hooks";
+import { logger } from '@/lib/logger';
 
 interface MCPServerListProps {
   /**
@@ -92,7 +93,7 @@ export const MCPServerList: React.FC<MCPServerListProps> = ({
       setCopiedServer(serverName);
       setTimeout(() => setCopiedServer(null), 2000);
     } catch (error) {
-      console.error("Failed to copy command:", error);
+      logger.error("Failed to copy command:", error);
     }
   };
 
@@ -116,7 +117,7 @@ export const MCPServerList: React.FC<MCPServerListProps> = ({
       
       onServerRemoved(name);
     } catch (error) {
-      console.error("Failed to remove server:", error);
+      logger.error("Failed to remove server:", error);
     } finally {
       setRemovingServer(null);
     }
@@ -137,7 +138,7 @@ export const MCPServerList: React.FC<MCPServerListProps> = ({
       // TODO: Show result in a toast or modal
       // Connection test completed
     } catch (error) {
-      console.error("Failed to test connection:", error);
+      logger.error("Failed to test connection:", error);
       
       trackEvent.mcpConnectionError({
         server_name: name,

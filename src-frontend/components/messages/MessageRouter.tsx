@@ -7,6 +7,7 @@ import { SubAgentMessage } from "./SubAgentMessage";
 import { ResultMessage } from "./ResultMessage";
 import { ErrorMessage } from "./ErrorMessage";
 import { SummaryMessage } from "./SummaryMessage";
+import { logger } from '@/lib/logger';
 
 interface MessageRouterProps {
   message: ClaudeStreamMessage;
@@ -161,7 +162,7 @@ const MessageRouterComponent: React.FC<MessageRouterProps> = ({
     }
   } catch (error) {
     // If any error occurs during rendering, show error message
-    console.error("Error rendering stream message:", error, message);
+    logger.error("Error rendering stream message:", error, message);
     return <ErrorMessage message={message} error={error} />;
   }
 };

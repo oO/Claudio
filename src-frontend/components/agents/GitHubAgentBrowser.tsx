@@ -20,6 +20,7 @@ export type AgentIconName = keyof typeof ICON_MAP;
 import { ICON_MAP } from "@/components/common";
 import { open } from "@tauri-apps/plugin-shell";
 import { DebugLabel } from "@/components/ui/atoms";
+import { logger } from '@/lib/logger';
 
 interface GitHubAgentBrowserProps {
   isOpen: boolean;
@@ -59,7 +60,7 @@ export const GitHubAgentBrowser: React.FC<GitHubAgentBrowserProps> = ({
       const agents = await api.listAgents();
       setExistingAgents(agents);
     } catch (err) {
-      console.error("Failed to fetch existing agents:", err);
+      logger.error("Failed to fetch existing agents:", err);
     }
   };
 
@@ -70,7 +71,7 @@ export const GitHubAgentBrowser: React.FC<GitHubAgentBrowserProps> = ({
       const agentFiles = await api.fetchGitHubAgents();
       setAgents(agentFiles);
     } catch (err) {
-      console.error("Failed to fetch GitHub agents:", err);
+      logger.error("Failed to fetch GitHub agents:", err);
       setError("Failed to fetch agents from GitHub. Please check your internet connection.");
     } finally {
       setLoading(false);
@@ -94,7 +95,7 @@ export const GitHubAgentBrowser: React.FC<GitHubAgentBrowserProps> = ({
         error: null,
       });
     } catch (err) {
-      console.error("Failed to fetch agent content:", err);
+      logger.error("Failed to fetch agent content:", err);
       setSelectedAgent({
         file,
         data: null,
@@ -127,7 +128,7 @@ export const GitHubAgentBrowser: React.FC<GitHubAgentBrowserProps> = ({
       // Notify parent
       onImportSuccess();
     } catch (err) {
-      console.error("Failed to import agent:", err);
+      logger.error("Failed to import agent:", err);
       alert(`Failed to import agent: ${err instanceof Error ? err.message : "Unknown error"}`);
     } finally {
       setImporting(false);
@@ -155,7 +156,7 @@ export const GitHubAgentBrowser: React.FC<GitHubAgentBrowserProps> = ({
     try {
       await open("https://github.com/getAsterisk/claudia/tree/main/cc_agents");
     } catch (error) {
-      console.error('Failed to open GitHub link:', error);
+      logger.error('Failed to open GitHub link:', error);
     }
   };
 

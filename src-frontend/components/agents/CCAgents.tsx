@@ -24,6 +24,7 @@ import { AgentExecution } from "./AgentExecution";
 import { AgentRunsList } from "./AgentRunsList";
 import { GitHubAgentBrowser } from "./GitHubAgentBrowser";
 import { AgentsContent } from "./AgentsContent";
+import { logger } from '@/lib/logger';
 
 interface CCAgentsProps {
   /**
@@ -65,7 +66,7 @@ export const CCAgents: React.FC<CCAgentsProps> = ({ onBack, className }) => {
       const runsList = await api.listAgentRuns();
       setRuns(runsList);
     } catch (err) {
-      console.error("Failed to load runs:", err);
+      logger.error("Failed to load runs:", err);
     } finally {
       setRunsLoading(false);
     }
@@ -93,7 +94,7 @@ export const CCAgents: React.FC<CCAgentsProps> = ({ onBack, className }) => {
       setToast({ message: "Agent deleted successfully", type: "success" });
       await loadRuns(); // Reload runs as they might be affected
     } catch (err) {
-      console.error("Failed to delete agent:", err);
+      logger.error("Failed to delete agent:", err);
       setToast({ message: "Failed to delete agent", type: "error" });
     } finally {
       setIsDeleting(false);
@@ -166,7 +167,7 @@ export const CCAgents: React.FC<CCAgentsProps> = ({ onBack, className }) => {
       
       setToast({ message: `Agent "${agent.name}" exported successfully`, type: "success" });
     } catch (err) {
-      console.error("Failed to export agent:", err);
+      logger.error("Failed to export agent:", err);
       setToast({ message: "Failed to export agent", type: "error" });
     }
   };
@@ -192,7 +193,7 @@ export const CCAgents: React.FC<CCAgentsProps> = ({ onBack, className }) => {
       
       setToast({ message: "Agent imported successfully", type: "success" });
     } catch (err) {
-      console.error("Failed to import agent:", err);
+      logger.error("Failed to import agent:", err);
       const errorMessage = err instanceof Error ? err.message : "Failed to import agent";
       setToast({ message: errorMessage, type: "error" });
     }

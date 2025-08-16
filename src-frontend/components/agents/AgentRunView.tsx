@@ -21,6 +21,7 @@ import { MessageRouter } from "@/components/messages";
 import { ICON_MAP as AGENT_ICONS, ErrorBoundary } from "@/components/common";
 import type { ClaudeStreamMessage } from "@/hooks/useAgentExecution";
 import { DebugLabel } from "@/components/ui/atoms";
+import { logger } from '@/lib/logger';
 
 interface AgentRunViewProps {
   /**
@@ -68,10 +69,10 @@ export const AgentRunView: React.FC<AgentRunViewProps> = ({
       // If we have a session_id, try to load from JSONL file first
       if (runData.session_id && runData.session_id !== '') {
         try {
-          const history = await api.loadAgentSessionHistory(runData.session_id);
+          const historyResult = await api.loadAgentSessionHistory(runData.session_id);
           
           // Convert history to messages format
-          const loadedMessages: ClaudeStreamMessage[] = history.map(entry => ({
+          const loadedMessages: ClaudeStreamMessage[] = historyResult.messages.map(entry => ({
             ...entry,
             type: entry.type || "assistant"
           }));
@@ -79,7 +80,7 @@ export const AgentRunView: React.FC<AgentRunViewProps> = ({
           setMessages(loadedMessages);
           return;
         } catch (err) {
-          console.warn('Failed to load from JSONL, falling back to output field:', err);
+          logger.warn('Failed to load from JSONL, falling back to output field:', err);
         }
       }
       
@@ -93,14 +94,14 @@ export const AgentRunView: React.FC<AgentRunViewProps> = ({
             const msg = JSON.parse(line) as ClaudeStreamMessage;
             parsedMessages.push(msg);
           } catch (err) {
-            console.error("Failed to parse line:", line, err);
+            logger.error("Failed to parse line:", line, err);
           }
         }
         
         setMessages(parsedMessages);
       }
     } catch (err) {
-      console.error("Failed to load run:", err);
+      logger.error("Failed to load run:", err);
       setError("Failed to load execution details");
     } finally {
       setLoading(false);
@@ -175,7 +176,7 @@ export const AgentRunView: React.FC<AgentRunViewProps> = ({
 
   const handleStop = async () => {
     if (!runId) {
-      console.error('[AgentRunView] No run ID available to stop');
+      logger.error('[AgentRunView] No run ID available to stop');
       return;
     }
 
@@ -210,10 +211,10 @@ export const AgentRunView: React.FC<AgentRunViewProps> = ({
           loadRun();
         }, 1000);
       } else {
-        console.warn(`[AgentRunView] Failed to stop agent session ${runId} - it may have already finished`);
+        logger.warn(`[AgentRunView] Failed to stop agent session ${runId} - it may have already finished`);
       }
     } catch (err) {
-      console.error('[AgentRunView] Failed to stop agent:', err);
+      logger.error('[AgentRunView] Failed to stop agent:', err);
     }
   };
 

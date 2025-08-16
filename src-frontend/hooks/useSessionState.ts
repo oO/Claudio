@@ -2,6 +2,7 @@ import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { api, type Session, type SessionWithContent } from '@/lib/api';
 import type { ClaudeStreamMessage } from '@/components/agents';
 import { useTrackEvent, useComponentMetrics, useWorkflowTracking } from '@/hooks';
+import { logger } from '@/lib/logger';
 
 // Queued prompt type for external use
 export interface QueuedPrompt {
@@ -335,7 +336,7 @@ export function useSessionState({
       // After loading history, we're continuing a conversation
       setIsFirstPrompt(false);
     } catch (err) {
-      console.error("Failed to load session history:", err);
+      logger.error("Failed to load session history:", err);
       setError("Failed to load session history");
     } finally {
       setIsLoading(false);
@@ -359,7 +360,7 @@ export function useSessionState({
           return true;
         }
       } catch (err) {
-        console.error('Failed to check for active sessions:', err);
+        logger.error('Failed to check for active sessions:', err);
       }
     }
     return false;
@@ -473,7 +474,7 @@ export function useSessionState({
       // Clear checkpoint manager when session ends
       if (effectiveSession) {
         api.clearCheckpointManager(effectiveSession.id).catch(err => {
-          console.error("Failed to clear checkpoint manager:", err);
+          logger.error("Failed to clear checkpoint manager:", err);
         });
       }
     };

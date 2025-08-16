@@ -1,6 +1,7 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
+import { logger } from '@/lib/logger';
 
 /**
  * Button variants configuration using class-variance-authority
@@ -45,7 +46,7 @@ export interface ButtonProps
  * Button component with multiple variants and sizes
  * 
  * @example
- * <Button variant="outline" size="lg" onClick={() => console.log('clicked')}>
+ * <Button variant="outline" size="lg" onClick={() => logger.log('clicked')}>
  *   Click me
  * </Button>
  */

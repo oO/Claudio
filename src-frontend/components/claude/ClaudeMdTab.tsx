@@ -11,6 +11,7 @@ import { Tab } from '@/contexts/TabContext';
 import { DebugLabel } from '@/components/ui/atoms';
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { logger } from '@/lib/logger';
 
 interface ClaudeMdTabProps {
   tab: Tab;
@@ -47,7 +48,7 @@ export const ClaudeMdTab: React.FC<ClaudeMdTabProps> = ({ tab, isActive }) => {
       setContent(prompt);
       setOriginalContent(prompt);
     } catch (err) {
-      console.error("Failed to load system prompt:", err);
+      logger.error("Failed to load system prompt:", err);
       setError("Failed to load CLAUDE.md file");
     } finally {
       setLoading(false);
@@ -64,7 +65,7 @@ export const ClaudeMdTab: React.FC<ClaudeMdTabProps> = ({ tab, isActive }) => {
       markAsSaved(); // Clear the unsaved changes flag
       setToast({ message: "CLAUDE.md saved successfully", type: "success" });
     } catch (err) {
-      console.error("Failed to save system prompt:", err);
+      logger.error("Failed to save system prompt:", err);
       setError("Failed to save CLAUDE.md file");
       setToast({ message: "Failed to save CLAUDE.md", type: "error" });
     } finally {

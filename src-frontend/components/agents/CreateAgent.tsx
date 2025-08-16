@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { ThemedMDEditor } from "@/components/ui";
 import { ExampleEditor, type Example } from "@/components/common";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
+import { logger } from '@/lib/logger';
 
 // Atomic Design System imports
 import { 
@@ -349,7 +350,7 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
       markAsSaved(); // Clear the unsaved changes flag
       onAgentCreated();
     } catch (err) {
-      console.error("Failed to save agent:", err);
+      logger.error("Failed to save agent:", err);
       setError(isEditMode ? "Failed to update agent" : "Failed to create agent");
       setToast({ 
         message: isEditMode ? "Failed to update agent" : "Failed to create agent", 

@@ -18,6 +18,7 @@ import { useTabState } from '@/hooks/useTabState';
 import { formatISOTimestamp } from '@/lib/date-utils';
 import { AgentsContent } from '@/components/agents';
 import { DebugLabel } from '@/components/ui/atoms';
+import { logger } from '@/lib/logger';
 
 
 interface AgentsModalProps {
@@ -68,7 +69,7 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ open, onOpenChange }) 
       
       setRunningAgents(agentRuns);
     } catch (error) {
-      console.error('Failed to load running agents:', error);
+      logger.error('Failed to load running agents:', error);
     }
   };
 
@@ -110,7 +111,7 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ open, onOpenChange }) 
       setAgentToDelete(null);
       setToast({ message: "Agent deleted successfully", type: "success" });
     } catch (error) {
-      console.error('Failed to delete agent:', error);
+      logger.error('Failed to delete agent:', error);
       setToast({ message: "Failed to delete agent", type: "error" });
     }
   };

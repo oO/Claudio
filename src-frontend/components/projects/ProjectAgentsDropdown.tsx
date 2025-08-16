@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { api, type Agent } from "@/lib/api";
 import { AgentCard } from "@/components/agents";
 import { DebugLabel } from "@/components/ui/atoms";
+import { logger } from '@/lib/logger';
 
 interface ProjectAgentsDropdownProps {
   /**
@@ -49,7 +50,7 @@ interface ProjectAgentsDropdownProps {
  * @example
  * <ProjectAgentsDropdown
  *   projectPath="/Users/example/project"
- *   onExecuteAgent={(agent) => console.log('Execute agent:', agent)}
+ *   onExecuteAgent={(agent) => logger.log('Execute agent:', agent)}
  * />
  */
 export const ProjectAgentsDropdown: React.FC<ProjectAgentsDropdownProps> = ({
@@ -81,7 +82,7 @@ export const ProjectAgentsDropdown: React.FC<ProjectAgentsDropdownProps> = ({
       const foundAgents = await api.listAgents(projectPath);
       setAgents(foundAgents);
     } catch (err) {
-      console.error("Failed to load project agents:", err);
+      logger.error("Failed to load project agents:", err);
       setError("Failed to load project agents");
     } finally {
       setLoading(false);

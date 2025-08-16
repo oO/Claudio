@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { api, type ClaudeSettings } from "@/lib/api";
+import { logger } from '@/lib/logger';
 
 export interface PermissionRule {
   id: string;
@@ -77,7 +78,7 @@ export const useSettingsState = (
       
       // Ensure loadedSettings is an object
       if (!loadedSettings || typeof loadedSettings !== 'object') {
-        console.warn("Loaded settings is not an object:", loadedSettings);
+        logger.warn("Loaded settings is not an object:", loadedSettings);
         setSettings({});
         return;
       }
@@ -119,7 +120,7 @@ export const useSettingsState = (
         setOriginalEnvVars(parsedEnvVars);
       }
     } catch (err) {
-      console.error("Failed to load settings:", err);
+      logger.error("Failed to load settings:", err);
       setError("Failed to load settings. Please ensure ~/.claude directory exists.");
       setSettings({});
     } finally {
@@ -180,7 +181,7 @@ export const useSettingsState = (
 
       onSaveComplete?.(true, "Settings saved successfully!");
     } catch (err) {
-      console.error("Failed to save settings:", err);
+      logger.error("Failed to save settings:", err);
       setError("Failed to save settings.");
       onSaveComplete?.(false, "Failed to save settings");
     } finally {

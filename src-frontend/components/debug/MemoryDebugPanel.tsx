@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { GripHorizontal, X } from 'lucide-react';
 import type { MemorySnapshot } from '@/hooks/useMemoryMonitor';
 import { api } from '@/lib/api';
+import { logger } from '@/lib/logger';
 
 interface MemoryDebugPanelProps {
   currentMemory: MemorySnapshot | null;
@@ -35,9 +36,9 @@ export const MemoryDebugPanel: React.FC<MemoryDebugPanelProps> = ({
     try {
       const currentState = await api.getCurrentWindowState();
       await api.saveWindowState(currentState);
-      console.log('Window state saved manually:', currentState);
+      logger.log('Window state saved manually:', currentState);
     } catch (error) {
-      console.error('Failed to save window state manually:', error);
+      logger.error('Failed to save window state manually:', error);
     }
   };
 

@@ -14,6 +14,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { type FloatingPromptInputRef } from "./FloatingPromptInput";
 import { ErrorBoundary } from "@/components/common";
 import { DebugLabel } from "@/components/ui/atoms";
+import { logger } from '@/lib/logger';
 
 // Import extracted components
 import { useSessionState } from "@/hooks/useSessionState";
@@ -155,7 +156,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   
   // Debug logging
   useEffect(() => {
-    console.log(`ClaudeCodeSession DEBUG:
+    logger.log(`ClaudeCodeSession DEBUG:
       - raw messages.length: ${messages.length}
       - displayableMessages.length: ${displayableMessages.length} 
       - actualDisplayedMessageCount from SessionMessages: ${actualDisplayedMessageCount}`);
@@ -204,7 +205,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
         setError(null);
       }
     } catch (err) {
-      console.error("Failed to select directory:", err);
+      logger.error("Failed to select directory:", err);
       const errorMessage = err instanceof Error ? err.message : String(err);
       setError(`Failed to select directory: ${errorMessage}`);
     }
@@ -232,7 +233,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
       // Reload session data
       await loadSessionHistory();
     } catch (error) {
-      console.error('Failed to refresh session:', error);
+      logger.error('Failed to refresh session:', error);
       setError('Failed to refresh session data');
     }
   }, [session, loadSessionHistory, setError]);
@@ -251,12 +252,12 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   
   // Scroll navigation for virtualized messages
   const scrollToTop = useCallback(() => {
-    console.log('Scrolling to top via SessionMessages ref');
+    logger.log('Scrolling to top via SessionMessages ref');
     sessionMessagesRef.current?.scrollToTop();
   }, []);
   
   const scrollToBottom = useCallback(() => {
-    console.log('Scrolling to bottom via SessionMessages ref');
+    logger.log('Scrolling to bottom via SessionMessages ref');
     sessionMessagesRef.current?.scrollToBottom();
   }, []);
   

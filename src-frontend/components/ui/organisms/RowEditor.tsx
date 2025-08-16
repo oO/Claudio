@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ColumnInfo } from "@/components/ui/organisms/DataTable";
+import { logger } from '@/lib/logger';
 
 export interface RowEditorProps {
   isOpen: boolean;
@@ -57,7 +58,7 @@ export const RowEditor: React.FC<RowEditorProps> = ({
       await onSave(formData);
     } catch (error) {
       // Error handling should be done by parent component
-      console.error("Row editor save error:", error);
+      logger.error("Row editor save error:", error);
     }
   };
 

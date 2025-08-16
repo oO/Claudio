@@ -20,6 +20,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { logger } from '@/lib/logger';
 
 export interface QueryResult {
   columns: string[];
@@ -70,7 +71,7 @@ export const SqlEditor: React.FC<SqlEditorProps> = ({
       const queryResult = await onExecute(query);
       setResult(queryResult);
     } catch (err) {
-      console.error("SQL execution error:", err);
+      logger.error("SQL execution error:", err);
       setError(err instanceof Error ? err.message : "Failed to execute SQL");
       setResult(null);
     } finally {

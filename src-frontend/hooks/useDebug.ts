@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { logger } from '@/lib/logger';
 
 /**
  * Hook for debug mode - shows component labels and other debug info
@@ -17,12 +18,12 @@ export const useDebug = () => {
       const newDebugMode = !isDebugMode;
       setIsDebugMode(newDebugMode);
       localStorage.setItem("claudio_debug_mode", newDebugMode.toString());
-      console.log(`Debug mode ${newDebugMode ? "enabled" : "disabled"}`);
+      logger.log(`Debug mode ${newDebugMode ? "enabled" : "disabled"}`);
     };
 
     // Log current debug state
     if (debugFlag === "true") {
-      console.log("Debug mode is enabled. Use toggleDebug() in console to disable.");
+      logger.log("Debug mode is enabled. Use toggleDebug() in console to disable.");
     }
   }, [isDebugMode]);
 
@@ -32,7 +33,7 @@ export const useDebug = () => {
       const newDebugMode = !isDebugMode;
       setIsDebugMode(newDebugMode);
       localStorage.setItem("claudio_debug_mode", newDebugMode.toString());
-      console.log(`Debug mode ${newDebugMode ? "enabled" : "disabled"}`);
+      logger.log(`Debug mode ${newDebugMode ? "enabled" : "disabled"}`);
     }
   };
 };

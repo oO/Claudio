@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { SelectComponent } from "@/components/ui/select";
 import { DebugLabel } from "@/components/ui/atoms";
 import { api } from "@/lib/api";
+import { logger } from '@/lib/logger';
 
 interface MCPImportExportProps {
   /**
@@ -62,7 +63,7 @@ export const MCPImportExport: React.FC<MCPImportExportProps> = ({
         onImportCompleted(result.imported_count, result.failed_count);
       }
     } catch (error: any) {
-      console.error("Failed to import from Claude Desktop:", error);
+      logger.error("Failed to import from Claude Desktop:", error);
       onError(error.toString() || "Failed to import from Claude Desktop");
     } finally {
       setImportingDesktop(false);
@@ -131,7 +132,7 @@ export const MCPImportExport: React.FC<MCPImportExportProps> = ({
         onError("Unrecognized JSON format. Expected MCP server configuration.");
       }
     } catch (error) {
-      console.error("Failed to import JSON:", error);
+      logger.error("Failed to import JSON:", error);
       onError("Failed to import JSON file");
     } finally {
       setImportingJson(false);
@@ -156,7 +157,7 @@ export const MCPImportExport: React.FC<MCPImportExportProps> = ({
       await api.mcpServe();
       onError("Claude Code MCP server started. You can now connect to it from other applications.");
     } catch (error) {
-      console.error("Failed to start MCP server:", error);
+      logger.error("Failed to start MCP server:", error);
       onError("Failed to start Claude Code as MCP server");
     }
   };

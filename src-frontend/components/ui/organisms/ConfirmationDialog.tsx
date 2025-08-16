@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ActionButton } from "@/components/ui/atoms/ActionButton";
+import { logger } from '@/lib/logger';
 
 export interface ConfirmationDialogProps {
   isOpen: boolean;
@@ -43,7 +44,7 @@ export const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
       await onConfirm();
     } catch (error) {
       // Error handling should be done by parent component
-      console.error("Confirmation dialog error:", error);
+      logger.error("Confirmation dialog error:", error);
     }
   };
 

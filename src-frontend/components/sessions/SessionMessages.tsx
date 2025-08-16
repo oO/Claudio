@@ -5,6 +5,7 @@ import { MessageRouter } from '../messages';
 import { StreamDataProvider } from '@/contexts/StreamDataContext';
 import { LinkNotificationProvider } from '@/contexts/LinkNotificationContext';
 import { DebugLabel } from '@/components/ui/atoms';
+import { logger } from '@/lib/logger';
 import type { ClaudeStreamMessage } from '@/components/agents';
 
 interface SessionMessagesProps {
@@ -66,14 +67,14 @@ export const SessionMessages = forwardRef<SessionMessagesRef, SessionMessagesPro
   // Expose scroll methods via ref
   useImperativeHandle(ref, () => ({
     scrollToTop: () => {
-      console.log('Scrolling virtualizer to top (index 0)');
+      logger.log('Scrolling virtualizer to top (index 0)');
       if (displayableMessages.length > 0) {
         rowVirtualizer.scrollToIndex(0, { align: 'start' });
         setIsPinnedToBottom(false);
       }
     },
     scrollToBottom: () => {
-      console.log('Scrolling virtualizer to bottom (index', displayableMessages.length - 1, ')');
+      logger.log('Scrolling virtualizer to bottom (index', displayableMessages.length - 1, ')');
       if (displayableMessages.length > 0) {
         rowVirtualizer.scrollToIndex(displayableMessages.length - 1, { align: 'end' });
         setIsPinnedToBottom(true);
@@ -91,7 +92,7 @@ export const SessionMessages = forwardRef<SessionMessagesRef, SessionMessagesPro
     const firstMsgNum = messageNumbers[0];
     const lastMsgNum = messageNumbers[messageNumbers.length - 1];
     
-    console.log(`SessionMessages DEBUG:
+    logger.log(`SessionMessages DEBUG:
       - displayableMessages.length: ${totalDisplayableCount}
       - virtual items rendered: ${actualRenderedCount}
       - virtual items range: ${virtualItems.length > 0 ? `${virtualItems[0].index}-${virtualItems[virtualItems.length - 1].index}` : 'none'}
@@ -120,7 +121,7 @@ export const SessionMessages = forwardRef<SessionMessagesRef, SessionMessagesPro
     const hasNewMessages = displayableMessages.length > previousMessageCountRef.current;
     
     if (hasNewMessages && isPinnedToBottom && !isLoading) {
-      console.log(`Auto-scrolling to new message: ${displayableMessages.length}`);
+      logger.log(`Auto-scrolling to new message: ${displayableMessages.length}`);
       setTimeout(() => {
         rowVirtualizer.scrollToIndex(displayableMessages.length - 1, { align: 'end' });
       }, 100); // Small delay to ensure content is rendered

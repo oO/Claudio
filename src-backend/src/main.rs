@@ -33,6 +33,8 @@ use commands::claude::{
     // Session watcher functionality
     init_session_watcher, start_session_watching, stop_session_watching, 
     stop_all_session_watching, get_session_watching_status,
+    // Frontend debug logging
+    log_frontend_debug,
 };
 use commands::mcp::{
     mcp_add, mcp_add_from_claude_desktop, mcp_add_json, mcp_get, mcp_get_server_status, mcp_list,
@@ -329,6 +331,9 @@ fn main() {
             stop_session_watching,
             stop_all_session_watching,
             get_session_watching_status,
+            
+            // Frontend Debug Logging
+            log_frontend_debug,
             
         ])
         .run(tauri::generate_context!())

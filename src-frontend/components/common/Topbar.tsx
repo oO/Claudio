@@ -8,6 +8,7 @@ import { LoadingSpinner } from "@/components/ui/atoms/LoadingSpinner";
 import { DebugLabel } from "@/components/ui/atoms";
 import { api, type ClaudeVersionStatus } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { logger } from '@/lib/logger';
 
 interface TopbarProps {
   /**
@@ -80,7 +81,7 @@ export const Topbar: React.FC<TopbarProps> = ({
         window.dispatchEvent(new CustomEvent('claude-not-found'));
       }
     } catch (err) {
-      console.error("Failed to check Claude version:", err);
+      logger.error("Failed to check Claude version:", err);
       setVersionStatus({
         is_installed: false,
         output: "Failed to check version",

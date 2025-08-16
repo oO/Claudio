@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import type { Session, ClaudeMdFile, Agent } from "@/lib/api";
 import { api } from "@/lib/api";
 import { DebugLabel } from "@/components/ui/atoms";
+import { logger } from '@/lib/logger';
 import { 
   ProjectSessionTab,
   ProjectMemoriesTab,
@@ -142,7 +143,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
       setDeleteDialogOpen(false);
       setSessionToDelete(null);
     } catch (error) {
-      console.error("Failed to delete session:", error);
+      logger.error("Failed to delete session:", error);
       // Could add toast notification here
     } finally {
       setIsDeleting(false);

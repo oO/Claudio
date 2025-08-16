@@ -15,6 +15,7 @@ import {
   QueryResult
 } from "@/components/ui/organisms";
 import { TableInfo } from "@/components/ui/molecules";
+import { logger } from '@/lib/logger';
 
 interface StorageTableInfo extends TableInfo {
   columns: ColumnInfo[];
@@ -71,7 +72,7 @@ export const StorageTab: React.FC = () => {
         setSelectedTable(result[0].name);
       }
     } catch (err) {
-      console.error("Failed to load tables:", err);
+      logger.error("Failed to load tables:", err);
       setError("Failed to load tables");
     } finally {
       setLoading(false);
@@ -96,7 +97,7 @@ export const StorageTab: React.FC = () => {
       setTableData(result);
       setCurrentPage(page);
     } catch (err) {
-      console.error("Failed to load table data:", err);
+      logger.error("Failed to load table data:", err);
       setError("Failed to load table data");
     } finally {
       setLoading(false);
@@ -147,7 +148,7 @@ export const StorageTab: React.FC = () => {
         type: "success",
       });
     } catch (err) {
-      console.error("Failed to update row:", err);
+      logger.error("Failed to update row:", err);
       setError("Failed to update row");
       setToast({
         message: "Failed to update row",
@@ -175,7 +176,7 @@ export const StorageTab: React.FC = () => {
         type: "success",
       });
     } catch (err) {
-      console.error("Failed to delete row:", err);
+      logger.error("Failed to delete row:", err);
       setError("Failed to delete row");
       setToast({
         message: "Failed to delete row",
@@ -202,7 +203,7 @@ export const StorageTab: React.FC = () => {
         type: "success",
       });
     } catch (err) {
-      console.error("Failed to insert row:", err);
+      logger.error("Failed to insert row:", err);
       setError("Failed to insert row");
       setToast({
         message: "Failed to insert row",
@@ -246,7 +247,7 @@ export const StorageTab: React.FC = () => {
         type: "success",
       });
     } catch (err) {
-      console.error("Failed to reset database:", err);
+      logger.error("Failed to reset database:", err);
       setError("Failed to reset database");
       setToast({
         message: "Reset Failed: Failed to reset the database. Please try again.",

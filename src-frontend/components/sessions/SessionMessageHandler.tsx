@@ -3,6 +3,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { api } from "@/lib/api";
 import { DebugLabel } from "@/components/ui/atoms";
 import type { ClaudeStreamMessage } from "@/components/agents";
+import { logger } from '@/lib/logger';
 
 interface SessionMessageHandlerProps {
   claudeSessionId: string | null;
@@ -92,12 +93,12 @@ const SessionMessageHandlerComponent: React.FC<SessionMessageHandlerProps> = ({
         updateSessionMetrics(message);
         setMessages(prev => [...prev, message]);
       } catch (err) {
-        console.error("Failed to parse message:", err, event.payload);
+        logger.error("Failed to parse message:", err, event.payload);
       }
     });
 
     const errorUnlisten = await listen<string>(`claude-error:${sessionId}`, (event) => {
-      console.error("Claude error:", event.payload);
+      logger.error("Claude error:", event.payload);
       if (isMountedRef.current) {
         setError(event.payload);
       }
@@ -230,7 +231,7 @@ const SessionMessageHandlerComponent: React.FC<SessionMessageHandlerProps> = ({
             
             setMessages((prev) => [...prev, message]);
           } catch (err) {
-            console.error('Failed to parse message:', err, payload);
+            logger.error('Failed to parse message:', err, payload);
           }
         }
 
@@ -303,7 +304,7 @@ const SessionMessageHandlerComponent: React.FC<SessionMessageHandlerProps> = ({
                 setTimelineVersion((v) => v + 1);
               }
             } catch (err) {
-              console.error('Failed to check auto checkpoint:', err);
+              logger.error('Failed to check auto checkpoint:', err);
             }
           }
 
@@ -396,7 +397,7 @@ const SessionMessageHandlerComponent: React.FC<SessionMessageHandlerProps> = ({
         }
       }
     } catch (err) {
-      console.error("Failed to send prompt:", err);
+      logger.error("Failed to send prompt:", err);
       setError("Failed to send prompt");
       setIsLoading(false);
       hasActiveSessionRef.current = false;
@@ -502,7 +503,7 @@ const SessionMessageHandlerComponent: React.FC<SessionMessageHandlerProps> = ({
       };
       setMessages(prev => [...prev, cancelMessage]);
     } catch (err) {
-      console.error("Failed to cancel execution:", err);
+      logger.error("Failed to cancel execution:", err);
       
       // Even if backend fails, update UI to reflect stopped state
       const errorMessage: ClaudeStreamMessage = {

@@ -9,6 +9,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import { open } from "@tauri-apps/plugin-shell";
 import { ToolWidgetTemplate } from "./ToolWidgetTemplate";
+import { logger } from '@/lib/logger';
 
 /**
  * Component to render parsed web search results with proper formatting
@@ -38,7 +39,7 @@ const WebSearchResultsContent: React.FC<{
     try {
       await open(url);
     } catch (error) {
-      console.error('Failed to open URL:', error);
+      logger.error('Failed to open URL:', error);
     }
   };
 

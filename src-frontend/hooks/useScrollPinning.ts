@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
+import { logger } from '@/lib/logger';
 
 interface UseScrollPinningOptions {
   messageCount: number;
@@ -46,21 +47,21 @@ export function useScrollPinning({
       document.documentElement.clientHeight
     );
     
-    console.log('=== SCROLL TO BOTTOM DEBUG ===');
-    console.log('document.documentElement.scrollHeight:', document.documentElement.scrollHeight);
-    console.log('document.body.scrollHeight:', document.body.scrollHeight);
-    console.log('Max scroll height:', scrollHeight);
-    console.log('Current scroll position:', window.pageYOffset);
-    console.log('Window height:', window.innerHeight);
-    console.log('Can scroll?', scrollHeight > window.innerHeight);
+    logger.log('=== SCROLL TO BOTTOM DEBUG ===');
+    logger.log('document.documentElement.scrollHeight:', document.documentElement.scrollHeight);
+    logger.log('document.body.scrollHeight:', document.body.scrollHeight);
+    logger.log('Max scroll height:', scrollHeight);
+    logger.log('Current scroll position:', window.pageYOffset);
+    logger.log('Window height:', window.innerHeight);
+    logger.log('Can scroll?', scrollHeight > window.innerHeight);
     
     // Calculate the maximum scrollable distance
     const maxScroll = scrollHeight - window.innerHeight;
-    console.log('Max scrollable distance:', maxScroll);
+    logger.log('Max scrollable distance:', maxScroll);
     
     if (maxScroll > 0) {
       // Try different scroll methods
-      console.log('Attempting to scroll to:', maxScroll);
+      logger.log('Attempting to scroll to:', maxScroll);
       
       // Method 1: window.scrollTo
       window.scrollTo({
@@ -71,10 +72,10 @@ export function useScrollPinning({
       // Method 2: Direct property assignment (fallback)
       setTimeout(() => {
         document.documentElement.scrollTop = maxScroll;
-        console.log('After scroll attempt, position:', window.pageYOffset);
+        logger.log('After scroll attempt, position:', window.pageYOffset);
       }, 500);
     } else {
-      console.log('Content is not tall enough to scroll');
+      logger.log('Content is not tall enough to scroll');
     }
     
     setIsPinnedToBottom(true);
@@ -82,8 +83,8 @@ export function useScrollPinning({
 
   // Scroll to top smoothly  
   const scrollToTop = useCallback(() => {
-    console.log('Scrolling to top');
-    console.log('Current scroll position:', window.pageYOffset);
+    logger.log('Scrolling to top');
+    logger.log('Current scroll position:', window.pageYOffset);
     
     // Try multiple scroll methods
     window.scrollTo({

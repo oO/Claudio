@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, type SystemMemoryInfo } from '@/lib/api';
+import { logger } from '@/lib/logger';
 
 export interface MemorySnapshot {
   timestamp: number;
@@ -72,7 +73,7 @@ export const useMemoryMonitor = (options: MemoryMonitorOptions = {}) => {
           ...additionalData
         };
       } catch (error) {
-        console.warn('Failed to get system memory info:', error);
+        logger.warn('Failed to get system memory info:', error);
         
         // Final fallback with reasonable estimates
         browserMemory = {
@@ -128,11 +129,11 @@ export const useMemoryMonitor = (options: MemoryMonitorOptions = {}) => {
       logMsg += ` | Virtual Items: ${virtualizedItems}`;
     }
 
-    console.log(logMsg);
+    logger.log(logMsg);
 
     // Warn if memory usage is high
     if (parseFloat(usage) > 80) {
-      console.warn(`⚠️ High memory usage detected: ${usage}%`);
+      logger.warn(`⚠️ High memory usage detected: ${usage}%`);
     }
 
     // Set baseline if not set
@@ -143,7 +144,7 @@ export const useMemoryMonitor = (options: MemoryMonitorOptions = {}) => {
     // Check growth from baseline
     const growthFromBaseline = usedJSHeapSize - baselineRef.current;
     if (growthFromBaseline > leakThresholdRef.current) {
-      console.warn(`🚨 Potential memory leak: ${formatBytes(growthFromBaseline)} growth from baseline`);
+      logger.warn(`🚨 Potential memory leak: ${formatBytes(growthFromBaseline)} growth from baseline`);
     }
   };
 
@@ -164,7 +165,7 @@ export const useMemoryMonitor = (options: MemoryMonitorOptions = {}) => {
           if (leakDetected !== isLeakDetected) {
             setIsLeakDetected(leakDetected);
             if (leakDetected && logToConsole) {
-              console.error('🔥 MEMORY LEAK DETECTED - Memory consistently growing!');
+              logger.error('🔥 MEMORY LEAK DETECTED - Memory consistently growing!');
             }
           }
         }
@@ -192,10 +193,10 @@ export const useMemoryMonitor = (options: MemoryMonitorOptions = {}) => {
 
   const forceGC = () => {
     if ((window as any).gc) {
-      console.log('🧹 Forcing garbage collection...');
+      logger.log('🧹 Forcing garbage collection...');
       (window as any).gc();
     } else {
-      console.warn('Garbage collection not available. Start Chrome with --expose-gc flag.');
+      logger.warn('Garbage collection not available. Start Chrome with --expose-gc flag.');
     }
   };
 

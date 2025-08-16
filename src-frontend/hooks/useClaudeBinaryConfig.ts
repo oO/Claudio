@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { api, type ClaudeInstallation } from "@/lib/api";
+import { logger } from '@/lib/logger';
 
 export interface ClaudeBinaryState {
   currentBinaryPath: string | null;
@@ -38,7 +39,7 @@ export const useClaudeBinaryConfig = (
       const path = await api.getClaudeBinaryPath();
       setCurrentBinaryPath(path);
     } catch (err) {
-      console.error("Failed to load Claude binary path:", err);
+      logger.error("Failed to load Claude binary path:", err);
       setError("Failed to load Claude binary path");
     } finally {
       setLoading(false);
@@ -71,7 +72,7 @@ export const useClaudeBinaryConfig = (
       setBinaryPathChanged(false);
       onPathChanged?.(false);
     } catch (err) {
-      console.error("Failed to save Claude binary path:", err);
+      logger.error("Failed to save Claude binary path:", err);
       setError("Failed to save Claude binary path");
       throw err; // Re-throw so parent can handle
     } finally {

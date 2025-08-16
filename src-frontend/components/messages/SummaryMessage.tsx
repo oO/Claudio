@@ -138,9 +138,10 @@ export const SummaryMessage: React.FC<SummaryMessageProps> = ({ message }) => {
       <MessageTemplate.Header
         IconComponent={Info}
         iconClassName="bg-info"
-        title={titleContent}
+        title="Summary"
         titleClassName="w-full text-info"
       >
+        {titleContent}
         {/* Custom title layout for summary with expand/collapse button */}
         <MessageTemplate.Content>{summaryContent}</MessageTemplate.Content>
       </MessageTemplate.Header>

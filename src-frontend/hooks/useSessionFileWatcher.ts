@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
+import { logger } from '@/lib/logger';
 import type { Session } from '@/lib/api';
 
 /**
@@ -80,8 +81,8 @@ class SessionTabRegistry {
       this.startWatchingProject(projectId);
     }
 
-    console.log(`Registered tab ${tabId} for session ${sessionId} in project ${projectId}`);
-    console.log(`Active sessions for ${projectId}:`, Array.from(this.activeTabs.get(projectId) || []));
+    logger.log(`Registered tab ${tabId} for session ${sessionId} in project ${projectId}`);
+    logger.log(`Active sessions for ${projectId}:`, Array.from(this.activeTabs.get(projectId) || []));
   }
 
   /**
@@ -112,8 +113,8 @@ class SessionTabRegistry {
       }
     }
 
-    console.log(`Unregistered tab ${tabId} for session ${sessionId} in project ${projectId}`);
-    console.log(`Active sessions for ${projectId}:`, Array.from(this.activeTabs.get(projectId) || []));
+    logger.log(`Unregistered tab ${tabId} for session ${sessionId} in project ${projectId}`);
+    logger.log(`Active sessions for ${projectId}:`, Array.from(this.activeTabs.get(projectId) || []));
   }
 
   /**
@@ -135,9 +136,9 @@ class SessionTabRegistry {
     try {
       await invoke('start_session_watching', { projectId });
       this.watchedProjects.add(projectId);
-      console.log(`Started watching session files for project: ${projectId}`);
+      logger.log(`Started watching session files for project: ${projectId}`);
     } catch (error) {
-      console.error(`Failed to start watching project ${projectId}:`, error);
+      logger.error(`Failed to start watching project ${projectId}:`, error);
     }
   }
 
@@ -145,9 +146,9 @@ class SessionTabRegistry {
     try {
       await invoke('stop_session_watching', { projectId });
       this.watchedProjects.delete(projectId);
-      console.log(`Stopped watching session files for project: ${projectId}`);
+      logger.log(`Stopped watching session files for project: ${projectId}`);
     } catch (error) {
-      console.error(`Failed to stop watching project ${projectId}:`, error);
+      logger.error(`Failed to stop watching project ${projectId}:`, error);
     }
   }
 }
@@ -191,7 +192,7 @@ export function useSessionFileWatcher({
 
   // Handle session file events from backend
   const handleSessionFileEvent = useCallback(async (event: SessionFileEvent) => {
-    console.log('Session file event received:', event);
+    logger.log('Session file event received:', event);
 
     // Only handle events for the current project
     if (projectId && event.data.project_id !== projectId) {
@@ -204,7 +205,7 @@ export function useSessionFileWatcher({
         if (sessionTabRegistry.hasActiveTab(event.data.session_id)) {
           // If this is the current session, refresh it
           if (session && event.data.session_id === session.id) {
-            console.log('Current session file modified, refreshing...');
+            logger.log('Current session file modified, refreshing...');
             
             preserveScrollPosition();
             
@@ -212,24 +213,24 @@ export function useSessionFileWatcher({
               await onSessionChanged();
               restoreScrollPosition();
             } catch (error) {
-              console.error('Failed to refresh session after file change:', error);
+              logger.error('Failed to refresh session after file change:', error);
             }
           }
         }
         break;
 
       case 'Created':
-        console.log('New session created:', event.data.session_id);
+        logger.log('New session created:', event.data.session_id);
         onSessionCreated?.(event.data.session_id);
         break;
 
       case 'Removed':
-        console.log('Session removed:', event.data.session_id);
+        logger.log('Session removed:', event.data.session_id);
         onSessionRemoved?.(event.data.session_id);
         break;
 
       default:
-        console.warn('Unknown session file event type:', event.type);
+        logger.warn('Unknown session file event type:', event.type);
     }
   }, [session, projectId, onSessionChanged, onSessionCreated, onSessionRemoved, preserveScrollPosition, restoreScrollPosition]);
 
@@ -270,7 +271,7 @@ export function useSessionFileWatcher({
           }
         }
       } catch (error) {
-        console.error('Failed to setup session file event listener:', error);
+        logger.error('Failed to setup session file event listener:', error);
       }
     };
 
@@ -292,7 +293,7 @@ export function useSessionFileWatcher({
       await onSessionChanged();
       restoreScrollPosition();
     } catch (error) {
-      console.error('Failed to force refresh session:', error);
+      logger.error('Failed to force refresh session:', error);
     }
   }, [onSessionChanged, preserveScrollPosition, restoreScrollPosition]);
 

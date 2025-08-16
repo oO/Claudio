@@ -14,6 +14,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { logger } from '@/lib/logger';
 import {
   formatUnixTimestamp,
   formatISOTimestamp,
@@ -79,7 +80,7 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
     const timeoutId = setTimeout(calculateHeight, 100);
     
     return () => {
-      console.log('🧹 ProjectSessionTab: Cleaning up height calculation listeners');
+      logger.log('🧹 ProjectSessionTab: Cleaning up height calculation listeners');
       window.removeEventListener('resize', calculateHeight);
       clearTimeout(timeoutId);
     };
@@ -105,7 +106,7 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
     element.addEventListener('scroll', handleScroll);
     handleScroll(); // Set initial position
     return () => {
-      console.log('🧹 ProjectSessionTab: Cleaning up scroll listeners');
+      logger.log('🧹 ProjectSessionTab: Cleaning up scroll listeners');
       element.removeEventListener('scroll', handleScroll);
     };
   }, [virtualizer, sessions.length]);

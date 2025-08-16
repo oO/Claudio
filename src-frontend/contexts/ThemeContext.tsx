@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useCallback, useEffect } from 'react';
 import { api } from '../lib/api';
 import { type ThemeMode, getThemeBackgroundColor, getThemeById } from '../lib/themes';
+import { logger } from '@/lib/logger';
 
 // ThemeMode now imported from themes.ts
 
@@ -99,7 +100,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         applyTheme(themeMode, colors);
 
       } catch (error) {
-        console.error('Failed to load theme settings:', error);
+        logger.error('Failed to load theme settings:', error);
         // Apply default theme even if loading fails
         applyTheme('neutral_dark', customColors);
       } finally {
@@ -138,7 +139,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       root.classList.add('dark');
     }
 
-    console.log(`Applied theme: ${themeMode}, Background: ${backgroundColor}, Class: ${themeClass}`);
+    logger.log(`Applied theme: ${themeMode}, Background: ${backgroundColor}, Class: ${themeClass}`);
   }, []);
 
   const setTheme = useCallback(async (newTheme: ThemeMode) => {
@@ -152,7 +153,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // Save to storage
       await api.saveSetting(THEME_STORAGE_KEY, newTheme);
     } catch (error) {
-      console.error('Failed to save theme preference:', error);
+      logger.error('Failed to save theme preference:', error);
     } finally {
       setIsLoading(false);
     }
@@ -173,7 +174,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // Save to storage
       await api.saveSetting(CUSTOM_COLORS_STORAGE_KEY, JSON.stringify(newColors));
     } catch (error) {
-      console.error('Failed to save custom colors:', error);
+      logger.error('Failed to save custom colors:', error);
     } finally {
       setIsLoading(false);
     }

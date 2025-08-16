@@ -902,8 +902,14 @@ pub async fn import_agent_from_github(
     Err("GitHub agent import not yet implemented".to_string())
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SessionHistoryResult {
+    pub messages: Vec<serde_json::Value>,
+    pub session_file_path: String,
+}
+
 #[tauri::command]
-pub async fn load_agent_session_history(session_id: String) -> Result<Vec<serde_json::Value>, String> {
+pub async fn load_agent_session_history(session_id: String) -> Result<SessionHistoryResult, String> {
     // This function can remain as-is since it deals with Claude Code session files
     log::info!("Loading agent session history for session: {}", session_id);
 
@@ -958,7 +964,10 @@ pub async fn load_agent_session_history(session_id: String) -> Result<Vec<serde_
             }
         }
 
-        Ok(messages)
+        Ok(SessionHistoryResult {
+            messages,
+            session_file_path: session_path.to_string_lossy().to_string(),
+        })
     } else {
         Err(format!("Session file not found: {}", session_id))
     }

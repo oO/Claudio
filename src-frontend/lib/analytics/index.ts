@@ -1,6 +1,7 @@
 import posthog from 'posthog-js';
 import { ConsentManager } from './consent';
 import { sanitizers } from './events';
+import { logger } from '@/lib/logger';
 import type { 
   AnalyticsConfig, 
   AnalyticsEvent, 
@@ -60,7 +61,7 @@ class AnalyticsService {
       
       this.initialized = true;
     } catch (error) {
-      console.error('Failed to initialize analytics:', error);
+      logger.error('Failed to initialize analytics:', error);
     }
   }
   
@@ -100,7 +101,7 @@ class AnalyticsService {
         },
       });
     } catch (error) {
-      console.error('Failed to initialize PostHog:', error);
+      logger.error('Failed to initialize PostHog:', error);
     }
   }
   

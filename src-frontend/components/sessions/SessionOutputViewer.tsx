@@ -16,6 +16,9 @@ import { StreamDataProvider } from '@/contexts/StreamDataContext';
 import { LinkNotificationProvider } from '@/contexts/LinkNotificationContext';
 import { ErrorBoundary } from '@/components/common';
 import { DebugLabel } from '@/components/ui/atoms';
+import { useSessionFileWatcher } from '@/hooks/useSessionFileWatcher';
+import { invoke } from '@tauri-apps/api/core';
+import { logger } from '@/lib/logger';
 
 interface SessionOutputViewerProps {
   session: AgentRun;
@@ -94,6 +97,29 @@ export function SessionOutputViewer({ session, onClose, className }: SessionOutp
   }, [messages, hasUserScrolled, isFullscreen]);
 
 
+  const [sessionFilePath, setSessionFilePath] = useState<string | undefined>(undefined);
+
+  // Set up session file watching for real-time updates
+  const projectId = session.project_path?.split('/').pop();
+  const sessionForWatcher = session.session_id && projectId ? {
+    id: session.session_id,
+    project_id: projectId,
+    project_path: session.project_path || '',
+    created_at: Date.now(),
+    modified_at: Date.now()
+  } : undefined;
+  
+  useSessionFileWatcher({
+    session: sessionForWatcher,
+    projectId,
+    onSessionChanged: async () => {
+      logger.log('Session file changed, reloading output...');
+      await loadOutput(true); // Skip cache to get fresh data
+    },
+    enabled: !!session.session_id,
+    tabId: `session-output-${session.id || 'unknown'}`
+  });
+
   const loadOutput = async (skipCache = false) => {
     if (!session.id) return;
 
@@ -117,20 +143,29 @@ export function SessionOutputViewer({ session, onClose, className }: SessionOutp
       // If we have a session_id, try to load from JSONL file first
       if (session.session_id && session.session_id !== '') {
         try {
-          const history = await api.loadAgentSessionHistory(session.session_id);
+          // Extract project_id from project_path (last directory name)
+          const projectId = session.project_path?.split('/').pop();
+          if (!projectId) {
+            throw new Error("Unable to determine project ID from project path");
+          }
+          
+          const sessionWithContent = await api.loadSessionHistory(session.session_id, projectId);
+          
+          // Store the session file path for clipboard functionality
+          setSessionFilePath(sessionWithContent.file_path);
           
           // Convert history to messages format using AgentExecution style
-          const loadedMessages: ClaudeStreamMessage[] = history.map(entry => ({
+          const loadedMessages: ClaudeStreamMessage[] = sessionWithContent.content.map(entry => ({
             ...entry,
             type: entry.type || "assistant"
           }));
           
           setMessages(loadedMessages);
-          setRawJsonlOutput(history.map(h => JSON.stringify(h)));
+          setRawJsonlOutput(sessionWithContent.content.map(h => JSON.stringify(h)));
           
           // Update cache
           setCachedOutput(session.id, {
-            output: history.map(h => JSON.stringify(h)).join('\n'),
+            output: sessionWithContent.content.map(h => JSON.stringify(h)).join('\n'),
             messages: loadedMessages,
             lastUpdated: Date.now(),
             status: session.status
@@ -143,13 +178,13 @@ export function SessionOutputViewer({ session, onClose, className }: SessionOutp
             try {
               await api.streamSessionOutput(session.id);
             } catch (streamError) {
-              console.warn('Failed to start streaming, will poll instead:', streamError);
+              logger.warn('Failed to start streaming, will poll instead:', streamError);
             }
           }
           
           return;
         } catch (err) {
-          console.warn('Failed to load from JSONL, falling back to regular output:', err);
+          logger.warn('Failed to load from JSONL, falling back to regular output:', err);
         }
       }
 
@@ -166,7 +201,7 @@ export function SessionOutputViewer({ session, onClose, className }: SessionOutp
           const message = JSON.parse(line) as ClaudeStreamMessage;
           parsedMessages.push(message);
         } catch (err) {
-          console.error("Failed to parse message:", err, line);
+          logger.error("Failed to parse message:", err, line);
         }
       }
       setMessages(parsedMessages);
@@ -186,11 +221,11 @@ export function SessionOutputViewer({ session, onClose, className }: SessionOutp
         try {
           await api.streamSessionOutput(session.id);
         } catch (streamError) {
-          console.warn('Failed to start streaming, will poll instead:', streamError);
+          logger.warn('Failed to start streaming, will poll instead:', streamError);
         }
       }
     } catch (error) {
-      console.error('Failed to load session output:', error);
+      logger.error('Failed to load session output:', error);
       setToast({ message: 'Failed to load session output', type: 'error' });
     } finally {
       setLoading(false);
@@ -215,12 +250,12 @@ export function SessionOutputViewer({ session, onClose, className }: SessionOutp
           const message = JSON.parse(event.payload) as ClaudeStreamMessage;
           setMessages(prev => [...prev, message]);
         } catch (err) {
-          console.error("Failed to parse message:", err, event.payload);
+          logger.error("Failed to parse message:", err, event.payload);
         }
       });
 
       const errorUnlisten = await listen<string>(`agent-error:${session.id}`, (event) => {
-        console.error("Agent error:", event.payload);
+        logger.error("Agent error:", event.payload);
         setToast({ message: event.payload, type: 'error' });
       });
 
@@ -235,7 +270,7 @@ export function SessionOutputViewer({ session, onClose, className }: SessionOutp
 
       unlistenRefs.current = [outputUnlisten, errorUnlisten, completeUnlisten, cancelUnlisten];
     } catch (error) {
-      console.error('Failed to set up live event listeners:', error);
+      logger.error('Failed to set up live event listeners:', error);
     }
   };
 
@@ -309,7 +344,7 @@ export function SessionOutputViewer({ session, onClose, className }: SessionOutp
       await loadOutput(true); // Skip cache when manually refreshing
       setToast({ message: 'Output refreshed', type: 'success' });
     } catch (error) {
-      console.error('Failed to refresh output:', error);
+      logger.error('Failed to refresh output:', error);
       setToast({ message: 'Failed to refresh output', type: 'error' });
     } finally {
       setRefreshing(false);
@@ -534,9 +569,26 @@ export function SessionOutputViewer({ session, onClose, className }: SessionOutp
                         >
                           <ErrorBoundary>
                             <SessionProvider
-                              projectId={session.project_id}
+                              projectId={(() => {
+                                const projectId = session.project_path?.split('/').pop() || undefined;
+                                const debugData = {
+                                  projectPath: session.project_path,
+                                  projectId,
+                                  sessionId: session.session_id,
+                                  sessionFilePath,
+                                  sessionObject: session,
+                                  timestamp: new Date().toISOString()
+                                };
+                                // Send debug info to backend log
+                                invoke('log_frontend_debug', {
+                                  component: 'SessionProvider',
+                                  data: debugData
+                                }).catch((err: any) => logger.error('Failed to send SessionProvider debug to backend:', err));
+                                
+                                return projectId;
+                              })()}
                               sessionId={session.session_id}
-                              sessionFilePath={session.session_path}
+                              sessionFilePath={sessionFilePath}
                             >
                               <StreamDataProvider streamMessages={messages}>
                                 <LinkNotificationProvider onLinkDetected={() => {}}>
@@ -668,9 +720,19 @@ export function SessionOutputViewer({ session, onClose, className }: SessionOutp
                       >
                         <ErrorBoundary>
                           <SessionProvider
-                            projectId={session.project_id}
+                            projectId={(() => {
+                              const projectId = session.project_path?.split('/').pop() || undefined;
+                              logger.log('SessionProvider fullscreen debug:', {
+                                projectPath: session.project_path,
+                                projectId,
+                                sessionId: session.session_id,
+                                sessionFilePath,
+                                sessionObject: session
+                              });
+                              return projectId;
+                            })()}
                             sessionId={session.session_id}
-                            sessionFilePath={session.session_path}
+                            sessionFilePath={sessionFilePath}
                           >
                             <StreamDataProvider streamMessages={messages}>
                               <LinkNotificationProvider onLinkDetected={() => {}}>

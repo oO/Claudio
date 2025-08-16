@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
+import { logger } from '@/lib/logger';
 
 interface SplitPaneProps {
   /**
@@ -43,7 +44,7 @@ interface SplitPaneProps {
  *   left={<div>Left content</div>}
  *   right={<div>Right content</div>}
  *   initialSplit={60}
- *   onSplitChange={(pos) => console.log('Split at', pos)}
+ *   onSplitChange={(pos) => logger.log('Split at', pos)}
  * />
  */
 export const SplitPane: React.FC<SplitPaneProps> = ({

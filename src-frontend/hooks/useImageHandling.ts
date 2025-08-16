@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
+import { logger } from '@/lib/logger';
 
 export interface UseImageHandlingOptions {
   projectPath?: string;
@@ -213,7 +214,7 @@ export const useImageHandling = ({
           }
         });
       } catch (error) {
-        console.error('Failed to set up Tauri drag-drop listener:', error);
+        logger.error('Failed to set up Tauri drag-drop listener:', error);
       }
     };
 
@@ -278,7 +279,7 @@ export const useImageHandling = ({
           
           reader.readAsDataURL(blob);
         } catch (error) {
-          console.error('Failed to paste image:', error);
+          logger.error('Failed to paste image:', error);
         }
       }
     }

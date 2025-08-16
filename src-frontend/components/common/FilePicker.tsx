@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { DebugLabel } from "@/components/ui/atoms";
 import { api } from "@/lib/api";
+import { logger } from '@/lib/logger';
 import { 
   X, 
   Folder, 
@@ -105,7 +106,7 @@ const formatFileSize = (bytes: number): string => {
  * @example
  * <FilePicker
  *   basePath="/Users/example/project"
- *   onSelect={(entry) => console.log('Selected:', entry)}
+ *   onSelect={(entry) => logger.log('Selected:', entry)}
  *   onClose={() => setShowPicker(false)}
  * />
  */
@@ -299,8 +300,8 @@ export const FilePicker: React.FC<FilePickerProps> = ({
       setIsShowingCached(false);
       setError(null);
     } catch (err) {
-      console.error('[FilePicker] Failed to load directory:', path, err);
-      console.error('[FilePicker] Error details:', err);
+      logger.error('[FilePicker] Failed to load directory:', path, err);
+      logger.error('[FilePicker] Error details:', err);
       // Only set error if we don't have cached data to show
       if (!globalDirectoryCache.has(path)) {
         setError(err instanceof Error ? err.message : 'Failed to load directory');
@@ -337,7 +338,7 @@ export const FilePicker: React.FC<FilePickerProps> = ({
       setIsShowingCached(false);
       setError(null);
     } catch (err) {
-      console.error('[FilePicker] Search failed:', query, err);
+      logger.error('[FilePicker] Search failed:', query, err);
       // Only set error if we don't have cached data to show
       const cacheKey = `${basePath}:${query}`;
       if (!globalSearchCache.has(cacheKey)) {

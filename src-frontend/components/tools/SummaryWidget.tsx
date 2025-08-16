@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Info, MessageSquare } from "lucide-react";
 import { MarkdownRenderer } from "@/components/ui/molecules";
 import { ToolWidgetTemplate } from "./ToolWidgetTemplate";
+import { logger } from '@/lib/logger';
 
 // Constants
 const PREVIEW_LINES = 8; // Number of lines to show when collapsed
@@ -95,22 +96,22 @@ export const SummaryWidget: React.FC<{
                             2,
                           );
                           await navigator.clipboard.writeText(locationJson);
-                          console.log(
+                          logger.log(
                             `Copied message location JSON to clipboard:`,
                             messageLocation,
                           );
                         } catch (error) {
-                          console.error("Failed to copy message location:", error);
+                          logger.error("Failed to copy message location:", error);
                         }
                       } else if (leafUuid) {
                         // Fallback to just UUID if missing data
                         try {
                           await navigator.clipboard.writeText(leafUuid);
-                          console.log(
+                          logger.log(
                             `Copied message UUID to clipboard: ${leafUuid}`,
                           );
                         } catch (error) {
-                          console.error("Failed to copy message UUID:", error);
+                          logger.error("Failed to copy message UUID:", error);
                         }
                       }
                     }}
