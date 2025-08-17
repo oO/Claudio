@@ -51,19 +51,16 @@ export const useWindowState = () => {
     return () => clearTimeout(timeoutId);
   }, [restoreWindowState]);
 
-  // Auto-save periodically and on important events
+  // Auto-save on important events (backend handles move/resize debouncing)
   useEffect(() => {
     const autoSave = async () => {
       try {
         await saveCurrentWindowState();
       } catch (error) {
-        // Silent fail for periodic saves
-        logger.debug('Periodic window state save failed:', error);
+        // Silent fail for event-based saves
+        logger.debug('Event-based window state save failed:', error);
       }
     };
-
-    // Save every 30 seconds
-    const intervalId = setInterval(autoSave, 30000);
 
     // Save on visibility change (user switching apps)
     const handleVisibilityChange = () => {
@@ -75,7 +72,6 @@ export const useWindowState = () => {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      clearInterval(intervalId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [saveCurrentWindowState]);
