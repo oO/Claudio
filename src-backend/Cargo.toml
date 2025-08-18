@@ -1,6 +1,6 @@
 [package]
 name = "claudio"
-version = "0.3.27"
+version = "0.3.28"
 description = "Claude Code Native Agent Manager - A visual interface for managing Claude Code's native subagent system"
 authors = ["oO"]
 license = "AGPL-3.0"
@@ -54,6 +54,7 @@ uuid = { version = "1.6", features = ["v4", "serde"] }
 walkdir = "2"
 serde_yaml = "0.9"
 notify = "6.1"
+portable-pty = "0.9"
 
 
 [target.'cfg(target_os = "macos")'.dependencies]

@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.28] - 2025-08-17
+
+### Performance
+- Added window state debouncing with 500ms delay to reduce unnecessary file I/O
+- Optimized window state saving during move/resize operations
+- Removed redundant periodic saves from frontend hook
+
 ## [0.3.24] - 2025-08-16
 
 ### Fixed

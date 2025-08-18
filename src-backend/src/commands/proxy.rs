@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use crate::commands::claude::get_claude_dir;
+use crate::commands::window::WindowState;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ProxySettings {
@@ -25,6 +26,8 @@ pub struct ClaudioSettings {
     pub claude_binary_path: Option<String>,
     #[serde(default)]
     pub theme: ThemeSettings,
+    #[serde(default)]
+    pub window_state: Option<WindowState>,
     // Future Claudio-specific settings can be added here
     // pub analytics: AnalyticsSettings,
 }
@@ -56,6 +59,7 @@ impl Default for ClaudioSettings {
             proxy: ProxySettings::default(),
             claude_binary_path: None,
             theme: ThemeSettings::default(),
+            window_state: None,
         }
     }
 }

@@ -1,10 +1,9 @@
 use serde::{Deserialize, Serialize};
-use std::fs;
-use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tauri::{command, AppHandle, Manager, PhysicalPosition, PhysicalSize};
 use tokio::time::sleep;
+use crate::commands::proxy::{get_claudio_settings, save_claudio_settings};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WindowState {
@@ -42,27 +41,17 @@ impl Default for WindowState {
     }
 }
 
-fn get_window_state_path() -> Result<PathBuf, String> {
-    let home_dir = dirs::home_dir().ok_or("Could not find home directory")?;
-    let claude_dir = home_dir.join(".claude");
-    
-    // Ensure the directory exists
-    if let Err(e) = fs::create_dir_all(&claude_dir) {
-        return Err(format!("Failed to create .claude directory: {}", e));
-    }
-    
-    Ok(claude_dir.join("claudio-window-state.json"))
-}
 
 #[command]
 pub async fn save_window_state(_app_handle: AppHandle, state: WindowState) -> Result<(), String> {
-    let path = get_window_state_path()?;
+    // Load existing settings
+    let mut settings = get_claudio_settings().await.unwrap_or_default();
     
-    let json = serde_json::to_string_pretty(&state)
-        .map_err(|e| format!("Failed to serialize window state: {}", e))?;
+    // Update window state
+    settings.window_state = Some(state.clone());
     
-    fs::write(&path, json)
-        .map_err(|e| format!("Failed to save window state: {}", e))?;
+    // Save back to file
+    save_claudio_settings(settings).await?;
     
     log::info!("Window state saved: {:?}", state);
     Ok(())
@@ -70,18 +59,11 @@ pub async fn save_window_state(_app_handle: AppHandle, state: WindowState) -> Re
 
 #[command]
 pub async fn load_window_state() -> Result<WindowState, String> {
-    let path = get_window_state_path()?;
+    // Load settings from claudio-settings.json
+    let settings = get_claudio_settings().await.unwrap_or_default();
     
-    if !path.exists() {
-        log::info!("No window state file found, using defaults");
-        return Ok(WindowState::default());
-    }
-    
-    let contents = fs::read_to_string(&path)
-        .map_err(|e| format!("Failed to read window state file: {}", e))?;
-    
-    let state: WindowState = serde_json::from_str(&contents)
-        .map_err(|e| format!("Failed to parse window state: {}", e))?;
+    // Return window state if it exists, otherwise use defaults
+    let state = settings.window_state.unwrap_or_else(WindowState::default);
     
     log::info!("Window state loaded: {:?}", state);
     Ok(state)

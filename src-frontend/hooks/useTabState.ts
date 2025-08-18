@@ -12,7 +12,7 @@ interface UseTabStateReturn {
   agentTabCount: number;
   
   // Operations
-  createChatTab: (projectId?: string, title?: string) => string;
+  createChatTab: (initialProjectPath?: string, title?: string) => string;
   createAgentTab: (agentRunId: string, agentName: string) => string;
   createAgentExecutionTab: (agent: any, tabId: string) => string;
   createProjectsTab: () => string | null;
@@ -62,12 +62,13 @@ export const useTabState = (): UseTabStateReturn => {
   const chatTabCount = useMemo(() => getTabsByType('chat').length, [getTabsByType]);
   const agentTabCount = useMemo(() => getTabsByType('agent').length, [getTabsByType]);
 
-  const createChatTab = useCallback((projectId?: string, title?: string): string => {
+  const createChatTab = useCallback((initialProjectPath?: string, title?: string): string => {
     const tabTitle = title || `Chat ${chatTabCount + 1}`;
     return addTab({
       type: 'chat',
       title: tabTitle,
-      sessionId: projectId,
+      sessionId: undefined, // No sessionId for new sessions
+      initialProjectPath, // Set the project path for new sessions
       status: 'idle',
       hasUnsavedChanges: false,
       icon: 'message-square'
