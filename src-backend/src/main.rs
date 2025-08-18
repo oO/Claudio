@@ -51,6 +51,7 @@ use commands::storage::{
 use commands::proxy::{get_proxy_settings, save_proxy_settings, apply_proxy_settings, get_setting, save_setting};
 use commands::window::{save_window_state, load_window_state, get_current_window_state, restore_window_state, setup_window_state_tracking};
 use commands::system::{get_system_memory_info};
+use commands::claude_sdk::{start_claude_sdk_session, continue_claude_sdk_session, resume_claude_sdk_session, terminate_claude_sdk_session};
 use process::ProcessRegistryState;
 use std::sync::Mutex;
 use tauri::Manager;
@@ -324,6 +325,12 @@ fn main() {
             
             // System Information
             get_system_memory_info,
+            
+            // Claude SDK Integration  
+            start_claude_sdk_session,
+            continue_claude_sdk_session,
+            resume_claude_sdk_session,
+            terminate_claude_sdk_session,
             
             // Session File Watching
             start_session_watching,

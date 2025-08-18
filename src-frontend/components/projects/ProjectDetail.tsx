@@ -12,6 +12,7 @@ import type { Session, ClaudeMdFile, Agent } from "@/lib/api";
 import { api } from "@/lib/api";
 import { DebugLabel } from "@/components/ui/atoms";
 import { logger } from '@/lib/logger';
+import { useTabState } from '@/hooks/useTabState';
 import { 
   ProjectSessionTab,
   ProjectMemoriesTab,
@@ -123,6 +124,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState(initialActiveTab);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const { createClaudeSDKTab } = useTabState();
 
   // Update activeTab when initialActiveTab changes (for restoration)
   useEffect(() => {
@@ -165,6 +167,12 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
     setSessionToDelete(null);
   };
 
+  const handleStartNewSession = () => {
+    logger.log('Starting new Claude Code SDK session for project:', projectPath);
+    const tabId = createClaudeSDKTab(projectPath);
+    logger.log('Created new Claude SDK tab:', tabId);
+  };
+
 
   return (
     <div className={cn("flex flex-col h-full relative", className)}>
@@ -204,6 +212,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
             projectName={projectPath.split("/").pop() || "Project"}
             onSessionClick={onSessionClick}
             onSessionDelete={handleSessionDelete}
+            onStartNewSession={handleStartNewSession}
             onSessionsDeleted={(result) => {
               if (result) {
                 // Show success toast with deletion details

@@ -27,6 +27,7 @@ src-tauri/binaries/
 *.sln
 *.sw?
 temp_lib/
+temp/
 
 .cursor/
 AGENTS.md

@@ -1,5 +1,6 @@
 // Session-related components
 export { ClaudeCodeSession } from './ClaudeCodeSession';
+export { ClaudeCodeSDKSession } from './ClaudeCodeSDKSession';
 export { RunningClaudeSessions } from './RunningClaudeSessions';
 export { ExecutionControlBar } from './ExecutionControlBar';
 export { TimelineNavigator } from './TimelineNavigator';

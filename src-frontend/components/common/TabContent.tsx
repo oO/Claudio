@@ -13,6 +13,7 @@ import { SettingsTab } from "@/components/settings";
 import { UsageTab } from "@/components/dashboard";
 import { MCPTab } from "@/components/mcp";
 import { ClaudeMdTab } from "@/components/claude";
+import { ClaudeCodeSDKSession } from "@/components/sessions";
 import { WelcomeScreen } from "./Welcome";
 import { invoke } from "@tauri-apps/api/core";
 import { prettifyProjectName } from "@/lib/utils";
@@ -138,6 +139,18 @@ const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
         return (
           <NavigationProvider tabId={tab.id}>
             <div className="p-4">Import agent functionality coming soon...</div>
+          </NavigationProvider>
+        );
+
+      case "claude-sdk":
+        return (
+          <NavigationProvider tabId={tab.id}>
+            <ClaudeCodeSDKSession 
+              projectPath={tab.initialProjectPath || "/Users/olivier/Projects/claudio"}
+              onClose={() => {
+                // Could implement close functionality here if needed
+              }}
+            />
           </NavigationProvider>
         );
 

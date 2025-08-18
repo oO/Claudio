@@ -24,6 +24,7 @@ interface UseTabStateReturn {
   createClaudeFileTab: (filePath: string, fileName: string) => string;
   createCreateAgentTab: () => string;
   createImportAgentTab: () => string;
+  createClaudeSDKTab: (projectPath: string) => string;
   closeTab: (id: string, force?: boolean) => Promise<boolean>;
   closeCurrentTab: () => Promise<boolean>;
   switchToTab: (id: string) => void;
@@ -252,6 +253,18 @@ export const useTabState = (): UseTabStateReturn => {
     });
   }, [addTab, tabs, setActiveTab]);
 
+  const createClaudeSDKTab = useCallback((projectPath: string): string => {
+    const projectName = projectPath.split('/').pop() || 'Unknown';
+    return addTab({
+      type: 'claude-sdk',
+      title: `SDK: ${projectName}`,
+      initialProjectPath: projectPath,
+      status: 'idle',
+      hasUnsavedChanges: false,
+      icon: 'zap'
+    });
+  }, [addTab]);
+
   const closeTab = useCallback(async (id: string, force: boolean = false): Promise<boolean> => {
     const tab = getTabById(id);
     if (!tab) return true;
@@ -337,6 +350,7 @@ export const useTabState = (): UseTabStateReturn => {
     createClaudeFileTab,
     createCreateAgentTab,
     createImportAgentTab,
+    createClaudeSDKTab,
     closeTab,
     closeCurrentTab,
     switchToTab: setActiveTab,
