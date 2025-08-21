@@ -78,6 +78,7 @@ export interface ClaudeCodeSessionOptions {
   customSystemPrompt?: string;
   allowedTools?: string[];
   workingDirectory?: string;
+  previous_session_id?: string;
 }
 
 export interface ActiveClaudeSession {
@@ -88,6 +89,7 @@ export interface ActiveClaudeSession {
   startTime: Date;
   lastActivity: Date;
   abortController: AbortController;
+  messageHistory: ClaudeCodeMessage[]; // Track conversation history
 }
 
 /**
@@ -126,7 +128,8 @@ class ClaudeCodeSDKManager {
       isActive: true,
       startTime: new Date(),
       lastActivity: new Date(),
-      abortController
+      abortController,
+      messageHistory: []
     };
 
     this.activeSessions.set(sessionId, session);
@@ -143,14 +146,19 @@ class ClaudeCodeSDKManager {
       logger.debug('Received SDK message:', { sessionId, payload });
 
       if (payload.type === 'claude_sdk_message' && payload.message) {
+        // Store message in history
+        const session = this.activeSessions.get(sessionId);
+        if (session) {
+          session.messageHistory.push(payload.message);
+        }
+        
         onMessage(payload.message);
         
-        // Capture the actual Claude session ID from system messages
+        // Capture the actual Claude session ID from system messages or direct payload
         if (payload.claude_session_id) {
-          const session = this.activeSessions.get(sessionId);
           if (session) {
             session.claudeSessionId = payload.claude_session_id;
-            logger.info('Captured Claude session ID:', { sessionId, claudeSessionId: payload.claude_session_id });
+            logger.info('Updated Claude session ID:', { sessionId, claudeSessionId: payload.claude_session_id });
           }
         }
       } else if (payload.type === 'claude_sdk_error') {
@@ -218,12 +226,20 @@ class ClaudeCodeSDKManager {
         max_turns: options.maxTurns || 5,
         custom_system_prompt: options.customSystemPrompt,
         allowed_tools: options.allowedTools || ['Bash', 'Read', 'Write', 'Edit', 'LS', 'Grep'],
-        working_directory: options.workingDirectory || projectPath
+        working_directory: options.workingDirectory || projectPath,
+        previous_session_id: options.previous_session_id // THIS WAS MISSING! 🔥
       };
 
-      logger.info('Starting Claude Code session via Tauri backend:', sdkOptions);
+      logger.info('🔗 Starting Claude Code session via Tauri backend:', sdkOptions);
+      
+      // Extra debug to confirm previous_session_id makes it through
+      if (sdkOptions.previous_session_id) {
+        logger.info('🎯 RESUME DETECTED: Will use --resume with session ID:', sdkOptions.previous_session_id);
+      } else {
+        logger.info('🆕 FRESH START: No previous session ID');
+      }
 
-      // Start the session via Tauri command
+      // Start the session via Tauri command (now redirects to direct CLI internally)
       await invoke('start_claude_sdk_session', {
         sessionId,
         projectPath,
@@ -268,7 +284,7 @@ class ClaudeCodeSDKManager {
   }
 
   /**
-   * Send additional prompt to existing session using Claude Code's continue mechanism
+   * Send additional prompt to existing session using Claude Code's --resume mechanism
    */
   async sendPromptToSession(sessionId: string, prompt: string): Promise<void> {
     const session = this.activeSessions.get(sessionId);
@@ -276,18 +292,20 @@ class ClaudeCodeSDKManager {
       throw new Error(`No active session found: ${sessionId}`);
     }
 
-    logger.info('Continuing Claude Code conversation:', { sessionId, prompt: prompt.substring(0, 100) });
+    logger.info('Continuing Claude Code conversation with --resume:', { 
+      sessionId, 
+      claudeSessionId: session.claudeSessionId,
+      prompt: prompt.substring(0, 100) 
+    });
     
     try {
-      // Use continue_claude_sdk_session command which sets continue: true
-      await invoke('continue_claude_sdk_session', {
-        sessionId,
+      // Call direct session with previous Claude session ID for --resume
+      await invoke('start_claude_direct_session', {
+        sessionId, // Keep same frontend session ID
         projectPath: session.projectPath,
         prompt,
         options: {
-          max_turns: 5,
-          custom_system_prompt: null,
-          allowed_tools: ['Bash', 'Read', 'Write', 'Edit', 'LS', 'Grep'],
+          previous_session_id: session.claudeSessionId, // This triggers --resume
           working_directory: session.projectPath
         }
       });
@@ -343,6 +361,13 @@ class ClaudeCodeSDKManager {
   }
 
   /**
+   * Get a specific session by ID
+   */
+  getSession(sessionId: string): ActiveClaudeSession | undefined {
+    return this.activeSessions.get(sessionId);
+  }
+
+  /**
    * Check if session is active
    */
   isSessionActive(sessionId: string): boolean {
@@ -350,12 +375,6 @@ class ClaudeCodeSDKManager {
     return session?.isActive || false;
   }
 
-  /**
-   * Get session info
-   */
-  getSession(sessionId: string): ActiveClaudeSession | undefined {
-    return this.activeSessions.get(sessionId);
-  }
 }
 
 // Export singleton instance

@@ -20,7 +20,7 @@ pub struct ClaudeSDKMessage {
     pub session_id: String,
 }
 
-/// Start a new Claude Code SDK session through Node.js
+/// Start a new Claude Code SDK session - now redirects to direct CLI approach
 #[command]
 pub async fn start_claude_sdk_session(
     app: AppHandle,
@@ -29,62 +29,27 @@ pub async fn start_claude_sdk_session(
     prompt: String,
     options: ClaudeSDKOptions,
 ) -> Result<(), String> {
-    log::info!("Starting new Claude SDK session: {} at {}", session_id, project_path);
-
-    // Get the path to Claudio's directory for module resolution
-    let claudio_project_path = std::env::current_dir()
-        .map_err(|e| format!("Failed to get current directory: {}", e))?;
-
-    // Create a single-use Node.js script using the actual Claude Code SDK API
-    let script_content = format!(
-        r#"
-import {{ query }} from '@anthropic-ai/claude-code';
-
-const sessionId = '{}';
-const prompt = `{}`;
-
-const options = {{
-    maxTurns: {},
-    customSystemPrompt: {},
-    allowedTools: {},
-    cwd: '{}'
-}};
-
-try {{
-    for await (const message of query({{ prompt, options }})) {{
-        console.log(JSON.stringify({{
-            type: 'claude_sdk_message',
-            session_id: sessionId,
-            message: message
-        }}));
-    }}
-}} catch (error) {{
-    console.log(JSON.stringify({{
-        type: 'claude_sdk_error',
-        session_id: sessionId,
-        error: error.message
-    }}));
-}}
-"#,
-        session_id,
-        prompt.replace('`', r#"\`"#),
-        options.max_turns.unwrap_or(5),
-        options.custom_system_prompt.as_ref()
-            .map(|s| format!("'{}'", s.replace('\'', r#"\'"#)))
-            .unwrap_or_else(|| "null".to_string()),
-        serde_json::to_string(&options.allowed_tools.unwrap_or_else(|| vec!["Bash".to_string(), "Read".to_string(), "Write".to_string()]))
-            .unwrap_or_else(|_| "[]".to_string()),
-        options.working_directory.as_ref()
-            .map(|s| s.replace('\'', r#"\'"#))
-            .unwrap_or_else(|| project_path.clone())
-    );
+    log::info!("Redirecting to direct Claude CLI approach: {} at {}", session_id, project_path);
+    
+    // Convert SDK options to direct CLI options
+    use crate::commands::claude_direct::{start_claude_direct_session, ClaudeDirectOptions};
+    
+    let direct_options = ClaudeDirectOptions {
+        max_turns: options.max_turns,
+        custom_system_prompt: options.custom_system_prompt,
+        allowed_tools: options.allowed_tools,
+        working_directory: options.working_directory,
+    };
+    
+    // Call the direct CLI function instead
+    start_claude_direct_session(app, session_id, project_path, prompt, direct_options).await
 
     // Write script to Claudio's temp directory for proper module resolution
     let temp_dir = claudio_project_path.join("temp");
     tokio::fs::create_dir_all(&temp_dir)
         .await
         .map_err(|e| format!("Failed to create temp directory: {}", e))?;
-    let script_path = temp_dir.join(format!("claude_sdk_{}.js", session_id));
+    let script_path = temp_dir.join(format!("claude_sdk_{}.mjs", session_id));
     
     tokio::fs::write(&script_path, script_content)
         .await
@@ -118,7 +83,14 @@ try {{
             // Try to parse the line as JSON message
             if let Ok(message) = serde_json::from_str::<serde_json::Value>(&line.trim()) {
                 // Debug: Log the message structure to understand the format
-                log::debug!("Claude SDK message structure: {}", serde_json::to_string_pretty(&message).unwrap_or_else(|_| "Invalid JSON".to_string()));
+                log::info!("Claude SDK message: {}", serde_json::to_string_pretty(&message).unwrap_or_else(|_| "Invalid JSON".to_string()));
+                
+                // Handle debug messages specifically
+                if message.get("type") == Some(&serde_json::Value::String("claude_sdk_debug".to_string())) {
+                    if let Some(debug_msg) = message.get("message") {
+                        log::info!("🔍 Claude SDK Debug: {}", debug_msg.as_str().unwrap_or(""));
+                    }
+                }
                 
                 // Extract and preserve the actual Claude session ID
                 let mut enriched_message = message.clone();
@@ -158,7 +130,7 @@ try {{
             }
 
             if !line.trim().is_empty() {
-                log::warn!("Claude SDK stderr: {}", line.trim());
+                log::error!("Claude SDK stderr: {}", line.trim());
                 let _ = app_stderr.emit(
                     &format!("claude-sdk-error:{}", session_id_stderr),
                     serde_json::json!({
@@ -266,7 +238,7 @@ try {{
     tokio::fs::create_dir_all(&temp_dir)
         .await
         .map_err(|e| format!("Failed to create temp directory: {}", e))?;
-    let script_path = temp_dir.join(format!("claude_sdk_continue_{}.js", session_id));
+    let script_path = temp_dir.join(format!("claude_sdk_continue_{}.mjs", session_id));
     
     tokio::fs::write(&script_path, script_content)
         .await
@@ -300,7 +272,14 @@ try {{
             // Try to parse the line as JSON message
             if let Ok(message) = serde_json::from_str::<serde_json::Value>(&line.trim()) {
                 // Debug: Log the message structure to understand the format
-                log::debug!("Claude SDK message structure: {}", serde_json::to_string_pretty(&message).unwrap_or_else(|_| "Invalid JSON".to_string()));
+                log::info!("Claude SDK message: {}", serde_json::to_string_pretty(&message).unwrap_or_else(|_| "Invalid JSON".to_string()));
+                
+                // Handle debug messages specifically
+                if message.get("type") == Some(&serde_json::Value::String("claude_sdk_debug".to_string())) {
+                    if let Some(debug_msg) = message.get("message") {
+                        log::info!("🔍 Claude SDK Debug: {}", debug_msg.as_str().unwrap_or(""));
+                    }
+                }
                 
                 // Extract and preserve the actual Claude session ID
                 let mut enriched_message = message.clone();
@@ -340,7 +319,7 @@ try {{
             }
 
             if !line.trim().is_empty() {
-                log::warn!("Claude SDK stderr: {}", line.trim());
+                log::error!("Claude SDK stderr: {}", line.trim());
                 let _ = app_stderr.emit(
                     &format!("claude-sdk-error:{}", session_id_stderr),
                     serde_json::json!({
@@ -450,7 +429,7 @@ try {{
     tokio::fs::create_dir_all(&temp_dir)
         .await
         .map_err(|e| format!("Failed to create temp directory: {}", e))?;
-    let script_path = temp_dir.join(format!("claude_sdk_resume_{}.js", session_id));
+    let script_path = temp_dir.join(format!("claude_sdk_resume_{}.mjs", session_id));
     
     tokio::fs::write(&script_path, script_content)
         .await
@@ -484,7 +463,14 @@ try {{
             // Try to parse the line as JSON message
             if let Ok(message) = serde_json::from_str::<serde_json::Value>(&line.trim()) {
                 // Debug: Log the message structure to understand the format
-                log::debug!("Claude SDK message structure: {}", serde_json::to_string_pretty(&message).unwrap_or_else(|_| "Invalid JSON".to_string()));
+                log::info!("Claude SDK message: {}", serde_json::to_string_pretty(&message).unwrap_or_else(|_| "Invalid JSON".to_string()));
+                
+                // Handle debug messages specifically
+                if message.get("type") == Some(&serde_json::Value::String("claude_sdk_debug".to_string())) {
+                    if let Some(debug_msg) = message.get("message") {
+                        log::info!("🔍 Claude SDK Debug: {}", debug_msg.as_str().unwrap_or(""));
+                    }
+                }
                 
                 // Extract and preserve the actual Claude session ID
                 let mut enriched_message = message.clone();
@@ -524,7 +510,7 @@ try {{
             }
 
             if !line.trim().is_empty() {
-                log::warn!("Claude SDK stderr: {}", line.trim());
+                log::error!("Claude SDK stderr: {}", line.trim());
                 let _ = app_stderr.emit(
                     &format!("claude-sdk-error:{}", session_id_stderr),
                     serde_json::json!({

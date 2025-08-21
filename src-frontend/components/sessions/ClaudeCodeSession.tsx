@@ -211,14 +211,93 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     }
   };
 
-  const handleSendPrompt = async (_prompt: string, _model: "sonnet" | "opus") => {
-    // This will be handled by the SessionMessageHandler component
-    // Delegated to SessionMessageHandler
+  // Track Claude session state for proper --resume flow
+  const [currentClaudeSessionId, setCurrentClaudeSessionId] = useState<string | null>(null);
+  const [previousClaudeSessionId, setPreviousClaudeSessionId] = useState<string | null>(null);
+
+  const handleSendPrompt = async (prompt: string, model: "sonnet" | "opus") => {
+    if (!prompt.trim() || isLoading) return;
+    
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Import the SDK dynamically
+      const { claudeCodeSDK, generateSessionId } = await import('@/lib/claudeCodeSdk');
+      
+      // Generate a new session ID for this prompt
+      const newSessionId = generateSessionId();
+      
+      // STEP 1: Copy current_session_id to previous_session_id when we receive a prompt request
+      const previousSessionForResume = currentClaudeSessionId;
+      setPreviousClaudeSessionId(previousSessionForResume);
+      
+      logger.info('🚀 Starting SDK session:', { 
+        newSessionId, 
+        projectPath, 
+        prompt: prompt.substring(0, 100),
+        currentClaudeSessionId,
+        previousSessionForResume,
+        willResume: !!previousSessionForResume
+      });
+      
+      // Extra debug for options passed to backend
+      const optionsToPass = {
+        workingDirectory: projectPath,
+        previous_session_id: previousSessionForResume || undefined
+      };
+      logger.info('🔗 SDK options being passed to backend:', optionsToPass);
+      
+      // STEP 2: Use --resume previous_session_id if we have one
+      await claudeCodeSDK.startSession(
+        newSessionId,
+        projectPath,
+        prompt,
+        optionsToPass,
+        (message) => {
+          logger.debug('SDK message received:', message);
+          // STEP 3: Extract session_id from system message and store in current_session_id
+          if (message.type === 'system' && (message as any).session_id) {
+            const newClaudeSessionId = (message as any).session_id;
+            logger.info('Extracted new Claude session ID:', { 
+              newClaudeSessionId, 
+              replacingCurrent: currentClaudeSessionId 
+            });
+            setCurrentClaudeSessionId(newClaudeSessionId);
+            // Also update the main claudeSessionId for other components
+            setClaudeSessionId(newClaudeSessionId);
+          }
+          // Messages will be handled by the existing stream listener in SessionMessageHandler
+        }
+      );
+      
+      // Set our frontend session ID if this is the first prompt
+      if (!claudeSessionId) {
+        setClaudeSessionId(newSessionId); // Temporary, will be replaced by real ID from message handler
+      }
+      
+    } catch (error) {
+      logger.error('Failed to send prompt:', error);
+      setError(error instanceof Error ? error.message : 'Failed to send prompt');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCancelExecution = async () => {
-    // This will be handled by the SessionMessageHandler component  
-    // Delegated to SessionMessageHandler
+    try {
+      if (claudeSessionId) {
+        // Import the SDK dynamically
+        const { claudeCodeSDK } = await import('@/lib/claudeCodeSdk');
+        
+        logger.info('Cancelling SDK session:', claudeSessionId);
+        await claudeCodeSDK.terminateSession(claudeSessionId);
+      }
+      setIsLoading(false);
+    } catch (error) {
+      logger.error('Failed to cancel execution:', error);
+      setError(error instanceof Error ? error.message : 'Failed to cancel execution');
+    }
   };
 
   const handleCheckpointSelect = async () => {

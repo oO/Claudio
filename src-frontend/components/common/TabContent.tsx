@@ -13,7 +13,6 @@ import { SettingsTab } from "@/components/settings";
 import { UsageTab } from "@/components/dashboard";
 import { MCPTab } from "@/components/mcp";
 import { ClaudeMdTab } from "@/components/claude";
-import { ClaudeCodeSDKSession } from "@/components/sessions";
 import { WelcomeScreen } from "./Welcome";
 import { invoke } from "@tauri-apps/api/core";
 import { prettifyProjectName } from "@/lib/utils";
@@ -145,10 +144,10 @@ const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
       case "claude-sdk":
         return (
           <NavigationProvider tabId={tab.id}>
-            <ClaudeCodeSDKSession 
-              projectPath={tab.initialProjectPath || "/Users/olivier/Projects/claudio"}
-              onClose={() => {
-                // Could implement close functionality here if needed
+            <ClaudeCodeSession 
+              initialProjectPath={tab.initialProjectPath || "/Users/olivier/Projects/claudio"}
+              onBack={() => {
+                // Could implement back navigation here if needed
               }}
             />
           </NavigationProvider>

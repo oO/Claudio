@@ -392,16 +392,16 @@ fn select_best_installation(installations: Vec<ClaudeInstallation>) -> Option<Cl
             // Prefer the entry that actually has version information.
             (Some(_), None) => Ordering::Greater,
             (None, Some(_)) => Ordering::Less,
-            // Neither have version info: prefer the one that is not just
-            // the bare "claude" lookup from PATH, because that may fail
-            // at runtime if PATH is modified.
+            // Neither have version info: use source preference to choose best
             (None, None) => {
+                // First check for bare "claude" paths and deprioritize them
                 if a.path == "claude" && b.path != "claude" {
                     Ordering::Less
                 } else if a.path != "claude" && b.path == "claude" {
                     Ordering::Greater
                 } else {
-                    Ordering::Equal
+                    // Use source preference (lower score is better, so reverse comparison)
+                    source_preference(b).cmp(&source_preference(a))
                 }
             }
         }

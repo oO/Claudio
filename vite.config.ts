@@ -43,8 +43,8 @@ export default defineConfig(async () => ({
         }
       : undefined,
     watch: {
-      // 3. tell vite to ignore watching `src-backend`
-      ignored: ["**/src-backend/**"],
+      // 3. tell vite to ignore watching `src-backend` and other projects
+      ignored: ["**/src-backend/**", "**/claudio-css/**", "**/src-tauri/**"],
     },
   },
 

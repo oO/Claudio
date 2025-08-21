@@ -8,4 +8,5 @@ pub mod slash_commands;
 pub mod proxy;
 pub mod window;
 pub mod system;
-pub mod claude_sdk;
+pub mod claude_sdk_simple;
+pub mod claude_direct;

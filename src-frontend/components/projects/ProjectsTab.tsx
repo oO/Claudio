@@ -39,7 +39,7 @@ interface ProjectsTabProps {
 }
 
 export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
-  const { updateTab, createChatTab } = useTabState();
+  const { updateTab, createChatTab, createClaudeSDKTab } = useTabState();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -292,6 +292,12 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
     createChatTab();
   };
 
+  const handleNewSDKSession = (projectPath?: string) => {
+    // Create a new SDK tab
+    const path = projectPath || "/Users/olivier/Projects/claudio";
+    createClaudeSDKTab(path);
+  };
+
   // Debug rendering
   logger.log(
     "Rendering ProjectsTab, selectedProject:",
@@ -529,20 +535,28 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                     exit={{ opacity: 0, x: 20 }}
                     transition={{ duration: 0.3 }}
                   >
-                    {/* New session button at the top */}
+                    {/* New session buttons at the top */}
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.5 }}
-                      className="mb-4 flex justify-end"
+                      className="mb-4 flex gap-2 justify-end"
                     >
                       <Button
                         onClick={handleNewSession}
                         size="default"
+                        variant="outline"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        New Session
+                      </Button>
+                      <Button
+                        onClick={() => handleNewSDKSession()}
+                        size="default"
                         className="accent-button"
                       >
                         <Plus className="mr-2 h-4 w-4" />
-                        New Claude Code Project
+                        New SDK Session
                       </Button>
                     </motion.div>
 
