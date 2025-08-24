@@ -60,7 +60,7 @@ export const RunningClaudeSessions: React.FC<RunningClaudeSessionsProps> = ({
       // Create a minimal session object for resumption
       const session: Session = {
         id: sessionId,
-        project_id: processInfo.project_path.replace(/[^a-zA-Z0-9]/g, '-'),
+        project_id: processInfo.project_path.replace(/\//g, '-').replace(/\s+/g, '-'),
         project_path: processInfo.project_path,
         created_at: new Date(processInfo.started_at).getTime() / 1000,
         modified_at: new Date(processInfo.started_at).getTime() / 1000,

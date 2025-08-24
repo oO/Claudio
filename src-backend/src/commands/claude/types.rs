@@ -276,6 +276,7 @@ pub fn get_claude_dir() -> Result<PathBuf, anyhow::Error> {
 }
 
 pub fn get_project_path_from_sessions(project_dir: &PathBuf) -> Result<String, String> {
+    log::info!("🔍 Trying to determine project path from sessions in directory: {:?}", project_dir);
     // Try to read any JSONL file in the directory
     let entries = fs::read_dir(project_dir)
         .map_err(|e| format!("Failed to read project directory: {}", e))?;
@@ -284,17 +285,29 @@ pub fn get_project_path_from_sessions(project_dir: &PathBuf) -> Result<String, S
         if let Ok(entry) = entry {
             let path = entry.path();
             if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("jsonl") {
+                log::info!("📁 Found JSONL file to check: {:?}", path);
                 // Read the first line of the JSONL file
                 if let Ok(file) = fs::File::open(&path) {
                     let reader = BufReader::new(file);
                     if let Some(Ok(first_line)) = reader.lines().next() {
+                        log::info!("📄 Session file content (first line): {}", first_line);
                         // Parse the JSON and extract cwd
                         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&first_line) {
+                            log::info!("✅ Successfully parsed JSON from session file");
                             if let Some(cwd) = json.get("cwd").and_then(|v| v.as_str()) {
+                                log::info!("🎯 Found cwd in session file: {}", cwd);
                                 return Ok(cwd.to_string());
+                            } else {
+                                log::warn!("⚠️ No 'cwd' field found in session file JSON");
                             }
+                        } else {
+                            log::error!("❌ Failed to parse JSON from session file first line");
                         }
+                    } else {
+                        log::warn!("📝 Session file exists but has no content or failed to read first line: {:?}", path);
                     }
+                } else {
+                    log::error!("🚫 Failed to open session file: {:?}", path);
                 }
             }
         }

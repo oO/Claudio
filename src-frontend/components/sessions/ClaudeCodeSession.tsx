@@ -15,6 +15,8 @@ import { type FloatingPromptInputRef } from "./FloatingPromptInput";
 import { ErrorBoundary } from "@/components/common";
 import { DebugLabel } from "@/components/ui/atoms";
 import { logger } from '@/lib/logger';
+import { api } from '@/lib/api';
+import { invoke } from '@tauri-apps/api/core';
 
 // Import extracted components
 import { useSessionState } from "@/hooks/useSessionState";
@@ -28,12 +30,17 @@ import { SessionHeader } from "./SessionHeader";
 import { SessionPromptControls } from "./SessionPromptControls";
 import { useSessionFileWatcher } from "@/hooks/useSessionFileWatcher";
 import { useScrollPinning } from "@/hooks/useScrollPinning";
+import { isEditorSession } from "@/lib/sessionUtils";
 
 interface ClaudeCodeSessionProps {
   /**
    * Optional session to resume (when clicking from SessionList)
    */
   session?: Session;
+  /**
+   * Claudio session ID for editor mode detection
+   */
+  sessionId?: string;
   /**
    * Initial project path (for new sessions)
    */
@@ -64,6 +71,7 @@ interface ClaudeCodeSessionProps {
  */
 export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   session,
+  sessionId,
   initialProjectPath = "",
   onBack,
   onProjectSettings,
@@ -171,6 +179,11 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     onError: setError,
     onLoading: setIsLoading,
   });
+
+  // Track Claude session state for proper --resume flow
+  const [currentClaudeSessionId, setCurrentClaudeSessionId] = useState<string | null>(null);
+  const [previousClaudeSessionId, setPreviousClaudeSessionId] = useState<string | null>(null);
+  const [claudioId, setClaudioId] = useState<string | null>(null);
   
   // Load session history if resuming
   useEffect(() => {
@@ -191,29 +204,72 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     }
   }, [session, loadSessionHistory, checkForActiveSession, setClaudeSessionId, isMountedRef]);
 
-  // Simple handlers that delegate to the extracted components
-  const handleSelectPath = async () => {
-    try {
-      const selected = await open({
-        directory: true,
-        multiple: false,
-        title: "Select Project Directory"
-      });
-      
-      if (selected) {
-        setProjectPath(selected as string);
-        setError(null);
-      }
-    } catch (err) {
-      logger.error("Failed to select directory:", err);
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      setError(`Failed to select directory: ${errorMessage}`);
-    }
-  };
+  // Note: History loading is now handled by file watcher events in useSessionFileWatcher
+  // When Claude writes the .jsonl file, the watcher will emit a 'session-file-changed' event
+  // and useSessionFileWatcher will call onSessionChanged which triggers loadSessionHistory
 
-  // Track Claude session state for proper --resume flow
-  const [currentClaudeSessionId, setCurrentClaudeSessionId] = useState<string | null>(null);
-  const [previousClaudeSessionId, setPreviousClaudeSessionId] = useState<string | null>(null);
+  // Listen for Claude session ID updates from backend events
+  useEffect(() => {
+    if (!claudeSessionId) return;
+
+    const setupEventListeners = async () => {
+      const { listen } = await import('@tauri-apps/api/event');
+      
+      const unlistenMessage = await listen(`claude-sdk-message:${claudeSessionId}`, (event: any) => {
+        const payload = event.payload;
+        if (payload && typeof payload === 'string') {
+          try {
+            const parsedPayload = JSON.parse(payload);
+            // Extract Claude session ID from system messages
+            if (parsedPayload.type === 'system' && parsedPayload.session_id) {
+              const newClaudeSessionId = parsedPayload.session_id;
+              logger.info('🎯 Captured Claude session ID from event:', newClaudeSessionId);
+              setCurrentClaudeSessionId(newClaudeSessionId);
+            }
+          } catch (e) {
+            // Ignore JSON parse errors
+          }
+        }
+      });
+
+      return unlistenMessage;
+    };
+
+    let cleanup: (() => void) | undefined;
+    setupEventListeners().then(unlisten => {
+      cleanup = unlisten;
+    });
+
+    return () => {
+      if (cleanup) cleanup();
+    };
+  }, [claudeSessionId]);
+
+  // Create Claudio session on mount (represents "New Session" click)
+  const isCreatingRef = useRef(false);
+  useEffect(() => {
+    const createClaudioSession = async () => {
+      if (!claudioId && !session && !isCreatingRef.current) {
+        isCreatingRef.current = true;
+        try {
+          logger.info('🆕 Creating new Claudio session for project:', projectPath);
+          const newClaudioId = await api.createClaudioSession(projectPath, {});
+          setClaudioId(newClaudioId);
+          logger.info('✨ Created Claudio session:', newClaudioId);
+        } catch (error) {
+          logger.error('Failed to create Claudio session:', error);
+          setError(error instanceof Error ? error.message : 'Failed to create session');
+        } finally {
+          isCreatingRef.current = false;
+        }
+      }
+    };
+
+    createClaudioSession();
+  }, [projectPath, claudioId, session]);
+
+  // Simple handlers that delegate to the extracted components
+  // handleSelectPath removed - no longer needed
 
   const handleSendPrompt = async (prompt: string, model: "sonnet" | "opus") => {
     if (!prompt.trim() || isLoading) return;
@@ -222,59 +278,75 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
       setIsLoading(true);
       setError(null);
       
-      // Import the SDK dynamically
-      const { claudeCodeSDK, generateSessionId } = await import('@/lib/claudeCodeSdk');
-      
-      // Generate a new session ID for this prompt
-      const newSessionId = generateSessionId();
-      
-      // STEP 1: Copy current_session_id to previous_session_id when we receive a prompt request
-      const previousSessionForResume = currentClaudeSessionId;
-      setPreviousClaudeSessionId(previousSessionForResume);
-      
-      logger.info('🚀 Starting SDK session:', { 
-        newSessionId, 
-        projectPath, 
-        prompt: prompt.substring(0, 100),
-        currentClaudeSessionId,
-        previousSessionForResume,
-        willResume: !!previousSessionForResume
+      logger.info('🚀 Executing prompt with Claudio session management:', { 
+        prompt: prompt.substring(0, 50),
+        model,
+        claudioId,
+        currentClaudeSessionId
       });
       
-      // Extra debug for options passed to backend
-      const optionsToPass = {
-        workingDirectory: projectPath,
-        previous_session_id: previousSessionForResume || undefined
-      };
-      logger.info('🔗 SDK options being passed to backend:', optionsToPass);
+      // Generate a new session ID for this prompt
+      const newSessionId = `claude-${Date.now()}-${Math.random().toString(36).substr(2, 7)}`;
       
-      // STEP 2: Use --resume previous_session_id if we have one
-      await claudeCodeSDK.startSession(
-        newSessionId,
+      // Execute using our direct session approach
+      await invoke('start_claude_direct_session', {
+        tempSessionId: newSessionId,
         projectPath,
         prompt,
-        optionsToPass,
-        (message) => {
-          logger.debug('SDK message received:', message);
-          // STEP 3: Extract session_id from system message and store in current_session_id
-          if (message.type === 'system' && (message as any).session_id) {
-            const newClaudeSessionId = (message as any).session_id;
-            logger.info('Extracted new Claude session ID:', { 
-              newClaudeSessionId, 
-              replacingCurrent: currentClaudeSessionId 
-            });
-            setCurrentClaudeSessionId(newClaudeSessionId);
-            // Also update the main claudeSessionId for other components
-            setClaudeSessionId(newClaudeSessionId);
-          }
-          // Messages will be handled by the existing stream listener in SessionMessageHandler
+        options: {
+          session_id: currentClaudeSessionId, // For --resume (null for first message)
+          claudio_id: claudioId, // Claudio wrapper session ID
+          working_directory: projectPath,
+          max_turns: 5,
+          custom_system_prompt: undefined,
+          allowed_tools: ["Bash", "Read", "Write", "Edit", "LS", "Grep"]
         }
-      );
+      });
       
-      // Set our frontend session ID if this is the first prompt
-      if (!claudeSessionId) {
-        setClaudeSessionId(newSessionId); // Temporary, will be replaced by real ID from message handler
+      // Refetch Claudio session to get updated Claude session ID
+      if (claudioId) {
+        try {
+          logger.info('🔄 Refetching Claudio session after execution');
+          const updatedSession = await api.getClaudioSession(claudioId, projectPath);
+          
+          if (updatedSession.session_id && updatedSession.session_id !== currentClaudeSessionId) {
+            setCurrentClaudeSessionId(updatedSession.session_id);
+            logger.info('🆔 Updated Claude session ID for continuation:', updatedSession.session_id);
+          }
+        } catch (error) {
+          logger.warn('Failed to refetch Claudio session:', error);
+        }
       }
+      
+      // Set up listener for immediate session ready event  
+      const { listen } = await import('@tauri-apps/api/event');
+      const unlisten = await listen<any>('claude_session_ready', async (event) => {
+        const { session_id, claudio_id: eventClaudioId } = event.payload;
+        
+        // Only handle events for our current Claudio pointer  
+        if (eventClaudioId === claudioId) {
+          logger.info('🎯 New Claude session created:', { session_id, claudio_id: eventClaudioId });
+          
+          // Update the current session_id (this is the NEW session for this turn)
+          setCurrentClaudeSessionId(session_id);
+          
+          // Update extractedSessionInfo to track the latest Claude session_id
+          const project_id = effectiveSession?.project_id || projectPath.replace(/\//g, '-').replace(/\s+/g, '-');
+          setExtractedSessionInfo({ 
+            sessionId: session_id, 
+            projectId: project_id
+          });
+          
+          // Update session state so file watcher switches to the new session file  
+          setClaudeSessionId(session_id);
+          
+          logger.info('👀 File watcher will now watch new session file:', `${session_id}.jsonl`);
+          // loadSessionHistory will be called automatically by useEffect when effectiveSession updates
+        }
+      });
+      
+      // Clean up listener when component unmounts or new prompt starts
+      setTimeout(() => unlisten(), 30000); // Auto cleanup after 30s
       
     } catch (error) {
       logger.error('Failed to send prompt:', error);
@@ -306,7 +378,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   };
   
   const handleRefresh = useCallback(async () => {
-    if (!session) return; // Only refresh existing sessions
+    if (!effectiveSession) return; // Need either session or effectiveSession
     
     try {
       // Reload session data
@@ -315,7 +387,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
       logger.error('Failed to refresh session:', error);
       setError('Failed to refresh session data');
     }
-  }, [session, loadSessionHistory, setError]);
+  }, [effectiveSession, loadSessionHistory, setError]);
   
   // Generate a unique tab ID for this session tab
   const tabId = useRef(`session-tab-${Math.random().toString(36).substr(2, 9)}`);
@@ -323,7 +395,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   // File watching for session changes (replaces polling)
   const { isWatching, forceRefresh } = useSessionFileWatcher({
     session: effectiveSession || undefined,
-    projectId: session?.project_id,
+    projectId: effectiveSession?.project_id,
     onSessionChanged: handleRefresh,
     enabled: true,
     tabId: tabId.current
@@ -396,42 +468,11 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   };
 
   // Project path input component
-  const projectPathInput = !session && (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ delay: 0.1 }}
-      className="p-4 border-b border-border flex-shrink-0"
-    >
-      <Label htmlFor="project-path" className="text-sm font-medium">
-        Project Directory
-      </Label>
-      <div className="flex items-center gap-2 mt-1">
-        <Input
-          id="project-path"
-          value={projectPath}
-          onChange={(e) => setProjectPath(e.target.value)}
-          placeholder="/path/to/your/project"
-          className="flex-1"
-          disabled={isLoading}
-        />
-        <Button
-          onClick={handleSelectPath}
-          size="icon"
-          variant="outline"
-          disabled={isLoading}
-        >
-          <FolderOpen className="h-4 w-4" />
-        </Button>
-      </div>
-    </motion.div>
-  );
+  // Project path input removed - no longer needed
 
   // Main content with messages
   const mainContent = (
     <div className="h-full flex flex-col max-w-5xl mx-auto">
-      {projectPathInput}
-      
       <SessionMessages
         ref={sessionMessagesRef}
         displayableMessages={displayableMessages}
@@ -463,19 +504,22 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   return (
     <>
       <DebugLabel label="ClaudeCodeSession" />
+      
+      
       <div className={cn("relative flex flex-col h-full bg-background", className)}>
       <div className="w-full h-full flex flex-col">
         {/* Header */}
         <SessionHeader
           projectPath={projectPath}
           claudeSessionId={claudeSessionId}
+          sessionId={sessionId}
+          claudioId={claudioId}
           totalTokens={actualTokenCount}
           isStreaming={isLoading}
           hasMessages={displayableMessages.length > 0}
           showTimeline={showTimeline}
           copyPopoverOpen={copyPopoverOpen}
           onBack={onBack}
-          onSelectPath={handleSelectPath}
           onExportAsJson={() => sessionActions.exportSession('json')}
           onExportAsMarkdown={() => sessionActions.exportSession('markdown')}
           onToggleTimeline={() => setShowTimeline(!showTimeline)}
@@ -518,8 +562,8 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
 
         {/* Floating Prompt Input and Overlays */}
         <ErrorBoundary>
-          {/* All prompt controls - Only show for new sessions initiated by Claudio */}
-          {!session && (
+          {/* All prompt controls - Only show for editor sessions that can be interacted with */}
+          {(sessionId ? isEditorSession({ id: sessionId }) : !session) && (
             <SessionPromptControls
               floatingPromptRef={floatingPromptRef}
               onSend={handleSendPrompt}
@@ -556,6 +600,9 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
         <SessionMessageHandler
           claudeSessionId={claudeSessionId}
           effectiveSession={effectiveSession}
+          claudioId={claudioId}
+          currentClaudeSessionId={currentClaudeSessionId}
+          loadSessionHistory={loadSessionHistory}
           projectPath={projectPath}
           isFirstPrompt={isFirstPrompt}
           isLoading={isLoading}

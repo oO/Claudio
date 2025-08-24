@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { open } from "@tauri-apps/plugin-dialog";
 import { Loader2, Plus, MoreVertical, Trash2, Settings } from "lucide-react";
 import { api, type Project, type Session, type ClaudeMdFile } from "@/lib/api";
 import { logger } from "@/lib/logger";
@@ -287,22 +288,29 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
     }));
   };
 
-  const handleNewSession = () => {
-    // Create a new chat tab
-    createChatTab();
+  const handleNewSDKSession = async (projectPath?: string) => {
+    if (projectPath) {
+      // Create SDK tab with known project path
+      createClaudeSDKTab(projectPath);
+    } else {
+      // Show native folder picker dialog
+      try {
+        const selectedPath = await open({
+          directory: true,
+          multiple: false,
+          title: "Select Project Folder",
+        });
+        
+        if (selectedPath) {
+          logger.log('Selected folder:', selectedPath);
+          createClaudeSDKTab(selectedPath);
+        }
+      } catch (error) {
+        logger.error('Failed to open folder dialog:', error);
+      }
+    }
   };
 
-  const handleNewSDKSession = (projectPath?: string) => {
-    // Create a new SDK tab
-    const path = projectPath || "/Users/olivier/Projects/claudio";
-    createClaudeSDKTab(path);
-  };
-
-  // Debug rendering
-  logger.log(
-    "Rendering ProjectsTab, selectedProject:",
-    selectedProject?.path || "none",
-  );
 
   return (
     <>
@@ -535,7 +543,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                     exit={{ opacity: 0, x: 20 }}
                     transition={{ duration: 0.3 }}
                   >
-                    {/* New session buttons at the top */}
+                    {/* New session button at the top */}
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -543,20 +551,12 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                       className="mb-4 flex gap-2 justify-end"
                     >
                       <Button
-                        onClick={handleNewSession}
-                        size="default"
-                        variant="outline"
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        New Session
-                      </Button>
-                      <Button
                         onClick={() => handleNewSDKSession()}
                         size="default"
                         className="accent-button"
                       >
                         <Plus className="mr-2 h-4 w-4" />
-                        New SDK Session
+                        New Session
                       </Button>
                     </motion.div>
 
@@ -747,6 +747,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
       </TabPageLayout>
     </>
   );

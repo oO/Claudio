@@ -634,7 +634,7 @@ dependencies = [
 
 [[package]]
 name = "claudio"
-version = "0.3.28"
+version = "0.3.31"
 dependencies = [
  "anyhow",
  "async-trait",

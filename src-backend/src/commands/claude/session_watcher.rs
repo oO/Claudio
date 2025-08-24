@@ -81,7 +81,10 @@ impl SessionWatcherManager {
         let project_sessions_dir = claude_dir.join("projects").join(project_id);
         
         if !project_sessions_dir.exists() {
-            return Err(format!("Project sessions directory not found: {}", project_id));
+            // Create the directory if it doesn't exist - this happens for brand new projects
+            std::fs::create_dir_all(&project_sessions_dir)
+                .map_err(|e| format!("Failed to create project sessions directory: {}", e))?;
+            log::info!("Created project sessions directory: {:?}", project_sessions_dir);
         }
 
         let mut watchers = self.watchers.lock().map_err(|e| format!("Lock error: {}", e))?;
@@ -158,7 +161,7 @@ impl SessionWatcherManager {
         use std::sync::Arc;
         use std::sync::Mutex as StdMutex;
         
-        let debounce_duration = Duration::from_secs(5);
+        let debounce_duration = Duration::from_millis(100); // Minimal debounce for file system events
         let pending_timers: Arc<StdMutex<HashMap<String, tokio::task::JoinHandle<()>>>> = Arc::new(StdMutex::new(HashMap::new()));
         
         // Use blocking task to handle the synchronous receiver
@@ -295,7 +298,11 @@ pub async fn start_session_watching(
     let state_guard = state.lock().map_err(|e| format!("Lock error: {}", e))?;
     
     if let Some(manager) = state_guard.as_ref() {
-        manager.start_watching_project(&project_id)
+        let result = manager.start_watching_project(&project_id);
+        
+        // File watcher started successfully, history will be loaded when files are actually modified
+        
+        result
     } else {
         Err("Session watcher manager not initialized".to_string())
     }

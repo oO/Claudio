@@ -50,9 +50,12 @@ use commands::storage::{
 };
 use commands::proxy::{get_proxy_settings, save_proxy_settings, apply_proxy_settings, get_setting, save_setting};
 use commands::window::{save_window_state, load_window_state, get_current_window_state, restore_window_state, setup_window_state_tracking};
-use commands::system::{get_system_memory_info};
 use commands::claude_sdk_simple::{start_claude_sdk_session, continue_claude_sdk_session, resume_claude_sdk_session, terminate_claude_sdk_session};
 use commands::claude_direct::{start_claude_direct_session};
+use commands::claudio_storage::{
+    create_claudio_session, update_claudio_session, get_claudio_session,
+    list_claudio_sessions, delete_claudio_session,
+};
 use process::ProcessRegistryState;
 use std::sync::Mutex;
 use tauri::Manager;
@@ -324,8 +327,6 @@ fn main() {
             get_current_window_state,
             restore_window_state,
             
-            // System Information
-            get_system_memory_info,
             
             // Claude SDK Integration  
             start_claude_sdk_session,
@@ -335,6 +336,13 @@ fn main() {
             
             // Claude CLI Direct Integration
             start_claude_direct_session,
+            
+            // Claudio Session Storage
+            create_claudio_session,
+            update_claudio_session,
+            get_claudio_session,
+            list_claudio_sessions,
+            delete_claudio_session,
             
             // Session File Watching
             start_session_watching,

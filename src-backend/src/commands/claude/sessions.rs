@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use std::time::{SystemTime, Duration, UNIX_EPOCH};
 use tauri::command;
 use serde::{Deserialize, Serialize};
+use crate::commands::claudio_storage::get_claudio_session;
 
 /// Gets sessions for a specific project
 #[command]
@@ -114,8 +115,48 @@ pub async fn get_project_sessions(project_id: String) -> Result<Vec<Session>, St
     Ok(sessions)
 }
 
+/// Helper function to get project path from Claudio session file 
+/// This is more reliable than parsing Claude's JSONL files
+async fn get_project_path_from_claudio_session(session_id: &str, project_id: &str) -> Result<String, String> {
+    // Try to find a Claudio session that tracks this Claude session
+    let claudio_dir = dirs::home_dir()
+        .ok_or("Could not find home directory".to_string())?
+        .join(".claudio")
+        .join("projects")
+        .join(project_id);
+    
+    if claudio_dir.exists() {
+        // Look for Claudio session files in this project directory
+        if let Ok(entries) = fs::read_dir(&claudio_dir) {
+            for entry in entries {
+                if let Ok(entry) = entry {
+                    let path = entry.path();
+                    if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("json") {
+                        // Try to load the Claudio session by its claudio_id
+                        if let Some(file_stem) = path.file_stem().and_then(|s| s.to_str()) {
+                            // Decode project_id to get project_path for get_claudio_session call
+                            let fallback_project_path = decode_project_path(project_id);
+                            if let Ok(claudio_session) = get_claudio_session(file_stem.to_string(), fallback_project_path).await {
+                                // Check if this Claudio session tracks the Claude session we're looking for
+                                if let Some(ref claude_session_id) = claudio_session.session_id {
+                                    if claude_session_id == session_id {
+                                        log::info!("🎯 Found project path from Claudio session: {}", claudio_session.project_path);
+                                        return Ok(claudio_session.project_path);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    Err("No matching Claudio session found".to_string())
+}
+
 /// Helper function to build session metadata for a single session file
-fn build_session_metadata(session_path: &std::path::Path, session_id: &str, project_id: &str) -> Result<Session, String> {
+async fn build_session_metadata(session_path: &std::path::Path, session_id: &str, project_id: &str) -> Result<Session, String> {
     let metadata = fs::metadata(session_path)
         .map_err(|e| format!("Failed to get file metadata: {}", e))?;
 
@@ -137,16 +178,21 @@ fn build_session_metadata(session_path: &std::path::Path, session_id: &str, proj
 
     let file_size = metadata.len();
 
-    // Get project path (reuse the logic from get_project_sessions)
-    let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
-    let project_sessions_dir = claude_dir.join("projects").join(project_id);
-    let project_path = get_project_path_from_sessions(&project_sessions_dir)?;
+    // Get project path from Claudio session file instead of parsing Claude's JSONL files
+    let project_path = match get_project_path_from_claudio_session(&session_id, &project_id).await {
+        Ok(path) => path,
+        Err(e) => {
+            log::warn!("Failed to get project path from Claudio session for {}: {}, falling back to decode", session_id, e);
+            decode_project_path(project_id)
+        }
+    };
 
     // Extract first user message and timestamp
     let session_path_buf = session_path.to_path_buf();
     let (first_message, message_timestamp) = extract_first_user_message(&session_path_buf);
 
     // Try to load associated todo data
+    let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
     let todos_dir = claude_dir.join("todos");
     let todo_path = todos_dir.join(format!("{}.json", session_id));
     let todo_data = if todo_path.exists() {
@@ -203,7 +249,7 @@ pub async fn load_session_history(
     }
 
     // Get session metadata
-    let session_metadata = build_session_metadata(&session_path, &session_id, &project_id)?;
+    let session_metadata = build_session_metadata(&session_path, &session_id, &project_id).await?;
 
     // Load and parse JSONL content
     let file = fs::File::open(&session_path)

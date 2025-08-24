@@ -30,17 +30,21 @@ import {
 } from "@/lib/date-utils";
 import type { Session } from "@/lib/api";
 import { logger } from '@/lib/logger';
+import { isEditorSession } from '@/lib/sessionUtils';
 
 interface SessionHeaderProps {
   projectPath: string;
   claudeSessionId: string | null;
+  // Claudio session ID for editor mode detection
+  sessionId?: string;
+  // Claudio session ID for display
+  claudioId?: string | null;
   totalTokens: number;
   isStreaming: boolean;
   hasMessages: boolean;
   showTimeline: boolean;
   copyPopoverOpen: boolean;
   onBack: () => void;
-  onSelectPath: () => void;
   onExportAsJson: () => void;
   onExportAsMarkdown: () => void;
   onToggleTimeline: () => void;
@@ -69,13 +73,14 @@ interface SessionHeaderProps {
 export const SessionHeader: React.FC<SessionHeaderProps> = ({
   projectPath,
   claudeSessionId,
+  sessionId,
+  claudioId,
   totalTokens,
   isStreaming,
   hasMessages,
   showTimeline,
   copyPopoverOpen,
   onBack,
-  onSelectPath,
   onExportAsJson,
   onExportAsMarkdown,
   onToggleTimeline,
@@ -141,13 +146,18 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
           <div className="min-w-0 flex-1">
             <h1 className="text-3xl font-bold tracking-tight text-accent flex items-center gap-3">
               Claude Code Session
+              {sessionId && isEditorSession({ id: sessionId }) && (
+                <Badge variant="default" className="text-xs bg-green-600 hover:bg-green-700">
+                  Interactive
+                </Badge>
+              )}
               {claudeSessionId && (
                 <span
                   className="inline-flex items-center gap-1 px-2 py-1 text-xs font-normal border border-border rounded cursor-pointer text-accent hover:text-foreground hover:bg-accent transition-colors"
                   onClick={handleCopySessionId}
                   title="Click to copy absolute session path"
                 >
-                  {claudeSessionId.slice(0, 8)}
+                  {claudeSessionId}
                 </span>
               )}
             </h1>
@@ -157,59 +167,57 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
                 <span className="font-mono truncate">{projectPath}</span>
               </p>
             )}
-            {!projectPath && (
-              <p className="mt-1 text-sm text-muted-foreground">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onSelectPath}
-                  className="h-auto p-0 text-sm text-muted-foreground hover:text-foreground"
-                >
-                  <FolderOpen className="h-4 w-4 mr-2" />
-                  Select Project
-                </Button>
-              </p>
-            )}
+            {/* Project selection removed - no longer needed */}
 
             {/* Session metadata */}
-            {sessionData && (
-              <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                {displayableMessageCount !== undefined &&
-                  displayableMessageCount > 0 && (
-                    <div
-                      className="flex items-center gap-1 bg-accent px-2 py-1 rounded-full text-xs cursor-pointer hover:bg-accent/80 transition-colors"
-                      onClick={handleCopyCollapsedUuids}
-                      title={`Click to copy UUIDs of ${collapsedMessageUuids?.length || 0} collapsed messages`}
-                    >
-                      <MessageSquare className="h-3 w-3" />
-                      <span>{displayableMessageCount}</span>
+            {(sessionData || claudioId) && (
+              <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+                <div className="flex items-center gap-4">
+                  {displayableMessageCount !== undefined &&
+                    displayableMessageCount > 0 && (
+                      <div
+                        className="flex items-center gap-1 bg-accent px-2 py-1 rounded-full text-xs cursor-pointer hover:bg-accent/80 transition-colors"
+                        onClick={handleCopyCollapsedUuids}
+                        title={`Click to copy UUIDs of ${collapsedMessageUuids?.length || 0} collapsed messages`}
+                      >
+                        <MessageSquare className="h-3 w-3" />
+                        <span>{displayableMessageCount}</span>
+                      </div>
+                    )}
+                  {totalTokens > 0 && (
+                    <div className="flex items-center gap-0.5">
+                      <ArrowUpFromLine className="h-3 w-3" />
+                      <span>{totalTokens.toLocaleString()} tokens</span>
                     </div>
                   )}
-                {totalTokens > 0 && (
-                  <div className="flex items-center gap-0.5">
-                    <ArrowUpFromLine className="h-3 w-3" />
-                    <span>{totalTokens.toLocaleString()} tokens</span>
-                  </div>
-                )}
-                {sessionData.size_bytes !== undefined && (
-                  <div className="flex items-center gap-0.5">
-                    <HardDrive className="h-3 w-3" />
-                    <span>{formatFileSize(sessionData.size_bytes)}</span>
-                  </div>
-                )}
-                <div className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  <span>{formatUnixTimestamp(sessionData.created_at)}</span>
+                  {sessionData?.size_bytes !== undefined && (
+                    <div className="flex items-center gap-0.5">
+                      <HardDrive className="h-3 w-3" />
+                      <span>{formatFileSize(sessionData.size_bytes)}</span>
+                    </div>
+                  )}
+                  {sessionData && (
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      <span>{formatUnixTimestamp(sessionData.created_at)}</span>
+                    </div>
+                  )}
+                  {sessionData?.modified_at && (
+                    <div
+                      className={cn(
+                        "flex items-center gap-1 transition-colors duration-200",
+                        isRefreshing && "text-accent animate-pulse",
+                      )}
+                    >
+                      <Activity className="h-3 w-3" />
+                      <span>{formatTimeAgo(sessionData.modified_at * 1000)}</span>
+                    </div>
+                  )}
                 </div>
-                {sessionData.modified_at && (
-                  <div
-                    className={cn(
-                      "flex items-center gap-1 transition-colors duration-200",
-                      isRefreshing && "text-accent animate-pulse",
-                    )}
-                  >
-                    <Activity className="h-3 w-3" />
-                    <span>{formatTimeAgo(sessionData.modified_at * 1000)}</span>
+                {claudioId && (
+                  <div className="flex items-center gap-1">
+                    <Hash className="h-3 w-3" />
+                    <span className="font-mono text-xs">{claudioId}</span>
                   </div>
                 )}
               </div>

@@ -1,5 +1,6 @@
 import { useRef, useEffect, useCallback } from 'react';
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { invoke } from '@tauri-apps/api/core';
 import { api } from "@/lib/api";
 import { DebugLabel } from "@/components/ui/atoms";
 import type { ClaudeStreamMessage } from "@/components/agents";
@@ -8,6 +9,9 @@ import { logger } from '@/lib/logger';
 interface SessionMessageHandlerProps {
   claudeSessionId: string | null;
   effectiveSession: any;
+  claudioId: string | null;
+  currentClaudeSessionId: string | null;
+  loadSessionHistory: () => Promise<void>;
   projectPath: string;
   isFirstPrompt: boolean;
   isLoading: boolean;
@@ -40,6 +44,9 @@ interface SessionMessageHandlerProps {
 const SessionMessageHandlerComponent: React.FC<SessionMessageHandlerProps> = ({
   claudeSessionId,
   effectiveSession,
+  claudioId,
+  currentClaudeSessionId,
+  loadSessionHistory,
   projectPath,
   isFirstPrompt,
   isLoading,
@@ -204,7 +211,7 @@ const SessionMessageHandlerComponent: React.FC<SessionMessageHandlerProps> = ({
                 setClaudeSessionId(msg.session_id);
 
                 // If we haven't extracted session info before, do it now
-                const projectId = projectPath.replace(/[^a-zA-Z0-9]/g, '-');
+                const projectId = projectPath.replace(/\//g, '-').replace(/\s+/g, '-');
                 setExtractedSessionInfo({ sessionId: msg.session_id, projectId });
 
                 // Switch to session-specific listeners
@@ -384,16 +391,89 @@ const SessionMessageHandlerComponent: React.FC<SessionMessageHandlerProps> = ({
           session_age_ms: sessionAge
         });
 
-        // Execute the appropriate command
+        // Execute the appropriate command using our Claudio session management
+        const newSessionId = `claude-${Date.now()}-${Math.random().toString(36).substr(2, 7)}`;
+        
+        // Get the current Claudio session state for continuation
+        const currentClaudeSessionIdForPrompt = currentClaudeSessionId;
+        
         if (effectiveSession && !isFirstPrompt) {
           trackEvent.sessionResumed(effectiveSession.id);
           trackEvent.modelSelected(model);
-          await api.resumeClaudeCode(projectPath, effectiveSession.id, prompt, model);
+          // Use the new direct session approach
+          await invoke('start_claude_direct_session', {
+            tempSessionId: newSessionId,
+            projectPath,
+            prompt,
+            options: {
+              session_id: currentClaudeSessionIdForPrompt, // For --resume
+              claudio_id: claudioId, // Claudio wrapper session ID
+              working_directory: projectPath,
+              max_turns: 5,
+              custom_system_prompt: undefined,
+              allowed_tools: ["Bash", "Read", "Write", "Edit", "LS", "Grep"]
+            }
+          });
+          
+          // Refetch Claudio session after completion to get updated Claude session ID
+          if (claudioId) {
+            try {
+              logger.info('🔄 Refetching Claudio session after prompt execution');
+              const updatedSession = await api.getClaudioSession(claudioId, projectPath);
+              logger.info('📄 Updated session data:', updatedSession);
+              
+              // The parent component needs to handle this update
+              // TODO: Need a callback to update currentClaudeSessionId in parent
+              if (updatedSession.session_id) {
+                logger.info('🆔 Claude session ID for next prompt:', updatedSession.session_id);
+              }
+            } catch (error) {
+              logger.warn('Failed to refetch Claudio session:', error);
+            }
+          }
+          
+          // Load messages from the .jsonl file that Claude just wrote
+          logger.info('📖 Loading session messages from file...');
+          await loadSessionHistory();
         } else {
           setIsFirstPrompt(false);
           trackEvent.sessionCreated(model, 'prompt_input');
           trackEvent.modelSelected(model);
-          await api.executeClaudeCode(projectPath, prompt, model);
+          // Use the new direct session approach
+          await invoke('start_claude_direct_session', {
+            tempSessionId: newSessionId,
+            projectPath,
+            prompt,
+            options: {
+              session_id: null, // Fresh start
+              claudio_id: claudioId, // Claudio wrapper session ID 
+              working_directory: projectPath,
+              max_turns: 5,
+              custom_system_prompt: undefined,
+              allowed_tools: ["Bash", "Read", "Write", "Edit", "LS", "Grep"]
+            }
+          });
+          
+          // Refetch Claudio session after completion to get updated Claude session ID  
+          if (claudioId) {
+            try {
+              logger.info('🔄 Refetching Claudio session after first prompt execution');
+              const updatedSession = await api.getClaudioSession(claudioId, projectPath);
+              logger.info('📄 Updated session data:', updatedSession);
+              
+              // The parent component needs to handle this update
+              // TODO: Need a callback to update currentClaudeSessionId in parent
+              if (updatedSession.session_id) {
+                logger.info('🆔 Claude session ID for next prompt:', updatedSession.session_id);
+              }
+            } catch (error) {
+              logger.warn('Failed to refetch Claudio session:', error);
+            }
+          }
+          
+          // Load messages from the .jsonl file that Claude just wrote  
+          logger.info('📖 Loading session messages from file...');
+          await loadSessionHistory();
         }
       }
     } catch (err) {

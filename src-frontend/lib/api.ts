@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { HooksConfiguration } from '@/types/hooks';
 import { logger } from '@/lib/logger';
 
+
 /** Process type for tracking in ProcessRegistry */
 export type ProcessType = 
   | { AgentRun: { agent_id: number; agent_name: string } }
@@ -96,6 +97,53 @@ export interface ClaudeSettings {
 }
 
 /**
+ * Session status for Claudio-managed sessions
+ */
+export type ClaudioSessionStatus = 'Active' | 'Completed';
+
+/**
+ * Claude CLI controllable settings per session
+ */
+export interface ClaudioClaudeSettings {
+  /** Model to use (sonnet, haiku, opus) */
+  model?: string;
+  /** Maximum number of conversation turns */
+  max_turns?: number;
+  /** System prompt or path to file */
+  system_prompt?: string;
+  /** Append system prompt content */
+  append_system_prompt?: string;
+  /** Tool allowlist */
+  tools?: string[];
+  /** Working directory override */
+  working_directory?: string;
+}
+
+/**
+ * Session metadata stored in ~/.claudio/projects/<project_id>/<session_id>.json
+ */
+export interface ClaudioSession {
+  /** Unique identifier for this Claudio session */
+  claudio_id: string;
+  /** Current Claude CLI session ID (the actual conversation) */
+  session_id?: string;
+  /** Project path this session belongs to */
+  project_path: string;
+  /** Session status */
+  status: ClaudioSessionStatus;
+  /** Claude CLI settings for this session */
+  settings: ClaudioClaudeSettings;
+}
+
+/**
+ * Claude CLI session decorated with optional Claudio metadata
+ */
+export interface DecoratedSession extends Session {
+  /** Claudio metadata if this session is managed by Claudio */
+  claudio?: ClaudioSession;
+}
+
+/**
  * Agent customization settings for message display
  */
 export interface AgentSettings {
@@ -146,15 +194,6 @@ export interface WindowState {
   maximized: boolean;
 }
 
-/**
- * System memory information from backend
- */
-export interface SystemMemoryInfo {
-  process_memory_mb: number;
-  system_total_mb: number;
-  system_available_mb: number;
-  process_cpu_percent: number;
-}
 
 /**
  * Represents a CLAUDE.md file found in the project
@@ -2239,14 +2278,182 @@ export const api = {
 
   // === System Information ===
 
+
+  // === Claudio Session Storage ===
+
   /**
-   * Gets current system memory information
+   * Creates a new Claudio session and returns the claudio_id
+   * @param projectPath - Project path
+   * @param settings - Claude CLI settings
+   * @returns Promise resolving to the new claudio_id
    */
-  async getSystemMemoryInfo(): Promise<SystemMemoryInfo> {
+  async createClaudioSession(
+    projectPath: string,
+    settings: ClaudioClaudeSettings = {}
+  ): Promise<string> {
     try {
-      return await invoke<SystemMemoryInfo>("get_system_memory_info");
+      return await invoke<string>("create_claudio_session", {
+        projectPath,
+        settings
+      });
     } catch (error) {
-      logger.error("Failed to get system memory info:", error);
+      logger.error("Failed to create Claudio session:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get Claudio session metadata
+   * @param claudioSessionId - Unique Claudio session ID  
+   * @param projectPath - Project path
+   * @returns Promise resolving to the session metadata
+   */
+  async getClaudioSession(
+    claudioSessionId: string,
+    projectPath: string
+  ): Promise<ClaudioSession> {
+    try {
+      return await invoke<ClaudioSession>("get_claudio_session", {
+        claudioSessionId,
+        projectPath
+      });
+    } catch (error) {
+      logger.error("Failed to get Claudio session:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Updates session metadata file
+   * @param claudoSessionId - Unique Claudio session ID
+   * @param projectPath - Project path
+   * @param claudeSettings - Claude CLI settings
+   * @returns Promise resolving to the created metadata
+   */
+  async createSessionMetadata(
+    sessionId: string, 
+    projectPath: string, 
+    claudeSettings: ClaudioClaudeSettings
+  ): Promise<ClaudioSession> {
+    try {
+      return await invoke<ClaudioSession>("create_session_metadata", {
+        claudoSessionId: sessionId,
+        projectPath,
+        claudeSettings
+      });
+    } catch (error) {
+      logger.error("Failed to create session metadata:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Updates session metadata
+   * @param sessionId - Session ID
+   * @param projectPath - Project path
+   * @param updates - Updated session data
+   * @returns Promise resolving to the updated session
+   */
+  async updateSessionMetadata(
+    sessionId: string,
+    projectPath: string,
+    updates: ClaudioSession
+  ): Promise<ClaudioSession> {
+    try {
+      return await invoke<ClaudioSession>("update_claudio_session", {
+        claudoSessionId: sessionId,
+        projectPath,
+        updates
+      });
+    } catch (error) {
+      logger.error("Failed to update session metadata:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Gets session metadata
+   * @param sessionId - Session ID
+   * @param projectPath - Project path
+   * @returns Promise resolving to the session metadata
+   */
+  async getSessionMetadata(
+    sessionId: string,
+    projectPath: string
+  ): Promise<ClaudioSession> {
+    try {
+      return await invoke<ClaudioSession>("get_claudio_session", {
+        claudoSessionId: sessionId,
+        projectPath
+      });
+    } catch (error) {
+      logger.error("Failed to get session metadata:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Lists all Claudio sessions for a project
+   * @param projectPath - Project path
+   * @returns Promise resolving to array of Claudio sessions
+   */
+  async listClaudioSessions(projectPath: string): Promise<ClaudioSession[]> {
+    try {
+      return await invoke<ClaudioSession[]>("list_claudio_sessions", {
+        projectPath
+      });
+    } catch (error) {
+      logger.error("Failed to list Claudio sessions:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Deletes session metadata
+   * @param sessionId - Session ID
+   * @param projectPath - Project path
+   * @returns Promise resolving when deletion is complete
+   */
+  async deleteSessionMetadata(
+    sessionId: string,
+    projectPath: string
+  ): Promise<void> {
+    try {
+      await invoke<void>("delete_claudio_session", {
+        claudoSessionId: sessionId,
+        projectPath
+      });
+    } catch (error) {
+      logger.error("Failed to delete session metadata:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Gets decorated sessions - Claude CLI sessions with optional Claudio metadata
+   * @param projectPath - Project path 
+   * @returns Promise resolving to decorated sessions
+   */
+  async getDecoratedSessions(projectPath: string): Promise<DecoratedSession[]> {
+    try {
+      // 1. Get all Claude CLI sessions (source of truth)
+      const claudeSessions = await this.getProjectSessions(projectPath);
+      
+      // 2. Get Claudio metadata for decoration
+      const claudioSessions = await this.listClaudioSessions(projectPath);
+      
+      // 3. Create lookup map for fast decoration
+      const claudioMap = new Map(
+        claudioSessions.map(session => [session.session_id, session])
+      );
+      
+      // 4. Decorate Claude sessions with Claudio metadata
+      return claudeSessions.map(session => ({
+        ...session,
+        claudio: claudioMap.get(session.id), // undefined if not managed by Claudio
+      }));
+    } catch (error) {
+      logger.error("Failed to get decorated sessions:", error);
       throw error;
     }
   }

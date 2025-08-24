@@ -53,6 +53,7 @@ export const ChatTabWrapper: React.FC<ChatTabWrapperProps> = ({ tab }) => {
   return (
     <ClaudeCodeSession
       session={tab.sessionData}
+      sessionId={tab.sessionId}
       initialProjectPath={tab.initialProjectPath || tab.sessionId}
       onBack={handleBack}
     />

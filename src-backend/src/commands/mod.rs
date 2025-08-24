@@ -7,6 +7,6 @@ pub mod storage;
 pub mod slash_commands;
 pub mod proxy;
 pub mod window;
-pub mod system;
 pub mod claude_sdk_simple;
 pub mod claude_direct;
+pub mod claudio_storage;

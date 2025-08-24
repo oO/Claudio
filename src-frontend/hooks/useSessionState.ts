@@ -280,13 +280,14 @@ export function useSessionState({
 
   // Load session history if resuming
   const loadSessionHistory = useCallback(async () => {
-    if (!session) return;
+    const sessionToLoad = session || effectiveSession;
+    if (!sessionToLoad) return;
     
     try {
       setIsLoading(true);
       setError(null);
       
-      const sessionWithContent = await api.loadSessionHistory(session.id, session.project_id);
+      const sessionWithContent = await api.loadSessionHistory(sessionToLoad.id, sessionToLoad.project_id);
       const history = sessionWithContent.content;
       
       // Store the file path from the API response
@@ -349,7 +350,7 @@ export function useSessionState({
     } finally {
       setIsLoading(false);
     }
-  }, [session]);
+  }, [session, effectiveSession]);
 
   // Check for active session
   const checkForActiveSession = useCallback(async () => {

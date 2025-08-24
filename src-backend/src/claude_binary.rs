@@ -33,7 +33,7 @@ pub struct ClaudeInstallation {
 /// Main function to find the Claude binary
 /// Checks database first for stored path and preference, then prioritizes accordingly
 pub fn find_claude_binary(app_handle: &tauri::AppHandle) -> Result<String, String> {
-    info!("Searching for claude binary...");
+    debug!("Searching for claude binary...");
 
     // First check if we have a stored path and preference in the database
     if let Ok(app_data_dir) = app_handle.path().app_data_dir() {
@@ -46,7 +46,7 @@ pub fn find_claude_binary(app_handle: &tauri::AppHandle) -> Result<String, Strin
                     [],
                     |row| row.get::<_, String>(0),
                 ) {
-                    info!("Found stored claude path in database: {}", stored_path);
+                    debug!("Found stored claude path in database: {}", stored_path);
                     
                     // Check if the path still exists
                     let path_buf = PathBuf::from(&stored_path);
@@ -188,17 +188,24 @@ fn try_which_command() -> Option<ClaudeInstallation> {
 
             debug!("'which' found claude at: {}", path);
 
-            // Verify the path exists
-            if !PathBuf::from(&path).exists() {
+            // Verify the path exists and resolve to absolute path for proper deduplication
+            let path_buf = PathBuf::from(&path);
+            if !path_buf.exists() {
                 warn!("Path from 'which' does not exist: {}", path);
                 return None;
             }
 
-            // Get version
+            // Resolve to canonical path to help with deduplication
+            let canonical_path = match path_buf.canonicalize() {
+                Ok(p) => p.to_string_lossy().to_string(),
+                Err(_) => path.clone(), // Fall back to original if canonicalize fails
+            };
+
+            // Get version using the original path (canonical might not work for version check)
             let version = get_claude_version(&path).ok().flatten();
 
             Some(ClaudeInstallation {
-                path,
+                path: canonical_path, // Use canonical path for deduplication
                 version,
                 source: "which".to_string(),
                 installation_type: InstallationType::System,

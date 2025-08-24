@@ -1,7 +1,7 @@
 {
   "name": "claudio",
   "private": true,
-  "version": "0.3.28",
+  "version": "0.3.31",
   "license": "AGPL-3.0",
   "type": "module",
   "scripts": {
@@ -15,7 +15,6 @@
     "predev": "npm run sync-version"
   },
   "dependencies": {
-    "@anthropic-ai/claude-code": "^1.0.83",
     "@hookform/resolvers": "^3.9.1",
     "@radix-ui/react-dialog": "^1.1.4",
     "@radix-ui/react-dropdown-menu": "^2.1.15",

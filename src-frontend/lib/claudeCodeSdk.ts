@@ -84,6 +84,7 @@ export interface ClaudeCodeSessionOptions {
 export interface ActiveClaudeSession {
   sessionId: string;
   claudeSessionId?: string; // The actual session ID from Claude Code SDK
+  claudioId?: string; // The Claudio wrapper session ID from backend
   projectPath: string;
   isActive: boolean;
   startTime: Date;
@@ -154,12 +155,14 @@ class ClaudeCodeSDKManager {
         
         onMessage(payload.message);
         
-        // Capture the actual Claude session ID from system messages or direct payload
-        if (payload.claude_session_id) {
-          if (session) {
-            session.claudeSessionId = payload.claude_session_id;
-            logger.info('Updated Claude session ID:', { sessionId, claudeSessionId: payload.claude_session_id });
-          }
+        // Capture both session IDs from payload
+        if (payload.claude_session_id && session) {
+          session.claudeSessionId = payload.claude_session_id;
+          logger.info('Updated Claude session ID:', { sessionId, claudeSessionId: payload.claude_session_id });
+        }
+        if (payload.claudio_id && session) {
+          session.claudioId = payload.claudio_id;
+          logger.info('Updated Claudio session ID:', { sessionId, claudioId: payload.claudio_id });
         }
       } else if (payload.type === 'claude_sdk_error') {
         // Convert error to result message
@@ -227,10 +230,11 @@ class ClaudeCodeSDKManager {
         custom_system_prompt: options.customSystemPrompt,
         allowed_tools: options.allowedTools || ['Bash', 'Read', 'Write', 'Edit', 'LS', 'Grep'],
         working_directory: options.workingDirectory || projectPath,
-        previous_session_id: options.previous_session_id // THIS WAS MISSING! 🔥
+        previous_session_id: options.previous_session_id,
+        claudio_id: session?.claudioId // Pass the Claudio session ID
       };
 
-      logger.info('🔗 Starting Claude Code session via Tauri backend:', sdkOptions);
+      logger.info('🔗 SDK options being passed to backend:', sdkOptions);
       
       // Extra debug to confirm previous_session_id makes it through
       if (sdkOptions.previous_session_id) {
@@ -301,11 +305,12 @@ class ClaudeCodeSDKManager {
     try {
       // Call direct session with previous Claude session ID for --resume
       await invoke('start_claude_direct_session', {
-        sessionId, // Keep same frontend session ID
+        tempSessionId: sessionId, // Keep same frontend session ID for events
         projectPath: session.projectPath,
         prompt,
         options: {
-          previous_session_id: session.claudeSessionId, // This triggers --resume
+          session_id: session.claudeSessionId, // Claude CLI session ID for --resume
+          claudio_id: session.claudioId, // Claudio wrapper session ID
           working_directory: session.projectPath
         }
       });

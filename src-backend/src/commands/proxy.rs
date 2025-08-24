@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
-use crate::commands::claude::get_claude_dir;
 use crate::commands::window::WindowState;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -73,8 +72,9 @@ pub async fn get_proxy_settings() -> Result<ProxySettings, String> {
 
 /// Get all Claudio settings from the file
 pub async fn get_claudio_settings() -> Result<ClaudioSettings, String> {
-    let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
-    let claudio_file = claude_dir.join("claudio-settings.json");
+    use crate::commands::claudio_storage::get_claudio_settings_file;
+    
+    let claudio_file = get_claudio_settings_file()?;
     
     if !claudio_file.exists() {
         log::info!("Claudio settings file not found, returning default settings");
@@ -133,19 +133,13 @@ pub async fn save_proxy_settings(settings: ProxySettings) -> Result<(), String> 
 
 /// Save all Claudio settings to the file
 pub async fn save_claudio_settings(settings: ClaudioSettings) -> Result<(), String> {
-    log::info!("Getting claude directory...");
-    let claude_dir = match get_claude_dir() {
-        Ok(dir) => {
-            log::info!("Claude directory: {:?}", dir);
-            dir
-        }
-        Err(e) => {
-            log::error!("Failed to get claude directory: {}", e);
-            return Err(e.to_string());
-        }
-    };
+    use crate::commands::claudio_storage::{get_claudio_settings_file, ensure_claudio_dirs};
     
-    let claudio_file = claude_dir.join("claudio-settings.json");
+    log::info!("Ensuring claudio directories exist...");
+    ensure_claudio_dirs().await?;
+    
+    log::info!("Getting claudio settings file path...");
+    let claudio_file = get_claudio_settings_file()?;
     log::info!("Target file path: {:?}", claudio_file);
     
     // Pretty print the JSON with 2-space indentation

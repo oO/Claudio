@@ -26,8 +26,9 @@ import {
 } from "@/lib/date-utils";
 import type { Session } from "@/lib/api";
 import { DebugLabel } from "@/components/ui/atoms";
+import { Badge } from "@/components/ui/badge";
 import { SessionDeleteDialog } from "./SessionDeleteDialog";
-// import { useMemoryMonitor } from "@/hooks/useMemoryMonitor"; // Disabled - memory monitoring was stable
+import { isEditorSession } from "@/lib/sessionUtils";
 
 interface ProjectSessionTabProps {
   sessions: Session[];
@@ -65,13 +66,6 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
     overscan: 5, // Keep 5 items rendered outside of view
   });
 
-  // Memory monitoring disabled - was stable, crashes not related to Claudio
-  // const { takeSnapshot, isLeakDetected, getMemoryTrend, currentMemory } = useMemoryMonitor({
-  //   component: 'ProjectSessionTab',
-  //   interval: 3000, // Check every 3 seconds
-  //   logToConsole: true,
-  //   trackLeaks: true
-  // });
 
   // Calculate container height based on actual position
   useEffect(() => {
@@ -266,7 +260,7 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <p
-                            className="text-sm font-medium leading-tight"
+                            className="text-sm font-medium leading-tight flex-1"
                             style={{
                               display: "-webkit-box",
                               WebkitLineClamp: 2,
@@ -277,6 +271,11 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
                           >
                             {session.first_message || "Untitled Session"}
                           </p>
+                          {isEditorSession(session) && (
+                            <Badge variant="default" className="text-xs bg-green-600 hover:bg-green-700 flex-shrink-0">
+                              Live
+                            </Badge>
+                          )}
                         </div>
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
                           <div className="flex items-center gap-1">

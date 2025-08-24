@@ -235,17 +235,47 @@ export function useSessionFileWatcher({
   }, [session, projectId, onSessionChanged, onSessionCreated, onSessionRemoved, preserveScrollPosition, restoreScrollPosition]);
 
   // Register/unregister this tab in the global registry
+  // Use ref to track previous session and prevent cleanup during session switches
+  const prevSessionIdRef = useRef<string | undefined>();
+  const isUnmountingRef = useRef(false);
+  
+  // Handle session registration/switching
   useEffect(() => {
-    if (!enabled || !projectId || !session) return;
+    if (!enabled || !projectId || !session) {
+      // If we're disabling, clean up previous session if any
+      if (prevSessionIdRef.current) {
+        sessionTabRegistry.unregisterTab(tabId, projectId, prevSessionIdRef.current);
+        prevSessionIdRef.current = undefined;
+      }
+      return;
+    }
 
-    // Register this tab
-    sessionTabRegistry.registerTab(tabId, projectId, session.id);
+    const currentSessionId = session.id;
+    const previousSessionId = prevSessionIdRef.current;
 
-    // Cleanup on unmount or when session changes
-    return () => {
-      sessionTabRegistry.unregisterTab(tabId, projectId, session.id);
-    };
+    // Register the new session first
+    sessionTabRegistry.registerTab(tabId, projectId, currentSessionId);
+    
+    // Then unregister the previous session (if different)
+    // This ensures active sessions list never becomes empty during session switches
+    if (previousSessionId && previousSessionId !== currentSessionId) {
+      sessionTabRegistry.unregisterTab(tabId, projectId, previousSessionId);
+    }
+    
+    // Update ref for next time
+    prevSessionIdRef.current = currentSessionId;
   }, [enabled, tabId, projectId, session?.id]);
+
+  // Separate effect for cleanup on unmount only
+  useEffect(() => {
+    return () => {
+      isUnmountingRef.current = true;
+      if (prevSessionIdRef.current) {
+        sessionTabRegistry.unregisterTab(tabId, projectId, prevSessionIdRef.current);
+        prevSessionIdRef.current = undefined;
+      }
+    };
+  }, []); // No dependencies - only runs on mount/unmount
 
   // Setup global event listener for session file changes (shared across all tabs)
   useEffect(() => {
