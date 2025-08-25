@@ -16,6 +16,9 @@ pub struct ClaudioSession {
     pub status: SessionStatus,
     /// Claude CLI settings for this session
     pub settings: ClaudeSettings,
+    /// UUID of the last message in the session (for resume detection)
+    #[serde(default)]
+    pub last_message_uuid: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -118,6 +121,7 @@ pub async fn create_claudio_session(
         project_path: project_path.clone(),
         status: SessionStatus::Active,
         settings,
+        last_message_uuid: None,
     };
     
     update_claudio_session(claudio_id.clone(), project_path, new_session).await?;
@@ -229,5 +233,25 @@ pub async fn delete_claudio_session(
         .map_err(|e| format!("Failed to delete session metadata: {}", e))?;
     
     log::info!("🗑️ Deleted session metadata: {}", session_file.display());
+    Ok(())
+}
+
+/// Update the last message UUID for resume detection
+#[command]
+pub async fn update_last_message_uuid(
+    claudio_session_id: String,
+    project_path: String,
+    last_message_uuid: String,
+) -> Result<(), String> {
+    // Get the current session
+    let mut session = get_claudio_session(claudio_session_id.clone(), project_path.clone()).await?;
+    
+    // Update the last message UUID
+    session.last_message_uuid = Some(last_message_uuid.clone());
+    
+    // Save it back
+    update_claudio_session(claudio_session_id, project_path, session).await?;
+    
+    log::debug!("📍 Updated last message UUID: {}", last_message_uuid);
     Ok(())
 }

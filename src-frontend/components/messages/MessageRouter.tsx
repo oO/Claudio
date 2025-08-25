@@ -7,6 +7,7 @@ import { SubAgentMessage } from "./SubAgentMessage";
 import { ResultMessage } from "./ResultMessage";
 import { ErrorMessage } from "./ErrorMessage";
 import { SummaryMessage } from "./SummaryMessage";
+import { StatusMessage } from "./StatusMessage";
 import { logger } from '@/lib/logger';
 
 interface MessageRouterProps {
@@ -146,6 +147,9 @@ const MessageRouterComponent: React.FC<MessageRouterProps> = ({
 
       case "result":
         return <ResultMessage message={message} />;
+
+      case "status":
+        return <StatusMessage message={message} />;
 
       default:
         // Skip rendering if no meaningful content

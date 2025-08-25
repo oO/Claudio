@@ -54,7 +54,7 @@ use commands::claude_sdk_simple::{start_claude_sdk_session, continue_claude_sdk_
 use commands::claude_direct::{start_claude_direct_session};
 use commands::claudio_storage::{
     create_claudio_session, update_claudio_session, get_claudio_session,
-    list_claudio_sessions, delete_claudio_session,
+    list_claudio_sessions, delete_claudio_session, update_last_message_uuid,
 };
 use process::ProcessRegistryState;
 use std::sync::Mutex;
@@ -343,6 +343,7 @@ fn main() {
             get_claudio_session,
             list_claudio_sessions,
             delete_claudio_session,
+            update_last_message_uuid,
             
             // Session File Watching
             start_session_watching,

@@ -81,8 +81,6 @@ class SessionTabRegistry {
       this.startWatchingProject(projectId);
     }
 
-    logger.log(`Registered tab ${tabId} for session ${sessionId} in project ${projectId}`);
-    logger.log(`Active sessions for ${projectId}:`, Array.from(this.activeTabs.get(projectId) || []));
   }
 
   /**
@@ -113,8 +111,6 @@ class SessionTabRegistry {
       }
     }
 
-    logger.log(`Unregistered tab ${tabId} for session ${sessionId} in project ${projectId}`);
-    logger.log(`Active sessions for ${projectId}:`, Array.from(this.activeTabs.get(projectId) || []));
   }
 
   /**
@@ -192,8 +188,6 @@ export function useSessionFileWatcher({
 
   // Handle session file events from backend
   const handleSessionFileEvent = useCallback(async (event: SessionFileEvent) => {
-    logger.log('Session file event received:', event);
-
     // Only handle events for the current project
     if (projectId && event.data.project_id !== projectId) {
       return;
@@ -205,8 +199,6 @@ export function useSessionFileWatcher({
         if (sessionTabRegistry.hasActiveTab(event.data.session_id)) {
           // If this is the current session, refresh it
           if (session && event.data.session_id === session.id) {
-            logger.log('Current session file modified, refreshing...');
-            
             preserveScrollPosition();
             
             try {
@@ -220,12 +212,10 @@ export function useSessionFileWatcher({
         break;
 
       case 'Created':
-        logger.log('New session created:', event.data.session_id);
         onSessionCreated?.(event.data.session_id);
         break;
 
       case 'Removed':
-        logger.log('Session removed:', event.data.session_id);
         onSessionRemoved?.(event.data.session_id);
         break;
 
@@ -243,7 +233,7 @@ export function useSessionFileWatcher({
   useEffect(() => {
     if (!enabled || !projectId || !session) {
       // If we're disabling, clean up previous session if any
-      if (prevSessionIdRef.current) {
+      if (prevSessionIdRef.current && projectId) {
         sessionTabRegistry.unregisterTab(tabId, projectId, prevSessionIdRef.current);
         prevSessionIdRef.current = undefined;
       }
@@ -270,12 +260,12 @@ export function useSessionFileWatcher({
   useEffect(() => {
     return () => {
       isUnmountingRef.current = true;
-      if (prevSessionIdRef.current) {
+      if (prevSessionIdRef.current && projectId) {
         sessionTabRegistry.unregisterTab(tabId, projectId, prevSessionIdRef.current);
         prevSessionIdRef.current = undefined;
       }
     };
-  }, []); // No dependencies - only runs on mount/unmount
+  }, [projectId]); // Include projectId dependency for cleanup
 
   // Setup global event listener for session file changes (shared across all tabs)
   useEffect(() => {

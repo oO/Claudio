@@ -339,7 +339,17 @@ export function useSessionState({
         };
       });
       
-      setMessages(loadedMessages);
+      // Preserve any existing status messages when loading session history
+      setMessages(prev => {
+        const existingStatusMessages = prev.filter(m => (m as any).type === "status");
+        const newMessages = [...loadedMessages, ...existingStatusMessages];
+        logger.debug('🔄 Loading session history with status preservation:', { 
+          loadedCount: loadedMessages.length,
+          preservedStatusCount: existingStatusMessages.length,
+          finalCount: newMessages.length
+        });
+        return newMessages;
+      });
       setRawJsonlOutput(history.map(h => JSON.stringify(h)));
       
       // After loading history, we're continuing a conversation

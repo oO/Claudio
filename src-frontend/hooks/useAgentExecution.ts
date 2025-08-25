@@ -4,7 +4,7 @@ import { api, type Agent } from "@/lib/api";
 import { useTrackEvent, useFeatureAdoptionTracking } from "@/hooks";
 
 export interface ClaudeStreamMessage {
-  type: "system" | "assistant" | "user" | "result";
+  type: "system" | "assistant" | "user" | "result" | "status";
   subtype?: string;
   message?: {
     content?: any[];

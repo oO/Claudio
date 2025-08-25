@@ -28,7 +28,7 @@ interface SessionOutputViewerProps {
 
 // Use the same message interface as AgentExecution for consistency
 export interface ClaudeStreamMessage {
-  type: "system" | "assistant" | "user" | "result";
+  type: "system" | "assistant" | "user" | "result" | "status";
   subtype?: string;
   message?: {
     content?: any[];

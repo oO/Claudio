@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.32] - 2025-08-25
+
+### Improved
+- Fixed resume flickering with UUID-based session detection  
+- Added immediate UI feedback for prompt submission
+- Implemented status messages with action verbs and haikus
+- Simplified prompt components (removed FloatingPromptInput)
+- Fixed auto-scroll behavior for status messages
+- Cleaned up excessive debug logging for better performance
+
 ## [0.3.28] - 2025-08-17
 
 ### Performance

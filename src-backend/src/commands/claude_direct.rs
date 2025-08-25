@@ -17,6 +17,137 @@ pub struct ClaudeDirectOptions {
     pub claudio_id: Option<String>,    // Claudio wrapper session ID
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClaudeProcessEvent {
+    pub claudio_session_id: String,
+    pub claude_session_id: String, 
+    pub process_id: Option<u32>,
+    pub status: ClaudeProcessStatus,
+    pub timestamp: i64,
+    pub title: Option<String>,
+    pub message: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", content = "data")]
+pub enum ClaudeProcessStatus {
+    Starting { action: String },
+    Running { action: String },
+    Completed,
+    Failed { reason: String },
+}
+
+/// Get a random thinking title and message (haiku) pair
+fn get_thinking_content() -> (String, String) {
+    let title = get_random_thinking_title();
+    let message = get_random_thinking_message();
+    (title, message)
+}
+
+/// Get a random thinking title from resource file
+fn get_random_thinking_title() -> String {
+    if let Ok(titles) = load_thinking_titles_from_file() {
+        if !titles.is_empty() {
+            use rand::seq::SliceRandom;
+            return titles.choose(&mut rand::thread_rng())
+                .cloned()
+                .unwrap_or_else(|| "Claude is thinking...".to_string());
+        }
+    }
+    
+    // Fallback titles if file loading fails
+    let fallback_titles = [
+        "Claude is willy-nillying...",
+        "Claude is discombobulating...", 
+        "Claude is pondering...",
+        "Claude is thinking...",
+    ];
+    
+    use rand::seq::SliceRandom;
+    fallback_titles.choose(&mut rand::thread_rng())
+        .unwrap_or(&"Claude is thinking...")
+        .to_string()
+}
+
+/// Get a random thinking message (haiku) from resource file
+fn get_random_thinking_message() -> String {
+    if let Ok(messages) = load_thinking_messages_from_file() {
+        if !messages.is_empty() {
+            use rand::seq::SliceRandom;
+            return messages.choose(&mut rand::thread_rng())
+                .cloned()
+                .unwrap_or_else(|| "Data streams run dry — Silent voices in the void — Fallback haiku saves".to_string());
+        }
+    }
+    
+    // Fallback messages if file loading fails
+    let fallback_messages = [
+        "Code flows like water — Through circuits of thought and dream — Beauty takes its form",
+        "Algorithms dance — In silicon valleys deep — Logic finds its way",
+        "Data streams run dry — Silent voices in the void — Fallback haiku saves",
+    ];
+    
+    use rand::seq::SliceRandom;
+    fallback_messages.choose(&mut rand::thread_rng())
+        .unwrap_or(&"Data streams run dry — Silent voices in the void — Fallback haiku saves")
+        .to_string()
+}
+
+/// Load thinking titles from the resource file
+fn load_thinking_titles_from_file() -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    let resource_path = std::path::Path::new("src-backend/resources/claude_thinking_titles.txt");
+    let content = std::fs::read_to_string(resource_path)?;
+    
+    let titles: Vec<String> = content
+        .lines()
+        .map(|line| line.trim().to_string())
+        .filter(|line| !line.is_empty())
+        .collect();
+        
+    Ok(titles)
+}
+
+/// Load thinking messages (haikus) from the resource file
+fn load_thinking_messages_from_file() -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    let resource_path = std::path::Path::new("src-backend/resources/claude_thinking_messages.txt");
+    let content = std::fs::read_to_string(resource_path)?;
+    
+    let messages: Vec<String> = content
+        .lines()
+        .map(|line| line.trim().to_string())
+        .filter(|line| !line.is_empty())
+        .collect();
+        
+    Ok(messages)
+}
+
+/// Emit a Claude process event to the frontend
+fn emit_process_event(
+    app_handle: &AppHandle,
+    claudio_session_id: &str,
+    claude_session_id: &str,
+    process_id: Option<u32>,
+    status: ClaudeProcessStatus,
+    title: Option<String>,
+    message: Option<String>,
+) -> Result<(), String> {
+    let event = ClaudeProcessEvent {
+        claudio_session_id: claudio_session_id.to_string(),
+        claude_session_id: claude_session_id.to_string(),
+        process_id,
+        status,
+        timestamp: chrono::Utc::now().timestamp_millis(),
+        title,
+        message,
+    };
+    
+    app_handle.emit("claude-process-event", &event)
+        .map_err(|e| format!("Failed to emit process event: {}", e))?;
+    
+    log::info!("🚀 Process event emitted: {:?}", event);
+    Ok(())
+}
+
 /// Call Claude CLI directly instead of going through Node.js SDK wrapper
 #[command]
 pub async fn start_claude_direct_session(
@@ -60,6 +191,7 @@ pub async fn start_claude_direct_session(
                 project_path: project_path.clone(),
                 status: SessionStatus::Active,
                 settings: claude_settings,
+                last_message_uuid: None,
             };
             
             update_claudio_session(new_claudio_id.clone(), project_path.clone(), new_session).await
@@ -88,6 +220,7 @@ pub async fn start_claude_direct_session(
                 project_path: project_path.clone(),
                 status: SessionStatus::Active,
                 settings: claude_settings,
+                last_message_uuid: None,
             };
             
             update_claudio_session(new_claudio_id.clone(), project_path.clone(), new_session).await
@@ -152,6 +285,20 @@ pub async fn start_claude_direct_session(
             log::error!("Failed to spawn Claude CLI process: {}", e);
             format!("Failed to spawn Claude CLI process: {}", e)
         })?;
+
+    // Get process ID and emit starting event
+    let process_id = cmd.id();
+    let (thinking_title, thinking_message) = get_thinking_content();
+    
+    emit_process_event(
+        &app,
+        &claudio_session_id,
+        &temp_session_id, // Use temp ID initially
+        process_id,
+        ClaudeProcessStatus::Starting { action: thinking_title.clone() },
+        Some(thinking_title),
+        Some(thinking_message),
+    ).unwrap_or_else(|e| log::warn!("Failed to emit process start event: {}", e));
 
     let stdout = cmd.stdout.take().ok_or("Failed to get stdout")?;
     let stderr = cmd.stderr.take().ok_or("Failed to get stderr")?;
@@ -275,10 +422,38 @@ pub async fn start_claude_direct_session(
     // Wait for process completion
     let app_wait = app.clone();
     let temp_session_id_wait = temp_session_id.clone();
+    let claudio_session_id_wait = claudio_session_id.clone();
+    let temp_session_id_for_events = temp_session_id.clone();
     tokio::spawn(async move {
         match cmd.wait().await {
             Ok(status) => {
-                log::debug!("Claude CLI completed successfully");
+                if status.success() {
+                    log::debug!("Claude CLI completed successfully");
+                    // Emit process completion event
+                    let _ = emit_process_event(
+                        &app_wait,
+                        &claudio_session_id_wait,
+                        &temp_session_id_for_events,
+                        process_id,
+                        ClaudeProcessStatus::Completed,
+                        None,
+                        None,
+                    );
+                } else {
+                    let reason = format!("Process exited with code {}", status.code().unwrap_or(-1));
+                    log::warn!("Claude CLI failed: {}", reason);
+                    // Emit process failure event
+                    let _ = emit_process_event(
+                        &app_wait,
+                        &claudio_session_id_wait,
+                        &temp_session_id_for_events,
+                        process_id,
+                        ClaudeProcessStatus::Failed { reason: reason.clone() },
+                        Some("❌ Process failed".to_string()),
+                        Some(reason),
+                    );
+                }
+                
                 // Emit completion events that SessionMessageHandler expects
                 let _ = app_wait.emit(&format!("claude-complete:{}", temp_session_id_wait), status.success());
                 let _ = app_wait.emit(
@@ -290,7 +465,20 @@ pub async fn start_claude_direct_session(
                 );
             }
             Err(e) => {
+                let reason = format!("Process error: {}", e);
                 log::error!("Claude CLI error: {}", e);
+                
+                // Emit process failure event
+                let _ = emit_process_event(
+                    &app_wait,
+                    &claudio_session_id_wait,
+                    &temp_session_id_for_events,
+                    process_id,
+                    ClaudeProcessStatus::Failed { reason: reason.clone() },
+                    Some("💥 Claude crashed".to_string()),
+                    Some(format!("Process error: {}", e)),
+                );
+                
                 // Emit errors to events that SessionMessageHandler expects
                 let _ = app_wait.emit(&format!("claude-error:{}", temp_session_id_wait), e.to_string());
                 let _ = app_wait.emit(&format!("claude-complete:{}", temp_session_id_wait), false);

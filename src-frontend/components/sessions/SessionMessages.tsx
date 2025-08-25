@@ -68,14 +68,12 @@ export const SessionMessages = forwardRef<SessionMessagesRef, SessionMessagesPro
   // Expose scroll methods via ref
   useImperativeHandle(ref, () => ({
     scrollToTop: () => {
-      logger.log('Scrolling virtualizer to top (index 0)');
       if (displayableMessages.length > 0) {
         rowVirtualizer.scrollToIndex(0, { align: 'start' });
         setIsPinnedToBottom(false);
       }
     },
     scrollToBottom: () => {
-      logger.log('Scrolling virtualizer to bottom (index', displayableMessages.length - 1, ')');
       if (displayableMessages.length > 0) {
         rowVirtualizer.scrollToIndex(displayableMessages.length - 1, { align: 'end' });
         setIsPinnedToBottom(true);
@@ -92,13 +90,6 @@ export const SessionMessages = forwardRef<SessionMessagesRef, SessionMessagesPro
     const messageNumbers = displayableMessages.map(msg => msg.messageNumber).filter(Boolean);
     const firstMsgNum = messageNumbers[0];
     const lastMsgNum = messageNumbers[messageNumbers.length - 1];
-    
-    logger.log(`SessionMessages DEBUG:
-      - displayableMessages.length: ${totalDisplayableCount}
-      - virtual items rendered: ${actualRenderedCount}
-      - virtual items range: ${virtualItems.length > 0 ? `${virtualItems[0].index}-${virtualItems[virtualItems.length - 1].index}` : 'none'}
-      - rowVirtualizer.count: ${rowVirtualizer.options.count}
-      - message numbers: ${firstMsgNum} to ${lastMsgNum} (${messageNumbers.length} total)`);
     
     // Report the count we're supposed to display (not what's currently rendered)
     onDisplayedCountChange?.(totalDisplayableCount);
@@ -120,9 +111,10 @@ export const SessionMessages = forwardRef<SessionMessagesRef, SessionMessagesPro
   // Auto-scroll to bottom when new messages arrive (if pinned)
   useEffect(() => {
     const hasNewMessages = displayableMessages.length > previousMessageCountRef.current;
+    const hasStatusMessage = displayableMessages.some(m => (m as any).type === "status");
     
-    if (hasNewMessages && isPinnedToBottom && !isLoading) {
-      logger.log(`Auto-scrolling to new message: ${displayableMessages.length}`);
+    // Allow auto-scroll if not loading OR if we have a status message (even while loading)
+    if (hasNewMessages && isPinnedToBottom && (!isLoading || hasStatusMessage)) {
       setTimeout(() => {
         rowVirtualizer.scrollToIndex(displayableMessages.length - 1, { align: 'end' });
       }, 100); // Small delay to ensure content is rendered
@@ -203,8 +195,8 @@ export const SessionMessages = forwardRef<SessionMessagesRef, SessionMessagesPro
             </AnimatePresence>
           </div>
 
-          {/* Loading indicator under the latest message */}
-          {isLoading && (
+          {/* Loading indicator under the latest message - only show if no status message present */}
+          {isLoading && !displayableMessages.some(m => (m as any).type === "status") && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
