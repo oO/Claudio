@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Loader2, Plus, MoreVertical, Trash2, Settings } from "lucide-react";
-import { api, type Project, type Session, type ClaudeMdFile } from "@/lib/api";
+import { api, type Project, type Session, type DecoratedSession, type ClaudeMdFile } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { prettifyProjectName } from "@/lib/utils";
 import { ProjectList, ProjectDetail } from "@/components/projects";
@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Toast, type ToastType } from "@/components/ui/toast";
 import { Input } from "@/components/ui/input";
 import { TabPageLayout } from "@/components/common";
 import { useTabState } from "@/hooks/useTabState";
@@ -43,12 +44,19 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   const { updateTab, createChatTab, createClaudeSDKTab } = useTabState();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [sessions, setSessions] = useState<Session[]>([]);
+  const [sessions, setSessions] = useState<DecoratedSession[]>([]);
   const [activeProjectTab, setActiveProjectTab] = useState<string>("sessions");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [projectDeleteDialogOpen, setProjectDeleteDialogOpen] = useState(false);
   const [isDeletingProject, setIsDeletingProject] = useState(false);
+
+  // Toast state
+  const [toast, setToast] = useState<{
+    message: string;
+    type: ToastType;
+    show: boolean;
+  }>({ message: "", type: "info", show: false });
 
   // Delete options state
   const [deleteOptions, setDeleteOptions] = useState({
@@ -201,6 +209,11 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
     setSessions((prev) => prev.filter((s) => s.id !== sessionId));
   };
 
+  // Helper function to show toast notifications
+  const showToast = (message: string, type: ToastType) => {
+    setToast({ message, type, show: true });
+  };
+
   const handleProjectDeleted = async (projectId: string) => {
     setIsDeletingProject(true);
     try {
@@ -212,6 +225,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
       logger.log("✅ Project deletion completed:", result);
       logger.log(`📊 Deletion summary:
         - Sessions: ${result.sessions_deleted}
+        - Claudio sessions: ${result.claudio_sessions_deleted}
         - Todos: ${result.todos_deleted}
         - Timelines: ${result.timelines_deleted}
         - Agents: ${result.agents_deleted}
@@ -226,24 +240,42 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
       handleBack();
       setProjectDeleteDialogOpen(false);
 
-      // Create deletion summary for user feedback
-      let deletionSummary = `- ${result.sessions_deleted} sessions\n- ${result.todos_deleted} todo files\n- ${result.timelines_deleted} timelines`;
+      // Create deletion summary for toast
+      const projectName = getProjectName(selectedProject?.path || '');
+      let deletionParts = [];
+      
+      if (result.sessions_deleted > 0) {
+        deletionParts.push(`${result.sessions_deleted} sessions`);
+      }
+      if (result.claudio_sessions_deleted > 0) {
+        deletionParts.push(`${result.claudio_sessions_deleted} claudio sessions`);
+      }
+      if (result.todos_deleted > 0) {
+        deletionParts.push(`${result.todos_deleted} todos`);
+      }
+      if (result.timelines_deleted > 0) {
+        deletionParts.push(`${result.timelines_deleted} timelines`);
+      }
       if (result.agents_deleted > 0) {
-        deletionSummary += `\n- ${result.agents_deleted} agents`;
+        deletionParts.push(`${result.agents_deleted} agents`);
       }
       if (result.memories_deleted > 0) {
-        deletionSummary += `\n- ${result.memories_deleted} memory files`;
+        deletionParts.push(`${result.memories_deleted} memories`);
       }
       if (result.settings_deleted > 0) {
-        deletionSummary += `\n- ${result.settings_deleted} settings file${result.settings_deleted !== 1 ? "s" : ""}`;
+        deletionParts.push(`${result.settings_deleted} settings`);
       }
-      deletionSummary += `\n- ${result.size_mb.toFixed(2)} MB freed`;
 
-      // Show success feedback
-      alert(`Project deleted successfully!\n\nDeleted:\n${deletionSummary}`);
+      const deletionSummary = deletionParts.join(', ');
+      
+      // Show success toast
+      showToast(
+        `${projectName} deleted successfully! Removed: ${deletionSummary} (${result.size_mb.toFixed(1)} MB freed)`,
+        'success'
+      );
     } catch (error) {
       logger.error("❌ Failed to delete project:", error);
-      alert(`Failed to delete project: ${error}`);
+      showToast(`Failed to delete project: ${error}`, 'error');
     } finally {
       setIsDeletingProject(false);
     }
@@ -290,8 +322,20 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
 
   const handleNewSDKSession = async (projectPath?: string) => {
     if (projectPath) {
-      // Create SDK tab with known project path
-      createClaudeSDKTab(projectPath);
+      // Create SDK tab with known project path and back navigation
+      updateTab(tab.id, {
+        type: "claude-sdk",
+        title: `New: ${projectPath.split("/").pop() || "Session"}`,
+        initialProjectPath: projectPath,
+        status: 'idle',
+        hasUnsavedChanges: false,
+        icon: 'zap',
+        restoreProjectState: {
+          selectedProject: selectedProject,
+          sessions: sessions,
+          activeTab: "sessions", // Default to sessions tab when returning
+        },
+      });
     } else {
       // Show native folder picker dialog
       try {
@@ -303,7 +347,20 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
         
         if (selectedPath) {
           logger.log('Selected folder:', selectedPath);
-          createClaudeSDKTab(selectedPath);
+          // Create SDK tab with selected path and back navigation
+          updateTab(tab.id, {
+            type: "claude-sdk",
+            title: `New: ${selectedPath.split("/").pop() || "Session"}`,
+            initialProjectPath: selectedPath,
+            status: 'idle',
+            hasUnsavedChanges: false,
+            icon: 'zap',
+            restoreProjectState: {
+              selectedProject: selectedProject,
+              sessions: sessions,
+              activeTab: "sessions", // Default to sessions tab when returning
+            },
+          });
         }
       } catch (error) {
         logger.error('Failed to open folder dialog:', error);
@@ -418,21 +475,42 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                       initialActiveTab={activeProjectTab}
                       onActiveTabChange={setActiveProjectTab}
                       onSessionClick={(session) => {
-                        // Update tab to show this session with proper previousState for back navigation
-                        updateTab(tab.id, {
-                          type: "chat",
-                          title:
-                            session.project_path.split("/").pop() || "Session",
-                          sessionId: session.id,
-                          sessionData: session, // Store full session object
-                          initialProjectPath: session.project_path,
-                          // Store state to return to - this is the KEY fix!
-                          restoreProjectState: {
-                            selectedProject: selectedProject,
-                            sessions: sessions,
-                            activeTab: activeProjectTab,
-                          },
-                        });
+                        if ((session as any).claudio) {
+                          // Interactive claudio session - create a claude-sdk tab for continuation
+                          logger.log('Continuing claudio session:', (session as any).claudio.claudio_id);
+                          
+                          updateTab(tab.id, {
+                            type: "claude-sdk",
+                            title: `Continue: ${session.project_path.split("/").pop() || "Session"}`,
+                            initialProjectPath: session.project_path,
+                            sessionData: session, // Store full session object for continuation
+                            claudeSession: (session as any).claudio, // Store claudio metadata
+                            status: 'idle',
+                            hasUnsavedChanges: false,
+                            icon: 'zap',
+                            restoreProjectState: {
+                              selectedProject: selectedProject,
+                              sessions: sessions,
+                              activeTab: activeProjectTab,
+                            },
+                          });
+                        } else {
+                          // Regular session - open as read-only chat tab
+                          updateTab(tab.id, {
+                            type: "chat",
+                            title:
+                              session.project_path.split("/").pop() || "Session",
+                            sessionId: session.id,
+                            sessionData: session, // Store full session object
+                            initialProjectPath: session.project_path,
+                            // Store state to return to - this is the KEY fix!
+                            restoreProjectState: {
+                              selectedProject: selectedProject,
+                              sessions: sessions,
+                              activeTab: activeProjectTab,
+                            },
+                          });
+                        }
                       }}
                       onEditClaudeFile={(
                         file: ClaudeMdFile,
@@ -533,6 +611,9 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                           }
                         }
                       }}
+                      selectedProject={selectedProject}
+                      currentTab={tab}
+                      onUpdateTab={updateTab}
                     />
                   </motion.div>
                 ) : (
@@ -749,6 +830,18 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
         </Dialog>
 
       </TabPageLayout>
+
+      {/* Toast notifications */}
+      {toast.show && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            duration={5000}
+            onDismiss={() => setToast(prev => ({ ...prev, show: false }))}
+          />
+        </div>
+      )}
     </>
   );
 };

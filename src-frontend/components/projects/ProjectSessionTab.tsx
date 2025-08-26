@@ -24,20 +24,24 @@ import {
   formatFileSize,
   formatTimeAgo,
 } from "@/lib/date-utils";
-import type { Session } from "@/lib/api";
+import type { Session, DecoratedSession } from "@/lib/api";
 import { DebugLabel } from "@/components/ui/atoms";
 import { Badge } from "@/components/ui/badge";
 import { SessionDeleteDialog } from "./SessionDeleteDialog";
 import { isEditorSession } from "@/lib/sessionUtils";
 
 interface ProjectSessionTabProps {
-  sessions: Session[];
+  sessions: DecoratedSession[];
   projectId: string;
   projectName: string;
-  onSessionClick?: (session: Session) => void;
-  onSessionDelete?: (session: Session) => void;
+  onSessionClick?: (session: DecoratedSession) => void;
+  onSessionDelete?: (session: DecoratedSession) => void;
   onStartNewSession?: () => void;
-  onSessionsDeleted?: (result?: { sessions_deleted: number; todos_deleted: number; size_freed_mb: number }) => void;
+  onSessionsDeleted?: (result?: {
+    sessions_deleted: number;
+    todos_deleted: number;
+    size_freed_mb: number;
+  }) => void;
   onToast?: (message: string, type: "success" | "error") => void;
   className?: string;
 }
@@ -65,7 +69,6 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
     estimateSize: () => 100, // Reduced height for more compact cards
     overscan: 5, // Keep 5 items rendered outside of view
   });
-
 
   // Calculate container height based on actual position
   useEffect(() => {
@@ -255,7 +258,14 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
                   >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className="flex-shrink-0">
-                        <MessagesSquare className="h-5 w-5 text-muted-foreground" />
+                        <MessagesSquare
+                          className={cn(
+                            "h-5 w-5",
+                            session.claudio
+                              ? "text-accent"
+                              : "text-muted-foreground",
+                          )}
+                        />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
@@ -272,7 +282,10 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
                             {session.first_message || "Untitled Session"}
                           </p>
                           {isEditorSession(session) && (
-                            <Badge variant="default" className="text-xs bg-green-600 hover:bg-green-700 flex-shrink-0">
+                            <Badge
+                              variant="default"
+                              className="text-xs bg-green-600 hover:bg-green-700 flex-shrink-0"
+                            >
                               Live
                             </Badge>
                           )}
@@ -299,6 +312,14 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
                               <HardDrive className="h-3 w-3" />
                               <span>{formatFileSize(session.size_bytes)}</span>
                             </div>
+                          )}
+                          {(session as any).claudio && (
+                            <Badge
+                              variant="outline"
+                              className="text-xs text-accent border-accent/50"
+                            >
+                              Live
+                            </Badge>
                           )}
                         </div>
                       </div>

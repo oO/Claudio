@@ -7,6 +7,7 @@ export interface Tab {
   title: string;
   sessionId?: string;  // for chat tabs
   sessionData?: any; // for chat tabs - stores full session object
+  claudeSession?: any; // for claude-sdk tabs - stores claudio session metadata
   agentRunId?: string; // for agent tabs
   agentData?: any; // for agent-execution tabs
   claudeFileId?: string; // for claude-file tabs

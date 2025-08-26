@@ -7,9 +7,9 @@ use tauri::command;
 use serde::{Deserialize, Serialize};
 use crate::commands::claudio_storage::get_claudio_session;
 
-/// Gets sessions for a specific project
+/// Gets sessions for a specific project with Claudio metadata decoration
 #[command]
-pub async fn get_project_sessions(project_id: String) -> Result<Vec<Session>, String> {
+pub async fn get_project_sessions(project_id: String) -> Result<Vec<DecoratedSession>, String> {
     log::info!("Getting sessions for project: {}", project_id);
 
     let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
@@ -33,7 +33,7 @@ pub async fn get_project_sessions(project_id: String) -> Result<Vec<Session>, St
         }
     };
 
-    let mut sessions = Vec::new();
+    let mut sessions: Vec<DecoratedSession> = Vec::new();
 
     // Read all JSONL files in the project directory
     let entries = fs::read_dir(&project_dir)
@@ -85,7 +85,10 @@ pub async fn get_project_sessions(project_id: String) -> Result<Vec<Session>, St
                 // Aggregate todo counts from agent executions
                 let todo_counts = aggregate_session_todos(&claude_dir, &session_id);
 
-                sessions.push(Session {
+                // Check for Claudio metadata by looking for a claudio session that references this Claude session
+                let claudio_metadata = find_claudio_metadata_for_session(&session_id, &project_path).await;
+
+                sessions.push(DecoratedSession {
                     id: session_id.to_string(),
                     project_id: project_id.clone(),
                     project_path: project_path.clone(),
@@ -99,6 +102,7 @@ pub async fn get_project_sessions(project_id: String) -> Result<Vec<Session>, St
                     token_count: if analytics.token_count > 0 { Some(analytics.token_count) } else { None },
                     cost_usd: if analytics.cost_usd > 0.0 { Some(analytics.cost_usd) } else { None },
                     message_count: if analytics.message_count > 0 { Some(analytics.message_count) } else { None },
+                    claudio: claudio_metadata,
                 });
             }
         }
@@ -325,27 +329,32 @@ pub async fn delete_session(project_id: String, session_id: String) -> Result<se
         .map_err(|e| format!("Failed to get session file metadata: {}", e))?
         .len();
     
-    // Delete the session file
-    fs::remove_file(&session_file)
-        .map_err(|e| format!("Failed to delete session file: {}", e))?;
+    // Decode project path for unified cleanup
+    let decoded_project_path = crate::commands::claude::decode_project_path(&project_id);
     
-    // Clean up associated files using shared function
+    // Use unified DRY cleanup function (this handles both Claude and Claudio files)
+    let (_claude_files_deleted, claudio_files_deleted) = crate::commands::claudio_storage::cleanup_session_files(&decoded_project_path, &session_id).await
+        .unwrap_or((0, 0));
+    
+    // Clean up associated todos and timelines (not covered by cleanup_session_files)
     let (todos_deleted, timelines_deleted) = super::projects::delete_session_dependencies(&claude_dir, &project_dir, &session_id);
     
     // Note: Statsig files don't appear to be session-specific based on file structure analysis
     // They seem to be global cache files, so we don't delete them
     
-    log::info!("Successfully deleted session '{}' with {} todos, {} timelines ({:.2} KB)", 
-               session_id, todos_deleted, timelines_deleted, file_size as f64 / 1024.0);
+    log::info!("Successfully deleted session '{}' with {} claudio sessions, {} todos, {} timelines ({:.2} KB)", 
+               session_id, claudio_files_deleted, todos_deleted, timelines_deleted, file_size as f64 / 1024.0);
     
     Ok(serde_json::json!({
         "success": true,
         "session_id": session_id,
         "project_id": project_id,
+        "claudio_sessions_deleted": claudio_files_deleted,
         "todos_deleted": todos_deleted,
         "timelines_deleted": timelines_deleted,
         "size_kb": file_size as f64 / 1024.0,
-        "message": format!("Deleted session {} with {} todos, {} timelines", session_id, todos_deleted, timelines_deleted)
+        "message": format!("Deleted session {} with {} claudio sessions, {} todos, {} timelines", 
+                          session_id, claudio_files_deleted, todos_deleted, timelines_deleted)
     }))
 }
 
@@ -474,8 +483,8 @@ pub async fn prune_old_sessions(
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SessionDeletionPreview {
-    pub sessions_to_delete: Vec<Session>,
-    pub sessions_to_keep: Vec<Session>,
+    pub sessions_to_delete: Vec<DecoratedSession>,
+    pub sessions_to_keep: Vec<DecoratedSession>,
     pub total_sessions: usize,
     pub sessions_to_delete_count: usize,
     pub sessions_to_keep_count: usize,
@@ -506,8 +515,8 @@ pub async fn preview_session_deletion_by_age(
         .checked_sub(cutoff_duration)
         .ok_or("Invalid duration")?;
     
-    let mut sessions_to_delete = Vec::new();
-    let mut sessions_to_keep = Vec::new();
+    let mut sessions_to_delete: Vec<DecoratedSession> = Vec::new();
+    let mut sessions_to_keep: Vec<DecoratedSession> = Vec::new();
     let mut size_to_free = 0u64;
     
     for session in all_sessions {
@@ -567,22 +576,25 @@ pub async fn delete_sessions_by_age(
     let preview = preview_session_deletion_by_age(project_id.clone(), days_old).await?;
     
     let mut sessions_deleted = 0;
+    let mut claudio_sessions_deleted = 0;
     let mut todos_deleted = 0;
     let mut timelines_deleted = 0;
     
+    // Decode project path for unified cleanup
+    let decoded_project_path = crate::commands::claude::decode_project_path(&project_id);
+    
     // Delete each session and its dependencies
     for session in &preview.sessions_to_delete {
-        // Delete the session file
-        let session_file = project_dir.join(format!("{}.jsonl", session.id));
-        if session_file.exists() {
-            if let Err(e) = fs::remove_file(&session_file) {
-                log::warn!("Failed to delete session file '{}': {}", session_file.display(), e);
-                continue;
-            }
-            sessions_deleted += 1;
-        }
+        // Use unified DRY cleanup function (handles both Claude and Claudio files)
+        let (claude_files, claudio_files) = crate::commands::claudio_storage::cleanup_session_files(&decoded_project_path, &session.id).await
+            .unwrap_or((0, 0));
         
-        // Delete session dependencies using shared function
+        if claude_files > 0 {
+            sessions_deleted += claude_files;
+        }
+        claudio_sessions_deleted += claudio_files;
+        
+        // Clean up todos and timelines (not covered by cleanup_session_files)
         let (session_todos, session_timelines) = super::projects::delete_session_dependencies(
             &claude_dir, &project_dir, &session.id
         );
@@ -591,22 +603,23 @@ pub async fn delete_sessions_by_age(
     }
     
     log::info!(
-        "Successfully deleted {} sessions, {} todos, {} timelines for project '{}' ({:.2} MB freed)",
-        sessions_deleted, todos_deleted, timelines_deleted, project_id, preview.size_to_free_mb
+        "Successfully deleted {} sessions, {} claudio sessions, {} todos, {} timelines for project '{}' ({:.2} MB freed)",
+        sessions_deleted, claudio_sessions_deleted, todos_deleted, timelines_deleted, project_id, preview.size_to_free_mb
     );
     
     Ok(serde_json::json!({
         "success": true,
         "project_id": project_id,
         "sessions_deleted": sessions_deleted,
+        "claudio_sessions_deleted": claudio_sessions_deleted,
         "todos_deleted": todos_deleted,
         "timelines_deleted": timelines_deleted,
         "sessions_remaining": preview.sessions_to_keep_count,
         "size_freed_mb": preview.size_to_free_mb,
         "days_old": days_old,
         "message": format!(
-            "Deleted {} sessions older than {} days ({} remaining)", 
-            sessions_deleted, days_old, preview.sessions_to_keep_count
+            "Deleted {} sessions, {} claudio sessions older than {} days ({} remaining)", 
+            sessions_deleted, claudio_sessions_deleted, days_old, preview.sessions_to_keep_count
         )
     }))
 }
@@ -701,4 +714,54 @@ pub async fn get_session_age_range(project_id: String) -> Result<SessionAgeRange
         total_sessions: all_sessions.len(),
         has_sessions: true,
     })
+}
+
+/// Find Claudio metadata for a given Claude session ID
+/// Searches through all Claudio sessions to find one that references the given Claude session
+async fn find_claudio_metadata_for_session(
+    claude_session_id: &str, 
+    project_path: &str
+) -> Option<crate::commands::claudio_storage::ClaudioSession> {
+    use crate::commands::claudio_storage::{get_project_claudio_dir, get_claudio_session};
+
+    // Get the claudio directory for this project
+    let claudio_project_dir = match get_project_claudio_dir(project_path) {
+        Ok(dir) => dir,
+        Err(e) => {
+            log::debug!("Failed to get claudio project dir for {}: {}", project_path, e);
+            return None;
+        }
+    };
+
+    if !claudio_project_dir.exists() {
+        return None;
+    }
+
+    // Look through all claudio session files in this project
+    if let Ok(entries) = std::fs::read_dir(&claudio_project_dir) {
+        for entry in entries {
+            if let Ok(entry) = entry {
+                let path = entry.path();
+                if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("json") {
+                    if let Some(claudio_id) = path.file_stem().and_then(|s| s.to_str()) {
+                        // Try to load this claudio session
+                        if let Ok(claudio_session) = get_claudio_session(
+                            claudio_id.to_string(), 
+                            project_path.to_string()
+                        ).await {
+                            // Check if this claudio session references our Claude session
+                            if let Some(ref session_id) = claudio_session.session_id {
+                                if session_id == claude_session_id {
+                                    log::debug!("Found claudio metadata for session {}: claudio_id={}", claude_session_id, claudio_id);
+                                    return Some(claudio_session);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    None
 }

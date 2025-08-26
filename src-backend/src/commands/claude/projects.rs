@@ -365,11 +365,18 @@ pub async fn delete_claude_project(
     // Calculate total size before deletion
     let total_size = calculate_directory_size(&project_dir)?;
     
-    // Clean up associated files for each session (using shared function)
+    // Clean up associated files for each session (using unified DRY cleanup)
     let mut todos_deleted = 0;
     let mut timelines_deleted = 0;
+    let mut claudio_sessions_deleted = 0;
     
     for session_id in &session_ids {
+        // Use the new unified cleanup function
+        let (_claude_files, claudio_files) = crate::commands::claudio_storage::cleanup_session_files(&original_project_path, session_id).await
+            .unwrap_or((0, 0));
+        claudio_sessions_deleted += claudio_files;
+        
+        // Legacy cleanup for todos and timelines (these aren't covered by cleanup_session_files)
         let (session_todos, session_timelines) = delete_session_dependencies(&claude_dir, &project_dir, session_id);
         todos_deleted += session_todos;
         timelines_deleted += session_timelines;
@@ -397,8 +404,8 @@ pub async fn delete_claude_project(
         .map_err(|e| format!("Failed to delete project directory: {}", e))?;
     
     log::info!(
-        "Successfully deleted project '{}' with {} sessions, {} todos, {} timelines, {} agents, {} memories, {} settings ({:.2} MB)", 
-        project_id, session_count, todos_deleted, timelines_deleted, agents_deleted, memories_deleted, settings_deleted,
+        "Successfully deleted project '{}' with {} sessions, {} claudio sessions, {} todos, {} timelines, {} agents, {} memories, {} settings ({:.2} MB)", 
+        project_id, session_count, claudio_sessions_deleted, todos_deleted, timelines_deleted, agents_deleted, memories_deleted, settings_deleted,
         total_size as f64 / 1024.0 / 1024.0
     );
     
@@ -406,6 +413,7 @@ pub async fn delete_claude_project(
         "success": true,
         "project_id": project_id,
         "sessions_deleted": session_count,
+        "claudio_sessions_deleted": claudio_sessions_deleted,
         "todos_deleted": todos_deleted,
         "timelines_deleted": timelines_deleted,
         "agents_deleted": agents_deleted,
@@ -413,8 +421,8 @@ pub async fn delete_claude_project(
         "settings_deleted": settings_deleted,
         "size_mb": total_size as f64 / 1024.0 / 1024.0,
         "message": format!(
-            "Deleted project with {} sessions, {} todos, {} timelines, {} agents, {} memories, {} settings", 
-            session_count, todos_deleted, timelines_deleted, agents_deleted, memories_deleted, settings_deleted
+            "Deleted project with {} sessions, {} claudio sessions, {} todos, {} timelines, {} agents, {} memories, {} settings", 
+            session_count, claudio_sessions_deleted, todos_deleted, timelines_deleted, agents_deleted, memories_deleted, settings_deleted
         )
     }))
 }

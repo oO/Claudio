@@ -6,7 +6,7 @@ export { ExecutionControlBar } from './ExecutionControlBar';
 export { TimelineNavigator } from './TimelineNavigator';
 export { CheckpointSettings } from './CheckpointSettings';
 export { SessionHeader } from './SessionHeader';
-export { FloatingPromptInput, type FloatingPromptInputRef } from './FloatingPromptInput';
+export { PromptInput, type PromptInputRef } from './PromptInput';
 export { PromptQueue } from './PromptQueue';
 export { MessageRouter } from '../messages';
 export { SessionOutputViewer } from './SessionOutputViewer';
@@ -22,7 +22,7 @@ export { SessionActions, useSessionActions } from './SessionActions';
 export { SessionPreview } from './SessionPreview';
 export { SessionSettings } from './SessionSettings';
 export { SessionTimeline } from './SessionTimeline';
-export { SessionQueuedPrompts } from './SessionQueuedPrompts';
+// export { SessionQueuedPrompts } from './SessionQueuedPrompts'; // Moved to deprecated
 export { SessionMessages } from './SessionMessages';
 export { ClaudoSessionSettings } from './ClaudoSessionSettings';
 export { SessionSettingsDemo } from './SessionSettingsDemo';

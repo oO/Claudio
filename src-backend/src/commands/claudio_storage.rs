@@ -19,6 +19,9 @@ pub struct ClaudioSession {
     /// UUID of the last message in the session (for resume detection)
     #[serde(default)]
     pub last_message_uuid: Option<String>,
+    /// History of previous session IDs that need cleanup (newest first)
+    #[serde(default)]
+    pub session_history: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -122,6 +125,7 @@ pub async fn create_claudio_session(
         status: SessionStatus::Active,
         settings,
         last_message_uuid: None,
+        session_history: Vec::new(),
     };
     
     update_claudio_session(claudio_id.clone(), project_path, new_session).await?;
@@ -236,22 +240,229 @@ pub async fn delete_claudio_session(
     Ok(())
 }
 
-/// Update the last message UUID for resume detection
-#[command]
-pub async fn update_last_message_uuid(
-    claudio_session_id: String,
-    project_path: String,
-    last_message_uuid: String,
-) -> Result<(), String> {
-    // Get the current session
-    let mut session = get_claudio_session(claudio_session_id.clone(), project_path.clone()).await?;
+/// Unified cleanup function for both Claude and Claudio session files
+/// This is the DRY function that all delete operations should use
+pub async fn cleanup_session_files(
+    project_path: &str,
+    claude_session_id: &str,
+) -> Result<(u32, u32), String> {
+    let mut claude_files_deleted = 0;
+    let mut claudio_files_deleted = 0;
+
+    // 1. Delete Claude session file (.claude/projects/*/session_id.jsonl)
+    let claude_dir = crate::commands::claude::get_claude_dir().map_err(|e| e.to_string())?;
+    let project_id = project_path.replace("/", "-");
+    let claude_session_file = claude_dir
+        .join("projects")
+        .join(&project_id)
+        .join(format!("{}.jsonl", claude_session_id));
     
-    // Update the last message UUID
-    session.last_message_uuid = Some(last_message_uuid.clone());
-    
-    // Save it back
-    update_claudio_session(claudio_session_id, project_path, session).await?;
-    
-    log::debug!("📍 Updated last message UUID: {}", last_message_uuid);
-    Ok(())
+    if claude_session_file.exists() {
+        std::fs::remove_file(&claude_session_file)
+            .map_err(|e| format!("Failed to delete Claude session file: {}", e))?;
+        claude_files_deleted += 1;
+        log::info!("🗑️ Deleted Claude session: {}", claude_session_file.display());
+    }
+
+    // 2. Find and delete any Claudio sessions that reference this Claude session
+    let project_claudio_dir = match get_project_claudio_dir(project_path) {
+        Ok(dir) => dir,
+        Err(_) => return Ok((claude_files_deleted, claudio_files_deleted)), // No claudio dir = nothing to clean
+    };
+
+    if project_claudio_dir.exists() {
+        if let Ok(entries) = std::fs::read_dir(&project_claudio_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("json") {
+                    if let Ok(content) = std::fs::read_to_string(&path) {
+                        if let Ok(session) = serde_json::from_str::<ClaudioSession>(&content) {
+                            // Delete if this claudio session references the Claude session we're deleting
+                            if let Some(ref session_id) = session.session_id {
+                                if session_id == claude_session_id {
+                                    if std::fs::remove_file(&path).is_ok() {
+                                        claudio_files_deleted += 1;
+                                        log::info!("🗑️ Deleted Claudio session: {}", path.display());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok((claude_files_deleted, claudio_files_deleted))
 }
+
+/// Cleanup orphaned files across the entire system
+/// This should be called on app startup to ensure data integrity
+#[command]
+pub async fn cleanup_orphaned_files() -> Result<serde_json::Value, String> {
+    log::info!("🧹 Starting orphaned files cleanup...");
+    
+    let mut stats = OrphanCleanupStats::default();
+    
+    // Get all projects
+    let claude_dir = crate::commands::claude::get_claude_dir().map_err(|e| e.to_string())?;
+    let projects_dir = claude_dir.join("projects");
+    
+    if !projects_dir.exists() {
+        return Ok(stats.to_json());
+    }
+
+    // For each project, find orphans
+    if let Ok(project_entries) = std::fs::read_dir(&projects_dir) {
+        for project_entry in project_entries.flatten() {
+            let project_path = project_entry.path();
+            let project_id = project_path.file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("unknown");
+            
+            if project_path.is_dir() {
+                stats.merge(cleanup_project_orphans(&project_path, project_id).await?);
+            }
+        }
+    }
+    
+    log::info!("🧹 Orphan cleanup complete: {}", stats.summary());
+    Ok(stats.to_json())
+}
+
+#[derive(Default)]
+struct OrphanCleanupStats {
+    orphaned_claudio_sessions: u32,
+    orphaned_todos: u32,
+    orphaned_timelines: u32,
+    projects_processed: u32,
+}
+
+impl OrphanCleanupStats {
+    fn merge(&mut self, other: OrphanCleanupStats) {
+        self.orphaned_claudio_sessions += other.orphaned_claudio_sessions;
+        self.orphaned_todos += other.orphaned_todos;
+        self.orphaned_timelines += other.orphaned_timelines;
+        self.projects_processed += other.projects_processed;
+    }
+    
+    fn summary(&self) -> String {
+        format!("{} claudio sessions, {} todos, {} timelines across {} projects", 
+                self.orphaned_claudio_sessions, self.orphaned_todos, 
+                self.orphaned_timelines, self.projects_processed)
+    }
+    
+    fn to_json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "success": true,
+            "orphaned_claudio_sessions": self.orphaned_claudio_sessions,
+            "orphaned_todos": self.orphaned_todos,
+            "orphaned_timelines": self.orphaned_timelines,
+            "projects_processed": self.projects_processed,
+            "message": self.summary()
+        })
+    }
+}
+
+async fn cleanup_project_orphans(
+    project_path: &std::path::Path,
+    project_id: &str,
+) -> Result<OrphanCleanupStats, String> {
+    let mut stats = OrphanCleanupStats::default();
+    stats.projects_processed = 1;
+    
+    // Get all existing Claude session IDs for this project
+    let mut existing_sessions = std::collections::HashSet::new();
+    if let Ok(entries) = std::fs::read_dir(project_path) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("jsonl") {
+                if let Some(session_id) = path.file_stem().and_then(|s| s.to_str()) {
+                    existing_sessions.insert(session_id.to_string());
+                }
+            }
+        }
+    }
+    
+    // Decode project path for claudio directory lookup
+    let decoded_project_path = crate::commands::claude::decode_project_path(project_id);
+    
+    // 1. Cleanup orphaned Claudio sessions
+    if let Ok(claudio_dir) = get_project_claudio_dir(&decoded_project_path) {
+        if claudio_dir.exists() {
+            if let Ok(entries) = std::fs::read_dir(&claudio_dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("json") {
+                        if let Ok(content) = std::fs::read_to_string(&path) {
+                            if let Ok(session) = serde_json::from_str::<ClaudioSession>(&content) {
+                                // Check if the referenced Claude session exists
+                                if let Some(ref claude_session_id) = session.session_id {
+                                    if !existing_sessions.contains(claude_session_id) {
+                                        // Orphaned claudio session - delete it
+                                        if std::fs::remove_file(&path).is_ok() {
+                                            stats.orphaned_claudio_sessions += 1;
+                                            log::info!("🗑️ Deleted orphaned Claudio session: {}", path.display());
+                                        }
+                                    }
+                                } else {
+                                    // Claudio session with no Claude session reference - also orphaned
+                                    if std::fs::remove_file(&path).is_ok() {
+                                        stats.orphaned_claudio_sessions += 1;
+                                        log::info!("🗑️ Deleted empty Claudio session: {}", path.display());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // 2. Cleanup orphaned todos
+    let claude_dir = crate::commands::claude::get_claude_dir().map_err(|e| e.to_string())?;
+    let todos_dir = claude_dir.join("todos");
+    if todos_dir.exists() {
+        if let Ok(entries) = std::fs::read_dir(&todos_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("json") {
+                    if let Some(session_id) = path.file_stem().and_then(|s| s.to_str()) {
+                        if !existing_sessions.contains(session_id) {
+                            // Orphaned todo - delete it
+                            if std::fs::remove_file(&path).is_ok() {
+                                stats.orphaned_todos += 1;
+                                log::info!("🗑️ Deleted orphaned todo: {}", path.display());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // 3. Cleanup orphaned timelines
+    let timelines_dir = project_path.join("timelines");
+    if timelines_dir.exists() {
+        if let Ok(entries) = std::fs::read_dir(&timelines_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("json") {
+                    if let Some(session_id) = path.file_stem().and_then(|s| s.to_str()) {
+                        if !existing_sessions.contains(session_id) {
+                            // Orphaned timeline - delete it
+                            if std::fs::remove_file(&path).is_ok() {
+                                stats.orphaned_timelines += 1;
+                                log::info!("🗑️ Deleted orphaned timeline: {}", path.display());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    Ok(stats)
+}
+

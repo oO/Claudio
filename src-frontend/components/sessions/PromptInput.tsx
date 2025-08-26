@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
-import { AnimatePresence } from "framer-motion";
-import { Maximize2 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Maximize2, X, ChevronUp, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { FilePicker, SlashCommandPicker, ImagePreview } from "@/components/common";
 import { DebugLabel } from "@/components/ui/atoms";
 import { type FileEntry, type SlashCommand } from "@/lib/api";
 import { logger } from '@/lib/logger';
+import type { QueuedPrompt } from '@/hooks/useSessionState';
 
 // Import our extracted components and hooks
 import { PromptTextarea } from "./PromptTextarea";
@@ -21,7 +22,7 @@ import {
   useFilePicker,
 } from "@/hooks";
 
-interface FloatingPromptInputProps {
+interface PromptInputProps {
   /**
    * Callback when prompt is sent
    */
@@ -50,24 +51,33 @@ interface FloatingPromptInputProps {
    * Callback when cancel is clicked (only during loading)
    */
   onCancel?: () => void;
+  
+  // Queued prompts props
+  queuedPrompts?: QueuedPrompt[];
+  queuedPromptsCollapsed?: boolean;
+  onToggleQueuedPromptsCollapsed?: () => void;
+  onRemovePrompt?: (id: string) => void;
 }
 
-export interface FloatingPromptInputRef {
+export interface PromptInputRef {
+  focus: () => void;
+  clear: () => void;
+  getCurrentPrompt: () => string;
   addImage: (imagePath: string) => void;
 }
 
 /**
- * FloatingPromptInput component - Fixed position prompt input with model picker
+ * PromptInput component - Clean prompt input with model picker and advanced features
  * 
  * @example
- * const promptRef = useRef<FloatingPromptInputRef>(null);
- * <FloatingPromptInput
+ * const promptRef = useRef<PromptInputRef>(null);
+ * <PromptInput
  *   ref={promptRef}
  *   onSend={(prompt, model) => logger.log('Send:', prompt, model)}
  *   isLoading={false}
  * />
  */
-const FloatingPromptInputInner = (
+const PromptInputInner = (
   {
     onSend,
     isLoading = false,
@@ -76,8 +86,12 @@ const FloatingPromptInputInner = (
     projectPath,
     className,
     onCancel,
-  }: FloatingPromptInputProps,
-  ref: React.Ref<FloatingPromptInputRef>,
+    queuedPrompts = [],
+    queuedPromptsCollapsed = true,
+    onToggleQueuedPromptsCollapsed,
+    onRemovePrompt,
+  }: PromptInputProps,
+  ref: React.Ref<PromptInputRef>,
 ) => {
   // Model and thinking mode state
   const [selectedModel, setSelectedModel] = useState<"sonnet" | "opus">(defaultModel);
@@ -161,16 +175,25 @@ const FloatingPromptInputInner = (
     }
   }, [isExpanded]);
 
-  // Expose imperative handle for adding images
+  // Expose imperative handle
   React.useImperativeHandle(
     ref,
     () => ({
+      focus: () => {
+        const target = isExpanded ? expandedTextareaRef.current : textareaRef.current;
+        target?.focus();
+      },
+      clear: () => {
+        clearPrompt();
+        setEmbeddedImages([]);
+      },
+      getCurrentPrompt: () => prompt,
       addImage: (imagePath: string) => {
         const newPrompt = addImage(imagePath, prompt);
         setPrompt(newPrompt);
       }
     }),
-    [addImage, prompt, setPrompt]
+    [addImage, prompt, setPrompt, clearPrompt, isExpanded]
   );
 
   // Handle sending with thinking mode
@@ -314,8 +337,75 @@ const FloatingPromptInputInner = (
   };
 
   return (
-    <>
-      <DebugLabel label="FloatingPromptInput" />
+    <div className="relative">
+      <DebugLabel label="PromptInput" />
+      
+      {/* Queued Prompts Display */}
+      {queuedPrompts.length > 0 && (
+        <AnimatePresence>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="relative fixed bottom-24 left-1/2 -translate-x-1/2 z-30 w-full max-w-3xl px-4"
+          >
+            <div className="bg-background/95 backdrop-blur-md border rounded-lg shadow-lg p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-medium text-muted-foreground mb-1">
+                  Queued Prompts ({queuedPrompts.length})
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={onToggleQueuedPromptsCollapsed}
+                  className="h-6 w-6"
+                >
+                  {queuedPromptsCollapsed ? (
+                    <ChevronUp className="h-3 w-3" />
+                  ) : (
+                    <ChevronDown className="h-3 w-3" />
+                  )}
+                </Button>
+              </div>
+              
+              {!queuedPromptsCollapsed && (
+                <div className="space-y-2">
+                  {queuedPrompts.map((queuedPrompt, index) => (
+                    <motion.div
+                      key={queuedPrompt.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="flex items-start gap-2 bg-background/50 rounded-md p-2"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-medium text-accent">
+                            {queuedPrompt.model}
+                          </span>
+                        </div>
+                        <p className="text-sm line-clamp-2 break-words">
+                          {queuedPrompt.prompt}
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 flex-shrink-0"
+                        onClick={() => onRemovePrompt?.(queuedPrompt.id)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      )}
+      
       {/* Expanded Modal */}
       <ExpandedPromptModal
         isOpen={isExpanded}
@@ -339,10 +429,10 @@ const FloatingPromptInputInner = (
         onDrop={handleDrop}
       />
 
-      {/* Fixed Position Input Bar */}
+      {/* Docked Input Bar */}
       <div
         className={cn(
-          "relative fixed bottom-0 left-0 right-0 z-40 bg-background border-t border-border",
+          "bg-background border-t",
           dragActive && "ring-2 ring-primary ring-offset-2",
           className
         )}
@@ -448,13 +538,13 @@ const FloatingPromptInputInner = (
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 
-export const FloatingPromptInput = React.forwardRef<
-  FloatingPromptInputRef,
-  FloatingPromptInputProps
->(FloatingPromptInputInner);
+export const PromptInput = React.forwardRef<
+  PromptInputRef,
+  PromptInputProps
+>(PromptInputInner);
 
-FloatingPromptInput.displayName = 'FloatingPromptInput';
+PromptInput.displayName = 'PromptInput';

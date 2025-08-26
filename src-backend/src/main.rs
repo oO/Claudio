@@ -54,7 +54,8 @@ use commands::claude_sdk_simple::{start_claude_sdk_session, continue_claude_sdk_
 use commands::claude_direct::{start_claude_direct_session};
 use commands::claudio_storage::{
     create_claudio_session, update_claudio_session, get_claudio_session,
-    list_claudio_sessions, delete_claudio_session, update_last_message_uuid,
+    list_claudio_sessions, delete_claudio_session,
+    cleanup_orphaned_files,
 };
 use process::ProcessRegistryState;
 use std::sync::Mutex;
@@ -193,6 +194,19 @@ fn main() {
             if let Err(e) = setup_window_state_tracking(app.handle().clone()) {
                 log::warn!("Failed to setup window state tracking: {}", e);
             }
+
+            // Run orphan cleanup on startup to ensure data integrity
+            tauri::async_runtime::spawn(async move {
+                match cleanup_orphaned_files().await {
+                    Ok(result) => {
+                        log::info!("🧹 Startup cleanup completed: {}", 
+                                   result.get("message").and_then(|m| m.as_str()).unwrap_or("unknown"));
+                    }
+                    Err(e) => {
+                        log::warn!("Failed to run startup cleanup: {}", e);
+                    }
+                }
+            });
 
             Ok(())
         })
@@ -343,7 +357,7 @@ fn main() {
             get_claudio_session,
             list_claudio_sessions,
             delete_claudio_session,
-            update_last_message_uuid,
+            cleanup_orphaned_files,
             
             // Session File Watching
             start_session_watching,

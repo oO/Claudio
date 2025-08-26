@@ -593,9 +593,9 @@ export const api = {
    * @param projectId - The ID of the project to retrieve sessions for
    * @returns Promise resolving to an array of sessions
    */
-  async getProjectSessions(projectId: string): Promise<Session[]> {
+  async getProjectSessions(projectId: string): Promise<DecoratedSession[]> {
     try {
-      return await invoke<Session[]>('get_project_sessions', { projectId });
+      return await invoke<DecoratedSession[]>('get_project_sessions', { projectId });
     } catch (error) {
       logger.error("Failed to get project sessions:", error);
       throw error;
@@ -2106,6 +2106,7 @@ export const api = {
     success: boolean;
     project_id: string;
     sessions_deleted: number;
+    claudio_sessions_deleted: number;
     todos_deleted: number;
     timelines_deleted: number;
     sessions_remaining: number;
@@ -2157,6 +2158,7 @@ export const api = {
     success: boolean;
     project_id: string;
     sessions_deleted: number;
+    claudio_sessions_deleted: number;
     todos_deleted: number;
     timelines_deleted: number;
     agents_deleted: number;
@@ -2183,6 +2185,7 @@ export const api = {
     success: boolean;
     session_id: string;
     project_id: string;
+    claudio_sessions_deleted: number;
     todos_deleted: number;
     timelines_deleted: number;
     size_kb: number;

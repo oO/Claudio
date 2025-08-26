@@ -29,9 +29,8 @@ export const PromptControls: React.FC<PromptControlsProps> = ({
   className,
 }) => {
   return (
-    <>
+    <div className={cn("relative flex items-center gap-2", className)}>
       <DebugLabel label="PromptControls" />
-      <div className={cn("relative flex items-center gap-2", className)}>
       {/* Expand Button (only shown in compact mode) */}
       {showExpandButton && (
         <Button
@@ -63,6 +62,5 @@ export const PromptControls: React.FC<PromptControlsProps> = ({
         )}
       </Button>
     </div>
-    </>
   );
 };

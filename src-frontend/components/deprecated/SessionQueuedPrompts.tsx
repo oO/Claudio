@@ -26,15 +26,14 @@ export const SessionQueuedPrompts: React.FC<SessionQueuedPromptsProps> = ({
   if (queuedPrompts.length === 0) return null;
 
   return (
-    <>
-      <DebugLabel label="SessionQueuedPrompts" />
-      <AnimatePresence>
-        <motion.div
+    <AnimatePresence>
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 20 }}
         className="relative fixed bottom-24 left-1/2 -translate-x-1/2 z-30 w-full max-w-3xl px-4"
       >
+        <DebugLabel label="SessionQueuedPrompts" />
         <div className="bg-background/95 backdrop-blur-md border rounded-lg shadow-lg p-3 space-y-2">
           <div className="flex items-center justify-between">
             <div className="text-xs font-medium text-muted-foreground mb-1">
@@ -92,8 +91,7 @@ export const SessionQueuedPrompts: React.FC<SessionQueuedPromptsProps> = ({
           )}
         </div>
       </motion.div>
-      </AnimatePresence>
-    </>
+    </AnimatePresence>
   );
 };
 

@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.33] - 2025-08-26
+
+### Added
+- Automatic session cleanup system with UUID-based detection
+- Backend-driven session file management with intelligent watcher architecture
+- Session history preservation across multi-turn conversations
+- File system monitoring for automatic cleanup when old UUIDs detected
+- Complete frontend/backend separation of concerns for session management
+- Race condition elimination between frontend and backend UUID handling
+- Clean disk usage while preserving full conversation timeline records
+
 ## [0.3.32] - 2025-08-25
 
 ### Improved

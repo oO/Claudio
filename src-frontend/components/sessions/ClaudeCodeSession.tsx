@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label";
 import { type Session } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { open } from "@tauri-apps/plugin-dialog";
-import { type SimplePromptInputRef } from "./SimplePromptInput";
 import { ErrorBoundary } from "@/components/common";
 import { DebugLabel } from "@/components/ui/atoms";
 import { logger } from '@/lib/logger';
@@ -27,7 +26,7 @@ import { SessionSettings } from "./SessionSettings";
 import { SessionTimeline } from "./SessionTimeline";
 import { SessionMessages, type SessionMessagesRef } from "./SessionMessages";
 import { SessionHeader } from "./SessionHeader";
-import { SessionPromptControls } from "./SessionPromptControls";
+import { PromptInput, type PromptInputRef } from "./PromptInput";
 import { useSessionFileWatcher } from "@/hooks/useSessionFileWatcher";
 import { useScrollPinning } from "@/hooks/useScrollPinning";
 import { isEditorSession } from "@/lib/sessionUtils";
@@ -170,7 +169,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     updateSessionMetrics,
   } = sessionState;
   
-  const promptRef = useRef<SimplePromptInputRef>(null);
+  const promptRef = useRef<PromptInputRef>(null);
   const sessionMessagesRef = useRef<SessionMessagesRef>(null);
   const [copyPopoverOpen, setCopyPopoverOpen] = useState(false);
   const [actualDisplayedMessageCount, setActualDisplayedMessageCount] = useState(0);
@@ -207,10 +206,51 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     skippedUpdates: number;
   }>({ active: false, lastKnownMessageUuid: null, skippedUpdates: 0 });
   
+  // Initialize claudio session if we're continuing one
+  useEffect(() => {
+    // @ts-ignore - we know session might have claudio metadata as DecoratedSession
+    if ((session as any)?.claudio?.claudio_id && !claudioId) {
+      const claudioSessionId = (session as any).claudio.claudio_id;
+      setClaudioId(claudioSessionId);
+      logger.log('Initializing claudio session continuation:', claudioSessionId);
+      
+      // CRITICAL FIX: For claudio sessions, set currentClaudeSessionId directly from metadata
+      const activeSessionId = (session as any).claudio.session_id;
+      
+      if (activeSessionId) {
+        setCurrentClaudeSessionId(activeSessionId);
+        logger.info('🔄 Initialized currentClaudeSessionId from claudio metadata:', activeSessionId);
+      } else {
+        // Fallback: fetch from API if not in metadata  
+        const initializeClaudioSession = async () => {
+          try {
+            const claudioSession = await api.getClaudioSession(claudioSessionId, projectPath);
+            if (claudioSession.session_id) {
+              setCurrentClaudeSessionId(claudioSession.session_id);
+              logger.info('🔄 Initialized currentClaudeSessionId from API:', claudioSession.session_id);
+            }
+          } catch (error) {
+            logger.warn('Failed to fetch claudio session during initialization:', error);
+          }
+        };
+        initializeClaudioSession();
+      }
+    }
+  }, [session, claudioId, projectPath]);
+  
   // Load session history if resuming
   useEffect(() => {
     if (session) {
-      setClaudeSessionId(session.id);
+      // For claudio sessions, use the current active session ID, not the historical one
+      const sessionIdToLoad = (session as any)?.claudio?.session_id || session.id;
+      setClaudeSessionId(sessionIdToLoad);
+      
+      logger.info('Setting up session loading:', {
+        historicalSessionId: session.id,
+        activeSessionId: (session as any)?.claudio?.session_id,
+        willUseSessionId: sessionIdToLoad,
+        isClaudioSession: !!(session as any)?.claudio
+      });
       
       const initializeSession = async () => {
         await loadSessionHistory();
@@ -331,7 +371,8 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
         prompt: prompt.substring(0, 50),
         model,
         claudioId,
-        currentClaudeSessionId
+        currentClaudeSessionId,
+        willResume: currentClaudeSessionId !== null
       });
       
       // Generate a new session ID for this prompt
@@ -483,28 +524,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     }
   }, [effectiveSession, loadSessionHistory, setError, resumeState, api]);
   
-  // Update last message UUID whenever messages change (for resume detection)
-  useEffect(() => {
-    if (claudioId && messages.length > 0) {
-      const lastMessage = messages[messages.length - 1];
-      if (lastMessage.uuid) {
-        // Debounce UUID updates to avoid too many backend calls
-        const timeoutId = setTimeout(async () => {
-          try {
-            await invoke('update_last_message_uuid', {
-              claudioSessionId: claudioId,
-              projectPath,
-              lastMessageUuid: lastMessage.uuid
-            });
-          } catch (error) {
-            logger.warn('Failed to update last message UUID:', error);
-          }
-        }, 1000); // 1 second debounce
-        
-        return () => clearTimeout(timeoutId);
-      }
-    }
-  }, [messages, claudioId, projectPath]);
 
   // Status message handling for Claude process events
   const addStatusMessage = useCallback((title: string, message?: string) => {
@@ -763,23 +782,22 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
         {/* Prompt Controls - Part of layout flow */}
         <ErrorBoundary>
           {/* All prompt controls - Only show for editor sessions that can be interacted with */}
-          {(sessionId ? isEditorSession({ id: sessionId }) : !session) && (
+          {((sessionId ? isEditorSession({ id: sessionId }) : !session) || (session as any)?.claudio) && (
             <div className={cn(
               "transition-all duration-300",
               showTimeline && "sm:mr-96"
             )}>
-              <SessionPromptControls
-                promptRef={promptRef}
+              <PromptInput
+                ref={promptRef}
                 onSend={handleSendPrompt}
                 onCancel={handleCancelExecution}
                 isLoading={isLoading}
+                disabled={!projectPath}
                 projectPath={projectPath}
                 queuedPrompts={queuedPrompts}
                 queuedPromptsCollapsed={queuedPromptsCollapsed}
                 onToggleQueuedPromptsCollapsed={() => setQueuedPromptsCollapsed(!queuedPromptsCollapsed)}
                 onRemovePrompt={(id) => setQueuedPrompts(prev => prev.filter(p => p.id !== id))}
-                totalTokens={totalTokens}
-                showTimeline={showTimeline}
               />
             </div>
           )}

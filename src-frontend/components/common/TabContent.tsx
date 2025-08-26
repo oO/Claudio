@@ -47,6 +47,20 @@ const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
   // Panel visibility - hide when not active
   const panelVisibilityClass = isActive ? "" : "hidden";
 
+  const handleBack = () => {
+    if (tab.restoreProjectState) {
+      updateTab(tab.id, {
+        type: "projects",
+        title: "Projects",
+        restoreProjectState: tab.restoreProjectState,
+        // Clear the claude-sdk specific data
+        sessionData: undefined,
+        claudeSession: undefined,
+        initialProjectPath: undefined,
+      });
+    }
+  };
+
   const renderContent = () => {
     switch (tab.type) {
       case "projects":
@@ -145,10 +159,10 @@ const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
         return (
           <NavigationProvider tabId={tab.id}>
             <ClaudeCodeSession 
+              session={tab.sessionData} // Pass the session data for continuation
+              sessionId={tab.claudeSession?.claudio_id} // Pass claudio_id for editor mode detection
               initialProjectPath={tab.initialProjectPath || "/Users/olivier/Projects/claudio"}
-              onBack={() => {
-                // Could implement back navigation here if needed
-              }}
+              onBack={handleBack}
             />
           </NavigationProvider>
         );

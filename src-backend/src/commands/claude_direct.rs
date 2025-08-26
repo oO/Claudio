@@ -44,80 +44,51 @@ fn get_thinking_content() -> (String, String) {
     (title, message)
 }
 
-/// Get a random thinking title from resource file
+/// Get a random thinking title from embedded resource
 fn get_random_thinking_title() -> String {
-    if let Ok(titles) = load_thinking_titles_from_file() {
-        if !titles.is_empty() {
-            use rand::seq::SliceRandom;
-            return titles.choose(&mut rand::thread_rng())
-                .cloned()
-                .unwrap_or_else(|| "Claude is thinking...".to_string());
-        }
-    }
-    
-    // Fallback titles if file loading fails
-    let fallback_titles = [
-        "Claude is willy-nillying...",
-        "Claude is discombobulating...", 
-        "Claude is pondering...",
-        "Claude is thinking...",
-    ];
+    let titles = load_thinking_titles_from_file().expect("Embedded resource should always be available");
     
     use rand::seq::SliceRandom;
-    fallback_titles.choose(&mut rand::thread_rng())
-        .unwrap_or(&"Claude is thinking...")
-        .to_string()
+    titles.choose(&mut rand::thread_rng())
+        .cloned()
+        .expect("Should have at least one thinking title")
 }
 
-/// Get a random thinking message (haiku) from resource file
+/// Get a random thinking message (haiku) from embedded resource
 fn get_random_thinking_message() -> String {
-    if let Ok(messages) = load_thinking_messages_from_file() {
-        if !messages.is_empty() {
-            use rand::seq::SliceRandom;
-            return messages.choose(&mut rand::thread_rng())
-                .cloned()
-                .unwrap_or_else(|| "Data streams run dry — Silent voices in the void — Fallback haiku saves".to_string());
-        }
-    }
-    
-    // Fallback messages if file loading fails
-    let fallback_messages = [
-        "Code flows like water — Through circuits of thought and dream — Beauty takes its form",
-        "Algorithms dance — In silicon valleys deep — Logic finds its way",
-        "Data streams run dry — Silent voices in the void — Fallback haiku saves",
-    ];
+    let messages = load_thinking_messages_from_file().expect("Embedded resource should always be available");
     
     use rand::seq::SliceRandom;
-    fallback_messages.choose(&mut rand::thread_rng())
-        .unwrap_or(&"Data streams run dry — Silent voices in the void — Fallback haiku saves")
-        .to_string()
+    messages.choose(&mut rand::thread_rng())
+        .cloned()
+        .expect("Should have at least one thinking message")
 }
 
-/// Load thinking titles from the resource file
+/// Load thinking titles from embedded resource
 fn load_thinking_titles_from_file() -> Result<Vec<String>, Box<dyn std::error::Error>> {
-    let resource_path = std::path::Path::new("src-backend/resources/claude_thinking_titles.txt");
-    let content = std::fs::read_to_string(resource_path)?;
+    let content = include_str!("../../resources/claude_thinking_titles.txt");
     
     let titles: Vec<String> = content
         .lines()
         .map(|line| line.trim().to_string())
         .filter(|line| !line.is_empty())
         .collect();
-        
+    
+    log::debug!("Loaded {} thinking titles from embedded resource", titles.len());
     Ok(titles)
 }
 
-/// Load thinking messages (haikus) from the resource file
+/// Load thinking messages (haikus) from embedded resource
 fn load_thinking_messages_from_file() -> Result<Vec<String>, Box<dyn std::error::Error>> {
-    let resource_path = std::path::Path::new("src-backend/resources/claude_thinking_messages.txt");
-    let content = std::fs::read_to_string(resource_path)?;
+    let content = include_str!("../../resources/claude_thinking_messages.txt");
     
     let messages: Vec<String> = content
         .lines()
         .map(|line| line.trim().to_string())
         .filter(|line| !line.is_empty())
         .collect();
-        
+    
+    log::debug!("Loaded {} thinking messages from embedded resource", messages.len());
     Ok(messages)
 }
 
@@ -192,6 +163,7 @@ pub async fn start_claude_direct_session(
                 status: SessionStatus::Active,
                 settings: claude_settings,
                 last_message_uuid: None,
+                session_history: Vec::new(),
             };
             
             update_claudio_session(new_claudio_id.clone(), project_path.clone(), new_session).await
@@ -221,6 +193,7 @@ pub async fn start_claude_direct_session(
                 status: SessionStatus::Active,
                 settings: claude_settings,
                 last_message_uuid: None,
+                session_history: Vec::new(),
             };
             
             update_claudio_session(new_claudio_id.clone(), project_path.clone(), new_session).await
@@ -308,8 +281,9 @@ pub async fn start_claude_direct_session(
     let app_for_event = app.clone();  // Clone for the event emission  
     let temp_session_id_stdout = temp_session_id.clone();
     let claudio_session_id_stdout = claudio_session_id.clone();
-    let current_session_id = options.session_id.clone();
+    let resume_session_id = options.session_id.clone();
     let project_path_for_cleanup = project_path.clone();
+    let project_path_for_completion = project_path.clone();
     
     tokio::spawn(async move {
         let mut reader = BufReader::new(stdout);
@@ -349,7 +323,7 @@ pub async fn start_claude_direct_session(
                                 claudio_session_id_stdout.clone(),
                                 project_path_for_cleanup.clone(),
                                 id_str.to_string(),
-                                current_session_id.clone(),
+                                resume_session_id.clone(), // This is the session we're potentially resuming from
                             ).await {
                                 log::warn!("Failed to update session metadata with Claude ID: {}", e);
                             }
@@ -386,8 +360,8 @@ pub async fn start_claude_direct_session(
             line.clear();
         }
 
-        // Note: Session cleanup is now handled in update_session_claude_id function
-        // based on ownership tracking in Claudio metadata
+        // Note: Session cleanup is handled by the session watcher
+        // based on last_uuid detection for reliable state-driven cleanup
 
     });
 
@@ -429,6 +403,15 @@ pub async fn start_claude_direct_session(
             Ok(status) => {
                 if status.success() {
                     log::debug!("Claude CLI completed successfully");
+                    
+                    // Extract the last message UUID from the session tracked by this claudio session
+                    if let Err(e) = extract_and_store_last_message_uuid_from_claudio_session(
+                        claudio_session_id_wait.clone(),
+                        project_path_for_completion.clone(),
+                    ).await {
+                        log::error!("Failed to store last message UUID: {}", e);
+                    }
+                    
                     // Emit process completion event
                     let _ = emit_process_event(
                         &app_wait,
@@ -496,49 +479,102 @@ pub async fn start_claude_direct_session(
 }
 
 /// Helper function to update session metadata with new Claude session ID
+/// Stores the old session ID temporarily for watcher-based cleanup
 async fn update_session_claude_id(
     claudio_id: String,
     project_path: String,
     new_session_id: String,
-    _unused_parameter: Option<String>, // Keep for function signature compatibility
+    _previous_session_id: Option<String>, // Unused - kept for API compatibility
 ) -> Result<(), String> {
     use crate::commands::claudio_storage::{get_claudio_session, update_claudio_session};
 
     // Get current metadata
     let mut session = get_claudio_session(claudio_id.clone(), project_path.clone()).await?;
     
-    // Clean up previous Claude session if WE HAVE ONE TRACKED (ownership check)
-    if let Some(prev_session_id) = &session.session_id {
-        if prev_session_id != &new_session_id {
-            log::debug!("Cleaning up previous session: {}", prev_session_id);
-            cleanup_claude_session(&project_path, prev_session_id).await;
-        }
-    } else {
-        log::debug!("No previous session to cleanup");
+    log::debug!("Updating claudio session {} with new Claude session ID: {}", claudio_id, new_session_id);
+    
+    // Push the old session ID to history so the watcher can delete it after transition
+    if let Some(old_session_id) = session.session_id.clone() {
+        session.session_history.insert(0, old_session_id); // Insert at front (newest first)
     }
     
-    // Update with new Claude session info
+    // Update with the new Claude session info
     session.session_id = Some(new_session_id.clone());
     
     // Save updated metadata
+    let first_history = session.session_history.first().cloned();
     update_claudio_session(claudio_id.clone(), project_path, session).await?;
-    log::debug!("Updated Claudio session with new session_id");
+    log::info!("✅ Updated Claudio session {} to track Claude session {} (history: {:?})", claudio_id, new_session_id, first_history);
     
     Ok(())
 }
 
-/// Clean up previous Claude CLI session file
-async fn cleanup_claude_session(project_path: &str, claude_session_id: &str) {
-    // Delete Claude CLI session file
-    let claude_project_path = project_path.replace("/", "-");
-    let claude_session_file = format!(
-        "/Users/olivier/.claude/projects/{}/{}.jsonl",
-        claude_project_path, claude_session_id
-    );
+/// Extract the last message UUID from the Claude session tracked by this claudio session
+/// This is called when the claude binary process completes successfully
+async fn extract_and_store_last_message_uuid_from_claudio_session(
+    claudio_id: String,
+    project_path: String,
+) -> Result<(), String> {
+    use crate::commands::claude::get_claude_dir;
+    use crate::commands::claudio_storage::{get_claudio_session, update_claudio_session};
+    use std::process::Command;
     
-    if let Err(e) = tokio::fs::remove_file(&claude_session_file).await {
-        log::warn!("Failed to cleanup Claude session {}: {}", claude_session_id, e);
-    } else {
-        log::info!("🗑️ Cleaned up previous Claude session: {}", claude_session_file);
+    // Get the current claudio session to find out which Claude session it's tracking
+    let mut claudio_session = get_claudio_session(claudio_id.clone(), project_path.clone()).await?;
+    
+    // Get the Claude session ID this claudio session is currently tracking
+    let claude_session_id = match claudio_session.session_id.as_ref() {
+        Some(id) => id.clone(),
+        None => {
+            log::warn!("Claudio session {} has no Claude session ID - nothing to extract UUID from", claudio_id);
+            return Ok(());
+        }
+    };
+    
+    // Get the Claude session file path for the session being tracked
+    let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
+    let project_encoded = project_path.replace("/", "-");
+    let session_file_path = claude_dir
+        .join("projects")
+        .join(project_encoded)
+        .join(format!("{}.jsonl", claude_session_id));
+
+    if !session_file_path.exists() {
+        log::warn!("Claude session file does not exist: {:?}", session_file_path);
+        return Ok(()); // Not an error, session might not have messages yet
     }
+
+    // Use tail to get the last line efficiently (for large files)
+    let tail_output = Command::new("tail")
+        .args(&["-n", "1", session_file_path.to_str().unwrap()])
+        .output()
+        .map_err(|e| format!("Failed to read last line of session file: {}", e))?;
+    
+    if !tail_output.status.success() {
+        return Err("Failed to read last line of session file".to_string());
+    }
+    
+    let last_line = String::from_utf8_lossy(&tail_output.stdout);
+    let last_line = last_line.trim();
+    
+    if !last_line.is_empty() {
+        if let Ok(last_message) = serde_json::from_str::<serde_json::Value>(last_line) {
+            if let Some(last_uuid) = last_message["uuid"].as_str() {
+                // Update claudio session with the real last message UUID
+                claudio_session.last_message_uuid = Some(last_uuid.to_string());
+                
+                update_claudio_session(claudio_id.clone(), project_path, claudio_session).await?;
+                log::info!("🔗 Stored last message UUID for cleanup detection: {} -> {} (session: {})", 
+                          claudio_id, last_uuid, claude_session_id);
+            } else {
+                log::warn!("No UUID field found in last message of session {}", claude_session_id);
+            }
+        } else {
+            log::warn!("Failed to parse last message in session file: {}", session_file_path.display());
+        }
+    } else {
+        log::info!("Session file {} is empty - no messages to extract UUID from", claude_session_id);
+    }
+    
+    Ok(())
 }

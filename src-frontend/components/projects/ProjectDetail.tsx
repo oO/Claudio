@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import type { Session, ClaudeMdFile, Agent } from "@/lib/api";
+import type { Session, DecoratedSession, ClaudeMdFile, Agent } from "@/lib/api";
 import { api } from "@/lib/api";
 import { DebugLabel } from "@/components/ui/atoms";
 import { logger } from '@/lib/logger';
@@ -26,7 +26,7 @@ interface ProjectDetailProps {
   /**
    * Array of sessions to display
    */
-  sessions: Session[];
+  sessions: DecoratedSession[];
   /**
    * The current project path being viewed
    */
@@ -92,6 +92,18 @@ interface ProjectDetailProps {
    */
   onSessionsDeleted?: () => void;
   /**
+   * Selected project for back navigation
+   */
+  selectedProject?: any;
+  /**
+   * Current tab context for back navigation  
+   */
+  currentTab?: any;
+  /**
+   * Callback to update tab (for creating new sessions with back nav)
+   */
+  onUpdateTab?: (tabId: string, updates: any) => void;
+  /**
    * Optional className for styling
    */
   className?: string;
@@ -120,6 +132,9 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
   onProjectDeleted,
   onToast,
   onSessionsDeleted,
+  selectedProject,
+  currentTab,
+  onUpdateTab,
   className,
 }) => {
   const [activeTab, setActiveTab] = useState(initialActiveTab);
@@ -169,8 +184,27 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
 
   const handleStartNewSession = () => {
     logger.log('Starting new Claude Code SDK session for project:', projectPath);
-    const tabId = createClaudeSDKTab(projectPath);
-    logger.log('Created new Claude SDK tab:', tabId);
+    
+    if (onUpdateTab && currentTab) {
+      // Create new claude-sdk tab with back navigation to current project state
+      onUpdateTab(currentTab.id, {
+        type: "claude-sdk",
+        title: `New: ${projectPath.split("/").pop() || "Session"}`,
+        initialProjectPath: projectPath,
+        status: 'idle',
+        hasUnsavedChanges: false,
+        icon: 'zap',
+        restoreProjectState: {
+          selectedProject: selectedProject,
+          sessions: sessions,
+          activeTab: activeTab,
+        },
+      });
+    } else {
+      // Fallback to old method if context not available
+      const tabId = createClaudeSDKTab(projectPath);
+      logger.log('Created new Claude SDK tab (no back nav):', tabId);
+    }
   };
 
 

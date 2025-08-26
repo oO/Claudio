@@ -1,9 +1,10 @@
 import React, { useState, useRef } from "react";
 import { DebugLabel } from "@/components/ui/atoms";
-import { PromptTextarea } from "./PromptTextarea";
-import { ModelSelector } from "./ModelSelector";
-import { ThinkingModeSelector, type ThinkingMode } from "./ThinkingModeSelector";
-import { PromptControls } from "./PromptControls";
+import { PromptTextarea } from "../sessions/PromptTextarea";
+import { ModelSelector } from "../sessions/ModelSelector";
+import { ThinkingModeSelector, type ThinkingMode } from "../sessions/ThinkingModeSelector";
+import { SessionOptionsSelector } from "../sessions/SessionOptionsSelector";
+import { PromptControls } from "../sessions/PromptControls";
 
 interface SimplePromptInputProps {
   onSend: (prompt: string, model: "sonnet" | "opus") => void;
@@ -27,6 +28,17 @@ export const SimplePromptInput = React.forwardRef<SimplePromptInputRef, SimplePr
     const [prompt, setPrompt] = useState("");
     const [selectedModel, setSelectedModel] = useState<"sonnet" | "opus">("sonnet");
     const [thinkingMode, setThinkingMode] = useState<ThinkingMode>("auto");
+    const [sessionOptions, setSessionOptions] = useState<{
+      maxTurns?: number;
+      systemPrompt?: string;
+      tools?: string[];
+      workingDirectory?: string;
+    }>({
+      maxTurns: 5,
+      systemPrompt: "",
+      tools: undefined, // undefined means all tools
+      workingDirectory: "",
+    });
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     // Expose methods via ref
@@ -45,7 +57,7 @@ export const SimplePromptInput = React.forwardRef<SimplePromptInputRef, SimplePr
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         handleSend();
       }
@@ -58,7 +70,7 @@ export const SimplePromptInput = React.forwardRef<SimplePromptInputRef, SimplePr
         <div className="max-w-5xl mx-auto p-4">
           <div className="flex flex-col gap-3">
             {/* Model and Thinking Mode Selectors */}
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <ModelSelector
                 selectedModel={selectedModel}
                 onModelSelect={setSelectedModel}
@@ -69,6 +81,11 @@ export const SimplePromptInput = React.forwardRef<SimplePromptInputRef, SimplePr
                 onThinkingModeSelect={setThinkingMode}
                 disabled={disabled || isLoading}
               />
+              <SessionOptionsSelector
+                options={sessionOptions}
+                onChange={setSessionOptions}
+                disabled={disabled || isLoading}
+              />
             </div>
 
             {/* Main Input Area */}
@@ -77,7 +94,7 @@ export const SimplePromptInput = React.forwardRef<SimplePromptInputRef, SimplePr
                 <PromptTextarea
                   ref={textareaRef}
                   value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setPrompt(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder={`Ask Claude something... (${projectPath ? 'ready' : 'no project selected'})`}
                   disabled={disabled || isLoading}
@@ -85,6 +102,11 @@ export const SimplePromptInput = React.forwardRef<SimplePromptInputRef, SimplePr
                   maxHeight={200}
                   autoResize
                 />
+                
+                {/* Hint text */}
+                <div className="mt-2 text-xs text-muted-foreground">
+                  Press Enter to send, Shift+Enter for new line
+                </div>
               </div>
               
               {/* Send/Stop Button */}
