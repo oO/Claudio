@@ -12,15 +12,15 @@ export const TasksWidget: React.FC<{ todos: any[]; result?: any }> = ({
   result: _result,
 }) => {
   const statusIcons = {
-    completed: <CheckCircle2 className="h-4 w-4 text-green-500" />,
-    in_progress: <Clock className="h-4 w-4 text-blue-500 animate-pulse" />,
+    completed: <CheckCircle2 className="h-4 w-4 text-success" />,
+    in_progress: <Clock className="h-4 w-4 text-info animate-pulse" />,
     pending: <Circle className="h-4 w-4 text-muted-foreground" />,
   };
 
   const priorityColors = {
-    high: "bg-red-500/10 text-red-500 border-red-500/20",
-    medium: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
-    low: "bg-green-500/10 text-green-500 border-green-500/20",
+    high: "bg-destructive/10 text-destructive border-destructive/20",
+    medium: "bg-warning/10 text-warning border-warning/20",
+    low: "bg-success/10 text-success border-success/20",
   };
 
   return (
@@ -50,6 +50,7 @@ export const TasksWidget: React.FC<{ todos: any[]; result?: any }> = ({
                   className={cn(
                     "text-sm",
                     todo.status === "completed" && "line-through",
+                    todo.status === "in_progress" && "font-bold text-info",
                   )}
                 >
                   {todo.content}
