@@ -63,7 +63,7 @@ export function ClaudoSessionSettings({
   const loadSessionMetadata = async () => {
     try {
       setLoading(true);
-      const data = await api.getSessionMetadata(sessionId, projectPath);
+      const data = await api.getClaudioSession(sessionId, projectPath);
       setSession(data);
       setSettings(data.settings);
       logger.info('Loaded session metadata:', data);

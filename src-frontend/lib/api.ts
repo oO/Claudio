@@ -2374,26 +2374,6 @@ export const api = {
     }
   },
 
-  /**
-   * Gets session metadata
-   * @param sessionId - Session ID
-   * @param projectPath - Project path
-   * @returns Promise resolving to the session metadata
-   */
-  async getSessionMetadata(
-    sessionId: string,
-    projectPath: string
-  ): Promise<ClaudioSession> {
-    try {
-      return await invoke<ClaudioSession>("get_claudio_session", {
-        claudoSessionId: sessionId,
-        projectPath
-      });
-    } catch (error) {
-      logger.error("Failed to get session metadata:", error);
-      throw error;
-    }
-  },
 
   /**
    * Lists all Claudio sessions for a project

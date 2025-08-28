@@ -47,8 +47,6 @@ const TabItem: React.FC<TabItemProps> = ({ tab, isActive, onClose, onClick, isDr
         return Plus;
       case 'import-agent':
         return Plus;
-      case 'claude-sdk':
-        return Bot;
       default:
         return MessageSquare;
     }

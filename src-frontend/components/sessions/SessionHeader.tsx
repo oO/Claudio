@@ -48,6 +48,7 @@ interface SessionHeaderProps {
   onExportAsJson: () => void;
   onExportAsMarkdown: () => void;
   onToggleTimeline: () => void;
+  isReadOnly?: boolean;
   onDeleteProject?: () => void;
   setCopyPopoverOpen: (open: boolean) => void;
   // Session metadata
@@ -84,6 +85,7 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
   onExportAsJson,
   onExportAsMarkdown,
   onToggleTimeline,
+  isReadOnly = false,
   onDeleteProject,
   setCopyPopoverOpen,
   sessionData,
@@ -111,8 +113,24 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
     }
   };
 
-  const handleCopyCollapsedUuids = async () => {
-    if (collapsedMessageUuids && collapsedMessageUuids.length > 0) {
+  const handleCopySessionInfo = async () => {
+    // Copy session metadata JSON structure
+    if (sessionData && sessionFilePath) {
+      try {
+        const sessionInfo = {
+          project: sessionData.project_id,
+          session: sessionData.id,
+          project_path: projectPath,
+          session_path: sessionFilePath
+        };
+        const sessionJson = JSON.stringify(sessionInfo, null, 2);
+        await navigator.clipboard.writeText(sessionJson);
+        logger.log('Copied session info JSON to clipboard:', sessionInfo);
+      } catch (error) {
+        logger.error("Failed to copy session info:", error);
+      }
+    } else if (collapsedMessageUuids && collapsedMessageUuids.length > 0) {
+      // Fallback to UUIDs if session data is incomplete
       try {
         const uuidList = collapsedMessageUuids.join("\n");
         await navigator.clipboard.writeText(uuidList);
@@ -177,8 +195,8 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
                     displayableMessageCount > 0 && (
                       <div
                         className="flex items-center gap-1 bg-accent px-2 py-1 rounded-full text-xs cursor-pointer hover:bg-accent/80 transition-colors"
-                        onClick={handleCopyCollapsedUuids}
-                        title={`Click to copy UUIDs of ${collapsedMessageUuids?.length || 0} collapsed messages`}
+                        onClick={handleCopySessionInfo}
+                        title={`Click to copy session metadata JSON`}
                       >
                         <MessageSquare className="h-3 w-3" />
                         <span>{displayableMessageCount}</span>

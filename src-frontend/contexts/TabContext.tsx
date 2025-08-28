@@ -3,11 +3,11 @@ import type { NavigationStack } from './NavigationContext';
 
 export interface Tab {
   id: string;
-  type: 'chat' | 'agent' | 'agents' | 'projects' | 'usage' | 'mcp' | 'settings' | 'claude-md' | 'claude-file' | 'agent-execution' | 'create-agent' | 'import-agent' | 'claude-sdk';
+  type: 'chat' | 'agent' | 'agents' | 'projects' | 'usage' | 'mcp' | 'settings' | 'claude-md' | 'claude-file' | 'agent-execution' | 'create-agent' | 'import-agent';
   title: string;
   sessionId?: string;  // for chat tabs
   sessionData?: any; // for chat tabs - stores full session object
-  claudeSession?: any; // for claude-sdk tabs - stores claudio session metadata
+  claudeSession?: any; // legacy field - stores claudio session metadata
   agentRunId?: string; // for agent tabs
   agentData?: any; // for agent-execution tabs
   claudeFileId?: string; // for claude-file tabs

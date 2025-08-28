@@ -188,7 +188,10 @@ fn main() {
 
             // Initialize session file watcher
             let session_watcher_state = init_session_watcher(app.handle().clone());
-            app.manage(session_watcher_state);
+            app.manage(session_watcher_state.clone());
+
+            // Initialize SessionOrchestrator (new architecture)
+            commands::session_orchestrator::initialize_orchestrator(app.handle().clone(), session_watcher_state);
 
             // Setup window state tracking
             if let Err(e) = setup_window_state_tracking(app.handle().clone()) {
@@ -367,6 +370,11 @@ fn main() {
             
             // Frontend Debug Logging
             log_frontend_debug,
+            
+            // Session Orchestrator (New Architecture)
+            commands::session_orchestrator::get_session_handle,
+            commands::session_orchestrator::send_session_prompt,
+            commands::session_orchestrator::get_session_messages,
             
         ])
         .run(tauri::generate_context!())

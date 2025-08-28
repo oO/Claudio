@@ -48,8 +48,8 @@ export const SessionMessages = forwardRef<SessionMessagesRef, SessionMessagesPro
   const rowVirtualizer = useVirtualizer({
     count: displayableMessages.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 150, // Estimate, will be dynamically measured
-    overscan: 5,
+    estimateSize: () => 180, // Better estimate for typical message height
+    overscan: 20, // Increased from 5 to 20 to reduce gaps during scroll jumps
   });
 
   // Track scroll position to detect if user is pinned to bottom
@@ -126,8 +126,12 @@ export const SessionMessages = forwardRef<SessionMessagesRef, SessionMessagesPro
   // Initial scroll to bottom when messages first load
   useEffect(() => {
     if (displayableMessages.length > 0) {
+      // Try scrolling to element manually instead of using scrollToIndex
       setTimeout(() => {
-        rowVirtualizer.scrollToIndex(displayableMessages.length - 1, { align: 'end' });
+        const element = parentRef.current;
+        if (element) {
+          element.scrollTop = element.scrollHeight;
+        }
       }, 100);
     }
   }, [displayableMessages.length > 0 ? displayableMessages.length : 0]);

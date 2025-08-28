@@ -104,6 +104,10 @@ interface ProjectDetailProps {
    */
   onUpdateTab?: (tabId: string, updates: any) => void;
   /**
+   * Callback when starting a new SDK session
+   */
+  onStartNewSDKSession?: (projectPath: string) => void;
+  /**
    * Optional className for styling
    */
   className?: string;
@@ -135,11 +139,11 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
   selectedProject,
   currentTab,
   onUpdateTab,
+  onStartNewSDKSession,
   className,
 }) => {
   const [activeTab, setActiveTab] = useState(initialActiveTab);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const { createClaudeSDKTab } = useTabState();
 
   // Update activeTab when initialActiveTab changes (for restoration)
   useEffect(() => {
@@ -185,25 +189,11 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
   const handleStartNewSession = () => {
     logger.log('Starting new Claude Code SDK session for project:', projectPath);
     
-    if (onUpdateTab && currentTab) {
-      // Create new claude-sdk tab with back navigation to current project state
-      onUpdateTab(currentTab.id, {
-        type: "claude-sdk",
-        title: `New: ${projectPath.split("/").pop() || "Session"}`,
-        initialProjectPath: projectPath,
-        status: 'idle',
-        hasUnsavedChanges: false,
-        icon: 'zap',
-        restoreProjectState: {
-          selectedProject: selectedProject,
-          sessions: sessions,
-          activeTab: activeTab,
-        },
-      });
+    if (onStartNewSDKSession) {
+      // Use callback to delegate to parent (ProjectsTab)
+      onStartNewSDKSession(projectPath);
     } else {
-      // Fallback to old method if context not available
-      const tabId = createClaudeSDKTab(projectPath);
-      logger.log('Created new Claude SDK tab (no back nav):', tabId);
+      logger.error('No onStartNewSDKSession callback provided');
     }
   };
 

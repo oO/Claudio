@@ -6,7 +6,7 @@ import { api, type Project, type Session, type DecoratedSession, type ClaudeMdFi
 import { logger } from "@/lib/logger";
 import { prettifyProjectName } from "@/lib/utils";
 import { ProjectList, ProjectDetail } from "@/components/projects";
-import { RunningClaudeSessions } from "@/components/sessions";
+import { RunningClaudeSessions, SessionHandleView } from "@/components/sessions";
 import { Button } from "@/components/ui/button";
 import { ActionButton } from "@/components/ui/atoms/ActionButton";
 import { LoadingSpinner } from "@/components/ui/atoms/LoadingSpinner";
@@ -41,13 +41,24 @@ interface ProjectsTabProps {
 }
 
 export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
-  const { updateTab, createChatTab, createClaudeSDKTab } = useTabState();
+  const { updateTab, createChatTab } = useTabState();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [sessions, setSessions] = useState<DecoratedSession[]>([]);
   const [activeProjectTab, setActiveProjectTab] = useState<string>("sessions");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Session viewing state - to render SessionHandleView directly
+  const [viewingSession, setViewingSession] = useState<{
+    session: any;
+    projectPath: string;
+    backState: {
+      selectedProject: Project | null;
+      sessions: DecoratedSession[];
+      activeTab: string;
+    };
+  } | null>(null);
   const [projectDeleteDialogOpen, setProjectDeleteDialogOpen] = useState(false);
   const [isDeletingProject, setIsDeletingProject] = useState(false);
 
@@ -322,18 +333,14 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
 
   const handleNewSDKSession = async (projectPath?: string) => {
     if (projectPath) {
-      // Create SDK tab with known project path and back navigation
-      updateTab(tab.id, {
-        type: "claude-sdk",
-        title: `New: ${projectPath.split("/").pop() || "Session"}`,
-        initialProjectPath: projectPath,
-        status: 'idle',
-        hasUnsavedChanges: false,
-        icon: 'zap',
-        restoreProjectState: {
+      // Set viewing session state to render SessionHandleView directly
+      setViewingSession({
+        session: null, // New session
+        projectPath: projectPath,
+        backState: {
           selectedProject: selectedProject,
           sessions: sessions,
-          activeTab: "sessions", // Default to sessions tab when returning
+          activeTab: "sessions",
         },
       });
     } else {
@@ -347,18 +354,14 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
         
         if (selectedPath) {
           logger.log('Selected folder:', selectedPath);
-          // Create SDK tab with selected path and back navigation
-          updateTab(tab.id, {
-            type: "claude-sdk",
-            title: `New: ${selectedPath.split("/").pop() || "Session"}`,
-            initialProjectPath: selectedPath,
-            status: 'idle',
-            hasUnsavedChanges: false,
-            icon: 'zap',
-            restoreProjectState: {
+          // Set viewing session state to render SessionHandleView directly
+          setViewingSession({
+            session: null, // New session
+            projectPath: selectedPath,
+            backState: {
               selectedProject: selectedProject,
               sessions: sessions,
-              activeTab: "sessions", // Default to sessions tab when returning
+              activeTab: "sessions",
             },
           });
         }
@@ -368,6 +371,31 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
     }
   };
 
+
+  // Handle back navigation from session view
+  const handleBackFromSession = () => {
+    if (viewingSession) {
+      // Restore previous state
+      setSelectedProject(viewingSession.backState.selectedProject);
+      setSessions(viewingSession.backState.sessions);
+      setActiveProjectTab(viewingSession.backState.activeTab);
+      setViewingSession(null);
+    }
+  };
+
+  // Render SessionHandleView if viewing a session
+  if (viewingSession) {
+    return (
+      <>
+        <DebugLabel label="ProjectsTab" />
+        <SessionHandleView 
+          session={viewingSession.session}
+          projectPath={viewingSession.projectPath}
+          onBack={handleBackFromSession}
+        />
+      </>
+    );
+  }
 
   return (
     <>
@@ -474,37 +502,61 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                       projectId={selectedProject.id}
                       initialActiveTab={activeProjectTab}
                       onActiveTabChange={setActiveProjectTab}
-                      onSessionClick={(session) => {
+                      onSessionClick={async (session) => {
                         if ((session as any).claudio) {
-                          // Interactive claudio session - create a claude-sdk tab for continuation
+                          // Interactive claudio session - set viewing session state for continuation
                           logger.log('Continuing claudio session:', (session as any).claudio.claudio_id);
                           
-                          updateTab(tab.id, {
-                            type: "claude-sdk",
-                            title: `Continue: ${session.project_path.split("/").pop() || "Session"}`,
-                            initialProjectPath: session.project_path,
-                            sessionData: session, // Store full session object for continuation
-                            claudeSession: (session as any).claudio, // Store claudio metadata
-                            status: 'idle',
-                            hasUnsavedChanges: false,
-                            icon: 'zap',
-                            restoreProjectState: {
-                              selectedProject: selectedProject,
-                              sessions: sessions,
-                              activeTab: activeProjectTab,
-                            },
-                          });
+                          try {
+                            // 🔧 FIX: Fetch fresh claudio metadata to avoid stale session_id
+                            logger.info('🔄 Refreshing claudio metadata before resume:', (session as any).claudio.claudio_id);
+                            const freshClaudioMetadata = await api.getClaudioSession(
+                              (session as any).claudio.claudio_id,
+                              session.project_path
+                            );
+                            
+                            // Create updated session object with fresh metadata
+                            const freshSession = {
+                              ...session,
+                              claudio: freshClaudioMetadata
+                            };
+                            
+                            logger.info('✅ Updated session metadata:', {
+                              oldSessionId: (session as any).claudio.session_id,
+                              newSessionId: freshClaudioMetadata.session_id,
+                              claudioId: freshClaudioMetadata.claudio_id
+                            });
+                            
+                            // Set viewing session state to render SessionHandleView directly
+                            setViewingSession({
+                              session: freshSession,
+                              projectPath: session.project_path,
+                              backState: {
+                                selectedProject: selectedProject,
+                                sessions: sessions,
+                                activeTab: activeProjectTab,
+                              },
+                            });
+                          } catch (error) {
+                            logger.error('Failed to refresh claudio metadata:', error);
+                            // Fallback to cached metadata if refresh fails
+                            setViewingSession({
+                              session: session,
+                              projectPath: session.project_path,
+                              backState: {
+                                selectedProject: selectedProject,
+                                sessions: sessions,
+                                activeTab: activeProjectTab,
+                              },
+                            });
+                          }
                         } else {
-                          // Regular session - open as read-only chat tab
-                          updateTab(tab.id, {
-                            type: "chat",
-                            title:
-                              session.project_path.split("/").pop() || "Session",
-                            sessionId: session.id,
-                            sessionData: session, // Store full session object
-                            initialProjectPath: session.project_path,
-                            // Store state to return to - this is the KEY fix!
-                            restoreProjectState: {
+                          // Native Claude Code session - set viewing session state for read-only view
+                          logger.log('Opening native session:', session.id);
+                          setViewingSession({
+                            session: session,
+                            projectPath: session.project_path,
+                            backState: {
                               selectedProject: selectedProject,
                               sessions: sessions,
                               activeTab: activeProjectTab,
@@ -614,6 +666,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                       selectedProject={selectedProject}
                       currentTab={tab}
                       onUpdateTab={updateTab}
+                      onStartNewSDKSession={handleNewSDKSession}
                     />
                   </motion.div>
                 ) : (

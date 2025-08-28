@@ -151,6 +151,10 @@ impl SessionWatcherManager {
         Ok(())
     }
 
+    /// Subscribe to session file events
+    pub fn subscribe_to_events(&self) -> broadcast::Receiver<SessionFileEvent> {
+        self.event_sender.subscribe()
+    }
 
     /// Handle file system events with 5-second debouncing and emit session file events
     async fn handle_file_events(

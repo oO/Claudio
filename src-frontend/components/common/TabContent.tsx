@@ -17,12 +17,8 @@ import { WelcomeScreen } from "./Welcome";
 import { invoke } from "@tauri-apps/api/core";
 import { prettifyProjectName } from "@/lib/utils";
 
-// Lazy load heavy components
-const ClaudeCodeSession = lazy(() =>
-  import("@/components/sessions").then((m) => ({
-    default: m.ClaudeCodeSession,
-  })),
-);
+// Import SessionHandleView directly instead of lazy loading to prevent mount/unmount cycles
+import { SessionHandleView } from "@/components/sessions";
 const AgentRunOutputViewer = lazy(() =>
   import("@/components/agents").then((m) => ({
     default: m.AgentRunOutputViewer,
@@ -47,19 +43,6 @@ const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
   // Panel visibility - hide when not active
   const panelVisibilityClass = isActive ? "" : "hidden";
 
-  const handleBack = () => {
-    if (tab.restoreProjectState) {
-      updateTab(tab.id, {
-        type: "projects",
-        title: "Projects",
-        restoreProjectState: tab.restoreProjectState,
-        // Clear the claude-sdk specific data
-        sessionData: undefined,
-        claudeSession: undefined,
-        initialProjectPath: undefined,
-      });
-    }
-  };
 
   const renderContent = () => {
     switch (tab.type) {
@@ -155,17 +138,6 @@ const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
           </NavigationProvider>
         );
 
-      case "claude-sdk":
-        return (
-          <NavigationProvider tabId={tab.id}>
-            <ClaudeCodeSession 
-              session={tab.sessionData} // Pass the session data for continuation
-              sessionId={tab.claudeSession?.claudio_id} // Pass claudio_id for editor mode detection
-              initialProjectPath={tab.initialProjectPath || "/Users/olivier/Projects/claudio"}
-              onBack={handleBack}
-            />
-          </NavigationProvider>
-        );
 
       default:
         return <div className="p-4">Unknown tab type: {tab.type}</div>;

@@ -14,10 +14,14 @@ interface StatusMessageProps {
  */
 export const StatusMessage: React.FC<StatusMessageProps> = ({ message }) => {
   const title = (message as any).title || "Claude is thinking...";
-  const haiku = message.message?.content?.[0]?.text || "Processing your request";
+  const haiku =
+    message.message?.content?.[0]?.text || "Processing your request";
 
   return (
-    <MessageTemplate.Container message={message} className="bg-muted/30 border-dashed">
+    <MessageTemplate.Container
+      message={message}
+      className="bg-muted/30 border-dashed"
+    >
       <DebugLabel label="StatusMessage" />
       <MessageTemplate.Header
         IconComponent={Loader2}
@@ -26,7 +30,7 @@ export const StatusMessage: React.FC<StatusMessageProps> = ({ message }) => {
         titleClassName="text-purple-600 font-medium"
       >
         <MessageTemplate.Content>
-          <div className="text-sm text-muted-foreground italic font-serif text-center">
+          <div className="text text-muted-foreground italic font-serif text-center">
             <span>{haiku}</span>
           </div>
         </MessageTemplate.Content>

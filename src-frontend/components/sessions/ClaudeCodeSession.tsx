@@ -48,7 +48,7 @@ interface ClaudeProcessEvent {
 
 interface ClaudeCodeSessionProps {
   /**
-   * Optional session to resume (when clicking from SessionList)
+   * Optional session to continue (contains session history and metadata)
    */
   session?: Session;
   /**
@@ -194,130 +194,111 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     onLoading: setIsLoading,
   });
 
-  // Track Claude session state for proper --resume flow
-  const [currentClaudeSessionId, setCurrentClaudeSessionId] = useState<string | null>(null);
-  const [previousClaudeSessionId, setPreviousClaudeSessionId] = useState<string | null>(null);
+  // Simplified session management - single source of truth
+  const [activeClaudeSessionId, setActiveClaudeSessionId] = useState<string | null>(null);
   const [claudioId, setClaudioId] = useState<string | null>(null);
   
-  // Resume detection state
-  const [resumeState, setResumeState] = useState<{
-    active: boolean;
-    lastKnownMessageUuid: string | null;
-    skippedUpdates: number;
-  }>({ active: false, lastKnownMessageUuid: null, skippedUpdates: 0 });
-  
-  // Initialize claudio session if we're continuing one
-  useEffect(() => {
-    // @ts-ignore - we know session might have claudio metadata as DecoratedSession
-    if ((session as any)?.claudio?.claudio_id && !claudioId) {
-      const claudioSessionId = (session as any).claudio.claudio_id;
-      setClaudioId(claudioSessionId);
-      logger.log('Initializing claudio session continuation:', claudioSessionId);
-      
-      // CRITICAL FIX: For claudio sessions, set currentClaudeSessionId directly from metadata
-      const activeSessionId = (session as any).claudio.session_id;
-      
-      if (activeSessionId) {
-        setCurrentClaudeSessionId(activeSessionId);
-        logger.info('🔄 Initialized currentClaudeSessionId from claudio metadata:', activeSessionId);
-      } else {
-        // Fallback: fetch from API if not in metadata  
-        const initializeClaudioSession = async () => {
-          try {
-            const claudioSession = await api.getClaudioSession(claudioSessionId, projectPath);
-            if (claudioSession.session_id) {
-              setCurrentClaudeSessionId(claudioSession.session_id);
-              logger.info('🔄 Initialized currentClaudeSessionId from API:', claudioSession.session_id);
-            }
-          } catch (error) {
-            logger.warn('Failed to fetch claudio session during initialization:', error);
-          }
-        };
-        initializeClaudioSession();
-      }
-    }
-  }, [session, claudioId, projectPath]);
-  
-  // Load session history if resuming
+  // Determine session type and initialize state
+  const isReadOnlyClaudeSession = useMemo(() => {
+    return session && !(session as any)?.claudio?.claudio_id;
+  }, [session]);
+
+  // Initialize session state from props (unified for both fresh and continued sessions)
   useEffect(() => {
     if (session) {
-      // For claudio sessions, use the current active session ID, not the historical one
-      const sessionIdToLoad = (session as any)?.claudio?.session_id || session.id;
-      setClaudeSessionId(sessionIdToLoad);
+      // Extract claudio ID and current session ID from session metadata
+      const claudioSessionId = (session as any)?.claudio?.claudio_id;
+      const currentSessionId = (session as any)?.claudio?.session_id || session.id;
       
-      logger.info('Setting up session loading:', {
-        historicalSessionId: session.id,
-        activeSessionId: (session as any)?.claudio?.session_id,
-        willUseSessionId: sessionIdToLoad,
-        isClaudioSession: !!(session as any)?.claudio
-      });
+      if (claudioSessionId && !claudioId) {
+        setClaudioId(claudioSessionId);
+        logger.info('🔗 Initialized claudio session:', claudioSessionId);
+      }
+      
+      // Only set activeClaudeSessionId for read-only sessions or when we don't have a claudio ID
+      // For interactive Claudio sessions, wait for authoritative backend event
+      if (currentSessionId && currentSessionId !== activeClaudeSessionId) {
+        if (isReadOnlyClaudeSession || !claudioSessionId) {
+          setActiveClaudeSessionId(currentSessionId);
+          if (isReadOnlyClaudeSession) {
+            logger.info('📖 Read-only Claude Code session loaded:', currentSessionId);
+          } else {
+            logger.info('📍 Interactive Claudio session loaded:', currentSessionId);
+          }
+        } else {
+          logger.info('🔄 Interactive Claudio session - waiting for backend session ID event');
+        }
+      }
+    }
+  }, [session, claudioId, activeClaudeSessionId, isReadOnlyClaudeSession]);
+  
+  // Load session history when we have an active session ID
+  useEffect(() => {
+    if (activeClaudeSessionId) {
+      setClaudeSessionId(activeClaudeSessionId);
       
       const initializeSession = async () => {
-        await loadSessionHistory();
-        if (isMountedRef.current) {
-          const isActive = await checkForActiveSession();
-          if (isActive) {
-            // Session is active, message handler will reconnect
+        try {
+          await loadSessionHistory();
+          if (isMountedRef.current) {
+            await checkForActiveSession();
           }
+        } catch (error) {
+          logger.error('Failed to initialize session:', error);
+          setError(error instanceof Error ? error.message : 'Failed to initialize session');
         }
       };
       
       initializeSession();
     }
-  }, [session, loadSessionHistory, checkForActiveSession, setClaudeSessionId, isMountedRef]);
+  }, [activeClaudeSessionId, loadSessionHistory, checkForActiveSession, isMountedRef]);
 
   // Note: History loading is now handled by file watcher events in useSessionFileWatcher
   // When Claude writes the .jsonl file, the watcher will emit a 'session-file-changed' event
   // and useSessionFileWatcher will call onSessionChanged which triggers loadSessionHistory
 
-  // Listen for Claude session ID updates from backend events
+  // Listen for new Claude sessions created by backend
   useEffect(() => {
-    if (!claudeSessionId) return;
+    if (!claudioId) return;
 
-    const setupEventListeners = async () => {
+    const setupSessionListener = async () => {
       const { listen } = await import('@tauri-apps/api/event');
       
-      const unlistenMessage = await listen(`claude-sdk-message:${claudeSessionId}`, (event: any) => {
-        const payload = event.payload;
-        if (payload && typeof payload === 'string') {
-          try {
-            const parsedPayload = JSON.parse(payload);
-            // Extract Claude session ID from system messages
-            if (parsedPayload.type === 'system' && parsedPayload.session_id) {
-              const newClaudeSessionId = parsedPayload.session_id;
-              logger.info('🎯 Captured Claude session ID from event:', newClaudeSessionId);
-              setCurrentClaudeSessionId(newClaudeSessionId);
-            }
-          } catch (e) {
-            // Ignore JSON parse errors
-          }
+      const unlisten = await listen<any>('claude_session_ready', (event) => {
+        const { session_id, claudio_id: eventClaudioId } = event.payload;
+        
+        // Only handle events for our claudio session
+        if (eventClaudioId === claudioId) {
+          logger.info('🎯 Backend created new Claude session:', { session_id, claudio_id: eventClaudioId });
+          setActiveClaudeSessionId(session_id);
         }
       });
 
-      return unlistenMessage;
+      return unlisten;
     };
 
     let cleanup: (() => void) | undefined;
-    setupEventListeners().then(unlisten => {
+    setupSessionListener().then(unlisten => {
       cleanup = unlisten;
     });
 
     return () => {
       if (cleanup) cleanup();
     };
-  }, [claudeSessionId]);
+  }, [claudioId]);
 
-  // Create Claudio session on mount (represents "New Session" click)
+  // Create Claudio session on mount for new interactive sessions only
   const isCreatingRef = useRef(false);
   useEffect(() => {
     const createClaudioSession = async () => {
+      // Only create Claudio sessions for new interactive sessions (not read-only Claude Code sessions)
       if (!claudioId && !session && !isCreatingRef.current) {
         isCreatingRef.current = true;
         try {
-          logger.info('🆕 Creating new Claudio session for project:', projectPath);
+          logger.info('🆕 Creating new interactive Claudio session for project:', projectPath);
           const newClaudioId = await api.createClaudioSession(projectPath, {});
           setClaudioId(newClaudioId);
-          logger.info('✨ Created Claudio session:', newClaudioId);
+          logger.info('✨ Created interactive Claudio session:', newClaudioId);
         } catch (error) {
           logger.error('Failed to create Claudio session:', error);
           setError(error instanceof Error ? error.message : 'Failed to create session');
@@ -334,23 +315,13 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   // handleSelectPath removed - no longer needed
 
   const handleSendPrompt = async (prompt: string, model: "sonnet" | "opus") => {
-    if (!prompt.trim() || isLoading) return;
+    if (!prompt.trim() || isLoading || isReadOnlyClaudeSession) return;
     
     try {
       setIsLoading(true);
       setError(null);
       
-      // If we're resuming (have a current Claude session ID), activate resume detection
-      // Check this BEFORE adding the temporary user message
-      if (currentClaudeSessionId && messages.length > 0) {
-        const lastMessage = messages[messages.length - 1];
-        setResumeState({
-          active: true,
-          lastKnownMessageUuid: lastMessage.uuid || null,
-          skippedUpdates: 0
-        });
-        logger.info('🔄 Activated resume detection mode, last known message UUID:', lastMessage.uuid);
-      }
+      // Resume detection removed - let file watcher handle updates naturally like fresh sessions
       
       // Add the user message immediately to the UI for responsiveness
       const userMessage: ClaudeStreamMessage = {
@@ -371,8 +342,8 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
         prompt: prompt.substring(0, 50),
         model,
         claudioId,
-        currentClaudeSessionId,
-        willResume: currentClaudeSessionId !== null
+        activeSessionId: activeClaudeSessionId,
+        willResume: activeClaudeSessionId !== null
       });
       
       // Generate a new session ID for this prompt
@@ -384,7 +355,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
         projectPath,
         prompt,
         options: {
-          session_id: currentClaudeSessionId, // For --resume (null for first message)
+          session_id: activeClaudeSessionId, // For --resume (null for first message)
           claudio_id: claudioId, // Claudio wrapper session ID
           working_directory: projectPath,
           max_turns: 5,
@@ -393,50 +364,8 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
         }
       });
       
-      // Refetch Claudio session to get updated Claude session ID
-      if (claudioId) {
-        try {
-          logger.info('🔄 Refetching Claudio session after execution');
-          const updatedSession = await api.getClaudioSession(claudioId, projectPath);
-          
-          if (updatedSession.session_id && updatedSession.session_id !== currentClaudeSessionId) {
-            setCurrentClaudeSessionId(updatedSession.session_id);
-            logger.info('🆔 Updated Claude session ID for continuation:', updatedSession.session_id);
-          }
-        } catch (error) {
-          logger.warn('Failed to refetch Claudio session:', error);
-        }
-      }
-      
-      // Set up listener for immediate session ready event  
-      const { listen } = await import('@tauri-apps/api/event');
-      const unlisten = await listen<any>('claude_session_ready', async (event) => {
-        const { session_id, claudio_id: eventClaudioId } = event.payload;
-        
-        // Only handle events for our current Claudio pointer  
-        if (eventClaudioId === claudioId) {
-          logger.info('🎯 New Claude session created:', { session_id, claudio_id: eventClaudioId });
-          
-          // Update the current session_id (this is the NEW session for this turn)
-          setCurrentClaudeSessionId(session_id);
-          
-          // Update extractedSessionInfo to track the latest Claude session_id
-          const project_id = effectiveSession?.project_id || projectPath.replace(/\//g, '-').replace(/\s+/g, '-');
-          setExtractedSessionInfo({ 
-            sessionId: session_id, 
-            projectId: project_id
-          });
-          
-          // Update session state so file watcher switches to the new session file  
-          setClaudeSessionId(session_id);
-          
-          logger.info('👀 File watcher will now watch new session file:', `${session_id}.jsonl`);
-          // loadSessionHistory will be called automatically by useEffect when effectiveSession updates
-        }
-      });
-      
-      // Clean up listener when component unmounts or new prompt starts
-      setTimeout(() => unlisten(), 30000); // Auto cleanup after 30s
+      // Backend will notify us of new session via the global claude_session_ready event listener
+      // established in the useEffect above - no need for manual refetching or temporary listeners
       
     } catch (error) {
       logger.error('Failed to send prompt:', error);
@@ -470,50 +399,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   const handleRefresh = useCallback(async () => {
     if (!effectiveSession) return; // Need either session or effectiveSession
     
-    // If we're in resume mode, check if we should skip this update
-    if (resumeState.active && resumeState.lastKnownMessageUuid) {
-      try {
-        // Load the session history to check for genuinely new messages
-        const sessionWithContent = await api.loadSessionHistory(effectiveSession.id, effectiveSession.project_id);
-        const newMessages = sessionWithContent.content;
-        
-        // Check if we have any messages with UUIDs that come AFTER our last known UUID
-        // We find our last known UUID in the session, then see if there are any messages after it
-        let foundLastKnown = false;
-        let hasNewMessages = false;
-        
-        for (const message of newMessages) {
-          if (message.uuid === resumeState.lastKnownMessageUuid) {
-            foundLastKnown = true;
-            continue; // Keep looking for messages after this one
-          }
-          
-          // If we've found our last known message and we're now seeing more messages,
-          // these are genuinely new (not just copied from the old session)
-          if (foundLastKnown && message.uuid && message.type !== 'system') {
-            hasNewMessages = true;
-            break;
-          }
-        }
-        
-        if (!hasNewMessages) {
-          const newSkipCount = resumeState.skippedUpdates + 1;
-          // After skipping 3 updates, give up and show whatever we have
-          if (newSkipCount >= 3) {
-            logger.warn('⚠️ Resume detection giving up after 3 skipped updates - showing current state');
-            setResumeState({ active: false, lastKnownMessageUuid: null, skippedUpdates: 0 });
-          } else {
-            setResumeState(prev => ({ ...prev, skippedUpdates: newSkipCount }));
-            return; // Skip this update
-          }
-        } else {
-          setResumeState({ active: false, lastKnownMessageUuid: null, skippedUpdates: 0 });
-        }
-      } catch (error) {
-        logger.warn('Failed to check for new messages during resume detection, proceeding with update:', error);
-        setResumeState({ active: false, lastKnownMessageUuid: null, skippedUpdates: 0 });
-      }
-    }
+    // Resume detection logic removed - just refresh like fresh sessions do
     
     try {
       // Reload session data
@@ -522,7 +408,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
       logger.error('Failed to refresh session:', error);
       setError('Failed to refresh session data');
     }
-  }, [effectiveSession, loadSessionHistory, setError, resumeState, api]);
+  }, [effectiveSession, loadSessionHistory, setError, api]);
   
 
   // Status message handling for Claude process events
@@ -611,9 +497,19 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   // Generate a unique tab ID for this session tab
   const tabId = useRef(`session-tab-${Math.random().toString(36).substr(2, 9)}`);
   
+  // Create current session object for file watcher
+  const currentSessionForWatcher = useMemo(() => {
+    if (!effectiveSession || !activeClaudeSessionId) return undefined;
+    
+    return {
+      ...effectiveSession,
+      id: activeClaudeSessionId
+    };
+  }, [effectiveSession, activeClaudeSessionId]);
+
   // File watching for session changes (replaces polling)
   const { isWatching, forceRefresh } = useSessionFileWatcher({
-    session: effectiveSession || undefined,
+    session: currentSessionForWatcher,
     projectId: effectiveSession?.project_id,
     onSessionChanged: handleRefresh,
     enabled: true,
@@ -744,6 +640,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
           onToggleTimeline={() => setShowTimeline(!showTimeline)}
           setCopyPopoverOpen={setCopyPopoverOpen}
           sessionData={session}
+          isReadOnly={isReadOnlyClaudeSession}
           sessionFilePath={sessionFilePath}
           displayableMessageCount={actualDisplayedMessageCount}
           collapsedMessageUuids={collapsedMessageUuids}
@@ -782,7 +679,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
         {/* Prompt Controls - Part of layout flow */}
         <ErrorBoundary>
           {/* All prompt controls - Only show for editor sessions that can be interacted with */}
-          {((sessionId ? isEditorSession({ id: sessionId }) : !session) || (session as any)?.claudio) && (
+          {!isReadOnlyClaudeSession && ((sessionId ? isEditorSession({ id: sessionId }) : !session) || (session as any)?.claudio) && (
             <div className={cn(
               "transition-all duration-300",
               showTimeline && "sm:mr-96"
@@ -821,7 +718,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
           claudeSessionId={claudeSessionId}
           effectiveSession={effectiveSession}
           claudioId={claudioId}
-          currentClaudeSessionId={currentClaudeSessionId}
+          currentClaudeSessionId={activeClaudeSessionId}
           loadSessionHistory={loadSessionHistory}
           projectPath={projectPath}
           isFirstPrompt={isFirstPrompt}
