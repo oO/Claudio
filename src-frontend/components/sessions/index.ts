@@ -26,7 +26,6 @@ export { SessionTimeline } from './SessionTimeline';
 // export { SessionQueuedPrompts } from './SessionQueuedPrompts'; // Moved to deprecated
 export { SessionMessages } from './SessionMessages';
 export { ClaudoSessionSettings } from './ClaudoSessionSettings';
-export { SessionSettingsDemo } from './SessionSettingsDemo';
 
 // Extracted FloatingPromptInput components
 export { PromptTextarea } from './PromptTextarea';

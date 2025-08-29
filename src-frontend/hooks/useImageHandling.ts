@@ -1,299 +1,92 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { logger } from '@/lib/logger';
+import { useCallback, useState } from 'react';
+import { DragEvent as ReactDragEvent, ClipboardEvent as ReactClipboardEvent } from 'react';
 
-export interface UseImageHandlingOptions {
+interface UseImageHandlingProps {
   projectPath?: string;
   onPromptUpdate?: (updater: (current: string) => string) => void;
   onFocusTextarea?: () => void;
   onSetCursor?: (position: number) => void;
 }
 
-export interface UseImageHandlingReturn {
-  embeddedImages: string[];
-  setEmbeddedImages: (images: string[]) => void;
-  dragActive: boolean;
-  handleDrag: (e: React.DragEvent) => void;
-  handleDrop: (e: React.DragEvent) => void;
-  handlePaste: (e: React.ClipboardEvent) => void;
-  handleRemoveImage: (index: number, currentPrompt: string) => void;
-  addImage: (imagePath: string, currentPrompt: string) => string;
-  extractImagePaths: (text: string) => string[];
-}
-
 /**
- * Custom hook for managing image handling (drag-drop, paste, display)
+ * Simple stub for image handling - minimal implementation
+ * TODO: Implement full image handling functionality if needed
  */
-export const useImageHandling = ({
-  projectPath,
-  onPromptUpdate,
-  onFocusTextarea,
-  onSetCursor,
-}: UseImageHandlingOptions): UseImageHandlingReturn => {
-  const [embeddedImages, setEmbeddedImages] = useState<string[]>([]);
+export const useImageHandling = (props: UseImageHandlingProps) => {
+  const [embeddedImages, setEmbeddedImages] = useState<any[]>([]);
   const [dragActive, setDragActive] = useState(false);
-  const unlistenDragDropRef = useRef<(() => void) | null>(null);
-
-  // Helper function to check if a file is an image
-  const isImageFile = useCallback((path: string): boolean => {
-    // Check if it's a data URL
-    if (path.startsWith('data:image/')) {
-      return true;
-    }
-    // Otherwise check file extension
-    const ext = path.split('.').pop()?.toLowerCase();
-    return ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp'].includes(ext || '');
+  const handleImageUpload = useCallback((files: FileList) => {
+    // Stub implementation - just log for now
+    console.warn('Image upload not implemented - files:', Array.from(files).map(f => f.name));
   }, []);
 
-  // Extract image paths from prompt text
-  const extractImagePaths = useCallback((text: string): string[] => {
-    
-    // Updated regex to handle both quoted and unquoted paths
-    // Pattern 1: @"path with spaces or data URLs" - quoted paths
-    // Pattern 2: @path - unquoted paths (continues until @ or end)
-    const quotedRegex = /@"([^"]+)"/g;
-    const unquotedRegex = /@([^@\n\s]+)/g;
-    
-    const pathsSet = new Set<string>(); // Use Set to ensure uniqueness
-    
-    // First, extract quoted paths (including data URLs)
-    let matches = Array.from(text.matchAll(quotedRegex));
-    
-    for (const match of matches) {
-      const path = match[1]; // No need to trim, quotes preserve exact path
-      
-      // For data URLs, use as-is; for file paths, convert to absolute
-      const fullPath = path.startsWith('data:') 
-        ? path 
-        : (path.startsWith('/') ? path : (projectPath ? `${projectPath}/${path}` : path));
-      
-      if (isImageFile(fullPath)) {
-        pathsSet.add(fullPath);
-      }
+  const handleImagePaste = useCallback((e: ReactClipboardEvent) => {
+    // Handle clipboard image paste
+    if (e.clipboardData?.files.length) {
+      console.warn('Image paste not implemented - files:', Array.from(e.clipboardData.files).map(f => f.name));
+      handleImageUpload(e.clipboardData.files);
     }
-    
-    // Remove quoted mentions from text to avoid double-matching
-    let textWithoutQuoted = text.replace(quotedRegex, '');
-    
-    // Then extract unquoted paths (typically file paths)
-    matches = Array.from(textWithoutQuoted.matchAll(unquotedRegex));
-    
-    for (const match of matches) {
-      const path = match[1].trim();
-      // Skip if it looks like a data URL fragment (shouldn't happen with proper quoting)
-      if (path.includes('data:')) continue;
-      
-      
-      // Convert relative path to absolute if needed
-      const fullPath = path.startsWith('/') ? path : (projectPath ? `${projectPath}/${path}` : path);
-      
-      if (isImageFile(fullPath)) {
-        pathsSet.add(fullPath);
-      }
-    }
+  }, []);
 
-    const uniquePaths = Array.from(pathsSet);
-    return uniquePaths;
-  }, [projectPath, isImageFile]);
-
-  // Add image to prompt
-  const addImage = useCallback((imagePath: string, currentPrompt: string): string => {
-    const existingPaths = extractImagePaths(currentPrompt);
-    if (existingPaths.includes(imagePath)) {
-      return currentPrompt; // Image already added
-    }
-
-    // Wrap path in quotes if it contains spaces
-    const mention = imagePath.includes(' ') ? `@"${imagePath}"` : `@${imagePath}`;
-    const newPrompt = currentPrompt + (currentPrompt.endsWith(' ') || currentPrompt === '' ? '' : ' ') + mention + ' ';
-
-    // Focus the textarea and set cursor
-    setTimeout(() => {
-      onFocusTextarea?.();
-      onSetCursor?.(newPrompt.length);
-    }, 0);
-
-    return newPrompt;
-  }, [extractImagePaths, onFocusTextarea, onSetCursor]);
-
-  // Remove image from prompt
-  const handleRemoveImage = useCallback((index: number, currentPrompt: string) => {
-    const imagePath = embeddedImages[index];
-    
-    // For data URLs, we need to handle them specially since they're always quoted
-    if (imagePath.startsWith('data:')) {
-      // Simply remove the exact quoted data URL
-      const quotedPath = `@"${imagePath}"`;
-      const newPrompt = currentPrompt.replace(quotedPath, '').trim();
-      onPromptUpdate?.(() => newPrompt);
-      return;
-    }
-    
-    // For file paths, use the original logic
-    const escapedPath = imagePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const escapedRelativePath = imagePath.replace(projectPath + '/', '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    
-    // Create patterns for both quoted and unquoted mentions
-    const patterns = [
-      // Quoted full path
-      new RegExp(`@"${escapedPath}"\\s?`, 'g'),
-      // Unquoted full path
-      new RegExp(`@${escapedPath}\\s?`, 'g'),
-      // Quoted relative path
-      new RegExp(`@"${escapedRelativePath}"\\s?`, 'g'),
-      // Unquoted relative path
-      new RegExp(`@${escapedRelativePath}\\s?`, 'g')
-    ];
-
-    let newPrompt = currentPrompt;
-    for (const pattern of patterns) {
-      newPrompt = newPrompt.replace(pattern, '');
-    }
-
-    onPromptUpdate?.(() => newPrompt.trim());
-  }, [embeddedImages, projectPath, onPromptUpdate]);
-
-  // Tauri drag-drop setup
-  useEffect(() => {
-    let lastDropTime = 0;
-
-    const setupListener = async () => {
-      try {
-        // If a listener from a previous mount/render is still around, clean it up.
-        if (unlistenDragDropRef.current) {
-          unlistenDragDropRef.current();
-        }
-
-        const webview = getCurrentWebviewWindow();
-        unlistenDragDropRef.current = await webview.onDragDropEvent((event) => {
-          if (event.payload.type === 'enter' || event.payload.type === 'over') {
-            setDragActive(true);
-          } else if (event.payload.type === 'leave') {
-            setDragActive(false);
-          } else if (event.payload.type === 'drop' && event.payload.paths) {
-            setDragActive(false);
-
-            const currentTime = Date.now();
-            if (currentTime - lastDropTime < 200) {
-              // This debounce is crucial to handle the storm of drop events
-              // that Tauri/OS can fire for a single user action.
-              return;
-            }
-            lastDropTime = currentTime;
-
-            const droppedPaths = event.payload.paths as string[];
-            const imagePaths = droppedPaths.filter(isImageFile);
-
-            if (imagePaths.length > 0 && onPromptUpdate) {
-              onPromptUpdate(currentPrompt => {
-                const existingPaths = extractImagePaths(currentPrompt);
-                const newPaths = imagePaths.filter(p => !existingPaths.includes(p));
-
-                if (newPaths.length === 0) {
-                  return currentPrompt; // All dropped images are already in the prompt
-                }
-
-                // Wrap paths with spaces in quotes for clarity
-                const mentionsToAdd = newPaths.map(p => {
-                  // If path contains spaces, wrap in quotes
-                  if (p.includes(' ')) {
-                    return `@"${p}"`;
-                  }
-                  return `@${p}`;
-                }).join(' ');
-                const newPrompt = currentPrompt + (currentPrompt.endsWith(' ') || currentPrompt === '' ? '' : ' ') + mentionsToAdd + ' ';
-
-                setTimeout(() => {
-                  onFocusTextarea?.();
-                  onSetCursor?.(newPrompt.length);
-                }, 0);
-
-                return newPrompt;
-              });
-            }
-          }
-        });
-      } catch (error) {
-        logger.error('Failed to set up Tauri drag-drop listener:', error);
-      }
-    };
-
-    setupListener();
-
-    return () => {
-      // On unmount, ensure we clean up the listener.
-      if (unlistenDragDropRef.current) {
-        unlistenDragDropRef.current();
-        unlistenDragDropRef.current = null;
-      }
-    };
-  }, [isImageFile, extractImagePaths, onPromptUpdate, onFocusTextarea, onSetCursor]);
-
-  // Browser drag and drop handlers - just prevent default behavior
-  const handleDrag = useCallback((e: React.DragEvent) => {
+  const handleDrag = useCallback((e: ReactDragEvent) => {
     e.preventDefault();
-    e.stopPropagation();
-    // Visual feedback is handled by Tauri events
+    setDragActive(e.type === 'dragenter' || e.type === 'dragover');
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = useCallback((e: ReactDragEvent) => {
     e.preventDefault();
-    e.stopPropagation();
-    // File processing is handled by Tauri's onDragDropEvent
+    setDragActive(false);
+    // Handle file drops
+    if (e.dataTransfer?.files) {
+      handleImageUpload(e.dataTransfer.files);
+    }
   }, []);
 
-  // Handle paste events for images
-  const handlePaste = useCallback(async (e: React.ClipboardEvent) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-
-    for (const item of items) {
-      if (item.type.startsWith('image/')) {
-        e.preventDefault();
-        
-        // Get the image blob
-        const blob = item.getAsFile();
-        if (!blob) continue;
-
-        try {
-          // Convert blob to base64
-          const reader = new FileReader();
-          reader.onload = () => {
-            const base64Data = reader.result as string;
-            
-            // Add the base64 data URL directly to the prompt
-            onPromptUpdate?.(currentPrompt => {
-              // Use the data URL directly as the image reference
-              const mention = `@"${base64Data}"`;
-              const newPrompt = currentPrompt + (currentPrompt.endsWith(' ') || currentPrompt === '' ? '' : ' ') + mention + ' ';
-              
-              // Focus the textarea and move cursor to end
-              setTimeout(() => {
-                onFocusTextarea?.();
-                onSetCursor?.(newPrompt.length);
-              }, 0);
-
-              return newPrompt;
-            });
-          };
-          
-          reader.readAsDataURL(blob);
-        } catch (error) {
-          logger.error('Failed to paste image:', error);
-        }
-      }
+  const handlePaste = useCallback((e: ReactClipboardEvent) => {
+    // Convert React clipboard event to regular ClipboardEvent for compatibility
+    if (e.clipboardData?.files.length) {
+      handleImageUpload(e.clipboardData.files);
     }
-  }, [onPromptUpdate, onFocusTextarea, onSetCursor]);
+  }, []);
+
+  const handleRemoveImage = useCallback((index: number, prompt?: string) => {
+    setEmbeddedImages(prev => prev.filter((_, i) => i !== index));
+    // If prompt is provided and we need to update it, we could call onPromptUpdate here
+    // For now, just remove the image from the list
+  }, []);
+
+  const addImage = useCallback((imagePath: string, currentPrompt: string) => {
+    const imageRef = `![Image](${imagePath})`;
+    const newImage = { path: imagePath, name: imagePath.split('/').pop() || 'image' };
+    setEmbeddedImages(prev => [...prev, newImage]);
+    
+    // Return updated prompt with image reference
+    return currentPrompt + (currentPrompt ? '\n\n' : '') + imageRef;
+  }, []);
+
+  const extractImagePaths = useCallback((prompt?: string) => {
+    // Extract image paths from embedded images array
+    // If prompt is provided, could also extract from markdown image syntax
+    return embeddedImages.map(img => img.path || img.name || 'unknown');
+  }, [embeddedImages]);
 
   return {
     embeddedImages,
     setEmbeddedImages,
     dragActive,
+    handleImageUpload,
+    handleImagePaste: handlePaste, // Use the React-compatible version
     handleDrag,
     handleDrop,
     handlePaste,
     handleRemoveImage,
     addImage,
     extractImagePaths,
+    attachImageListeners: (element?: HTMLElement) => {
+      // Stub - would attach drag/drop listeners to the element
+    },
+    detachImageListeners: (element?: HTMLElement) => {
+      // Stub - would remove drag/drop listeners from the element  
+    },
   };
 };

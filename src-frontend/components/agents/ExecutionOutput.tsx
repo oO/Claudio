@@ -1,7 +1,7 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Terminal, Loader2 } from "lucide-react";
-import { MessageRouter } from "@/components/messages";
+import { MessageRouter } from "@/components/messages/MessageRouter";
 import { ErrorBoundary } from "@/components/common";
 import { LoadingSpinner, DebugLabel } from "@/components/ui/atoms";
 import type { ClaudeStreamMessage } from "@/hooks/useAgentExecution";

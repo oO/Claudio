@@ -21,7 +21,6 @@ import { Topbar, TabManager, TabContent } from "@/components/common";
 import { ClaudeFileEditor, ClaudeBinaryDialog } from "@/components/claude";
 import { logger } from "@/lib/logger";
 import { Settings, AnalyticsConsentBanner } from "@/components/settings";
-import { CCAgents } from "@/components/agents";
 import { UsageDashboard } from "@/components/dashboard";
 import { MCPManager } from "@/components/mcp";
 import { NFOCredits } from "@/components/common";
@@ -34,11 +33,6 @@ type View =
   | "projects"
   | "claude-file-editor"
   | "settings"
-  | "cc-agents"
-  | "create-agent"
-  | "github-agents"
-  | "agent-execution"
-  | "agent-run-view"
   | "mcp"
   | "usage-dashboard"
   | "tabs"; // New view for tab-based interface
@@ -453,22 +447,6 @@ function AppContent() {
 
               {/* Navigation Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
-                {/* CC Agents Card */}
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.5, delay: 0.1 }}
-                >
-                  <Card
-                    className="h-64 cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-lg border border-border/50 shimmer-hover trailing-border"
-                    onClick={() => handleViewChange("cc-agents")}
-                  >
-                    <div className="h-full flex flex-col items-center justify-center p-8">
-                      <Bot className="h-16 w-16 mb-4 text-primary" />
-                      <h2 className="text-xl font-semibold">Personal Agents</h2>
-                    </div>
-                  </Card>
-                </motion.div>
 
                 {/* Projects Card */}
                 <motion.div
@@ -491,8 +469,6 @@ function AppContent() {
           </div>
         );
 
-      case "cc-agents":
-        return <CCAgents onBack={() => handleViewChange("welcome")} />;
 
       case "settings":
         return (

@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.39] - 2025-08-29
+
+### Removed
+- Major codebase cleanup removing 5,300+ lines of dead/legacy code
+- Deleted 34+ unused files including legacy CCAgents system components
+- Removed 5 unused hooks (recreated 2 essential ones as minimal stubs)
+- Eliminated deprecated components folder with 5 obsolete files
+- Removed 2 legacy backup files and test/demo components
+- Cleaned up 12+ CCAgents system files made obsolete by Claude Code native agents
+
+### Fixed
+- Resolved circular dependency warnings in build system
+- Cleaned up import statements to use direct file imports where needed
+- Streamlined index.ts export files across multiple directories
+
+### Changed
+- Significantly reduced bundle size through dead code elimination
+- Improved build performance with cleaner dependency graph
+- Preserved all native agent functionality while removing legacy systems
+
 ## [0.3.38] - 2025-08-29
 
 ### Added

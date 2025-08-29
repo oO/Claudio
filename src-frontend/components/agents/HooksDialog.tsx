@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { HooksEditor } from "@/components/settings";
+import { HooksEditor } from "@/components/settings/HooksEditor";
 
 interface HooksDialogProps {
   isOpen: boolean;

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Copy, ChevronDown, X, Terminal, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover } from "@/components/ui/popover";
-import { MessageRouter } from "@/components/messages";
+import { MessageRouter } from "@/components/messages/MessageRouter";
 import { ErrorBoundary, ICON_MAP as AGENT_ICONS } from "@/components/common";
 import { ActionButton } from "@/components/ui/atoms/ActionButton";
 import { LoadingSpinner } from "@/components/ui/atoms/LoadingSpinner";

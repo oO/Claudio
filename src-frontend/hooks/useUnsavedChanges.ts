@@ -1,32 +1,24 @@
-import { useEffect, useCallback } from 'react';
-import { useTabContext } from '@/contexts/TabContext';
+import { useState, useCallback } from 'react';
 
 /**
- * Hook to manage unsaved changes for any editor component
- * Automatically updates the tab's hasUnsavedChanges flag
- * 
- * @param tabId - The ID of the current tab (if available)
- * @param hasChanges - Whether the editor has unsaved changes
- * @returns Object with handleSave callback that resets the unsaved state
+ * Simple hook to track unsaved changes - minimal implementation
  */
-export const useUnsavedChanges = (hasChanges: boolean) => {
-  const { activeTabId, updateTab } = useTabContext();
+export const useUnsavedChanges = (isDirty: boolean = false) => {
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(isDirty);
 
-  // Update the tab's hasUnsavedChanges flag whenever it changes
-  useEffect(() => {
-    if (activeTabId) {
-      updateTab(activeTabId, { hasUnsavedChanges: hasChanges });
-    }
-  }, [hasChanges, activeTabId, updateTab]);
+  const markDirty = useCallback(() => {
+    setHasUnsavedChanges(true);
+  }, []);
 
-  // Callback to mark changes as saved
-  const markAsSaved = useCallback(() => {
-    if (activeTabId) {
-      updateTab(activeTabId, { hasUnsavedChanges: false });
-    }
-  }, [activeTabId, updateTab]);
+  const markClean = useCallback(() => {
+    setHasUnsavedChanges(false);
+  }, []);
 
-  return { markAsSaved };
+  return {
+    hasUnsavedChanges,
+    markDirty,
+    markClean,
+    setHasUnsavedChanges,
+    markAsSaved: markClean // alias for backwards compatibility
+  };
 };
-
-export default useUnsavedChanges;

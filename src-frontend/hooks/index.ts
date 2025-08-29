@@ -5,7 +5,6 @@ export { useApiCall } from './useApiCall';
 export { usePagination } from './usePagination';
 export { useTheme } from './useTheme';
 export { useDebug } from './useDebug';
-export { useUnsavedChanges } from './useUnsavedChanges';
 export { 
   useAnalytics, 
   useTrackEvent, 
@@ -21,10 +20,6 @@ export {
   useAIInteractionTracking,
   useNetworkPerformanceTracking
 } from './useAnalytics';
-export { 
-  usePerformanceMonitor, 
-  useAsyncPerformanceTracker 
-} from './usePerformanceMonitor';
 export { TAB_SCREEN_NAMES } from './useAnalytics';
 
 // Session file watching hooks
@@ -37,6 +32,7 @@ export { useSlashCommands } from './useSlashCommands';
 export { useImageHandling } from './useImageHandling';
 export { useAutoResize } from './useAutoResize';
 export { useFilePicker } from './useFilePicker';
+export { useUnsavedChanges } from './useUnsavedChanges';
 
 // Settings hooks
 export { useSettingsState } from './useSettingsState';
