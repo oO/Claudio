@@ -27,5 +27,6 @@
     }
   },
   "include": ["src-frontend"],
+  "exclude": ["src-frontend/deprecated/**/*"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

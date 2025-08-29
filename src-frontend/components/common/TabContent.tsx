@@ -4,7 +4,7 @@ import { useTabState } from "@/hooks/useTabState";
 import { Tab } from "@/contexts/TabContext";
 import { LoadingSpinner } from "@/components/ui/atoms/LoadingSpinner";
 import { NavigationProvider } from "@/contexts/NavigationContext";
-import { ChatTabWrapper } from "./ChatTabWrapper";
+// import { ChatTabWrapper } from "./ChatTabWrapper"; // REMOVED: Chat tab no longer needed
 import { ClaudeFileTabWrapper } from "./ClaudeFileTabWrapper";
 import { CreateAgentTabWrapper } from "./CreateAgentTabWrapper";
 import { ProjectsTab } from "@/components/projects";
@@ -90,10 +90,14 @@ const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
         );
 
       case "chat":
+        // REMOVED: Chat tab no longer needed - users can create sessions via Projects tab "Start New Session" button
         return (
-          <NavigationProvider tabId={tab.id}>
-            <ChatTabWrapper tab={tab} />
-          </NavigationProvider>
+          <div className="p-4 text-center">
+            <h2 className="text-lg font-semibold mb-2">Chat Tab Removed</h2>
+            <p className="text-muted-foreground">
+              Use the "Start New Session" button in the Projects tab to create new Claude Code sessions.
+            </p>
+          </div>
         );
 
       case "agent":

@@ -9,7 +9,7 @@ export { SlashCommandPicker } from './SlashCommandPicker';
 export { Topbar } from './Topbar';
 export { TabManager } from './TabManager';
 export { TabContent } from './TabContent';
-export { ChatTabWrapper } from './ChatTabWrapper';
+// export { ChatTabWrapper } from './ChatTabWrapper'; // REMOVED: Chat tab no longer needed
 export { ClaudeFileTabWrapper } from './ClaudeFileTabWrapper';
 export { CreateAgentTabWrapper } from './CreateAgentTabWrapper';
 export { TypewriterText, WelcomeScreen } from './Welcome';

@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { logger } from '@/lib/logger';
+import { processMessagesWithAgentInfo } from '@/lib/messageProcessor';
 
 /**
  * Session types that can be managed
@@ -147,11 +148,11 @@ export class SessionHandle {
       this.messagesPromise = null; // Clear promise
       logger.info('✅ Messages loaded and cached for handle:', this.handleId, 'count:', messages.length);
       
-      // Notify listeners about the full message load
-      const messagesCopy = [...this.allMessages];
+      // Process messages with agent attribution and notify listeners
+      const processedMessages = processMessagesWithAgentInfo(this.allMessages);
       this.messageListeners.forEach(listener => {
         try {
-          listener(messagesCopy);
+          listener(processedMessages);
         } catch (error) {
           logger.error('❌ Error in message listener:', error);
         }
@@ -184,14 +185,16 @@ export class SessionHandle {
     this.allMessages.push(newMessage);
     logger.info('📝 Appended streaming message for handle:', this.handleId, 'new count:', this.allMessages.length);
     
-    // Notify all listeners with the complete updated message list
-    const messagesCopy = [...this.allMessages];
+    // Process all messages with agent attribution (subagent detection, etc.)
+    const processedMessages = processMessagesWithAgentInfo(this.allMessages);
+    
+    // Notify all listeners with the processed message list
     let listenerIndex = 0;
     this.messageListeners.forEach((listener) => {
       listenerIndex++;
       try {
-        logger.info(`🔔 Calling message listener ${listenerIndex}/${this.messageListeners.size} with ${messagesCopy.length} messages`);
-        listener(messagesCopy);
+        logger.info(`🔔 Calling message listener ${listenerIndex}/${this.messageListeners.size} with ${processedMessages.length} processed messages`);
+        listener(processedMessages);
         logger.info(`✅ Message listener ${listenerIndex} completed successfully`);
       } catch (error) {
         logger.error(`❌ Error in message listener ${listenerIndex}:`, error);
@@ -219,7 +222,8 @@ export class SessionHandle {
     if (this.allMessages.length > 0) {
       setTimeout(() => {
         if (this.messageListeners.has(callback)) {
-          callback([...this.allMessages]);
+          const processedMessages = processMessagesWithAgentInfo(this.allMessages);
+          callback(processedMessages);
         }
       }, 0);
     }

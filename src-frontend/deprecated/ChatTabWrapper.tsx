@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTabState } from '@/hooks/useTabState';
-import { ClaudeCodeSession } from '@/components/sessions';
+// import { ClaudeCodeSession } from '@/components/sessions'; // DEPRECATED: moved to /deprecated folder
 import type { Tab } from '@/contexts/TabContext';
 
 interface ChatTabWrapperProps {
@@ -51,11 +51,23 @@ export const ChatTabWrapper: React.FC<ChatTabWrapperProps> = ({ tab }) => {
   };
 
   return (
-    <ClaudeCodeSession
-      session={tab.sessionData}
-      sessionId={tab.sessionId}
-      initialProjectPath={tab.initialProjectPath || tab.sessionId}
-      onBack={handleBack}
-    />
+    <div className="p-4 text-center">
+      <h2 className="text-lg font-semibold mb-2">Chat Tab Temporarily Disabled</h2>
+      <p className="text-muted-foreground">
+        This feature is being migrated to use the new SessionHandleView architecture.
+        <br />
+        Please use the Projects tab to access sessions for now.
+      </p>
+    </div>
   );
+  
+  // TODO: Update to use SessionHandleView instead of deprecated ClaudeCodeSession
+  // return (
+  //   <ClaudeCodeSession
+  //     session={tab.sessionData}
+  //     sessionId={tab.sessionId}
+  //     initialProjectPath={tab.initialProjectPath || tab.sessionId}
+  //     onBack={handleBack}
+  //   />
+  // );
 };

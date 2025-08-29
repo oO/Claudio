@@ -7,7 +7,12 @@ import { FilePicker, SlashCommandPicker, ImagePreview } from "@/components/commo
 import { DebugLabel } from "@/components/ui/atoms";
 import { type FileEntry, type SlashCommand } from "@/lib/api";
 import { logger } from '@/lib/logger';
-import type { QueuedPrompt } from '@/hooks/useSessionState';
+// Define QueuedPrompt type inline (previously from deprecated useSessionState)
+export interface QueuedPrompt {
+  id: string;
+  prompt: string;
+  model: "sonnet" | "opus";
+}
 
 // Import our extracted components and hooks
 import { PromptTextarea } from "./PromptTextarea";

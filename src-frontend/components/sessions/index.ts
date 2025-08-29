@@ -1,5 +1,5 @@
 // Session-related components
-export { ClaudeCodeSession } from './ClaudeCodeSession';
+// export { ClaudeCodeSession } from './ClaudeCodeSession'; // DEPRECATED: moved to /deprecated folder
 export { SessionHandleView } from './SessionHandleView';
 export { ClaudeCodeSDKSession } from './ClaudeCodeSDKSession';
 export { RunningClaudeSessions } from './RunningClaudeSessions';
@@ -15,10 +15,10 @@ export { SessionOutputViewer } from './SessionOutputViewer';
 // Hooks (re-exported from hooks folder)
 export { useClaudeMessages } from '@/hooks/useClaudeMessages';
 export { useCheckpoints } from '@/hooks/useCheckpoints';
-export { useSessionState } from '@/hooks/useSessionState';
+// export { useSessionState } from '@/hooks/useSessionState'; // DEPRECATED: moved to /deprecated folder
 
-// Extracted session components
-export { SessionMessageHandler, useSessionMessageHandler } from './SessionMessageHandler';
+// Extracted session components  
+// export { SessionMessageHandler, useSessionMessageHandler } from './SessionMessageHandler'; // DEPRECATED: moved to /deprecated folder
 export { SessionActions, useSessionActions } from './SessionActions';
 export { SessionPreview } from './SessionPreview';
 export { SessionSettings } from './SessionSettings';
