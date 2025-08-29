@@ -332,6 +332,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   };
 
   const handleNewSDKSession = async (projectPath?: string) => {
+    logger.log('🔥 DEBUGGING: handleNewSDKSession called with:', projectPath);
     if (projectPath) {
       // Set viewing session state to render SessionHandleView directly
       setViewingSession({

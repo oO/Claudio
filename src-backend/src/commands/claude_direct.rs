@@ -251,6 +251,7 @@ pub async fn start_claude_direct_session(
     let mut cmd = Command::new(&claude_binary_path)
         .args(&claude_args)
         .current_dir(options.working_directory.as_ref().unwrap_or(&project_path))
+        .env("CLAUDIO_ID", &claudio_session_id)  // 🔥 Inject Claudio ID for hook detection
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -284,6 +285,7 @@ pub async fn start_claude_direct_session(
     let resume_session_id = options.session_id.clone();
     let project_path_for_cleanup = project_path.clone();
     let project_path_for_completion = project_path.clone();
+    let app_for_update = app.clone(); // Clone for the async task
     
     tokio::spawn(async move {
         let mut reader = BufReader::new(stdout);
@@ -320,6 +322,7 @@ pub async fn start_claude_direct_session(
                             
                             // Update Claudio session metadata with the new Claude session ID
                             if let Err(e) = update_session_claude_id(
+                                app_for_update.clone(),
                                 claudio_session_id_stdout.clone(),
                                 project_path_for_cleanup.clone(),
                                 id_str.to_string(),
@@ -481,6 +484,7 @@ pub async fn start_claude_direct_session(
 /// Helper function to update session metadata with new Claude session ID
 /// Stores the old session ID temporarily for watcher-based cleanup
 async fn update_session_claude_id(
+    app_handle: tauri::AppHandle,
     claudio_id: String,
     project_path: String,
     new_session_id: String,
@@ -501,10 +505,31 @@ async fn update_session_claude_id(
     // Update with the new Claude session info
     session.session_id = Some(new_session_id.clone());
     
-    // Save updated metadata
+    // Save updated metadata (now updates memory immediately!)
     let first_history = session.session_history.first().cloned();
-    update_claudio_session(claudio_id.clone(), project_path, session).await?;
+    update_claudio_session(claudio_id.clone(), project_path.clone(), session).await?;
     log::info!("✅ Updated Claudio session {} to track Claude session {} (history: {:?})", claudio_id, new_session_id, first_history);
+    
+    // Emit event to notify frontend that session state has changed (no delay needed!)
+    // Memory is immediately consistent, so frontend will get fresh data
+    #[derive(serde::Serialize)]
+    struct SessionStateChangeEvent {
+        claudio_id: String,
+        new_claude_session_id: String,
+        project_path: String,
+    }
+    
+    let state_change_event = SessionStateChangeEvent {
+        claudio_id: claudio_id.clone(),
+        new_claude_session_id: new_session_id.clone(),
+        project_path,
+    };
+    
+    if let Err(e) = app_handle.emit("session-state-changed", &state_change_event) {
+        log::warn!("Failed to emit session state change event: {}", e);
+    } else {
+        log::info!("🔄 Emitted session state change event for Claudio session {}", claudio_id);
+    }
     
     Ok(())
 }

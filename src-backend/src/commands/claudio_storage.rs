@@ -1,7 +1,16 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::collections::HashMap;
+use std::sync::Arc;
 use tauri::command;
 use tokio::fs;
+use tokio::sync::RwLock;
+use once_cell::sync::Lazy;
+
+/// Global in-memory store for Claudio session metadata
+/// Key: claudio_id, Value: ClaudioSession
+static CLAUDIO_SESSIONS: Lazy<Arc<RwLock<HashMap<String, ClaudioSession>>>> = 
+    Lazy::new(|| Arc::new(RwLock::new(HashMap::new())));
 
 /// Session metadata stored in ~/.claudio/projects/<project_id>/<session_id>.json
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -128,46 +137,89 @@ pub async fn create_claudio_session(
         session_history: Vec::new(),
     };
     
+    // Put the session in memory immediately during creation
+    {
+        let mut sessions = CLAUDIO_SESSIONS.write().await;
+        sessions.insert(claudio_id.clone(), new_session.clone());
+        log::info!("💾 Cached new Claudio session in memory: {}", claudio_id);
+    }
+    
     update_claudio_session(claudio_id.clone(), project_path, new_session).await?;
     
     log::info!("✨ Created new Claudio session: {}", claudio_id);
     Ok(claudio_id)
 }
 
-/// Update or create session metadata (upsert pattern)  
+/// Update or create session metadata (updates memory immediately, persists to disk async)
 #[command]
 pub async fn update_claudio_session(
     claudio_session_id: String,
     project_path: String,
     updates: ClaudioSession,
 ) -> Result<ClaudioSession, String> {
+    // 1. Update memory immediately (single source of truth)
+    {
+        let mut sessions = CLAUDIO_SESSIONS.write().await;
+        sessions.insert(claudio_session_id.clone(), updates.clone());
+        log::info!("⚡ Updated Claudio session in memory: {}", claudio_session_id);
+    }
+    
+    // 2. Persist to disk asynchronously (doesn't block)
+    let project_path_clone = project_path.clone();
+    let updates_clone = updates.clone();
+    tokio::spawn(async move {
+        if let Err(e) = persist_session_to_disk(&claudio_session_id, &project_path_clone, &updates_clone).await {
+            log::error!("Failed to persist Claudio session to disk: {}", e);
+        } else {
+            log::info!("💾 Successfully persisted Claudio session to disk: {}", claudio_session_id);
+        }
+    });
+    
+    Ok(updates)
+}
+
+/// Internal function to persist session data to disk
+async fn persist_session_to_disk(
+    claudio_session_id: &str,
+    project_path: &str,
+    session: &ClaudioSession,
+) -> Result<(), String> {
     ensure_claudio_dirs().await?;
     
-    let project_dir = get_project_claudio_dir(&project_path)?;
+    let project_dir = get_project_claudio_dir(project_path)?;
     fs::create_dir_all(&project_dir).await
         .map_err(|e| format!("Failed to create project directory: {}", e))?;
     
     let session_file = project_dir.join(format!("{}.json", claudio_session_id));
     
-    let json_content = serde_json::to_string_pretty(&updates)
+    let json_content = serde_json::to_string_pretty(session)
         .map_err(|e| format!("Failed to serialize session: {}", e))?;
     
-    log::info!("Writing session file: {}", session_file.display());
-    log::debug!("Session data: {}", json_content);
+    log::debug!("Writing session file: {}", session_file.display());
     
     fs::write(&session_file, json_content).await
         .map_err(|e| format!("Failed to write session file {}: {}", session_file.display(), e))?;
     
-    log::info!("✅ Successfully saved Claudio session: {}", session_file.display());
-    Ok(updates)
+    Ok(())
 }
 
-/// Get session metadata
+/// Get session metadata (reads from memory first, falls back to disk)
 #[command]
 pub async fn get_claudio_session(
     claudio_session_id: String,
     project_path: String,
 ) -> Result<ClaudioSession, String> {
+    // Try memory first (fast path)
+    {
+        let sessions = CLAUDIO_SESSIONS.read().await;
+        if let Some(session) = sessions.get(&claudio_session_id) {
+            log::debug!("✅ Retrieved Claudio session from memory: {}", claudio_session_id);
+            return Ok(session.clone());
+        }
+    }
+    
+    // Fallback to disk (slower path - happens on startup or cache miss)
+    log::debug!("📁 Session not in memory, loading from disk: {}", claudio_session_id);
     let project_dir = get_project_claudio_dir(&project_path)?;
     let session_file = project_dir.join(format!("{}.json", claudio_session_id));
     
@@ -180,6 +232,13 @@ pub async fn get_claudio_session(
     
     let session: ClaudioSession = serde_json::from_str(&content)
         .map_err(|e| format!("Failed to parse session: {}", e))?;
+    
+    // Cache in memory for next time
+    {
+        let mut sessions = CLAUDIO_SESSIONS.write().await;
+        sessions.insert(claudio_session_id.clone(), session.clone());
+        log::debug!("💾 Cached Claudio session in memory: {}", claudio_session_id);
+    }
     
     Ok(session)
 }

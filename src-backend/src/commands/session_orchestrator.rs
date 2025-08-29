@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tauri::{command, AppHandle, Emitter};
@@ -8,7 +7,7 @@ use uuid::Uuid;
 use chrono;
 
 use crate::commands::claudio_storage::{
-    get_claudio_session,
+    get_claudio_session, create_claudio_session,
 };
 use crate::commands::claude_direct::{start_claude_direct_session, ClaudeDirectOptions};
 use crate::commands::claude::{SessionFileEvent, SessionWatcherState};
@@ -117,20 +116,34 @@ impl SessionHandle {
             options,
         ).await?;
 
-        // After Claude completes, find the most recent session file for this project
-        // This is needed to track which session ID is now active
-        tokio::spawn({
-            let current_claude_session = self.current_claude_session.clone();
-            let project_path = self.project_path.clone();
-            async move {
-                // Give Claude a moment to finish writing the session file
-                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-                
-                if let Err(e) = Self::update_current_session_id(current_claude_session, project_path).await {
-                    log::error!("Failed to update current session ID: {}", e);
-                }
+        // For Claudio sessions, we should NOT auto-switch to the "latest" session
+        // Each Claudio session maintains its own dedicated Claude session ID
+        // Only Native sessions should auto-track the latest session file
+        match &self.session_type {
+            SessionType::Native { .. } => {
+                // Only for Native sessions - track the most recent session file
+                tokio::spawn({
+                    let current_claude_session = self.current_claude_session.clone();
+                    let project_path = self.project_path.clone();
+                    async move {
+                        // Give Claude a moment to finish writing the session file
+                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                        
+                        if let Err(e) = Self::update_current_session_id(current_claude_session, project_path).await {
+                            log::error!("Failed to update current session ID: {}", e);
+                        }
+                    }
+                });
+            },
+            SessionType::Claudio { claudio_id: Some(claudio_id) } => {
+                // For Claudio sessions, keep the session ID from the Claudio metadata file
+                log::info!("🔒 Claudio session {} maintains dedicated Claude session ID - not auto-switching", claudio_id);
+            },
+            SessionType::Claudio { claudio_id: None } => {
+                // Should not happen after prompt execution
+                log::warn!("⚠️ Claudio session with no ID after prompt execution");
             }
-        });
+        }
 
         Ok(())
     }
@@ -281,7 +294,17 @@ impl SessionHandle {
                     if let SessionFileEvent::Modified { session_id, project_id: event_project_id, .. } = &event {
                         if event_project_id == &project_id {
                             // Check if this file change is relevant to our session handle
-                            let current_session = {
+                            // For Claudio sessions, always read fresh Claude session ID from memory cache
+                            // (memory is the single source of truth)
+                            let current_session = if handle_id.starts_with("claudio-") {
+                                // Claudio session - read fresh Claude session ID from memory cache
+                                let project_path = project_id.replace("-", "/");
+                                match crate::commands::claudio_storage::get_claudio_session(handle_id.clone(), project_path).await {
+                                    Ok(claudio_session) => claudio_session.session_id,
+                                    Err(_) => None // Session might not exist yet
+                                }
+                            } else {
+                                // Native session - use the session handle's stored value
                                 let guard = current_claude_session.read().await;
                                 guard.clone()
                             };
@@ -365,15 +388,74 @@ impl SessionHandle {
             }
         }
         
-        // Check how many messages we've already processed
-        let last_count = {
-            let guard = last_processed_count.read().await;
-            *guard
+        // For Claudio sessions, we need to find the starting point based on last_message_uuid
+        // For native sessions, we use the simple message count approach
+        let new_messages: Vec<&serde_json::Value> = if handle_id.starts_with("claudio-") {
+            // Get the last_message_uuid from the Claudio session metadata
+            let project_path = project_id.replace("-", "/");
+            match crate::commands::claudio_storage::get_claudio_session(handle_id.to_string(), project_path).await {
+                Ok(claudio_session) => {
+                    if let Some(last_uuid) = &claudio_session.last_message_uuid {
+                        log::info!("🔍 Looking for last message UUID {} in session {} to find starting point", 
+                                  last_uuid, session_id);
+                        
+                        // Find the index of the last processed message
+                        let mut start_index = 0;
+                        for (i, message) in all_messages.iter().enumerate() {
+                            if let Some(msg_uuid) = message.get("uuid").and_then(|v| v.as_str()) {
+                                if msg_uuid == last_uuid {
+                                    start_index = i + 1; // Start AFTER the last processed message
+                                    log::info!("✅ Found last message UUID at index {}, will emit from index {}", 
+                                              i, start_index);
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        if start_index < all_messages.len() {
+                            all_messages[start_index..].iter().collect()
+                        } else {
+                            log::info!("🔇 No new messages to emit - already at end of session");
+                            Vec::new()
+                        }
+                    } else {
+                        log::info!("🆕 No last_message_uuid found - treating as first turn, emitting all messages");
+                        // No last UUID means this is the first turn - emit all messages
+                        all_messages.iter().collect()
+                    }
+                },
+                Err(_) => {
+                    log::warn!("❌ Failed to get Claudio session metadata, falling back to count-based approach");
+                    // Fall back to count-based approach
+                    let last_count = {
+                        let guard = last_processed_count.read().await;
+                        *guard
+                    };
+                    if all_messages.len() > last_count {
+                        all_messages[last_count..].iter().collect()
+                    } else {
+                        Vec::new()
+                    }
+                }
+            }
+        } else {
+            // Native session - use simple message count
+            let last_count = {
+                let guard = last_processed_count.read().await;
+                *guard
+            };
+            
+            log::info!("🔢 Native session count comparison for {}: total_messages={}, last_processed_count={}", 
+                      session_id, all_messages.len(), last_count);
+            
+            if all_messages.len() > last_count {
+                all_messages[last_count..].iter().collect()
+            } else {
+                Vec::new()
+            }
         };
         
-        // Only emit new messages
-        if all_messages.len() > last_count {
-            let new_messages = &all_messages[last_count..];
+        if !new_messages.is_empty() {
             log::info!("Found {} new messages in session {} for handle {}", 
                       new_messages.len(), session_id, handle_id);
             
@@ -385,7 +467,7 @@ impl SessionHandle {
                         .and_then(|v| v.as_str())
                         .unwrap_or("unknown")
                         .to_string(),
-                    content: message.clone(),
+                    content: (*message).clone(), // Dereference since we have &serde_json::Value now
                     uuid: message.get("uuid")
                         .and_then(|v| v.as_str())
                         .unwrap_or("unknown")
@@ -502,9 +584,25 @@ impl SessionOrchestrator {
                 (session_type, id)
             },
             None => {
-                // New session - no claudio_id yet, generate temporary handle ID for storage
-                let temp_handle_id = format!("new-session-{}", uuid::Uuid::new_v4());
-                (SessionType::Claudio { claudio_id: None }, temp_handle_id)
+                // New Claudio session - create immediately instead of lazy initialization
+                log::info!("🆕 Creating new Claudio session for project: {}", project_path);
+                
+                // Create the actual claudio session file and get the claudio_id
+                // Use default Claude CLI settings for now - they can be configured later
+                let claude_settings = crate::commands::claudio_storage::ClaudeSettings::default();
+                let claudio_id = match create_claudio_session(project_path.clone(), claude_settings).await {
+                    Ok(id) => {
+                        log::info!("✅ Created new Claudio session: {}", id);
+                        id
+                    },
+                    Err(e) => {
+                        log::error!("❌ Failed to create new Claudio session: {}", e);
+                        return Err(format!("Failed to create new Claudio session: {}", e));
+                    }
+                };
+                
+                // Use the claudio_id as the handle_id for consistency
+                (SessionType::Claudio { claudio_id: Some(claudio_id.clone()) }, claudio_id)
             }
         };
 
@@ -573,9 +671,24 @@ impl SessionOrchestrator {
         let handle = handles_guard.get(handle_id)
             .ok_or_else(|| "Session handle not found".to_string())?;
 
-        let current_claude_session_id = {
-            let guard = handle.current_claude_session.read().await;
-            guard.clone()
+        // Get current Claude session ID - for Claudio sessions, always re-read from memory cache
+        // to ensure we have the latest Claude session ID (memory is the single source of truth)
+        let current_claude_session_id = match session_type {
+            SessionType::Claudio { claudio_id } => {
+                if let Some(claudio_id_str) = claudio_id {
+                    // Re-read from memory cache to get fresh Claude session ID
+                    match crate::commands::claudio_storage::get_claudio_session(claudio_id_str.clone(), project_path.to_string()).await {
+                        Ok(claudio_session) => claudio_session.session_id,
+                        Err(_) => None // Session might not exist yet
+                    }
+                } else {
+                    None // New session without ID yet
+                }
+            },
+            SessionType::Native { session_id } => {
+                // Native sessions use the session ID directly as Claude session ID
+                Some(session_id.clone())
+            }
         };
 
         // Get message count - skip for new sessions that don't have a Claude session yet
@@ -590,12 +703,18 @@ impl SessionOrchestrator {
 
         // Calculate session file path if we have a claude session ID
         let session_file_path = if let Some(claude_session_id) = &current_claude_session_id {
-            let claude_dir = PathBuf::from(&project_path)
-                .join(".claude")
-                .join("projects")
-                .join(PathBuf::from(&project_path).file_name().unwrap_or_default());
-            let session_file_path = claude_dir.join(format!("{}.jsonl", claude_session_id));
-            Some(session_file_path.to_string_lossy().to_string())
+            // Use the actual Claude home directory, not project-local .claude
+            match crate::commands::claude::get_claude_dir() {
+                Ok(claude_dir) => {
+                    let project_id = project_path.replace("/", "-");
+                    let session_file_path = claude_dir
+                        .join("projects")
+                        .join(project_id)
+                        .join(format!("{}.jsonl", claude_session_id));
+                    Some(session_file_path.to_string_lossy().to_string())
+                },
+                Err(_) => None
+            }
         } else {
             None
         };

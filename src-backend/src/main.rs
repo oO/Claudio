@@ -57,6 +57,13 @@ use commands::claudio_storage::{
     list_claudio_sessions, delete_claudio_session,
     cleanup_orphaned_files,
 };
+use commands::claude_session_tracking::{
+    start_claude_thinking, end_claude_thinking, get_live_claude_sessions,
+    get_claude_session_status,
+};
+use commands::hook_installer::{
+    install_claude_session_hooks, check_hooks_installed, uninstall_claude_session_hooks,
+};
 use process::ProcessRegistryState;
 use std::sync::Mutex;
 use tauri::Manager;
@@ -207,6 +214,31 @@ fn main() {
                     }
                     Err(e) => {
                         log::warn!("Failed to run startup cleanup: {}", e);
+                    }
+                }
+            });
+
+            // Auto-install Claude Code hooks for session tracking if not already installed
+            tauri::async_runtime::spawn(async move {
+                match commands::hook_installer::check_hooks_installed().await {
+                    Ok(false) => {
+                        log::info!("🔧 Claude Code hooks not detected, auto-installing...");
+                        match commands::hook_installer::install_claude_session_hooks().await {
+                            Ok(_) => {
+                                log::info!("✅ Claude Code session tracking hooks auto-installed successfully");
+                            }
+                            Err(e) => {
+                                log::warn!("⚠️ Failed to auto-install Claude Code hooks: {}", e);
+                                log::warn!("   Native Claude sessions won't be tracked in Claudio UI");
+                                log::warn!("   You can manually install hooks later via the settings");
+                            }
+                        }
+                    }
+                    Ok(true) => {
+                        log::debug!("🔗 Claude Code session tracking hooks already installed");
+                    }
+                    Err(e) => {
+                        log::warn!("Failed to check hook installation status: {}", e);
                     }
                 }
             });
@@ -375,6 +407,17 @@ fn main() {
             commands::session_orchestrator::get_session_handle,
             commands::session_orchestrator::send_session_prompt,
             commands::session_orchestrator::get_session_messages,
+            
+            // Claude Session Tracking (Native Sessions)
+            start_claude_thinking,
+            end_claude_thinking,
+            get_live_claude_sessions,
+            get_claude_session_status,
+            
+            // Hook Installation
+            install_claude_session_hooks,
+            check_hooks_installed,
+            uninstall_claude_session_hooks,
             
         ])
         .run(tauri::generate_context!())

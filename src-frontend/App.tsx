@@ -49,6 +49,7 @@ type View =
 function AppContent() {
   const [view, setView] = useState<View>("tabs");
   const {
+    createChatTab,
     createClaudeMdTab,
     createSettingsTab,
     createUsageTab,
@@ -276,10 +277,52 @@ function AppContent() {
 
   /**
    * Opens a new Claude Code session in the interactive UI
+   * Smart Backend + Dumb Frontend: Backend creates session first, then frontend gets told what to display
    */
   const handleNewSession = async () => {
-    handleViewChange("tabs");
-    // The tab system will handle creating a new chat tab
+    try {
+      // First, create the session via backend (Smart Backend)
+      logger.log("Creating new Claudio session via backend...");
+      const claudioId = await api.createClaudioSession("", {}); // Empty project path for now
+      logger.log("Backend created Claudio session:", claudioId);
+      
+      // Switch to tabs view
+      handleViewChange("tabs");
+      
+      // Create a chat tab with the real session ID (Dumb Frontend just displays what backend tells it)
+      const tabId = createChatTab("", `Session ${claudioId.replace('claudio-', '')}`, claudioId);
+      logger.log("Created chat tab with Claudio ID:", claudioId, "Tab ID:", tabId);
+    } catch (error) {
+      logger.error("Failed to create new session:", error);
+      setToast({ message: "Failed to create new session", type: "error" });
+    }
+  };
+
+  /**
+   * Opens a new Claude Code session for a specific project
+   * Smart Backend + Dumb Frontend: Backend creates session first, then frontend gets told what to display
+   */
+  const handleNewSessionFromProject = async (projectPath: string) => {
+    try {
+      // DEBUG: This should appear in logs if my function is called
+      logger.log("🔥 DEBUGGING: handleNewSessionFromProject called with:", projectPath);
+      
+      // First, create the session via backend (Smart Backend)
+      logger.log("Creating new Claudio session via backend for project:", projectPath);
+      const claudioId = await api.createClaudioSession(projectPath, {});
+      logger.log("Backend created Claudio session:", claudioId);
+      
+      // Switch to tabs view
+      handleViewChange("tabs");
+      
+      // Create a chat tab with the real session ID (Dumb Frontend just displays what backend tells it)
+      const projectName = projectPath.split("/").pop() || "Project";
+      const tabId = createChatTab(projectPath, `${projectName} ${claudioId.replace('claudio-', '')}`, claudioId);
+      logger.log("Created chat tab for project with Claudio ID:", claudioId, "Tab ID:", tabId);
+    } catch (error) {
+      logger.error("Failed to create new session for project:", error);
+      setToast({ message: "Failed to create new session", type: "error" });
+    }
   };
 
   /**
@@ -530,6 +573,7 @@ function AppContent() {
                         onDeleteAgent={handleDeleteAgent}
                         onCreateAgent={handleCreateAgent}
                         onImportAgent={handleImportAgent}
+                        onStartNewSDKSession={handleNewSessionFromProject}
                       />
                     </motion.div>
                   ) : (

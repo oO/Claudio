@@ -160,9 +160,21 @@ Agent prompt content here...
 ```
 
 ### Session Management
-- Real-time session streaming from JSONL files
-- Checkpoint system for session branching
-- Usage analytics with token/cost tracking
+**Two-Tier Session Architecture:**
+- **Claudio Sessions**: High-level wrapper sessions that connect discrete Claude CLI turns
+- **Claude Sessions**: Individual native Claude Code .jsonl files containing actual conversation data
+- **Resume Flow**: New turns use `claude --resume <session_id>` to continue conversations
+- **Message Streaming**: Real-time JSONL parsing with UUID-based deduplication for resumed sessions
+
+**Session States:**
+1. New Claudio session → Creates fresh Claude session
+2. Continuing Claudio session → Resumes previous Claude session, copies all messages as context
+3. Native Claude session → Direct .jsonl file access without Claudio wrapper
+
+**Cleanup & Memory:**
+- In-memory cache stores active session state (single source of truth)
+- Automatic cleanup when previous session messages appear in resumed sessions
+- Session history maintained for debugging and analytics
 
 ## Development Notes
 

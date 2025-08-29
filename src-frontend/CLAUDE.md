@@ -1,5 +1,30 @@
 # Frontend Development Guidelines
 
+## Session Streaming Architecture
+
+**Tauri Event System:**
+```typescript
+// Listen for streaming messages from backend
+useEffect(() => {
+  const unlisten = listen<StreamedMessage>("session_message_stream", (event) => {
+    const { handle_id, message_type, content, uuid } = event.payload;
+    // Handle streamed message in UI
+  });
+  return () => unlisten.then(f => f());
+}, []);
+```
+
+**Session Handle Integration:**
+- Frontend requests session handles via `create_session_handle()`
+- Backend returns handle ID for tracking specific sessions
+- UI components subscribe to handle-specific streaming events
+- Messages filtered by `handle_id` to ensure correct routing
+
+**File Locations:**
+- Session API: `src-frontend/lib/sessionHandleApi.ts`
+- React hooks: `src-frontend/hooks/useSessionFileWatcher.ts`
+- Components: `src-frontend/components/sessions/SessionHandleView.tsx`
+
 ## 🚨 MANDATORY: Use Centralized Logger System
 
 **NEVER use console.log, console.error, console.warn, console.info, or console.debug in frontend code!**

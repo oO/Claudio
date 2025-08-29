@@ -1,5 +1,7 @@
 pub mod agents;
 pub mod claude;
+pub mod claude_session_tracking;
+pub mod hook_installer;
 pub mod logger;
 pub mod mcp;
 pub mod usage;

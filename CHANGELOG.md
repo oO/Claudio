@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.38] - 2025-08-29
+
+### Added
+- Advanced streaming session architecture with real-time message handling
+- Session orchestrator with enhanced state management and cleanup logic
+- SessionHandleView component with improved UI/UX for session interactions
+- Session handle API with comprehensive streaming and resume capabilities
+- Claude session tracking module for native integration
+- Hook installer system for Claude Code integration
+- Enhanced Claudio storage with session state persistence
+- Session-aware command widgets with improved execution feedback
+- Tab state management improvements for better session navigation
+
+### Enhanced
+- React Virtuoso implementation optimizations for chat message display
+- Session message streaming with UUID-based deduplication
+- Backend session watcher with improved file monitoring
+- Frontend session management with better error handling
+- Command widget UX with enhanced tool execution feedback
+- Claude Code integration with native session hooks
+
 ## [0.3.35] - 2025-08-28
 
 ### Fixed

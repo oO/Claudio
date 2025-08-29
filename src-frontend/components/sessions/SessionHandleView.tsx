@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { logger } from '@/lib/logger';
 import { DebugLabel } from '@/components/ui/atoms';
-import { SessionHandleManager, SessionHandle, SessionState, StreamedMessage } from '@/lib/sessionHandleApi';
+import { SessionHandleManager, SessionHandle, SessionState, StreamedMessage, ClaudeProcessEvent } from '@/lib/sessionHandleApi';
 import { SessionHeader } from './SessionHeader';
 import { SessionMessages } from './SessionMessages';
 import { VirtuosoChatMessages } from './VirtuosoChatMessages';
@@ -47,104 +47,40 @@ export const SessionHandleView: React.FC<SessionHandleViewProps> = ({
   const [collapsedMessageUuids, setCollapsedMessageUuids] = useState<string[]>([]);
   const [isPinnedToBottom, setIsPinnedToBottom] = useState(true);
 
-  // Process messages with UI sugar - REVERSED for better chat UX
-  const displayableMessages = useMemo(() => {
-    const startTime = performance.now();
-    
-    const processedMessages: ClaudeStreamMessage[] = [];
-    const skipIndexes = new Set<number>();
+  // Helper function: Filter unwanted messages
+  const filterMessages = (rawMessages: ClaudeStreamMessage[]): ClaudeStreamMessage[] => {
+    logger.info(`🔧 filterMessages starting with ${rawMessages.length} raw messages`);
     const filteredUuids: string[] = [];
-    let filteredCount = 0;
-
-    // REVERSED: Process from last to first for better chat UX (show recent messages first)
-    for (let index = messages.length - 1; index >= 0; index--) {
-      // Skip if already processed as part of a bundle
-      if (skipIndexes.has(index)) {
-        continue;
-      }
-
-      const message = messages[index];
-
+    
+    const filtered = rawMessages.filter((message, index) => {
+      logger.info(`🔍 Filtering message ${index}: type=${message.type}, isMeta=${message.isMeta}, uuid=${message.uuid?.substring(0, 8)}`);
+      
       // Skip meta messages that don't have meaningful content
       if (message.isMeta && !message.leafUuid && !message.summary) {
-        filteredCount++;
+        logger.info(`❌ Filtering out meta message ${index}: uuid=${message.uuid?.substring(0, 8)}`);
         if (message.uuid) filteredUuids.push(message.uuid);
-        continue;
+        return false;
       }
 
       // Skip artificial user messages created by sub-agent system
       // These are internal system artifacts that just repeat task prompts
       if (message.isSidechain && message.type === "user") {
-        filteredCount++;
         if (message.uuid) filteredUuids.push(message.uuid);
-        continue;
+        return false;
       }
 
-      // Handle command bundling for user messages
+      // Handle user messages
       if (message.type === "user" && message.message) {
+        // Skip user meta messages
         if (message.isMeta) {
-          filteredCount++;
           if (message.uuid) filteredUuids.push(message.uuid);
-          continue;
+          return false;
         }
 
         const msg = message.message;
         if (!msg.content || (Array.isArray(msg.content) && msg.content.length === 0)) {
-          filteredCount++;
           if (message.uuid) filteredUuids.push(message.uuid);
-          continue;
-        }
-
-        // Check for command pattern in string content
-        if (typeof msg.content === "string") {
-          const contentStr = msg.content as string;
-          const commandMatch = contentStr.match(
-            /<command-name>(.+?)<\/command-name>[\s\S]*?<command-message>(.+?)<\/command-message>[\s\S]*?<command-args>(.*?)<\/command-args>/,
-          );
-          
-          if (commandMatch) {
-            const [, commandName, commandMessage, commandArgs] = commandMatch;
-            
-            // Look for the stdout message (when going backwards, it's at index - 1)
-            let stdout = "";
-            if (index - 1 >= 0) {
-              const stdoutMessage = messages[index - 1];
-              if (stdoutMessage.type === "user" && typeof stdoutMessage.message?.content === "string") {
-                const stdoutContentStr = stdoutMessage.message.content as string;
-                const stdoutMatch = stdoutContentStr.match(
-                  /<local-command-stdout>(.*?)<\/local-command-stdout>/s
-                );
-                if (stdoutMatch) {
-                  stdout = stdoutMatch[1];
-                  skipIndexes.add(index - 1); // Mark stdout message as processed
-                  // Add the stdout message UUID to filtered list since it's bundled
-                  if (stdoutMessage.uuid) filteredUuids.push(stdoutMessage.uuid);
-                }
-              }
-            }
-
-            // Create bundled command message with all contributing UUIDs
-            const contributingUuids = [message.uuid];
-            if (index - 1 >= 0 && skipIndexes.has(index - 1)) {
-              // Include the stdout message UUID that was bundled
-              const stdoutMessage = messages[index - 1];
-              if (stdoutMessage.uuid) contributingUuids.push(stdoutMessage.uuid);
-            }
-            
-            const bundledMessage: ClaudeStreamMessage = {
-              ...message,
-              _bundledCommand: {
-                commandName: commandName.trim(),
-                commandMessage: commandMessage.trim(),
-                commandArgs: commandArgs?.trim(),
-                output: stdout
-              },
-              _contributingMessageUuids: contributingUuids.filter(Boolean)
-            };
-            
-            processedMessages.push(bundledMessage);
-            continue;
-          }
+          return false;
         }
 
         // Handle regular user messages with tool results filtering
@@ -159,22 +95,26 @@ export const SessionHandleView: React.FC<SessionHandleViewProps> = ({
               let willBeSkipped = false;
               if (content.tool_use_id) {
                 // Look for the matching tool_use in previous assistant messages
-                for (let i = index - 1; i >= 0; i--) {
-                  const prevMsg = messages[i];
-                  if (prevMsg.type === 'assistant' && prevMsg.message?.content && Array.isArray(prevMsg.message.content)) {
-                    const toolUse = prevMsg.message.content.find((c: any) => 
-                      c.type === 'tool_use' && c.id === content.tool_use_id
-                    );
-                    if (toolUse) {
-                      const toolName = toolUse.name?.toLowerCase();
-                      const toolsWithWidgets = [
-                        'task', 'edit', 'multiedit', 'todowrite', 'ls', 'read', 
-                        'glob', 'bash', 'write', 'grep'
-                      ];
-                      if (toolsWithWidgets.includes(toolName) || toolUse.name?.startsWith('mcp__')) {
-                        willBeSkipped = true;
-                      }
-                      break;
+                const matchingToolUse = rawMessages.find(prevMsg => 
+                  prevMsg.type === 'assistant' && 
+                  prevMsg.message?.content && 
+                  Array.isArray(prevMsg.message.content) &&
+                  prevMsg.message.content.some((c: any) => 
+                    c.type === 'tool_use' && c.id === content.tool_use_id
+                  )
+                );
+                if (matchingToolUse) {
+                  const toolUse = (matchingToolUse.message!.content as any[]).find((c: any) => 
+                    c.type === 'tool_use' && c.id === content.tool_use_id
+                  );
+                  if (toolUse) {
+                    const toolName = toolUse.name?.toLowerCase();
+                    const toolsWithWidgets = [
+                      'task', 'edit', 'multiedit', 'todowrite', 'ls', 'read', 
+                      'glob', 'bash', 'write', 'grep'
+                    ];
+                    if (toolsWithWidgets.includes(toolName) || toolUse.name?.startsWith('mcp__')) {
+                      willBeSkipped = true;
                     }
                   }
                 }
@@ -186,35 +126,121 @@ export const SessionHandleView: React.FC<SessionHandleViewProps> = ({
             }
           }
           if (!hasVisibleContent) {
-            filteredCount++;
             if (message.uuid) filteredUuids.push(message.uuid);
-            continue;
+            return false;
           }
         }
       }
 
-      // Add message to processed list with contributing UUIDs
-      const messageWithUuids = {
-        ...message,
-        _contributingMessageUuids: message.uuid ? [message.uuid] : []
-      };
-      processedMessages.push(messageWithUuids);
-    }
-
-    // Reverse messages back to chronological order (oldest first, newest last) 
-    // and renumber sequentially for display
-    const renumberedMessages = processedMessages.reverse().map((msg, index) => ({
-      ...msg,
-      messageNumber: index + 1 // Sequential numbering starting from 1
-    }));
+      return true; // Keep message
+    });
 
     // Store filtered UUIDs for debugging purposes
     setCollapsedMessageUuids(filteredUuids);
     
-    const totalTime = performance.now() - startTime;
-    logger.info(`🔄 Processed ${messages.length} raw messages into ${renumberedMessages.length} displayable (${totalTime.toFixed(2)}ms)`);
+    return filtered;
+  };
+
+  // Helper function: Bundle command messages with their stdout
+  const bundleCommandMessages = (filteredMessages: ClaudeStreamMessage[]): ClaudeStreamMessage[] => {
+    logger.info(`🔧 bundleCommandMessages starting with ${filteredMessages.length} filtered messages`);
     
-    return renumberedMessages;
+    const bundledMessages: ClaudeStreamMessage[] = [];
+    const processedIndices = new Set<number>();
+    
+    for (let i = 0; i < filteredMessages.length; i++) {
+      if (processedIndices.has(i)) {
+        logger.info(`⏭️ Skipping index ${i} (already processed)`);
+        continue;
+      }
+      
+      const message = filteredMessages[i];
+      logger.info(`🔍 Processing message ${i}: type=${message.type}, uuid=${message.uuid?.substring(0, 8)}`);
+      
+      // Check if this is a command message
+      if (message.type === "user" && message.message && typeof message.message.content === "string") {
+        const contentStr = message.message.content as string;
+        const commandMatch = contentStr.match(
+          /<command-name>(.+?)<\/command-name>[\s\S]*?<command-message>(.+?)<\/command-message>[\s\S]*?<command-args>(.*?)<\/command-args>/
+        );
+        
+        if (commandMatch) {
+          const [, commandName, commandMessage, commandArgs] = commandMatch;
+          logger.info(`⚡ Found command: ${commandName} at index ${i}`);
+          
+          // Look for the stdout message in the next message
+          let stdout = "";
+          let contributingUuids = [message.uuid].filter(Boolean);
+          
+          if (i + 1 < filteredMessages.length) {
+            const nextMessage = filteredMessages[i + 1];
+            if (nextMessage.type === "user" && typeof nextMessage.message?.content === "string") {
+              const nextContentStr = nextMessage.message.content as string;
+              const stdoutMatch = nextContentStr.match(
+                /<local-command-stdout>(.*?)<\/local-command-stdout>/s
+              );
+              if (stdoutMatch) {
+                stdout = stdoutMatch[1];
+                if (nextMessage.uuid) contributingUuids.push(nextMessage.uuid);
+                processedIndices.add(i + 1); // Mark stdout message as processed
+                logger.info(`📦 Bundled stdout from index ${i + 1}, marked as processed`);
+              }
+            }
+          }
+
+          // Create bundled command message and add it to results
+          const bundledMessage: ClaudeStreamMessage = {
+            ...message,
+            _bundledCommand: {
+              commandName: commandName.trim(),
+              commandMessage: commandMessage.trim(),
+              commandArgs: commandArgs?.trim(),
+              output: stdout
+            },
+            _contributingMessageUuids: contributingUuids
+          };
+          
+          bundledMessages.push(bundledMessage);
+          logger.info(`✅ Added bundled command message, total so far: ${bundledMessages.length}`);
+          // Continue to next message - this command message is now bundled and processed
+          continue;
+        }
+      }
+
+      // Add non-command message with contributing UUIDs
+      const messageWithUuids = {
+        ...message,
+        _contributingMessageUuids: message.uuid ? [message.uuid] : []
+      };
+      bundledMessages.push(messageWithUuids);
+      logger.info(`➕ Added regular message, total so far: ${bundledMessages.length}`);
+    }
+    
+    logger.info(`🏁 bundleCommandMessages completed: ${filteredMessages.length} → ${bundledMessages.length} messages`);
+    return bundledMessages;
+  };
+
+  // Clean message processing pipeline: Filter -> Bundle -> Display
+  const displayableMessages = useMemo(() => {
+    const startTime = performance.now();
+    
+    // Step 1: Filter out unwanted messages (meta, sidechain, etc.)
+    const filteredMessages = filterMessages(messages);
+    
+    // Step 2: Bundle related messages (commands + stdout, etc.)
+    const bundledMessages = bundleCommandMessages(filteredMessages);
+    
+    // Step 3: Add display metadata and return
+    const finalMessages = bundledMessages.map((msg, index) => ({
+      ...msg,
+      messageNumber: index + 1,
+      _contributingMessageUuids: msg._contributingMessageUuids || (msg.uuid ? [msg.uuid] : [])
+    }));
+
+    const totalTime = performance.now() - startTime;
+    logger.info(`🔄 Processed ${messages.length} raw messages into ${finalMessages.length} displayable (${totalTime.toFixed(2)}ms)`);
+    
+    return finalMessages;
   }, [messages]);
 
   // Determine session type and get handle
@@ -292,9 +318,35 @@ export const SessionHandleView: React.FC<SessionHandleViewProps> = ({
               receivedAt: new Date().toISOString()
             });
             
-            // Replace the entire message list with the updated one from SessionHandle
+            // Merge real messages with any fake messages, removing duplicates
             logger.info('📝 Setting complete message list, new count:', allMessages.length);
-            setMessages(allMessages);
+            setMessages(prev => {
+              // Remove fake messages that have been replaced by real ones
+              const realUserMessages = allMessages.filter(msg => msg.type === 'user');
+              const onlyFakeMessages = prev.filter(msg => {
+                const isFake = (msg as any).isFake;
+                if (!isFake) return false; // Remove all non-fake messages - they'll be replaced by allMessages
+                
+                // For fake user messages, remove if we now have a real user message with same content
+                if (msg.type === 'user') {
+                  const fakeText = msg.message?.content?.[0]?.text;
+                  const hasRealMatch = realUserMessages.some(realMsg => 
+                    realMsg.message?.content?.[0]?.text === fakeText
+                  );
+                  return !hasRealMatch; // Remove if we have a real match
+                }
+                
+                return true; // Keep other fake messages (like thinking messages)
+              });
+              
+              // Combine only fake messages with real messages, sort by timestamp
+              const combined = [...onlyFakeMessages, ...allMessages].sort((a, b) => 
+                new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+              );
+              
+              logger.info('📝 Merged messages: fake kept, real added. Total:', combined.length);
+              return combined;
+            });
             
             // Check if the last message is an assistant message to stop streaming
             if (allMessages.length > 0) {
@@ -308,6 +360,33 @@ export const SessionHandleView: React.FC<SessionHandleViewProps> = ({
           
           messageUnsubscribeRef.current = unsubscribe;
           logger.info('✅ Message listener setup complete for handle:', state.handle_id);
+          
+          // Setup process event listener for thinking messages
+          try {
+            logger.info('🔗 Setting up process event listener for handle:', state.handle_id);
+            const processUnsubscribe = handle.onProcessEvent((processEvent: ClaudeProcessEvent) => {
+              logger.info('📻 SessionHandleView received process event:', {
+                handleId: state.handle_id,
+                status: processEvent.status.type,
+                title: processEvent.title,
+                message: processEvent.message,
+                timestamp: new Date().toISOString()
+              });
+              
+              // Note: We handle 'Starting' status immediately in handlePromptSubmit for snappy UX
+              // Only handle completion/failure events from backend
+              if (processEvent.status.type === 'Completed' || processEvent.status.type === 'Failed') {
+                logger.info('✅ Removing thinking status message - process completed/failed');
+                removeStatusMessage();
+                // Note: don't set isStreaming to false here - let message updates handle that
+              }
+            });
+            
+            // Store the unsubscribe function (we'll need to modify cleanup later)
+            logger.info('✅ Process event listener setup complete for handle:', state.handle_id);
+          } catch (err) {
+            logger.error('❌ Failed to setup process event listener:', err);
+          }
         } catch (err) {
           logger.error('❌ Failed to setup message listener:', err);
         }
@@ -330,7 +409,7 @@ export const SessionHandleView: React.FC<SessionHandleViewProps> = ({
         messageUnsubscribeRef.current();
       }
     };
-  }, [sessionId, projectPath, sessionHandle, sessionState]);
+  }, [sessionId, projectPath]);
 
   // Simple cleanup - make SessionHandleManager.destroyHandle idempotent instead of trying to detect StrictMode
   useEffect(() => {
@@ -369,6 +448,31 @@ export const SessionHandleView: React.FC<SessionHandleViewProps> = ({
       
       logger.info('🚀 Sending prompt to session handle:', { prompt: prompt.substring(0, 50) });
       
+      // Immediately add fake user message for instant feedback
+      const fakeUserMessage = {
+        type: "user",
+        uuid: `fake-user-${Date.now()}`,
+        message: {
+          content: [{ type: "text", text: prompt }]
+        },
+        timestamp: new Date().toISOString(),
+        isFake: true // Mark as fake so we can remove it later
+      } as ClaudeStreamMessage & { isFake: boolean };
+      
+      setMessages(prev => [...prev, fakeUserMessage as any]);
+      
+      // Immediately add thinking message for snappy UX while backend processes
+      // Get a random thinking haiku for immediate feedback
+      const thinkingHaikus = [
+        { title: "Claude is thinking...", message: "Code flows like water — Through circuits of thought and dream — Beauty takes its form" },
+        { title: "Processing...", message: "Algorithms dance — In silicon valleys deep — Logic finds its way" },
+        { title: "Analyzing...", message: "Bits and bytes align — Creating worlds from nothing — Magic in the machine" },
+        { title: "Working...", message: "Functions intertwine — Like vines in digital gardens — Growth through iteration" },
+        { title: "Computing...", message: "Variables shift — Like shadows in moonlit code — Truth emerges slowly" }
+      ];
+      const randomHaiku = thinkingHaikus[Math.floor(Math.random() * thinkingHaikus.length)];
+      addStatusMessage(randomHaiku.title, randomHaiku.message);
+      
       // Send prompt to backend - all messages (including user message) come via streaming
       await sessionHandle.sendPrompt(prompt);
       
@@ -378,6 +482,35 @@ export const SessionHandleView: React.FC<SessionHandleViewProps> = ({
       setIsStreaming(false);
     }
   }, [sessionHandle]);
+
+  // Status message handling for thinking messages (copied from ClaudeCodeSession)
+  const addStatusMessage = useCallback((title: string, message?: string) => {
+    const statusMessage = {
+      type: "status",
+      uuid: `status-${sessionState?.handle_id}-${Date.now()}`,
+      message: { 
+        content: [{ type: "text", text: message || title }] 
+      },
+      title,
+      timestamp: new Date().toISOString(),
+      isTemporary: true,
+      claudio_session_id: sessionState?.handle_id
+    } as ClaudeStreamMessage & { type: "status"; isTemporary: boolean; title: string };
+    
+    // Remove any existing status messages and add the new one
+    setMessages(prev => {
+      const nonStatusMessages = prev.filter(m => (m as any).type !== "status");
+      const newMessages = [...nonStatusMessages, statusMessage as any];
+      return newMessages;
+    });
+  }, [sessionState?.handle_id]);
+
+  const removeStatusMessage = useCallback(() => {
+    setMessages(prev => {
+      const nonStatusMessages = prev.filter(m => (m as any).type !== "status");
+      return nonStatusMessages;
+    });
+  }, []);
 
   // Loading state
   if (!sessionHandle || !sessionState) {

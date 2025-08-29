@@ -634,7 +634,7 @@ dependencies = [
 
 [[package]]
 name = "claudio"
-version = "0.3.34"
+version = "0.3.35"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -649,6 +649,7 @@ dependencies = [
  "log",
  "notify",
  "objc",
+ "once_cell",
  "portable-pty",
  "rand 0.8.5",
  "regex",
