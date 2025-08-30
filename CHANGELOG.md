@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2025-08-30
+
+### Fixed
+- Fixed message bundling to correctly pair command/output using parentUuid relationships
+- Fixed sequential message numbering eliminating gaps in message sequence
+- Restored clipboard debug functionality with complete correlation JSON and session metadata
+- Fixed backend SessionState to properly distinguish project_id (encoded) from project_path (actual file path)
+
+### Changed
+- Refactored architecture eliminating prop drilling by implementing SessionContext for session data sharing
+- Created standardized session type constants (SESSION_TYPES) with consistent screaming snake case values
+- Updated serde serialization to use proper constant values instead of default enum variant names
+- Cleaned up clipboard JSON to include only essential correlation data needed for message source lookup
+
 ## [0.3.41] - 2025-08-29
 
 ### Fixed

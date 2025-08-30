@@ -5,7 +5,7 @@ import { logger } from '@/lib/logger';
 
 interface UseMessageClipboardProps {
   message: ClaudeStreamMessage;
-  projectId?: string;
+  projectPath?: string;
   sessionId?: string;
   sessionFilePath?: string;
 }
@@ -16,38 +16,22 @@ interface UseMessageClipboardProps {
  */
 export const useMessageClipboard = ({
   message,
-  projectId,
+  projectPath,
   sessionId,
   sessionFilePath,
 }: UseMessageClipboardProps) => {
   return useCallback(async () => {
     const contributingUuids = message._contributingMessageUuids || (message.uuid ? [message.uuid] : []);
     
-    // Debug logging to see what's missing
-    const debugData = {
-      contributingUuids,
-      contributingUuidsLength: contributingUuids.length,
-      projectId,
-      sessionId,
-      sessionFilePath,
-      allConditionsMet: contributingUuids.length > 0 && projectId && sessionId && sessionFilePath,
-      timestamp: new Date().toISOString()
-    };
-    
-    // Send debug info to backend log
-    invoke('log_frontend_debug', {
-      component: 'useMessageClipboard',
-      data: debugData
-    }).catch(err => logger.error('Failed to send debug to backend:', err));
-    
-    if (contributingUuids.length > 0 && projectId && sessionId && sessionFilePath) {
+    if (contributingUuids.length > 0 && projectPath && sessionId && sessionFilePath) {
       try {
-        // Build complete message location object (Single Source of Truth)
+        // Build minimal message location object for finding messages in source file
         const messageLocation = {
-          project: projectId,
-          session: sessionId,
-          messages: contributingUuids,
-          session_path: sessionFilePath
+          session_id: sessionId,
+          session_path: sessionFilePath,
+          ui_index: message.messageNumber,
+          messages_uuid: contributingUuids,
+          project_path: projectPath
         };
         const locationJson = JSON.stringify(messageLocation, null, 2);
         await navigator.clipboard.writeText(locationJson);
@@ -55,14 +39,15 @@ export const useMessageClipboard = ({
       } catch (error) {
         logger.error("Failed to copy message location:", error);
       }
-    } else if (message.uuid) {
+    } else if (message.uuid || (message as any).leafUuid) {
       // Fallback to just UUID if missing data
+      const fallbackId = message.uuid || (message as any).leafUuid;
       try {
-        await navigator.clipboard.writeText(message.uuid);
-        logger.log(`Copied message UUID to clipboard: ${message.uuid}`);
+        await navigator.clipboard.writeText(fallbackId);
+        logger.log(`Copied message ID to clipboard: ${fallbackId}`);
       } catch (error) {
-        logger.error("Failed to copy message UUID:", error);
+        logger.error("Failed to copy message ID:", error);
       }
     }
-  }, [message, projectId, sessionId, sessionFilePath]);
+  }, [message, projectPath, sessionId, sessionFilePath]);
 };

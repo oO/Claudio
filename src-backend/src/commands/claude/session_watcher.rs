@@ -77,22 +77,28 @@ impl SessionWatcherManager {
 
     /// Start watching session files for a specific project
     pub fn start_watching_project(&self, project_id: &str) -> Result<(), String> {
-        let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
-        let project_sessions_dir = claude_dir.join("projects").join(project_id);
-        
-        if !project_sessions_dir.exists() {
-            // Create the directory if it doesn't exist - this happens for brand new projects
-            std::fs::create_dir_all(&project_sessions_dir)
-                .map_err(|e| format!("Failed to create project sessions directory: {}", e))?;
-            log::info!("Created project sessions directory: {:?}", project_sessions_dir);
-        }
-
         let mut watchers = self.watchers.lock().map_err(|e| format!("Lock error: {}", e))?;
         
         // Don't create duplicate watchers
         if watchers.contains_key(project_id) {
             log::debug!("Already watching project: {}", project_id);
             return Ok(());
+        }
+
+        // Setup directories to watch
+        let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
+        let claude_sessions_dir = claude_dir.join("projects").join(project_id);
+        
+        let home_dir = dirs::home_dir().ok_or("Cannot find home directory")?;
+        let claudio_sessions_dir = home_dir.join(".claudio").join("projects").join(project_id);
+
+        // Create directories if they don't exist
+        for dir in [&claude_sessions_dir, &claudio_sessions_dir] {
+            if !dir.exists() {
+                std::fs::create_dir_all(dir)
+                    .map_err(|e| format!("Failed to create sessions directory: {}", e))?;
+                log::info!("Created sessions directory: {:?}", dir);
+            }
         }
 
         let (tx, rx) = mpsc::channel();
@@ -112,8 +118,12 @@ impl SessionWatcherManager {
             notify::Config::default(),
         ).map_err(|e| format!("Failed to create watcher: {}", e))?;
 
-        watcher.watch(&project_sessions_dir, RecursiveMode::NonRecursive)
-            .map_err(|e| format!("Failed to start watching directory: {}", e))?;
+        // Watch both .claude/projects/<project_id> and .claudio/projects/<project_id>
+        watcher.watch(&claude_sessions_dir, RecursiveMode::NonRecursive)
+            .map_err(|e| format!("Failed to start watching .claude directory: {}", e))?;
+        
+        watcher.watch(&claudio_sessions_dir, RecursiveMode::NonRecursive)
+            .map_err(|e| format!("Failed to start watching .claudio directory: {}", e))?;
 
         // Spawn async task to handle file events
         tokio::spawn(async move {
@@ -121,7 +131,7 @@ impl SessionWatcherManager {
         });
 
         watchers.insert(project_id.to_string(), watcher);
-        log::info!("Started watching session files for project: {}", project_id);
+        log::info!("Started watching session files for project: {} (both .claude and .claudio)", project_id);
         
         Ok(())
     }

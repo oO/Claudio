@@ -94,28 +94,18 @@ pub struct DecoratedSession {
     pub project_id: String,
     /// The project path
     pub project_path: String,
-    /// Optional todo data associated with this session  
-    pub todo_data: Option<serde_json::Value>,
-    /// Aggregated todo counts from all agent executions in this session
-    pub todo_counts: Option<TodoCounts>,
     /// Unix timestamp when the session file was created
     pub created_at: u64,
     /// Unix timestamp when the session file was last modified
     pub modified_at: u64,
     /// First user message content (if available)
     pub first_message: Option<String>,
-    /// Timestamp of the first user message (if available)
-    pub message_timestamp: Option<String>,
     /// Session file size in bytes
     pub size_bytes: Option<u64>,
-    /// Token count for this session
-    pub token_count: Option<u64>,
-    /// Estimated cost for this session in USD
-    pub cost_usd: Option<f64>,
     /// Message count in this session
     pub message_count: Option<u64>,
-    /// Claudio metadata if this session is managed by Claudio
-    pub claudio: Option<crate::commands::claudio_storage::ClaudioSession>,
+    /// Live session type for decoration
+    pub live_session_type: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

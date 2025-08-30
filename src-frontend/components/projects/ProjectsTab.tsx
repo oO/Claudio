@@ -47,6 +47,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   const [sessions, setSessions] = useState<DecoratedSession[]>([]);
   const [activeProjectTab, setActiveProjectTab] = useState<string>("sessions");
   const [loading, setLoading] = useState(false);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   // Session viewing state - to render SessionHandleView directly
@@ -134,7 +135,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   const handleProjectClick = async (project: Project) => {
     try {
       setSelectedProject(project);
-      setLoading(true);
+      setSessionsLoading(true); // Only loading sessions, not entire UI
       setError(null);
       const sessionList = await api.getProjectSessions(project.id);
       setSessions(sessionList);
@@ -148,7 +149,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
       // Reset selectedProject on error
       setSelectedProject(null);
     } finally {
-      setLoading(false);
+      setSessionsLoading(false);
     }
   };
 
@@ -664,6 +665,25 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                           }
                         }
                       }}
+                      onSessionsRefresh={async () => {
+                        // Smooth refresh for real-time updates - NO loading spinner
+                        if (selectedProject) {
+                          try {
+                            const updatedSessions =
+                              await api.getProjectSessions(selectedProject.id);
+                            setSessions(updatedSessions);
+                            logger.debug(
+                              "Sessions refreshed from file watcher"
+                            );
+                          } catch (error) {
+                            logger.error(
+                              "Failed to refresh sessions:",
+                              error,
+                            );
+                          }
+                        }
+                      }}
+                      sessionsLoading={sessionsLoading}
                       selectedProject={selectedProject}
                       currentTab={tab}
                       onUpdateTab={updateTab}

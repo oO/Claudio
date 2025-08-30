@@ -13,13 +13,20 @@ use crate::commands::claude_direct::{start_claude_direct_session, ClaudeDirectOp
 use crate::commands::claude::{SessionFileEvent, SessionWatcherState};
 use tokio::sync::broadcast;
 
+// Session type constants - single source of truth
+pub const SESSION_TYPE_CLAUDIO: &str = "CLAUDIO";
+pub const SESSION_TYPE_NATIVE: &str = "NATIVE";
+pub const SESSION_TYPE_READONLY: &str = "READONLY";
+
 /// Types of sessions that can be managed
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", content = "data")]
 pub enum SessionType {
     /// Interactive Claudio session that manages multiple native sessions
+    #[serde(rename = "CLAUDIO")] // Must match SESSION_TYPE_CLAUDIO
     Claudio { claudio_id: Option<String> },
     /// Read-only native Claude Code session
+    #[serde(rename = "NATIVE")] // Must match SESSION_TYPE_NATIVE
     Native { session_id: String },
 }
 
@@ -28,7 +35,8 @@ pub enum SessionType {
 pub struct SessionState {
     pub handle_id: String,
     pub session_type: SessionType,
-    pub project_path: String,
+    pub project_id: String,        // Encoded folder name: -Users-olivier-Projects-claudio
+    pub project_path: String,      // Actual file path: /Users/olivier/Projects/claudio
     pub current_claude_session_id: Option<String>,
     pub message_count: usize,
     pub is_streaming: bool,
@@ -719,9 +727,13 @@ impl SessionOrchestrator {
             None
         };
 
+        // Encode project path to project ID (one-way function)
+        let project_id = project_path.replace('/', "-").replace(' ', "-");
+
         Ok(SessionState {
             handle_id: handle_id.to_string(),
             session_type: session_type.clone(),
+            project_id,
             project_path: project_path.to_string(),
             current_claude_session_id,
             message_count,

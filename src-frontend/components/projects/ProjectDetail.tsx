@@ -92,6 +92,14 @@ interface ProjectDetailProps {
    */
   onSessionsDeleted?: () => void;
   /**
+   * Callback when sessions need to be refreshed (real-time updates)
+   */
+  onSessionsRefresh?: () => void;
+  /**
+   * Whether sessions are currently loading
+   */
+  sessionsLoading?: boolean;
+  /**
    * Selected project for back navigation
    */
   selectedProject?: any;
@@ -136,6 +144,8 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
   onProjectDeleted,
   onToast,
   onSessionsDeleted,
+  onSessionsRefresh,
+  sessionsLoading,
   selectedProject,
   currentTab,
   onUpdateTab,
@@ -248,6 +258,8 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
               onSessionsDeleted?.();
               logger.log("Sessions deleted, parent should refresh");
             }}
+            onSessionsRefresh={onSessionsRefresh}
+            sessionsLoading={sessionsLoading}
             onToast={onToast}
           />
         </TabsContent>

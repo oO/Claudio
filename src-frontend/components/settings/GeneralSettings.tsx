@@ -267,11 +267,6 @@ export const GeneralSettings: React.FC<GeneralSettingsProps> = ({
               selectedPath={currentBinaryPath}
               onSelect={handleClaudeInstallationSelect}
             />
-            {binaryPathChanged && (
-              <p className="text-xs text-amber-600 dark:text-amber-400">
-                ⚠️ Claude binary path has been changed. Remember to save your settings.
-              </p>
-            )}
           </div>
         </div>
       </div>

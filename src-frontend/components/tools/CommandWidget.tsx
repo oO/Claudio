@@ -30,40 +30,30 @@ export const CommandWidget: React.FC<{
         )}
       </ToolWidgetTemplate.Header>
       
-      {output ? (
-        <ToolWidgetTemplate.ExpandableResult
-          largeContentThreshold={10}
-          lineCount={outputLineCount}
-          rawContent={output}
-          headerContent={
-            <div className="flex items-center gap-2">
-              <code className="text-xs font-mono text-info">{commandName}</code>
-              {commandArgs && (
-                <code className="text-xs font-mono text-muted-foreground">
-                  {commandArgs}
-                </code>
-              )}
-            </div>
-          }
-        >
-          {(excerptedContent, isShowingExcerpt) => (
-            <ToolWidgetTemplate.CodeOutput>
-              {isShowingExcerpt ? excerptedContent : output}
-            </ToolWidgetTemplate.CodeOutput>
-          )}
-        </ToolWidgetTemplate.ExpandableResult>
-      ) : (
-        <ToolWidgetTemplate.PlainOutput>
+      <ToolWidgetTemplate.ExpandableResult
+        largeContentThreshold={10}
+        lineCount={outputLineCount}
+        rawContent={output || ""}
+        headerContent={
           <div className="flex items-center gap-2">
-            <code className="text-sm font-mono text-info">{commandName}</code>
+            <code className="text-xs font-mono text-info">{commandName}</code>
             {commandArgs && (
-              <code className="text-sm font-mono text-muted-foreground">
+              <code className="text-xs font-mono text-muted-foreground">
                 {commandArgs}
               </code>
             )}
           </div>
-        </ToolWidgetTemplate.PlainOutput>
-      )}
+        }
+      >
+        {(excerptedContent, isShowingExcerpt) => (
+          <ToolWidgetTemplate.CodeOutput>
+            {output && output.trim() && output !== "(no content)" 
+              ? (isShowingExcerpt ? excerptedContent : output)
+              : <span className="text-muted-foreground text-sm">No output</span>
+            }
+          </ToolWidgetTemplate.CodeOutput>
+        )}
+      </ToolWidgetTemplate.ExpandableResult>
     </ToolWidgetTemplate>
   );
 };

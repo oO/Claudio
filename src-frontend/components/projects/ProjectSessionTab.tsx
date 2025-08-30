@@ -16,6 +16,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
+import { SESSION_TYPES } from "@/lib/sessionHandleApi";
 import {
   formatUnixTimestamp,
   formatISOTimestamp,
@@ -28,7 +29,7 @@ import type { Session, DecoratedSession } from "@/lib/api";
 import { DebugLabel } from "@/components/ui/atoms";
 import { Badge } from "@/components/ui/badge";
 import { SessionDeleteDialog } from "./SessionDeleteDialog";
-import { isEditorSession } from "@/lib/sessionUtils";
+import { useSessionListWatcher } from "@/hooks";
 
 interface ProjectSessionTabProps {
   sessions: DecoratedSession[];
@@ -42,7 +43,9 @@ interface ProjectSessionTabProps {
     todos_deleted: number;
     size_freed_mb: number;
   }) => void;
+  onSessionsRefresh?: () => void;
   onToast?: (message: string, type: "success" | "error") => void;
+  sessionsLoading?: boolean;
   className?: string;
 }
 
@@ -54,7 +57,9 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
   onSessionDelete,
   onStartNewSession,
   onSessionsDeleted,
+  onSessionsRefresh,
   onToast,
+  sessionsLoading,
   className,
 }) => {
   const parentRef = useRef<HTMLDivElement>(null);
@@ -62,6 +67,24 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
   const [scrollPosition, setScrollPosition] = useState({ start: 0, end: 0 });
   const [containerHeight, setContainerHeight] = useState(600);
   const [showSessionDeleteDialog, setShowSessionDeleteDialog] = useState(false);
+  
+  // Watch for session file changes
+  const handleSessionListChanged = async () => {
+    logger.debug(`Session files changed for project ${projectId}, refreshing sessions...`);
+    // Trigger parent to refresh sessions data smoothly
+    onSessionsRefresh?.();
+  };
+  
+  // Debug: Log hook usage
+  useEffect(() => {
+    logger.log(`🔧 ProjectSessionTab mounted with projectId: ${projectId}`);
+  }, [projectId]);
+
+  useSessionListWatcher(
+    projectId,
+    handleSessionListChanged,
+    true // enabled
+  );
 
   const virtualizer = useVirtualizer({
     count: sessions.length,
@@ -148,28 +171,39 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
         <DebugLabel label="ProjectSessionTab" />
         <CardContent className="p-6">
           <motion.div
-            key="no-sessions"
+            key={sessionsLoading ? "loading-sessions" : "no-sessions"}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="text-center py-8"
           >
-            <MessagesSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-muted-foreground mb-2">
-              No sessions found
-            </h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Start a new Claude Code session in this project to see it here.
-            </p>
-            <Button onClick={onStartNewSession} size="sm" className="gap-2">
-              <Plus className="h-4 w-4" />
-              Start New Session
-            </Button>
+            {sessionsLoading ? (
+              <>
+                <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4 animate-pulse" />
+                <p className="text-muted-foreground mb-2">Loading sessions...</p>
+                <p className="text-sm text-muted-foreground/70">This should only take a moment</p>
+              </>
+            ) : (
+              <>
+                <MessagesSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                  No sessions found
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Start a new Claude Code session in this project to see it here.
+                </p>
+                <Button onClick={onStartNewSession} size="sm" className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Start New Session
+                </Button>
+              </>
+            )}
           </motion.div>
         </CardContent>
       </Card>
     );
   }
+  
 
   return (
     <Card className="relative flex flex-col h-full">
@@ -261,9 +295,9 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
                         <MessagesSquare
                           className={cn(
                             "h-5 w-5",
-                            session.claudio
-                              ? "text-accent"
-                              : "text-muted-foreground",
+                            (session as any).live_session_type === SESSION_TYPES.CLAUDIO ? "text-accent" :
+                            (session as any).live_session_type === SESSION_TYPES.NATIVE ? "text-info" :
+                            "text-muted-foreground"
                           )}
                         />
                       </div>
@@ -281,14 +315,6 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
                           >
                             {session.first_message || "Untitled Session"}
                           </p>
-                          {isEditorSession(session) && (
-                            <Badge
-                              variant="default"
-                              className="text-xs bg-green-600 hover:bg-green-700 flex-shrink-0"
-                            >
-                              Live
-                            </Badge>
-                          )}
                         </div>
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
                           <div className="flex items-center gap-1">
@@ -313,10 +339,18 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
                               <span>{formatFileSize(session.size_bytes)}</span>
                             </div>
                           )}
-                          {(session as any).claudio && (
+                          {(session as any).live_session_type === SESSION_TYPES.CLAUDIO && (
                             <Badge
                               variant="outline"
                               className="text-xs text-accent border-accent/50"
+                            >
+                              Live
+                            </Badge>
+                          )}
+                          {(session as any).live_session_type === SESSION_TYPES.NATIVE && (
+                            <Badge
+                              variant="outline"
+                              className="text-xs text-info border-info/50"
                             >
                               Live
                             </Badge>
@@ -337,11 +371,14 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
                         <Button
                           variant="ghost"
                           size="icon"
+                          disabled={(session as any).live_session_type === SESSION_TYPES.NATIVE}
                           onClick={(e) => {
                             e.stopPropagation();
-                            onSessionDelete?.(session);
+                            if ((session as any).live_session_type !== SESSION_TYPES.NATIVE) {
+                              onSessionDelete?.(session);
+                            }
                           }}
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive disabled:opacity-30 disabled:hover:text-muted-foreground"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -353,6 +390,7 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
             })}
           </div>
         </div>
+
 
         {/* Scroll to top button */}
         <AnimatePresence>

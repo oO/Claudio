@@ -62,7 +62,21 @@ class SessionTabRegistry {
    * Register a tab for a specific session
    */
   registerTab(tabId: string, projectId: string, sessionId?: string) {
-    if (!sessionId) return;
+    logger.log(`🔧 registerTab called: tabId=${tabId}, projectId=${projectId}, sessionId=${sessionId}`);
+    
+    // Start watching project if not already watched (even for session list watchers without specific session)
+    if (!this.watchedProjects.has(projectId)) {
+      logger.log(`🎯 Project ${projectId} not watched yet, starting watcher...`);
+      this.startWatchingProject(projectId);
+    } else {
+      logger.log(`📋 Project ${projectId} already being watched`);
+    }
+
+    // If no specific session, we're done (session list watcher case)
+    if (!sessionId) {
+      logger.log(`✅ Session list watcher registered for project ${projectId}`);
+      return;
+    }
 
     // Add to project's active sessions
     if (!this.activeTabs.has(projectId)) {
@@ -76,18 +90,20 @@ class SessionTabRegistry {
     }
     this.tabsPerSession.get(sessionId)!.add(tabId);
 
-    // Start watching project if not already watched
-    if (!this.watchedProjects.has(projectId)) {
-      this.startWatchingProject(projectId);
-    }
-
   }
 
   /**
    * Unregister a tab
    */
   unregisterTab(tabId: string, projectId: string, sessionId?: string) {
-    if (!sessionId) return;
+    // If no specific session, just stop watching project if no other sessions
+    if (!sessionId) {
+      const projectSessions = this.activeTabs.get(projectId);
+      if (!projectSessions || projectSessions.size === 0) {
+        this.stopWatchingProject(projectId);
+      }
+      return;
+    }
 
     // Remove tab from session
     const sessionTabs = this.tabsPerSession.get(sessionId);
@@ -130,11 +146,12 @@ class SessionTabRegistry {
 
   private async startWatchingProject(projectId: string) {
     try {
+      logger.log(`🚀 Calling backend start_session_watching for project: ${projectId}`);
       await invoke('start_session_watching', { projectId });
       this.watchedProjects.add(projectId);
-      logger.log(`Started watching session files for project: ${projectId}`);
+      logger.log(`✅ Started watching session files for project: ${projectId}`);
     } catch (error) {
-      logger.error(`Failed to start watching project ${projectId}:`, error);
+      logger.error(`❌ Failed to start watching project ${projectId}:`, error);
     }
   }
 
@@ -167,6 +184,8 @@ export function useSessionFileWatcher({
   enabled = true,
   tabId
 }: UseSessionFileWatcherOptions) {
+  logger.log(`🎬 useSessionFileWatcher called: projectId=${projectId}, enabled=${enabled}, session=${session ? 'exists' : 'null'}, tabId=${tabId}`);
+  
   const unlistenRef = useRef<UnlistenFn | null>(null);
   const scrollPositionRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
@@ -231,11 +250,30 @@ export function useSessionFileWatcher({
   
   // Handle session registration/switching
   useEffect(() => {
-    if (!enabled || !projectId || !session) {
+    logger.log(`🔄 Registration useEffect running: enabled=${enabled}, projectId=${projectId}, session=${session ? 'exists' : 'null'}`);
+    
+    logger.log(`🔍 Checking conditions: enabled=${enabled}, projectId=${projectId ? 'exists' : 'null'}`);
+    
+    if (!enabled || !projectId) {
+      logger.log(`🚫 Registration disabled: enabled=${enabled}, projectId=${projectId}`);
       // If we're disabling, clean up previous session if any
       if (prevSessionIdRef.current && projectId) {
         sessionTabRegistry.unregisterTab(tabId, projectId, prevSessionIdRef.current);
         prevSessionIdRef.current = undefined;
+      }
+      return;
+    }
+
+    logger.log(`✅ Conditions passed, checking session: session=${session ? 'exists' : 'null'}`);
+
+    // For session list watchers (no specific session), register without sessionId
+    if (!session) {
+      logger.log(`📝 Registering session list watcher for project ${projectId}`);
+      try {
+        sessionTabRegistry.registerTab(tabId, projectId, undefined);
+        logger.log(`✅ Registration completed successfully`);
+      } catch (error) {
+        logger.error(`❌ Registration failed:`, error);
       }
       return;
     }
@@ -352,6 +390,16 @@ export function useSessionListWatcher(
 ) {
   // Generate a unique tab ID for this session list component
   const tabId = useRef(`session-list-${Math.random().toString(36).substr(2, 9)}`);
+  
+  // Immediate debug logging (no useEffect)
+  logger.log(`📋 useSessionListWatcher called: projectId=${projectId}, enabled=${enabled}, tabId=${tabId.current}`);
+  
+  // Debug logging
+  useEffect(() => {
+    if (projectId && enabled) {
+      logger.log(`🎯 Starting file watcher for project ${projectId} with tab ${tabId.current}`);
+    }
+  }, [projectId, enabled]);
   
   return useSessionFileWatcher({
     projectId,

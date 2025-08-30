@@ -54,4 +54,5 @@ export { useAgentStyling } from './useAgentStyling';
 // Session hooks
 export { useClaudeMessages } from './useClaudeMessages';
 export { useCheckpoints } from './useCheckpoints';
+export { useNativeClaudeSessions } from './useNativeClaudeSessions';
 // export { useSessionState } from './useSessionState'; // DEPRECATED: moved to /deprecated folder

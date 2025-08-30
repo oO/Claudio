@@ -19,11 +19,11 @@ interface MessageFooterProps {
  */
 export const MessageFooter: React.FC<MessageFooterProps> = ({ message }) => {
   // Get session data from context instead of props
-  const { projectId, sessionId, sessionFilePath } = useSessionContext();
+  const { projectPath, sessionId, sessionFilePath } = useSessionContext();
 
   const handleClipboard = useMessageClipboard({
     message,
-    projectId,
+    projectPath,
     sessionId,
     sessionFilePath,
   });
@@ -73,7 +73,7 @@ export const MessageFooter: React.FC<MessageFooterProps> = ({ message }) => {
           className="flex items-center gap-1 cursor-pointer bg-accent text-foreground hover:text-accent-foreground px-2 py-1 rounded-full transition-colors"
           onClick={handleClipboard}
           title={
-            projectId && sessionId && sessionFilePath
+            projectPath && sessionId && sessionFilePath
               ? "Click to copy message location JSON (all contributing messages)"
               : "Click to copy message UUID"
           }

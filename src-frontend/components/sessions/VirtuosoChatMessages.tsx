@@ -3,7 +3,6 @@ import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import { MessageRouter } from '../messages';
 import { DebugLabel } from '@/components/ui/atoms';
 import { StreamDataProvider } from '@/contexts/StreamDataContext';
-import { SessionProvider } from '@/contexts/SessionContext';
 import { LinkNotificationProvider } from '@/contexts/LinkNotificationContext';
 import { logger } from '@/lib/logger';
 import type { ClaudeStreamMessage } from '@/components/agents';
@@ -21,9 +20,6 @@ interface VirtuosoChatMessagesProps {
   error?: string | null;
   onLinkDetected?: (link: string) => void;
   onPinnedStateChange?: (isPinned: boolean) => void;
-  sessionFilePath?: string | null;
-  projectId: string;
-  sessionId: string;
 }
 
 export const VirtuosoChatMessages = forwardRef<VirtuosoChatMessagesHandle, VirtuosoChatMessagesProps>(({
@@ -33,9 +29,6 @@ export const VirtuosoChatMessages = forwardRef<VirtuosoChatMessagesHandle, Virtu
   error = null,
   onLinkDetected,
   onPinnedStateChange,
-  sessionFilePath,
-  projectId,
-  sessionId,
 }, ref) => {
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   
@@ -67,14 +60,9 @@ export const VirtuosoChatMessages = forwardRef<VirtuosoChatMessagesHandle, Virtu
 
   return (
     <StreamDataProvider streamMessages={messages}>
-      <SessionProvider 
-        projectId={projectId}
-        sessionId={sessionId}
-        sessionFilePath={sessionFilePath || undefined}
-      >
-        <LinkNotificationProvider onLinkDetected={onLinkDetected || (() => {})}>
-          <DebugLabel label="VirtuosoChatMessages" />
-          <div className="relative flex-1 overflow-hidden">
+      <LinkNotificationProvider onLinkDetected={onLinkDetected || (() => {})}>
+        <DebugLabel label="VirtuosoChatMessages" />
+        <div className="relative flex-1 overflow-hidden">
             <Virtuoso
               ref={virtuosoRef}
               style={{ height: '100%' }}
@@ -82,15 +70,23 @@ export const VirtuosoChatMessages = forwardRef<VirtuosoChatMessagesHandle, Virtu
               data={displayableMessages}
               initialTopMostItemIndex={Math.max(0, displayableMessages.length - 1)}
               alignToBottom
-              itemContent={(index, message) => (
-                <div className="px-4 pb-4">
-                  <MessageRouter 
-                    message={message} 
-                    streamMessages={messages}
-                    messageIndex={index}
-                  />
-                </div>
-              )}
+              itemContent={(index, message) => {
+                // Number the message based on its actual UI position (index + 1)
+                const numberedMessage = {
+                  ...message,
+                  messageNumber: index + 1
+                };
+                
+                return (
+                  <div className="px-4 pb-4">
+                    <MessageRouter 
+                      message={numberedMessage} 
+                      streamMessages={displayableMessages}
+                      messageIndex={index}
+                    />
+                  </div>
+                );
+              }}
               followOutput={true}
               overscan={20}
             />
@@ -112,9 +108,8 @@ export const VirtuosoChatMessages = forwardRef<VirtuosoChatMessagesHandle, Virtu
                 </div>
               </div>
             )}
-          </div>
-        </LinkNotificationProvider>
-      </SessionProvider>
+        </div>
+      </LinkNotificationProvider>
     </StreamDataProvider>
   );
 });

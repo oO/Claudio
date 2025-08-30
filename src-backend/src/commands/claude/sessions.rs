@@ -6,11 +6,21 @@ use std::time::{SystemTime, Duration, UNIX_EPOCH};
 use tauri::command;
 use serde::{Deserialize, Serialize};
 use crate::commands::claudio_storage::get_claudio_session;
+use crate::commands::session_orchestrator::{SESSION_TYPE_CLAUDIO, SESSION_TYPE_NATIVE};
+
+/// Fast line counting without JSON parsing
+fn count_lines_fast(file_path: &PathBuf) -> Result<u64, std::io::Error> {
+    use std::io::{BufRead, BufReader};
+    let file = fs::File::open(file_path)?;
+    let reader = BufReader::new(file);
+    Ok(reader.lines().count() as u64)
+}
 
 /// Gets sessions for a specific project with Claudio metadata decoration
 #[command]
 pub async fn get_project_sessions(project_id: String) -> Result<Vec<DecoratedSession>, String> {
-    log::info!("Getting sessions for project: {}", project_id);
+    let start_time = std::time::Instant::now();
+    log::info!("🕐 Starting get_project_sessions for project: {}", project_id);
 
     let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
     let project_dir = claude_dir.join("projects").join(&project_id);
@@ -65,44 +75,40 @@ pub async fn get_project_sessions(project_id: String) -> Result<Vec<DecoratedSes
                     .unwrap_or_default()
                     .as_secs();
 
-                // Extract first user message and timestamp
-                let (first_message, message_timestamp) = extract_first_user_message(&path);
+                // Extract first user message (lightweight - bails out early)
+                let (first_message, _) = extract_first_user_message(&path);
 
-                // Try to load associated todo data
-                let todo_path = todos_dir.join(format!("{}.json", session_id));
-                let todo_data = if todo_path.exists() {
-                    fs::read_to_string(&todo_path)
-                        .ok()
-                        .and_then(|content| serde_json::from_str(&content).ok())
-                } else {
-                    None
-                };
-
-                // Parse session analytics
-                let analytics = parse_session_analytics(&path);
+                // Get file size from metadata (no file parsing)
                 let file_size = metadata.len();
 
-                // Aggregate todo counts from agent executions
-                let todo_counts = aggregate_session_todos(&claude_dir, &session_id);
+                // Fast line count for message count (no JSON parsing)
+                let message_count = count_lines_fast(&path).unwrap_or(0);
 
                 // Check for Claudio metadata by looking for a claudio session that references this Claude session
                 let claudio_metadata = find_claudio_metadata_for_session(&session_id, &project_path).await;
+
+                // Check for native Claude session file
+                let home_dir = dirs::home_dir().ok_or("Cannot find home directory")?;
+                let native_file = home_dir.join(".claudio").join("projects").join(&project_id).join(format!("claude-{}.json", session_id));
+                
+                let live_session_type = if claudio_metadata.is_some() {
+                    Some(SESSION_TYPE_CLAUDIO.to_string())
+                } else if native_file.exists() {
+                    Some(SESSION_TYPE_NATIVE.to_string())
+                } else {
+                    None
+                };
 
                 sessions.push(DecoratedSession {
                     id: session_id.to_string(),
                     project_id: project_id.clone(),
                     project_path: project_path.clone(),
-                    todo_data,
-                    todo_counts,
                     created_at,
                     modified_at,
                     first_message,
-                    message_timestamp,
                     size_bytes: Some(file_size),
-                    token_count: if analytics.token_count > 0 { Some(analytics.token_count) } else { None },
-                    cost_usd: if analytics.cost_usd > 0.0 { Some(analytics.cost_usd) } else { None },
-                    message_count: if analytics.message_count > 0 { Some(analytics.message_count) } else { None },
-                    claudio: claudio_metadata,
+                    message_count: if message_count > 0 { Some(message_count) } else { None },
+                    live_session_type,
                 });
             }
         }
@@ -111,10 +117,12 @@ pub async fn get_project_sessions(project_id: String) -> Result<Vec<DecoratedSes
     // Sort sessions by modification time (newest first)
     sessions.sort_by(|a, b| b.modified_at.cmp(&a.modified_at));
 
+    let duration = start_time.elapsed();
     log::info!(
-        "Found {} sessions for project {}",
+        "⏱️ Found {} sessions for project {} in {:.2}ms",
         sessions.len(),
-        project_id
+        project_id,
+        duration.as_secs_f64() * 1000.0
     );
     Ok(sessions)
 }

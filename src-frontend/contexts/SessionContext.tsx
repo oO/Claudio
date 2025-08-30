@@ -1,9 +1,16 @@
 import React, { createContext, useContext } from 'react';
+import type { Session } from '@/lib/api';
+import type { SessionTypeValue } from '@/lib/sessionHandleApi';
 
 interface SessionContextValue {
   projectId?: string;
   sessionId?: string;
   sessionFilePath?: string;
+  projectPath?: string;
+  sessionData?: Session;
+  displayableMessageCount?: number;
+  totalTokens?: number;
+  liveSessionType?: SessionTypeValue | null;
   isCompactMode?: boolean;
   setIsCompactMode?: (mode: boolean) => void;
   toggleCompactMode?: () => void;
@@ -14,6 +21,11 @@ interface SessionProviderProps {
   projectId?: string;
   sessionId?: string;
   sessionFilePath?: string;
+  projectPath?: string;
+  sessionData?: Session;
+  displayableMessageCount?: number;
+  totalTokens?: number;
+  liveSessionType?: SessionTypeValue | null;
   isCompactMode?: boolean;
   setIsCompactMode?: (mode: boolean) => void;
   toggleCompactMode?: () => void;
@@ -30,6 +42,11 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
   projectId,
   sessionId,
   sessionFilePath,
+  projectPath,
+  sessionData,
+  displayableMessageCount,
+  totalTokens,
+  liveSessionType,
   isCompactMode = false,
   setIsCompactMode,
   toggleCompactMode,
@@ -38,6 +55,11 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
     projectId,
     sessionId,
     sessionFilePath,
+    projectPath,
+    sessionData,
+    displayableMessageCount,
+    totalTokens,
+    liveSessionType,
     isCompactMode,
     setIsCompactMode: setIsCompactMode || (() => {}),
     toggleCompactMode: toggleCompactMode || (() => {}),

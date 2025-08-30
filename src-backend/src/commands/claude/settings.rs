@@ -138,7 +138,7 @@ pub async fn save_system_prompt(content: String) -> Result<String, String> {
 pub async fn check_claude_version(app: AppHandle) -> Result<ClaudeVersionStatus, String> {
     log::info!("Checking Claude Code version");
 
-    let claude_path = match find_claude_binary(&app) {
+    let claude_path = match crate::claude_binary::find_claude_binary_async(&app).await {
         Ok(path) => path,
         Err(e) => {
             return Ok(ClaudeVersionStatus {

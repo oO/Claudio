@@ -6,14 +6,8 @@ use std::path::Path;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LiveClaudeSession {
     pub session_id: String,
-    pub project_dir: String,
-    pub started_at: String,
-    pub transcript_path: String,
-    pub source: String,
-    pub status: String, // "idle", "thinking"
-    pub last_activity: Option<String>,
-    pub thinking_title: Option<String>,
-    pub thinking_message: Option<String>,
+    pub project_path: String,
+    pub status: String, // "idle", "active"
     #[serde(rename = "type")]
     pub session_type: String,
 }
@@ -21,7 +15,7 @@ pub struct LiveClaudeSession {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClaudeThinkingEvent {
     pub session_id: String,
-    pub project_dir: String,
+    pub project_path: String,
     pub status: String, // "thinking" or "idle"
     pub title: Option<String>,
     pub message: Option<String>,
@@ -32,7 +26,7 @@ pub struct ClaudeThinkingEvent {
 pub async fn start_claude_thinking(
     app: AppHandle,
     session_id: String,
-    project_dir: String,
+    project_path: String,
 ) -> Result<(), String> {
     log::debug!("🤔 Starting thinking status for Claude session: {}", session_id);
     
@@ -42,7 +36,7 @@ pub async fn start_claude_thinking(
     // Emit event to frontend for real-time updates
     let event_data = ClaudeThinkingEvent {
         session_id: session_id.clone(),
-        project_dir,
+        project_path,
         status: "thinking".to_string(),
         title: Some(thinking_title),
         message: Some(thinking_message),
@@ -66,7 +60,7 @@ pub async fn end_claude_thinking(
     // Emit event to frontend
     let event_data = ClaudeThinkingEvent {
         session_id: session_id.clone(),
-        project_dir: "".to_string(), // Not needed for end event
+        project_path: "".to_string(), // Not needed for end event
         status: "idle".to_string(),
         title: None,
         message: None,

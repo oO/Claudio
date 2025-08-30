@@ -6,7 +6,6 @@ use std::cmp::Ordering;
 /// Supports NVM installations, aliased paths, and version-based selection
 use std::path::PathBuf;
 use std::process::Command;
-use tauri::Manager;
 
 /// Type of Claude installation
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -30,41 +29,30 @@ pub struct ClaudeInstallation {
     pub installation_type: InstallationType,
 }
 
-/// Main function to find the Claude binary
-/// Checks database first for stored path and preference, then prioritizes accordingly
+/// Main function to find the Claude binary (synchronous wrapper)
 pub fn find_claude_binary(app_handle: &tauri::AppHandle) -> Result<String, String> {
+    // Use tokio runtime to call async function
+    let runtime = tokio::runtime::Runtime::new().map_err(|e| format!("Failed to create runtime: {}", e))?;
+    runtime.block_on(find_claude_binary_async(app_handle))
+}
+
+/// Async version of find_claude_binary
+/// Checks settings first for stored path, then discovers available installations
+pub async fn find_claude_binary_async(_app_handle: &tauri::AppHandle) -> Result<String, String> {
     debug!("Searching for claude binary...");
 
-    // First check if we have a stored path and preference in the database
-    if let Ok(app_data_dir) = app_handle.path().app_data_dir() {
-        let db_path = app_data_dir.join("agents.db");
-        if db_path.exists() {
-            if let Ok(conn) = rusqlite::Connection::open(&db_path) {
-                // Check for stored path first
-                if let Ok(stored_path) = conn.query_row(
-                    "SELECT value FROM app_settings WHERE key = 'claude_binary_path'",
-                    [],
-                    |row| row.get::<_, String>(0),
-                ) {
-                    debug!("Found stored claude path in database: {}", stored_path);
-                    
-                    // Check if the path still exists
-                    let path_buf = PathBuf::from(&stored_path);
-                    if path_buf.exists() && path_buf.is_file() {
-                        return Ok(stored_path);
-                    } else {
-                        warn!("Stored claude path no longer exists: {}", stored_path);
-                    }
-                }
-                
-                // Check user preference
-                let preference = conn.query_row(
-                    "SELECT value FROM app_settings WHERE key = 'claude_installation_preference'",
-                    [],
-                    |row| row.get::<_, String>(0),
-                ).unwrap_or_else(|_| "system".to_string());
-                
-                info!("User preference for Claude installation: {}", preference);
+    // First check if we have a stored path in the settings
+    use crate::commands::proxy::get_claudio_settings;
+    if let Ok(settings) = get_claudio_settings().await {
+        if let Some(stored_path) = settings.claude_binary_path {
+            debug!("Found stored claude path in settings: {}", stored_path);
+            
+            // Check if the path still exists
+            let path_buf = PathBuf::from(&stored_path);
+            if path_buf.exists() && path_buf.is_file() {
+                return Ok(stored_path);
+            } else {
+                warn!("Stored claude path no longer exists: {}", stored_path);
             }
         }
     }
@@ -146,7 +134,7 @@ fn source_preference(installation: &ClaudeInstallation) -> u8 {
 fn discover_system_installations() -> Vec<ClaudeInstallation> {
     let mut installations = Vec::new();
 
-    // 1. Try 'which' command first (now works in production)
+    // 1. Try 'which' command first
     if let Some(installation) = try_which_command() {
         installations.push(installation);
     }
@@ -154,12 +142,18 @@ fn discover_system_installations() -> Vec<ClaudeInstallation> {
     // 2. Check NVM paths
     installations.extend(find_nvm_installations());
 
-    // 3. Check standard paths
+    // 3. Check standard paths (but skip the PATH check since 'which' covers it)
     installations.extend(find_standard_installations());
 
-    // Remove duplicates by path
-    let mut unique_paths = std::collections::HashSet::new();
-    installations.retain(|install| unique_paths.insert(install.path.clone()));
+    // Simple deduplication by canonical path
+    let mut seen_paths = std::collections::HashSet::new();
+    installations.retain(|install| {
+        let canonical = PathBuf::from(&install.path)
+            .canonicalize()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|_| install.path.clone());
+        seen_paths.insert(canonical)
+    });
 
     installations
 }
@@ -188,24 +182,18 @@ fn try_which_command() -> Option<ClaudeInstallation> {
 
             debug!("'which' found claude at: {}", path);
 
-            // Verify the path exists and resolve to absolute path for proper deduplication
+            // Verify the path exists
             let path_buf = PathBuf::from(&path);
             if !path_buf.exists() {
                 warn!("Path from 'which' does not exist: {}", path);
                 return None;
             }
 
-            // Resolve to canonical path to help with deduplication
-            let canonical_path = match path_buf.canonicalize() {
-                Ok(p) => p.to_string_lossy().to_string(),
-                Err(_) => path.clone(), // Fall back to original if canonicalize fails
-            };
-
-            // Get version using the original path (canonical might not work for version check)
+            // Get version using the original path
             let version = get_claude_version(&path).ok().flatten();
 
             Some(ClaudeInstallation {
-                path: canonical_path, // Use canonical path for deduplication
+                path, // Keep original path - deduplication will be handled centrally
                 version,
                 source: "which".to_string(),
                 installation_type: InstallationType::System,
@@ -319,20 +307,6 @@ fn find_standard_installations() -> Vec<ClaudeInstallation> {
         }
     }
 
-    // Also check if claude is available in PATH (without full path)
-    if let Ok(output) = Command::new("claude").arg("--version").output() {
-        if output.status.success() {
-            debug!("claude is available in PATH");
-            let version = extract_version_from_output(&output.stdout);
-
-            installations.push(ClaudeInstallation {
-                path: "claude".to_string(),
-                version,
-                source: "PATH".to_string(),
-                installation_type: InstallationType::System,
-            });
-        }
-    }
 
     installations
 }

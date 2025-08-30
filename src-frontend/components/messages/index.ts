@@ -10,4 +10,4 @@ export { SubAgentMessage } from './SubAgentMessage';
 export { ResultMessage } from './ResultMessage';
 export { ErrorMessage } from './ErrorMessage';
 export { SummaryMessage } from './SummaryMessage';
-export { StatusMessage } from './StatusMessage';
+export { ThinkingMessage } from './ThinkingMessage';

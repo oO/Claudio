@@ -261,11 +261,19 @@ pub async fn list_claudio_sessions(project_path: String) -> Result<Vec<ClaudioSe
     {
         let path = entry.path();
         if path.extension().and_then(|s| s.to_str()) == Some("json") {
+            // Skip native Claude session files (claude-*.json) - only process Claudio session files
+            if let Some(filename) = path.file_name().and_then(|f| f.to_str()) {
+                if filename.starts_with("claude-") {
+                    log::debug!("Skipping native Claude session file: {}", filename);
+                    continue;
+                }
+            }
+            
             match fs::read_to_string(&path).await {
                 Ok(content) => {
                     match serde_json::from_str::<ClaudioSession>(&content) {
                         Ok(session) => sessions.push(session),
-                        Err(e) => log::warn!("Failed to parse session {}: {}", path.display(), e),
+                        Err(e) => log::warn!("Failed to parse Claudio session {}: {}", path.display(), e),
                     }
                 }
                 Err(e) => log::warn!("Failed to read session file {}: {}", path.display(), e),

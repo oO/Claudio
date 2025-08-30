@@ -7,7 +7,7 @@ import { SubAgentMessage } from "./SubAgentMessage";
 import { ResultMessage } from "./ResultMessage";
 import { ErrorMessage } from "./ErrorMessage";
 import { SummaryMessage } from "./SummaryMessage";
-import { StatusMessage } from "./StatusMessage";
+import { ThinkingMessage } from "./ThinkingMessage";
 import { logger } from '@/lib/logger';
 
 interface MessageRouterProps {
@@ -60,16 +60,7 @@ const MessageRouterComponent: React.FC<MessageRouterProps> = ({
       return null;
     }
 
-    // Skip rendering if this message is part of a bundle that was already rendered
-    if (message.leafUuid && message.summary && (message as any).type === "summary") {
-      // Simple check: if previous message is also a summary, this one should be skipped
-      if (messageIndex > 0) {
-        const prevMsg = streamMessages[messageIndex - 1];
-        if (prevMsg?.leafUuid && prevMsg?.summary && (prevMsg as any).type === "summary") {
-          return null;
-        }
-      }
-    }
+    // Summary bundling is now handled in SessionHandleView, not here
 
     // Handle summary messages - check if we should bundle consecutive ones
     if (
@@ -149,7 +140,7 @@ const MessageRouterComponent: React.FC<MessageRouterProps> = ({
         return <ResultMessage message={message} />;
 
       case "status":
-        return <StatusMessage message={message} />;
+        return <ThinkingMessage message={message} />;
 
       default:
         // Skip rendering if no meaningful content

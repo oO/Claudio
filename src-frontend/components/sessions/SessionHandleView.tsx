@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { logger } from '@/lib/logger';
 import { DebugLabel } from '@/components/ui/atoms';
-import { SessionHandleManager, SessionHandle, SessionState, StreamedMessage, ClaudeProcessEvent } from '@/lib/sessionHandleApi';
+import { SessionHandleManager, SessionHandle, SessionState, StreamedMessage, ClaudeProcessEvent, SESSION_TYPES } from '@/lib/sessionHandleApi';
+import { SessionProvider } from '@/contexts/SessionContext';
 import { SessionHeader } from './SessionHeader';
 import { SessionMessages } from './SessionMessages';
 import { VirtuosoChatMessages } from './VirtuosoChatMessages';
@@ -53,11 +54,8 @@ export const SessionHandleView: React.FC<SessionHandleViewProps> = ({
     const filteredUuids: string[] = [];
     
     const filtered = rawMessages.filter((message, index) => {
-      logger.info(`🔍 Filtering message ${index}: type=${message.type}, isMeta=${message.isMeta}, uuid=${message.uuid?.substring(0, 8)}`);
-      
       // Skip meta messages that don't have meaningful content
       if (message.isMeta && !message.leafUuid && !message.summary) {
-        logger.info(`❌ Filtering out meta message ${index}: uuid=${message.uuid?.substring(0, 8)}`);
         if (message.uuid) filteredUuids.push(message.uuid);
         return false;
       }
@@ -132,6 +130,13 @@ export const SessionHandleView: React.FC<SessionHandleViewProps> = ({
         }
       }
 
+      // Filter out system messages that MessageRouter won't handle
+      if (message.type === "system" && !(message as any).subtype) {
+        logger.info(`❌ Filtering out system message without subtype: uuid=${message.uuid?.substring(0, 8)}`);
+        if (message.uuid) filteredUuids.push(message.uuid);
+        return false;
+      }
+
       return true; // Keep message
     });
 
@@ -141,21 +146,75 @@ export const SessionHandleView: React.FC<SessionHandleViewProps> = ({
     return filtered;
   };
 
+  // Helper function: Bundle ALL related messages (summaries, commands+stdout)
+  const bundleMessages = (filteredMessages: ClaudeStreamMessage[]): ClaudeStreamMessage[] => {
+    // First bundle consecutive summary messages
+    const summaryBundled = bundleSummaries(filteredMessages);
+    // Then bundle command+output pairs
+    return bundleCommands(summaryBundled);
+  };
+
+  // Helper function: Bundle consecutive summary messages  
+  const bundleSummaries = (messages: ClaudeStreamMessage[]): ClaudeStreamMessage[] => {
+    const result: ClaudeStreamMessage[] = [];
+    const processed = new Set<number>();
+
+    for (let i = 0; i < messages.length; i++) {
+      if (processed.has(i)) continue;
+
+      const message = messages[i];
+      
+      if (message.leafUuid && message.summary && (message as any).type === "summary") {
+        const summaries = [message.summary];
+        const leafUuids = [message.leafUuid];
+        
+        // Look for consecutive summary messages
+        let j = i + 1;
+        while (j < messages.length) {
+          const next = messages[j];
+          if (next.leafUuid && next.summary && (next as any).type === "summary") {
+            summaries.push(next.summary);
+            leafUuids.push(next.leafUuid);
+            processed.add(j);
+            j++;
+          } else {
+            break;
+          }
+        }
+        
+        // For summary messages, use the leafUuids as contributing message identifiers
+        // but also preserve the original message UUIDs if they exist
+        const contributingUuids = leafUuids; // Use leafUuids for summary correlation
+        
+        result.push({
+          ...message,
+          summary: summaries,
+          _contributingMessageUuids: contributingUuids,
+          _isBundle: summaries.length > 1
+        });
+      } else {
+        result.push(message);
+      }
+    }
+    
+    return result;
+  };
+
   // Helper function: Bundle command messages with their stdout
-  const bundleCommandMessages = (filteredMessages: ClaudeStreamMessage[]): ClaudeStreamMessage[] => {
-    logger.info(`🔧 bundleCommandMessages starting with ${filteredMessages.length} filtered messages`);
+  const bundleCommands = (filteredMessages: ClaudeStreamMessage[]): ClaudeStreamMessage[] => {
+    // logger.info(`🔧 bundleCommandMessages starting with ${filteredMessages.length} filtered messages`);
     
     const bundledMessages: ClaudeStreamMessage[] = [];
     const processedIndices = new Set<number>();
     
     for (let i = 0; i < filteredMessages.length; i++) {
       if (processedIndices.has(i)) {
-        logger.info(`⏭️ Skipping index ${i} (already processed)`);
+        // logger.info(`⏭️ Skipping index ${i} (already processed)`);
         continue;
       }
       
       const message = filteredMessages[i];
-      logger.info(`🔍 Processing message ${i}: type=${message.type}, uuid=${message.uuid?.substring(0, 8)}`);
+      // logger.info(`🔍 Processing message ${i}: type=${message.type}, uuid=${message.uuid?.substring(0, 8)}`);
       
       // Check if this is a command message
       if (message.type === "user" && message.message && typeof message.message.content === "string") {
@@ -166,24 +225,28 @@ export const SessionHandleView: React.FC<SessionHandleViewProps> = ({
         
         if (commandMatch) {
           const [, commandName, commandMessage, commandArgs] = commandMatch;
-          logger.info(`⚡ Found command: ${commandName} at index ${i}`);
+          // logger.info(`⚡ Found command: ${commandName} at index ${i}`);
           
-          // Look for the stdout message in the next message
+          // Look for the stdout message by parentUuid (not just next message)
           let stdout = "";
           let contributingUuids = [message.uuid].filter(Boolean);
           
-          if (i + 1 < filteredMessages.length) {
-            const nextMessage = filteredMessages[i + 1];
-            if (nextMessage.type === "user" && typeof nextMessage.message?.content === "string") {
-              const nextContentStr = nextMessage.message.content as string;
-              const stdoutMatch = nextContentStr.match(
+          // Find the stdout message that has this command as parent
+          for (let j = i + 1; j < filteredMessages.length; j++) {
+            const candidateMessage = filteredMessages[j];
+            if (candidateMessage.parentUuid === message.uuid && 
+                candidateMessage.type === "user" && 
+                typeof candidateMessage.message?.content === "string") {
+              const candidateContentStr = candidateMessage.message.content as string;
+              const stdoutMatch = candidateContentStr.match(
                 /<local-command-stdout>(.*?)<\/local-command-stdout>/s
               );
               if (stdoutMatch) {
                 stdout = stdoutMatch[1];
-                if (nextMessage.uuid) contributingUuids.push(nextMessage.uuid);
-                processedIndices.add(i + 1); // Mark stdout message as processed
-                logger.info(`📦 Bundled stdout from index ${i + 1}, marked as processed`);
+                if (candidateMessage.uuid) contributingUuids.push(candidateMessage.uuid);
+                processedIndices.add(j); // Mark stdout message as processed
+                // logger.info(`📦 Bundled stdout from index ${j} (parentUuid match), marked as processed`);
+                break; // Found the matching stdout, stop looking
               }
             }
           }
@@ -201,7 +264,7 @@ export const SessionHandleView: React.FC<SessionHandleViewProps> = ({
           };
           
           bundledMessages.push(bundledMessage);
-          logger.info(`✅ Added bundled command message, total so far: ${bundledMessages.length}`);
+          // logger.info(`✅ Added bundled command message, total so far: ${bundledMessages.length}`);
           // Continue to next message - this command message is now bundled and processed
           continue;
         }
@@ -213,12 +276,13 @@ export const SessionHandleView: React.FC<SessionHandleViewProps> = ({
         _contributingMessageUuids: message.uuid ? [message.uuid] : []
       };
       bundledMessages.push(messageWithUuids);
-      logger.info(`➕ Added regular message, total so far: ${bundledMessages.length}`);
+      // logger.info(`➕ Added regular message, total so far: ${bundledMessages.length}`);
     }
     
-    logger.info(`🏁 bundleCommandMessages completed: ${filteredMessages.length} → ${bundledMessages.length} messages`);
+    // logger.info(`🏁 bundleCommandMessages completed: ${filteredMessages.length} → ${bundledMessages.length} messages`);
     return bundledMessages;
   };
+
 
   // Clean message processing pipeline: Filter -> Bundle -> Display
   const displayableMessages = useMemo(() => {
@@ -227,20 +291,19 @@ export const SessionHandleView: React.FC<SessionHandleViewProps> = ({
     // Step 1: Filter out unwanted messages (meta, sidechain, etc.)
     const filteredMessages = filterMessages(messages);
     
-    // Step 2: Bundle related messages (commands + stdout, etc.)
-    const bundledMessages = bundleCommandMessages(filteredMessages);
+    // Step 2: Bundle related messages (summaries, commands + stdout, etc.) 
+    const bundledMessages = bundleMessages(filteredMessages);
     
-    // Step 3: Add display metadata and return
-    const finalMessages = bundledMessages.map((msg, index) => ({
+    // Step 3: Add contributing UUIDs but DON'T number yet - numbering happens after MessageRouter
+    const messagesWithUuids = bundledMessages.map((msg) => ({
       ...msg,
-      messageNumber: index + 1,
       _contributingMessageUuids: msg._contributingMessageUuids || (msg.uuid ? [msg.uuid] : [])
     }));
 
     const totalTime = performance.now() - startTime;
-    logger.info(`🔄 Processed ${messages.length} raw messages into ${finalMessages.length} displayable (${totalTime.toFixed(2)}ms)`);
+    logger.info(`🔄 Processed ${messages.length} raw messages into ${messagesWithUuids.length} displayable (${totalTime.toFixed(2)}ms)`);
     
-    return finalMessages;
+    return messagesWithUuids;
   }, [messages]);
 
   // Determine session type and get handle
@@ -545,7 +608,8 @@ export const SessionHandleView: React.FC<SessionHandleViewProps> = ({
     );
   }
 
-  const isReadOnly = sessionState.session_type.type === 'Native';
+  const isReadOnly = sessionState.session_type.type === SESSION_TYPES.NATIVE;
+  
   const totalTokens = displayableMessages.reduce((sum, msg) => {
     if (msg.message?.usage) {
       return sum + msg.message.usage.input_tokens + msg.message.usage.output_tokens;
@@ -559,23 +623,36 @@ export const SessionHandleView: React.FC<SessionHandleViewProps> = ({
     displayableMessagesCount: displayableMessages.length,
     rawMessagesCount: messages.length,
     isReadOnly,
-    totalTokens
+    totalTokens,
+    // DEBUG: Check what we're getting for project data
+    'sessionState.project_path': sessionState.project_path,
+    'projectPath prop': projectPath
   });
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="flex flex-col h-full relative"
+    <SessionProvider
+      projectId={sessionState.project_id}
+      sessionId={sessionState.handle_id}
+      sessionFilePath={sessionState.session_file_path || undefined}
+      projectPath={sessionState.project_path}
+      sessionData={session}
+      displayableMessageCount={displayableMessages.length}
+      totalTokens={totalTokens}
+      liveSessionType={sessionState.session_type.type}
     >
-      <DebugLabel label="SessionHandleView" />
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="flex flex-col h-full relative"
+      >
+        <DebugLabel label="SessionHandleView" />
       
       <SessionHeader
         projectPath={projectPath}
         claudeSessionId={sessionState.current_claude_session_id}
         sessionId={sessionState.handle_id}
-        claudioId={sessionState.session_type.type === 'Claudio' ? (sessionState.session_type.data as any)?.claudio_id : null}
+        claudioId={sessionState.session_type.type === SESSION_TYPES.CLAUDIO ? (sessionState.session_type.data as any)?.claudio_id : null}
         totalTokens={totalTokens}
         isStreaming={isStreaming}
         hasMessages={displayableMessages.length > 0}
@@ -604,8 +681,6 @@ export const SessionHandleView: React.FC<SessionHandleViewProps> = ({
           messages={messages}
           isLoading={isStreaming}
           error={error}
-          sessionId={sessionState.handle_id}
-          projectId={sessionState.project_path}
           onPinnedStateChange={setIsPinnedToBottom}
         />
         
@@ -619,6 +694,7 @@ export const SessionHandleView: React.FC<SessionHandleViewProps> = ({
         )}
       </div>
 
-    </motion.div>
+      </motion.div>
+    </SessionProvider>
   );
 };

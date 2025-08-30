@@ -4,10 +4,21 @@ import { logger } from '@/lib/logger';
 import { processMessagesWithAgentInfo } from '@/lib/messageProcessor';
 
 /**
+ * Session type constants - single source of truth for session type values
+ */
+export const SESSION_TYPES = {
+  CLAUDIO: 'CLAUDIO',
+  NATIVE: 'NATIVE',
+  READONLY: 'READONLY'
+} as const;
+
+export type SessionTypeValue = typeof SESSION_TYPES[keyof typeof SESSION_TYPES];
+
+/**
  * Session types that can be managed
  */
 export interface SessionType {
-  type: 'Claudio' | 'Native';
+  type: SessionTypeValue;
   data: string | null; // claudio_id for Claudio (null for new sessions), session_id for Native
 }
 
@@ -17,7 +28,8 @@ export interface SessionType {
 export interface SessionState {
   handle_id: string;
   session_type: SessionType;
-  project_path: string;
+  project_id: string;        // Encoded folder name: -Users-olivier-Projects-claudio
+  project_path: string;      // Actual file path: /Users/olivier/Projects/claudio
   current_claude_session_id: string | null;
   message_count: number;
   is_streaming: boolean;
