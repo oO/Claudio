@@ -129,10 +129,10 @@ pub async fn uninstall_claude_session_hooks() -> Result<String, String> {
 /// Install a single hook script from embedded resource
 async fn install_hook_script(hooks_dir: &Path, script_name: &str) -> Result<(), String> {
     let script_content = match script_name {
-        "session-start.sh" => include_str!("../../../hooks/session-start.sh"),
-        "user-prompt-submit.sh" => include_str!("../../../hooks/user-prompt-submit.sh"),
-        "stop.sh" => include_str!("../../../hooks/stop.sh"),
-        "session-end.sh" => include_str!("../../../hooks/session-end.sh"),
+        "session-start.sh" => include_str!("../../../hook_scripts/session-start.sh"),
+        "user-prompt-submit.sh" => include_str!("../../../hook_scripts/user-prompt-submit.sh"),
+        "stop.sh" => include_str!("../../../hook_scripts/stop.sh"),
+        "session-end.sh" => include_str!("../../../hook_scripts/session-end.sh"),
         _ => return Err(format!("Unknown hook script: {}", script_name)),
     };
     

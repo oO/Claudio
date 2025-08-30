@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Claudio Stop Hook - Updates status to idle
+# Claudio UserPromptSubmit Hook - Updates status to active
 INPUT=$(cat)
 
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty')
@@ -20,11 +20,6 @@ PROJECT_ID=$(echo "$TRANSCRIPT_PATH" | sed -n 's/.*\/projects\/\([^\/]*\)\/.*/\1
 if [ -n "$PROJECT_ID" ]; then
     SESSION_FILE="$HOME/.claudio/projects/$PROJECT_ID/claude-$SESSION_ID.json"
     if [ -f "$SESSION_FILE" ]; then
-        # Cross-platform sed in-place edit (macOS vs Linux)
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            sed -i '' 's/"status": "[^"]*"/"status": "idle"/' "$SESSION_FILE"
-        else
-            sed -i 's/"status": "[^"]*"/"status": "idle"/' "$SESSION_FILE"
-        fi
+        sed -i '' 's/"status": "[^"]*"/"status": "active"/' "$SESSION_FILE"
     fi
 fi
