@@ -1,5 +1,5 @@
 import React from "react";
-import type { ClaudeStreamMessage } from "@/components/agents";
+import type { ClaudeStreamMessage } from "@/lib/outputCache";
 import { SummaryWidget, SystemInitializedWidget } from "../tools/ToolWidgets";
 import { UserMessage } from "./UserMessage";
 import { AssistantMessage } from "./AssistantMessage";

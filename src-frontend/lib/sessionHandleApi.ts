@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
-import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { logger } from '@/lib/logger';
+import { eventManager } from '@/lib/TauriEventManager';
 import { processMessagesWithAgentInfo } from '@/lib/messageProcessor';
 
 /**
@@ -73,8 +73,10 @@ export class SessionHandle {
   private messageListeners: Set<(messages: any[]) => void> = new Set();
   private stateUpdateListeners: Set<(state: SessionState) => void> = new Set();
   private processEventListeners: Set<(event: ClaudeProcessEvent) => void> = new Set();
-  private streamUnlisten: (() => void) | null = null;
-  private processEventUnlisten: (() => void) | null = null;
+  private messageStreamUnsubscribe: (() => void) | null = null;
+  private processEventUnsubscribe: (() => void) | null = null;
+  private stateChangeUnsubscribe: (() => void) | null = null;
+  private sessionStateUnsubscribe: (() => void) | null = null;
   private isDestroyed: boolean = false;
   private isStreamingSetup: boolean = false;
   private isProcessEventSetup: boolean = false;
@@ -87,7 +89,9 @@ export class SessionHandle {
     // Don't setup stream listener in constructor - do it lazily when first listener is added
     
     // Set up session state change listener immediately (always needed)
-    this.setupSessionStateChangeListener();
+    this.setupSessionStateChangeListener().catch(error => {
+      logger.error('❌ Failed to setup session state change listener:', error);
+    });
   }
 
   /**
@@ -225,7 +229,9 @@ export class SessionHandle {
     // BUT prevent duplicate setup during React StrictMode
     if (!this.isStreamingSetup && this.messageListeners.size === 1) {
       logger.info('🎧 Setting up SINGLE stream listener for first listener');
-      this.setupStreamListener();
+      this.setupStreamListener().catch(error => {
+        logger.error('❌ Failed to setup stream listener:', error);
+      });
     } else if (this.messageListeners.size > 1) {
       logger.info('⚠️ Multiple listeners detected - stream already setup, skipping');
     }
@@ -245,10 +251,10 @@ export class SessionHandle {
       this.messageListeners.delete(callback);
       
       // Clean up stream listener when last listener is removed
-      if (this.messageListeners.size === 0 && this.streamUnlisten) {
+      if (this.messageListeners.size === 0 && this.messageStreamUnsubscribe) {
         logger.info('🧹 No more listeners, cleaning up stream listener for handle:', this.handleId);
-        this.streamUnlisten();
-        this.streamUnlisten = null;
+        this.messageStreamUnsubscribe();
+        this.messageStreamUnsubscribe = null;
         this.isStreamingSetup = false;
       }
     };
@@ -274,7 +280,9 @@ export class SessionHandle {
     // Setup process event listener lazily when first listener is added
     if (!this.isProcessEventSetup && this.processEventListeners.size === 1) {
       logger.info('🎧 Setting up process event listener for first listener');
-      this.setupProcessEventListener();
+      this.setupProcessEventListener().catch(error => {
+        logger.error('❌ Failed to setup process event listener:', error);
+      });
     }
     
     return () => {
@@ -282,10 +290,10 @@ export class SessionHandle {
       this.processEventListeners.delete(callback);
       
       // Clean up process event listener when last listener is removed
-      if (this.processEventListeners.size === 0 && this.processEventUnlisten) {
+      if (this.processEventListeners.size === 0 && this.processEventUnsubscribe) {
         logger.info('🧹 No more process event listeners, cleaning up for handle:', this.handleId);
-        this.processEventUnlisten();
-        this.processEventUnlisten = null;
+        this.processEventUnsubscribe();
+        this.processEventUnsubscribe = null;
         this.isProcessEventSetup = false;
       }
     };
@@ -298,13 +306,25 @@ export class SessionHandle {
     logger.info('🗑️ Destroying session handle:', this.handleId);
     this.isDestroyed = true;
     
-    if (this.streamUnlisten) {
-      this.streamUnlisten();
-      this.streamUnlisten = null;
+    // Clean up all event subscriptions
+    if (this.messageStreamUnsubscribe) {
+      this.messageStreamUnsubscribe();
+      this.messageStreamUnsubscribe = null;
     }
-    if (this.processEventUnlisten) {
-      this.processEventUnlisten();
-      this.processEventUnlisten = null;
+    
+    if (this.processEventUnsubscribe) {
+      this.processEventUnsubscribe();
+      this.processEventUnsubscribe = null;
+    }
+    
+    if (this.sessionStateUnsubscribe) {
+      this.sessionStateUnsubscribe();
+      this.sessionStateUnsubscribe = null;
+    }
+    
+    if (this.stateChangeUnsubscribe) {
+      this.stateChangeUnsubscribe();
+      this.stateChangeUnsubscribe = null;
     }
     this.isStreamingSetup = false;
     this.isProcessEventSetup = false;
@@ -320,7 +340,7 @@ export class SessionHandle {
    * Setup stream listener for real-time messages
    * Uses destruction flag to prevent React StrictMode issues
    */
-  private setupStreamListener(): void {
+  private async setupStreamListener(): Promise<void> {
     if (this.isDestroyed) {
       logger.info('🚫 Not setting up listener - handle already destroyed:', this.handleId);
       return;
@@ -335,15 +355,15 @@ export class SessionHandle {
       logger.info('🎧 Setting up Tauri event listener for session_message_stream, handleId:', this.handleId);
       this.isStreamingSetup = true;
       
-      // Use Promise-based approach but store the unlisten function properly
-      listen<StreamedMessage>('session_message_stream', (event) => {
-        // Early return if destroyed
-        if (this.isDestroyed) {
-          logger.info('🚫 Ignoring message - handle destroyed:', this.handleId);
-          return;
-        }
-        
-        const message = event.payload;
+      // Use global event manager for session message streaming
+      this.messageStreamUnsubscribe = await eventManager.subscribe<StreamedMessage>(
+        'session_message_stream',
+        (message) => {
+          // Early return if destroyed
+          if (this.isDestroyed) {
+            logger.info('🚫 Ignoring message - handle destroyed:', this.handleId);
+            return;
+          }
         logger.info('📻 Received Tauri event session_message_stream:', { 
           messageHandleId: message.handle_id, 
           ourHandleId: this.handleId,
@@ -370,21 +390,9 @@ export class SessionHandle {
             messageUuid: message.uuid
           });
         }
-      }).then(unlisten => {
-        // Only store if not destroyed during async operation
-        if (!this.isDestroyed && this.isStreamingSetup) {
-          this.streamUnlisten = unlisten;
-          logger.info('✅ Tauri event listener setup complete for handle:', this.handleId);
-        } else {
-          // Clean up immediately if destroyed during setup
-          unlisten();
-          this.isStreamingSetup = false;
-          logger.info('🗑️ Immediately cleaned up listener for destroyed handle:', this.handleId);
-        }
-      }).catch(error => {
-        logger.error('❌ Failed to setup stream listener for handle:', this.handleId, error);
-        this.isStreamingSetup = false;
-      });
+      },
+      { handleId: this.handleId }
+      );
       
     } catch (error) {
       logger.error('❌ Failed to setup stream listener for handle:', this.handleId, error);
@@ -395,7 +403,7 @@ export class SessionHandle {
   /**
    * Setup process event listener for thinking messages and status updates
    */
-  private setupProcessEventListener(): void {
+  private async setupProcessEventListener(): Promise<void> {
     if (this.isDestroyed) {
       logger.info('🚫 Not setting up process event listener - handle already destroyed:', this.handleId);
       return;
@@ -410,15 +418,15 @@ export class SessionHandle {
       logger.info('🎧 Setting up Tauri event listener for claude-process-event, handleId:', this.handleId);
       this.isProcessEventSetup = true;
       
-      // Listen for claude process events (thinking messages, completion, etc.)
-      listen<ClaudeProcessEvent>('claude-process-event', (event) => {
-        // Early return if destroyed
-        if (this.isDestroyed) {
-          logger.info('🚫 Ignoring process event - handle destroyed:', this.handleId);
-          return;
-        }
-        
-        const processEvent = event.payload;
+      // Use global event manager for claude process events
+      this.processEventUnsubscribe = await eventManager.subscribe<ClaudeProcessEvent>(
+        'claude-process-event',
+        (processEvent) => {
+          // Early return if destroyed
+          if (this.isDestroyed) {
+            logger.info('🚫 Ignoring process event - handle destroyed:', this.handleId);
+            return;
+          }
         logger.info('📻 Received claude-process-event:', { 
           claudioSessionId: processEvent.claudio_session_id, 
           ourHandleId: this.handleId,
@@ -451,21 +459,9 @@ export class SessionHandle {
             ourHandleId: this.handleId
           });
         }
-      }).then(unlisten => {
-        // Only store if not destroyed during async operation
-        if (!this.isDestroyed && this.isProcessEventSetup) {
-          this.processEventUnlisten = unlisten;
-          logger.info('✅ Process event listener setup complete for handle:', this.handleId);
-        } else {
-          // Clean up immediately if destroyed during setup
-          unlisten();
-          this.isProcessEventSetup = false;
-          logger.info('🗑️ Immediately cleaned up process event listener for destroyed handle:', this.handleId);
-        }
-      }).catch(error => {
-        logger.error('❌ Failed to setup process event listener for handle:', this.handleId, error);
-        this.isProcessEventSetup = false;
-      });
+      },
+      { claudioid: this.handleId }
+      );
       
     } catch (error) {
       logger.error('❌ Failed to setup process event listener for handle:', this.handleId, error);
@@ -486,35 +482,35 @@ export class SessionHandle {
         project_path: string;
       }
       
-      listen<SessionStateChangeEvent>('session-state-changed', async (event) => {
-        const stateChange = event.payload;
-        
-        // Handle state changes for this Claudio session (account for handleId updates)
-        const isOurSession = (stateChange.claudio_id === this.handleId || this.handleId === 'new') 
-                            && stateChange.project_path === this.projectPath;
-        if (isOurSession) {
-          // If we're still "new", update to the real handleId
-          if (this.handleId === 'new') {
-            this.handleId = stateChange.claudio_id;
-            logger.info('📝 Updated handleId from state change event:', this.handleId);
+      this.sessionStateUnsubscribe = await eventManager.subscribe<SessionStateChangeEvent>(
+        'session-state-changed', 
+        async (stateChange) => {
+          // Handle state changes for this Claudio session (account for handleId updates)
+          const isOurSession = (stateChange.claudio_id === this.handleId || this.handleId === 'new') 
+                              && stateChange.project_path === this.projectPath;
+          if (isOurSession) {
+            // If we're still "new", update to the real handleId
+            if (this.handleId === 'new') {
+              this.handleId = stateChange.claudio_id;
+              logger.info('📝 Updated handleId from state change event:', this.handleId);
+            }
+            
+            logger.info('🔄 Received session state change for our handle:', {
+              handleId: this.handleId,
+              newClaudeSessionId: stateChange.new_claude_session_id
+            });
+            
+            // Refresh the session state by calling getState() again
+            try {
+              await this.getState();
+              logger.info('✅ Successfully refreshed session state after Claude session creation');
+            } catch (error) {
+              logger.error('❌ Failed to refresh session state:', error);
+            }
           }
-          
-          logger.info('🔄 Received session state change for our handle:', {
-            handleId: this.handleId,
-            newClaudeSessionId: stateChange.new_claude_session_id
-          });
-          
-          // Refresh the session state by calling getState() again
-          try {
-            await this.getState();
-            logger.info('✅ Successfully refreshed session state after Claude session creation');
-          } catch (error) {
-            logger.error('❌ Failed to refresh session state:', error);
-          }
-        }
-      }).catch(error => {
-        logger.error('❌ Failed to setup session state change listener:', error);
-      });
+        },
+        { claudioid: this.handleId }
+      );
       
     } catch (error) {
       logger.error('❌ Failed to setup session state change listener for handle:', this.handleId, error);

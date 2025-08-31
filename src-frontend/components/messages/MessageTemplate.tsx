@@ -1,7 +1,7 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import type { ClaudeStreamMessage } from "@/components/agents";
+import type { ClaudeStreamMessage } from "@/lib/outputCache";
 import { MessageFooter } from "./MessageFooter";
 import type { LucideIcon } from "lucide-react";
 

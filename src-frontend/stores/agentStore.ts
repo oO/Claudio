@@ -19,7 +19,6 @@ interface AgentState {
   // Actions
   fetchAgentRuns: (forceRefresh?: boolean) => Promise<void>;
   fetchSessionOutput: (runId: number) => Promise<void>;
-  createAgentRun: (data: { agentId: number; projectPath: string; task: string; model?: string }) => Promise<AgentRunWithMetrics>;
   cancelAgentRun: (runId: number) => Promise<void>;
   deleteAgentRun: (runId: number) => Promise<void>;
   clearError: () => void;
@@ -103,28 +102,6 @@ const agentStore: StateCreator<
       }
     },
     
-    // Create a new agent run
-    createAgentRun: async (data: { agentId: number; projectPath: string; task: string; model?: string }) => {
-      try {
-        const runId = await api.executeAgent(data.agentId, data.projectPath, data.task, data.model);
-        
-        // Fetch the created run details
-        const run = await api.getAgentRun(runId);
-        
-        // Update local state immediately
-        set((state) => ({
-          agentRuns: [run, ...state.agentRuns],
-          runningAgents: new Set([...state.runningAgents, runId.toString()])
-        }));
-        
-        return run;
-      } catch (error) {
-        set({
-          error: error instanceof Error ? error.message : 'Failed to create agent run'
-        });
-        throw error;
-      }
-    },
     
     // Cancel an agent run
     cancelAgentRun: async (runId: number) => {

@@ -51,13 +51,6 @@ export const AgentsTab: React.FC<AgentsTabProps> = ({ tab, isActive }) => {
       subtitle="Manage your personal Claude Code agents"
     >
       <AgentsContent
-        onExecuteAgent={(agent) => {
-          // Open agent execution in a new tab
-          const tabId = `agent-exec-${agent.id}-${Date.now()}`;
-          window.dispatchEvent(new CustomEvent('open-agent-execution', { 
-            detail: { agent, tabId } 
-          }));
-        }}
         onEditAgent={(agent) => {
           // Edit in the same tab by updating tab data
           updateTab(tab.id, {

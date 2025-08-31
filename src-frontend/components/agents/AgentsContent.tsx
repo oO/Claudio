@@ -13,10 +13,6 @@ interface AgentsContentProps {
    */
   projectPath?: string;
   /**
-   * Callback when an agent is executed
-   */
-  onExecuteAgent?: (agent: Agent) => void;
-  /**
    * Callback when an agent is edited
    */
   onEditAgent?: (agent: Agent) => void;
@@ -48,7 +44,6 @@ interface AgentsContentProps {
  */
 export const AgentsContent: React.FC<AgentsContentProps> = ({
   projectPath,
-  onExecuteAgent,
   onEditAgent,
   onExportAgent,
   onDeleteAgent,
@@ -77,10 +72,6 @@ export const AgentsContent: React.FC<AgentsContentProps> = ({
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleExecuteAgent = (agent: Agent) => {
-    onExecuteAgent?.(agent);
   };
 
   const handleEditAgent = (agent: Agent) => {
@@ -147,7 +138,6 @@ export const AgentsContent: React.FC<AgentsContentProps> = ({
             <AgentCard
               key={agent.id}
               agent={agent}
-              onExecute={onExecuteAgent ? handleExecuteAgent : undefined}
               onEdit={onEditAgent ? handleEditAgent : undefined}
               onExport={onExportAgent ? handleExportAgent : undefined}
               onDelete={onDeleteAgent ? handleDeleteAgent : undefined}

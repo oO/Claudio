@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import type { ClaudeStreamMessage } from '@/components/agents';
+import type { ClaudeStreamMessage } from "@/lib/outputCache";
 import { invoke } from '@tauri-apps/api/core';
 import { logger } from '@/lib/logger';
 

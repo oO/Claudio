@@ -14,7 +14,6 @@ interface UseTabStateReturn {
   // Operations
   createChatTab: (initialProjectPath?: string, title?: string, sessionId?: string) => string;
   createAgentTab: (agentRunId: string, agentName: string) => string;
-  createAgentExecutionTab: (agent: any, tabId: string) => string;
   createProjectsTab: () => string | null;
   createUsageTab: () => string | null;
   createMCPTab: () => string | null;
@@ -207,17 +206,6 @@ export const useTabState = (): UseTabStateReturn => {
     });
   }, [addTab, tabs, setActiveTab]);
 
-  const createAgentExecutionTab = useCallback((agent: any, _tabId: string): string => {
-    return addTab({
-      type: 'agent-execution',
-      title: `Run: ${agent.name}`,
-      agentData: agent,
-      status: 'idle',
-      hasUnsavedChanges: false,
-      icon: 'bot'
-    });
-  }, [addTab]);
-
   const createCreateAgentTab = useCallback((): string => {
     // Check if create agent tab already exists (singleton)
     const existingTab = tabs.find(tab => tab.type === 'create-agent');
@@ -328,7 +316,6 @@ export const useTabState = (): UseTabStateReturn => {
     // Operations
     createChatTab,
     createAgentTab,
-    createAgentExecutionTab,
     createProjectsTab,
     createUsageTab,
     createMCPTab,

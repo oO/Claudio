@@ -15,10 +15,6 @@ interface ProjectAgentsDropdownProps {
    */
   projectPath: string;
   /**
-   * Callback when an agent is executed
-   */
-  onExecuteAgent?: (agent: Agent) => void;
-  /**
    * Callback when an agent is edited
    */
   onEditAgent?: (agent: Agent) => void;
@@ -50,12 +46,11 @@ interface ProjectAgentsDropdownProps {
  * @example
  * <ProjectAgentsDropdown
  *   projectPath="/Users/example/project"
- *   onExecuteAgent={(agent) => logger.log('Execute agent:', agent)}
+ *   onEditAgent={(agent) => logger.log('Edit agent:', agent)}
  * />
  */
 export const ProjectAgentsDropdown: React.FC<ProjectAgentsDropdownProps> = ({
   projectPath,
-  onExecuteAgent,
   onEditAgent,
   onExportAgent,
   onDeleteAgent,
@@ -87,10 +82,6 @@ export const ProjectAgentsDropdown: React.FC<ProjectAgentsDropdownProps> = ({
     } finally {
       setLoading(false);
     }
-  };
-  
-  const handleExecuteAgent = (agent: Agent) => {
-    onExecuteAgent?.(agent);
   };
   
   const handleEditAgent = (agent: Agent) => {
@@ -192,7 +183,6 @@ export const ProjectAgentsDropdown: React.FC<ProjectAgentsDropdownProps> = ({
                       <AgentCard
                         key={agent.id}
                         agent={agent}
-                        onExecute={onExecuteAgent ? handleExecuteAgent : undefined}
                         onEdit={onEditAgent ? handleEditAgent : undefined}
                         onExport={onExportAgent ? handleExportAgent : undefined}
                         onDelete={onDeleteAgent ? handleDeleteAgent : undefined}

@@ -5,7 +5,7 @@ import { DebugLabel } from '@/components/ui/atoms';
 import { StreamDataProvider } from '@/contexts/StreamDataContext';
 import { LinkNotificationProvider } from '@/contexts/LinkNotificationContext';
 import { logger } from '@/lib/logger';
-import type { ClaudeStreamMessage } from '@/components/agents';
+import type { ClaudeStreamMessage } from "@/lib/outputCache";
 
 export interface VirtuosoChatMessagesHandle {
   scrollToBottom: () => void;

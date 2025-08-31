@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { api, type Session, type SessionWithContent } from '@/lib/api';
-import type { ClaudeStreamMessage } from '@/components/agents';
+import type { ClaudeStreamMessage } from "@/lib/outputCache";
 import { useTrackEvent, useComponentMetrics, useWorkflowTracking } from '@/hooks';
 import { logger } from '@/lib/logger';
 

@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Edit, Trash2, Play, Upload } from "lucide-react";
+import { Edit, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -13,7 +13,6 @@ import { DebugLabel } from "@/components/ui/atoms";
 
 interface AgentCardProps {
   agent: Agent;
-  onExecute?: (agent: Agent) => void;
   onEdit?: (agent: Agent) => void;
   onDelete?: (agent: Agent) => void;
   onExport?: (agent: Agent) => void;
@@ -27,7 +26,6 @@ interface AgentCardProps {
  * @example
  * <AgentCard
  *   agent={agent}
- *   onExecute={handleExecute}
  *   onEdit={handleEdit}
  *   onDelete={handleDelete}
  *   onExport={handleExport}
@@ -35,7 +33,6 @@ interface AgentCardProps {
  */
 export const AgentCard: React.FC<AgentCardProps> = ({
   agent,
-  onExecute,
   onEdit,
   onDelete,
   onExport,
@@ -87,18 +84,6 @@ export const AgentCard: React.FC<AgentCardProps> = ({
           </div>
         </CardContent>
         <CardFooter className="p-2 pt-0 flex justify-end gap-1">
-          {onExecute && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => onExecute(agent)}
-              className="h-7 px-2 text-xs"
-              title="Execute agent"
-            >
-              <Play className="h-3 w-3 mr-1" />
-              Execute
-            </Button>
-          )}
           {onEdit && (
             <Button
               size="sm"

@@ -78,6 +78,8 @@ export interface Session {
   cost_usd?: number;
   /** Message count in this session */
   message_count?: number;
+  /** Live session type if this is an active session */
+  live_session_type?: "NATIVE" | "CLAUDIO";
 }
 
 export interface SessionWithContent {
@@ -994,23 +996,6 @@ export const api = {
     }
   },
 
-  /**
-   * Executes an agent
-   * @param agentId - The agent ID to execute
-   * @param projectPath - The project path to run the agent in
-   * @param task - The task description
-   * @param model - Optional model override
-   * @returns Promise resolving to the run ID when execution starts
-   */
-  async executeAgent(agentId: number, projectPath: string, task: string, model?: string): Promise<number> {
-    try {
-      return await invoke<number>('execute_agent', { agentId, projectPath, task, model });
-    } catch (error) {
-      logger.error("Failed to execute agent:", error);
-      // Return a sentinel value to indicate error
-      throw new Error(`Failed to execute agent: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  },
 
   /**
    * Lists agent runs with metrics

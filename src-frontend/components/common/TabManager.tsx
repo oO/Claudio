@@ -41,8 +41,6 @@ const TabItem: React.FC<TabItemProps> = ({ tab, isActive, onClose, onClick, isDr
       case 'claude-md':
       case 'claude-file':
         return FileText;
-      case 'agent-execution':
-        return Bot;
       case 'create-agent':
         return Plus;
       case 'import-agent':

@@ -2,7 +2,7 @@ import React from "react";
 import { Loader2 } from "lucide-react";
 import { DebugLabel } from "@/components/ui/atoms";
 import { MessageTemplate } from "./MessageTemplate";
-import type { ClaudeStreamMessage } from "@/components/agents";
+import type { ClaudeStreamMessage } from "@/lib/outputCache";
 
 interface ThinkingMessageProps {
   message: ClaudeStreamMessage;

@@ -2,7 +2,7 @@ import React from 'react';
 import { AlertCircle } from 'lucide-react';
 import { DebugLabel } from '@/components/ui/atoms';
 import { MessageTemplate } from './MessageTemplate';
-import type { ClaudeStreamMessage } from '@/components/agents';
+import type { ClaudeStreamMessage } from "@/lib/outputCache";
 
 interface ErrorMessageProps {
   message: ClaudeStreamMessage;

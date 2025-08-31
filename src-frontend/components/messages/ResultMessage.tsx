@@ -3,7 +3,7 @@ import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import { MarkdownRenderer } from '@/components/ui';
 import { DebugLabel } from '@/components/ui/atoms';
 import { MessageTemplate } from './MessageTemplate';
-import type { ClaudeStreamMessage } from '@/components/agents';
+import type { ClaudeStreamMessage } from "@/lib/outputCache";
 
 interface ResultMessageProps {
   message: ClaudeStreamMessage;

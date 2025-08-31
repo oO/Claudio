@@ -1,12 +1,10 @@
 import React, { useRef, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   Clock,
   MessageSquare,
   MessagesSquare,
   HardDrive,
-  ListChecks,
   Trash2,
   Activity,
   ChevronUp,
@@ -16,12 +14,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
-import { SESSION_TYPES } from "@/lib/sessionHandleApi";
 import {
   formatUnixTimestamp,
-  formatISOTimestamp,
-  truncateText,
-  getFirstLine,
   formatFileSize,
   formatTimeAgo,
 } from "@/lib/date-utils";
@@ -62,43 +56,62 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
   sessionsLoading,
   className,
 }) => {
-  const parentRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [scrollPosition, setScrollPosition] = useState({ start: 0, end: 0 });
   const [containerHeight, setContainerHeight] = useState(600);
   const [showSessionDeleteDialog, setShowSessionDeleteDialog] = useState(false);
-  
+
   // Watch for session file changes
   const handleSessionListChanged = async () => {
-    logger.debug(`Session files changed for project ${projectId}, refreshing sessions...`);
+    logger.debug(
+      `Session files changed for project ${projectId}, refreshing sessions...`,
+    );
     // Trigger parent to refresh sessions data smoothly
     onSessionsRefresh?.();
   };
-  
-  // Debug: Log hook usage
+
+  // Debug: Log component mount and sessions
   useEffect(() => {
-    logger.log(`🔧 ProjectSessionTab mounted with projectId: ${projectId}`);
-  }, [projectId]);
+    logger.log(`🚀 ProjectSessionTab MOUNTED at ${new Date().toISOString()}`);
+  }, []);
+
+  useEffect(() => {
+    logger.log(
+      `📊 ProjectSessionTab: Sessions count: ${sessions.length} at ${new Date().toISOString()}`,
+    );
+    if (sessions.length > 0) {
+      logger.log(`📊 First session:`, sessions[0]);
+
+      // Debug: Log all live sessions
+      const liveSessions = sessions.filter((s) => s.live_session_type);
+      if (liveSessions.length > 0) {
+        logger.log(`🔥 Found ${liveSessions.length} live sessions:`);
+        liveSessions.forEach((session, index) => {
+          logger.log(`🔥 Live session ${index + 1}:`, {
+            id: session.id,
+            live_session_type: session.live_session_type,
+            first_message: session.first_message?.substring(0, 50) + "...",
+          });
+        });
+      } else {
+        logger.log(`⚠️ No live sessions found in ${sessions.length} sessions`);
+      }
+    }
+  }, [sessions]);
 
   useSessionListWatcher(
     projectId,
     handleSessionListChanged,
-    true // enabled
+    true, // enabled
   );
-
-  const virtualizer = useVirtualizer({
-    count: sessions.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 100, // Reduced height for more compact cards
-    overscan: 5, // Keep 5 items rendered outside of view
-  });
 
   // Calculate container height based on actual position
   useEffect(() => {
     const calculateHeight = () => {
-      if (!parentRef.current) return;
+      if (!scrollContainerRef.current) return;
 
-      const rect = parentRef.current.getBoundingClientRect();
+      const rect = scrollContainerRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
       const availableHeight = viewportHeight - rect.top - 20; // 20px padding from bottom
 
@@ -116,38 +129,42 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
       window.removeEventListener("resize", calculateHeight);
       clearTimeout(timeoutId);
     };
-  }, [sessions.length, virtualizer]);
+  }, [sessions.length]);
 
-  // Update scroll position and show scroll to top button
+  // Handle scroll position changes
   useEffect(() => {
-    const element = parentRef.current;
+    const element = scrollContainerRef.current;
     if (!element) return;
 
     const handleScroll = () => {
       setShowScrollTop(element.scrollTop > 200);
 
-      // Calculate visible range based on virtual items
-      const virtualItems = virtualizer.getVirtualItems();
-      if (virtualItems.length > 0) {
-        const start = virtualItems[0].index + 1; // 1-based indexing for display
-        const end = Math.min(
-          virtualItems[virtualItems.length - 1].index + 1,
-          sessions.length,
-        );
-        setScrollPosition({ start, end });
-      }
+      // Calculate approximate visible range (rough estimate)
+      const itemHeight = 80; // approximate height per session card
+      const scrollTop = element.scrollTop;
+      const containerHeight = element.clientHeight;
+
+      const startIndex = Math.floor(scrollTop / itemHeight);
+      const endIndex = Math.min(
+        Math.ceil((scrollTop + containerHeight) / itemHeight),
+        sessions.length - 1,
+      );
+
+      const start = Math.max(1, startIndex + 1); // 1-based
+      const end = Math.min(endIndex + 1, sessions.length);
+      setScrollPosition({ start, end });
     };
 
     element.addEventListener("scroll", handleScroll);
     handleScroll(); // Set initial position
+
     return () => {
-      logger.log("ProjectSessionTab: Cleaning up scroll listeners");
       element.removeEventListener("scroll", handleScroll);
     };
-  }, [virtualizer, sessions.length]);
+  }, [sessions.length]);
 
   const scrollToTop = () => {
-    parentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleSessionsDeleted = (result: {
@@ -180,8 +197,12 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
             {sessionsLoading ? (
               <>
                 <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4 animate-pulse" />
-                <p className="text-muted-foreground mb-2">Loading sessions...</p>
-                <p className="text-sm text-muted-foreground/70">This should only take a moment</p>
+                <p className="text-muted-foreground mb-2">
+                  Loading sessions...
+                </p>
+                <p className="text-sm text-muted-foreground/70">
+                  This should only take a moment
+                </p>
               </>
             ) : (
               <>
@@ -190,7 +211,8 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
                   No sessions found
                 </h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Start a new Claude Code session in this project to see it here.
+                  Start a new Claude Code session in this project to see it
+                  here.
                 </p>
                 <Button onClick={onStartNewSession} size="sm" className="gap-2">
                   <Plus className="h-4 w-4" />
@@ -203,7 +225,6 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
       </Card>
     );
   }
-  
 
   return (
     <Card className="relative flex flex-col h-full">
@@ -251,146 +272,118 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
         </div>
 
         <div
-          ref={parentRef}
+          ref={scrollContainerRef}
           className="overflow-auto p-6 pt-0"
           style={{
             contain: "strict",
             height: `${containerHeight}px`,
           }}
         >
-          <div
-            style={{
-              height: `${virtualizer.getTotalSize()}px`,
-              width: "100%",
-              position: "relative",
-            }}
-          >
-            {virtualizer.getVirtualItems().map((virtualRow) => {
-              const session = sessions[virtualRow.index];
-              return (
-                <motion.div
-                  key={session.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: "100%",
-                    height: `${virtualRow.size}px`,
-                    transform: `translateY(${virtualRow.start}px)`,
-                  }}
-                  className="px-0 py-1.5"
+          <div className="space-y-3">
+            {sessions.map((session) => (
+              <motion.div
+                key={session.id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="px-0 py-0"
+              >
+                <div
+                  className={cn(
+                    "group flex items-center justify-between gap-2 px-3 py-2 rounded-lg border bg-card hover:bg-card-hover hover:border-hover transition-colors cursor-pointer min-h-[80px]",
+                    className,
+                  )}
+                  onClick={() => onSessionClick?.(session)}
                 >
-                  <div
-                    className={cn(
-                      "group flex items-center justify-between px-3 py-2 rounded-lg border bg-card hover:bg-card-hover hover:border-hover transition-colors cursor-pointer h-full",
-                      className,
-                    )}
-                    onClick={() => onSessionClick?.(session)}
-                  >
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="flex-shrink-0">
-                        <MessagesSquare
-                          className={cn(
-                            "h-5 w-5",
-                            (session as any).live_session_type === SESSION_TYPES.CLAUDIO ? "text-accent" :
-                            (session as any).live_session_type === SESSION_TYPES.NATIVE ? "text-info" :
-                            "text-muted-foreground"
-                          )}
-                        />
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="flex-shrink-0 p-2">
+                      <MessagesSquare
+                        className={cn(
+                          "h-5 w-5",
+                          session.live_session_type
+                            ? "text-accent"
+                            : "text-muted-foreground",
+                        )}
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-3">
+                        <p
+                          className="text-sm font-medium leading-tight flex-1"
+                          style={{
+                            display: "-webkit-box",
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: "vertical",
+                            overflow: "hidden",
+                            wordBreak: "break-word",
+                          }}
+                        >
+                          {session.first_message || "Untitled Session"}
+                        </p>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p
-                            className="text-sm font-medium leading-tight flex-1"
-                            style={{
-                              display: "-webkit-box",
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: "vertical",
-                              overflow: "hidden",
-                              wordBreak: "break-word",
-                            }}
-                          >
-                            {session.first_message || "Untitled Session"}
-                          </p>
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          <span>
+                            {session.created_at
+                              ? formatUnixTimestamp(session.created_at)
+                              : "Unknown"}
+                          </span>
                         </div>
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        {session.modified_at && (
                           <div className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
+                            <Activity className="h-3 w-3" />
                             <span>
-                              {session.created_at
-                                ? formatUnixTimestamp(session.created_at)
-                                : "Unknown"}
+                              {formatTimeAgo(session.modified_at * 1000)}
                             </span>
                           </div>
-                          {session.modified_at && (
-                            <div className="flex items-center gap-1">
-                              <Activity className="h-3 w-3" />
-                              <span>
-                                {formatTimeAgo(session.modified_at * 1000)}
-                              </span>
-                            </div>
-                          )}
-                          {session.size_bytes !== undefined && (
-                            <div className="flex items-center gap-1">
-                              <HardDrive className="h-3 w-3" />
-                              <span>{formatFileSize(session.size_bytes)}</span>
-                            </div>
-                          )}
-                          {(session as any).live_session_type === SESSION_TYPES.CLAUDIO && (
-                            <Badge
-                              variant="outline"
-                              className="text-xs text-accent border-accent/50"
-                            >
-                              Live
-                            </Badge>
-                          )}
-                          {(session as any).live_session_type === SESSION_TYPES.NATIVE && (
-                            <Badge
-                              variant="outline"
-                              className="text-xs text-info border-info/50"
-                            >
-                              Live
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {/* Message count badge */}
-                      {session.message_count !== undefined && (
-                        <div className="flex items-center gap-1 bg-accent px-2 py-1 rounded-full text-xs">
-                          <MessageSquare className="h-3 w-3" />
-                          <span>{session.message_count}</span>
-                        </div>
-                      )}
-
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          disabled={(session as any).live_session_type === SESSION_TYPES.NATIVE}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if ((session as any).live_session_type !== SESSION_TYPES.NATIVE) {
-                              onSessionDelete?.(session);
-                            }
-                          }}
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive disabled:opacity-30 disabled:hover:text-muted-foreground"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        )}
+                        {session.size_bytes !== undefined && (
+                          <div className="flex items-center gap-1">
+                            <HardDrive className="h-3 w-3" />
+                            <span>{formatFileSize(session.size_bytes)}</span>
+                          </div>
+                        )}
+                        {session.live_session_type && (
+                          <Badge
+                            variant="outline"
+                            className="text-xs text-accent border-accent"
+                          >
+                            {session.live_session_type.toLowerCase()}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </div>
-                </motion.div>
-              );
-            })}
+                  <div className="flex items-center gap-2">
+                    {/* Message count badge */}
+                    {session.message_count !== undefined && (
+                      <div className="flex items-center gap-1 bg-accent px-2 py-1 rounded-full text-xs">
+                        <MessageSquare className="h-3 w-3" />
+                        <span>{session.message_count}</span>
+                      </div>
+                    )}
+
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled={session.live_session_type === "NATIVE"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSessionDelete?.(session);
+                        }}
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive disabled:opacity-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </div>
-
 
         {/* Scroll to top button */}
         <AnimatePresence>

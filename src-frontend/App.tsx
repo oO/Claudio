@@ -375,13 +375,6 @@ function AppContent() {
     // TODO: Implement session navigation logic
   };
 
-  /**
-   * Handles agent execution - TODO: Implement agent execution
-   */
-  const handleExecuteAgent = (agent: Agent) => {
-    logger.log("Execute agent:", agent.name);
-    // TODO: Implement agent execution logic
-  };
 
   /**
    * Handles agent editing - TODO: Implement agent editing
@@ -543,7 +536,6 @@ function AppContent() {
                         onEditClaudeFile={handleEditClaudeFile}
                         onSessionDeleted={handleSessionDeleted}
                         onProjectDeleted={handleProjectDeleted}
-                        onExecuteAgent={handleExecuteAgent}
                         onEditAgent={handleEditAgent}
                         onExportAgent={handleExportAgent}
                         onDeleteAgent={handleDeleteAgent}

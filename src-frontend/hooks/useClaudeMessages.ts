@@ -1,8 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { api } from '@/lib/api';
-import type { ClaudeStreamMessage } from '@/components/agents';
+import type { ClaudeStreamMessage } from "@/lib/outputCache";
 import { logger } from '@/lib/logger';
+import { eventManager } from '@/lib/TauriEventManager';
 
 interface UseClaudeMessagesOptions {
   onSessionInfo?: (info: { sessionId: string; projectId: string }) => void;
@@ -16,7 +16,7 @@ export function useClaudeMessages(options: UseClaudeMessagesOptions = {}) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   
-  const eventListenerRef = useRef<UnlistenFn | null>(null);
+  const eventUnsubscribeRef = useRef<(() => void) | null>(null);
   const accumulatedContentRef = useRef<{ [key: string]: string }>({});
 
   const handleMessage = useCallback((message: ClaudeStreamMessage) => {
@@ -100,13 +100,13 @@ export function useClaudeMessages(options: UseClaudeMessagesOptions = {}) {
   // Set up event listener
   useEffect(() => {
     const setupListener = async () => {
-      if (eventListenerRef.current) {
-        eventListenerRef.current();
+      if (eventUnsubscribeRef.current) {
+        eventUnsubscribeRef.current();
       }
       
-      eventListenerRef.current = await listen<string>("claude-stream", (event) => {
+      eventUnsubscribeRef.current = await eventManager.subscribe<string>("claude-stream", (payload) => {
         try {
-          const message = JSON.parse(event.payload) as ClaudeStreamMessage;
+          const message = JSON.parse(payload) as ClaudeStreamMessage;
           handleMessage(message);
         } catch (error) {
           logger.error("Failed to parse Claude stream message:", error);
@@ -117,8 +117,8 @@ export function useClaudeMessages(options: UseClaudeMessagesOptions = {}) {
     setupListener();
 
     return () => {
-      if (eventListenerRef.current) {
-        eventListenerRef.current();
+      if (eventUnsubscribeRef.current) {
+        eventUnsubscribeRef.current();
       }
     };
   }, [handleMessage]);

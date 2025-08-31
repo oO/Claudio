@@ -5,7 +5,7 @@ import { DebugLabel } from "@/components/ui/atoms";
 import { MessageTemplate } from "./MessageTemplate";
 import { useMessageContent } from "@/hooks/useMessageContent";
 import { useAgentStyling } from "@/hooks/useAgentStyling";
-import type { ClaudeStreamMessage } from "@/components/agents";
+import type { ClaudeStreamMessage } from "@/lib/outputCache";
 
 interface SubAgentMessageProps {
   message: ClaudeStreamMessage;

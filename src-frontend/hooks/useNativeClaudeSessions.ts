@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { logger } from '@/lib/logger';
+import { eventManager } from '@/lib/TauriEventManager';
 
 /**
  * Type definition for a native Claude session (matches backend)
@@ -78,12 +78,12 @@ export const useNativeClaudeSessions = () => {
 
   // Listen for real-time thinking updates
   useEffect(() => {
-    let unlistenThinking: UnlistenFn | null = null;
+    let unsubscribe: (() => void) | null = null;
 
     const setupThinkingListener = async () => {
       try {
-        unlistenThinking = await listen<ClaudeThinkingEvent>('claude-session-thinking', (event) => {
-          const { session_id, status, title, message } = event.payload;
+        unsubscribe = await eventManager.subscribe<ClaudeThinkingEvent>('claude-session-thinking', (thinkingEvent) => {
+          const { session_id, status, title, message } = thinkingEvent;
           
           logger.debug(`Claude thinking event: ${session_id} → ${status}`);
           
@@ -112,8 +112,8 @@ export const useNativeClaudeSessions = () => {
     setupThinkingListener();
 
     return () => {
-      if (unlistenThinking) {
-        unlistenThinking();
+      if (unsubscribe) {
+        unsubscribe();
       }
     };
   }, []);

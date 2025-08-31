@@ -10,7 +10,7 @@ import { SessionMessages } from './SessionMessages';
 import { VirtuosoChatMessages } from './VirtuosoChatMessages';
 import { PromptInput } from './PromptInput';
 import type { Session } from '@/lib/api';
-import type { ClaudeStreamMessage } from '@/components/agents';
+import type { ClaudeStreamMessage } from "@/lib/outputCache";
 
 interface SessionHandleViewProps {
   session: Session;

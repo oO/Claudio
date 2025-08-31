@@ -590,14 +590,6 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                           },
                         });
                       }}
-                      onExecuteAgent={(agent) => {
-                        // Open agent execution in a new tab
-                        window.dispatchEvent(
-                          new CustomEvent("open-agent-execution", {
-                            detail: { agent },
-                          }),
-                        );
-                      }}
                       onEditAgent={(agent, currentActiveTab: string) => {
                         // Open agent edit in same tab with restore state
                         updateTab(tab.id, {

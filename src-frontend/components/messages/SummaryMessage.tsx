@@ -4,7 +4,7 @@ import { DebugLabel } from "@/components/ui/atoms";
 import { MarkdownRenderer } from "@/components/ui/molecules";
 import { MessageTemplate } from "./MessageTemplate";
 import { cn } from "@/lib/utils";
-import type { ClaudeStreamMessage } from "@/components/agents";
+import type { ClaudeStreamMessage } from "@/lib/outputCache";
 
 // Constants
 const PREVIEW_LINES = 8; // Number of lines to show when collapsed

@@ -30,7 +30,7 @@ import { PromptInput, type PromptInputRef } from "./PromptInput";
 import { useSessionFileWatcher } from "@/hooks/useSessionFileWatcher";
 import { useScrollPinning } from "@/hooks/useScrollPinning";
 import { isEditorSession } from "@/lib/sessionUtils";
-import type { ClaudeStreamMessage } from "@/components/agents";
+import type { ClaudeStreamMessage } from "@/lib/outputCache";
 
 // Backend process event types
 interface ClaudeProcessEvent {

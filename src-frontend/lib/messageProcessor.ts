@@ -1,5 +1,5 @@
 import { logger } from '@/lib/logger';
-import type { ClaudeStreamMessage } from '@/components/agents';
+import type { ClaudeStreamMessage } from "@/lib/outputCache";
 
 /**
  * Process messages to add agent identification (agentType, agentName, subagentType)

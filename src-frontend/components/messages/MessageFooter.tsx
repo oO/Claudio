@@ -5,7 +5,7 @@ import {
   ArrowUpFromLine,
   ArrowDownToLine,
 } from "lucide-react";
-import type { ClaudeStreamMessage } from "@/components/agents";
+import type { ClaudeStreamMessage } from "@/lib/outputCache";
 import { useMessageClipboard } from "@/hooks/useMessageClipboard";
 import { useSessionContext } from "@/contexts/SessionContext";
 

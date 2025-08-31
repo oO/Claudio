@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { api, type Session } from '@/lib/api';
 import { DebugLabel } from '@/components/ui/atoms';
-import type { ClaudeStreamMessage } from '@/components/agents';
+import type { ClaudeStreamMessage } from "@/lib/outputCache";
 import { logger } from '@/lib/logger';
 
 interface SessionActionsProps {

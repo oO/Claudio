@@ -7,7 +7,6 @@ import { DebugLabel } from "@/components/ui/atoms";
 
 interface ProjectAgentsTabProps {
   projectPath: string;
-  onExecuteAgent?: (agent: Agent) => void;
   onEditAgent?: (agent: Agent) => void;
   onExportAgent?: (agent: Agent) => void;
   onDeleteAgent?: (agent: Agent) => void;
@@ -18,7 +17,6 @@ interface ProjectAgentsTabProps {
 
 export const ProjectAgentsTab: React.FC<ProjectAgentsTabProps> = ({
   projectPath,
-  onExecuteAgent,
   onEditAgent,
   onExportAgent,
   onDeleteAgent,
@@ -39,7 +37,6 @@ export const ProjectAgentsTab: React.FC<ProjectAgentsTabProps> = ({
           </div>
           <AgentsContent
             projectPath={projectPath}
-            onExecuteAgent={onExecuteAgent}
             onEditAgent={onEditAgent}
             onExportAgent={onExportAgent}
             onDeleteAgent={onDeleteAgent}

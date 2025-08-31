@@ -3,7 +3,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { invoke } from '@tauri-apps/api/core';
 import { api } from "@/lib/api";
 import { DebugLabel } from "@/components/ui/atoms";
-import type { ClaudeStreamMessage } from "@/components/agents";
+import type { ClaudeStreamMessage } from "@/lib/outputCache";
 import { logger } from '@/lib/logger';
 
 interface SessionMessageHandlerProps {

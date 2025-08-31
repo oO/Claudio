@@ -3,7 +3,7 @@ import { Bot } from "lucide-react";
 import { DebugLabel } from "@/components/ui/atoms";
 import { MessageTemplate } from "./MessageTemplate";
 import { useMessageContent } from "@/hooks/useMessageContent";
-import type { ClaudeStreamMessage } from "@/components/agents";
+import type { ClaudeStreamMessage } from "@/lib/outputCache";
 
 interface AssistantMessageProps {
   message: ClaudeStreamMessage;

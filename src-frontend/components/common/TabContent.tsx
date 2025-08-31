@@ -24,9 +24,6 @@ const AgentRunOutputViewer = lazy(() =>
     default: m.AgentRunOutputViewer,
   })),
 );
-const AgentExecution = lazy(() =>
-  import("@/components/agents").then((m) => ({ default: m.AgentExecution })),
-);
 const CreateAgent = lazy(() =>
   import("@/components/agents").then((m) => ({ default: m.CreateAgent })),
 );
@@ -117,16 +114,6 @@ const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
           </NavigationProvider>
         );
 
-      case "agent-execution":
-        if (!tab.agentData) {
-          return <div className="p-4">No agent data specified</div>;
-        }
-        return (
-          <NavigationProvider tabId={tab.id}>
-            <AgentExecution agent={tab.agentData} onBack={() => {}} />
-          </NavigationProvider>
-        );
-
       case "create-agent":
         return (
           <NavigationProvider tabId={tab.id}>
@@ -176,7 +163,6 @@ export const TabContent: React.FC = () => {
     createChatTab,
     findTabBySessionId,
     createClaudeFileTab,
-    createAgentExecutionTab,
     createCreateAgentTab,
     createImportAgentTab,
     closeTab,
@@ -237,11 +223,6 @@ export const TabContent: React.FC = () => {
       }
     };
 
-    const handleOpenAgentExecution = (event: CustomEvent) => {
-      const { agent, tabId } = event.detail;
-      createAgentExecutionTab(agent, tabId);
-    };
-
     const handleOpenCreateAgentTab = () => {
       createCreateAgentTab();
     };
@@ -297,10 +278,6 @@ export const TabContent: React.FC = () => {
       "open-claude-file",
       handleOpenClaudeFile as EventListener,
     );
-    window.addEventListener(
-      "open-agent-execution",
-      handleOpenAgentExecution as EventListener,
-    );
     window.addEventListener("open-create-agent-tab", handleOpenCreateAgentTab);
     window.addEventListener(
       "create-edit-agent-tab",
@@ -320,10 +297,6 @@ export const TabContent: React.FC = () => {
       window.removeEventListener(
         "open-claude-file",
         handleOpenClaudeFile as EventListener,
-      );
-      window.removeEventListener(
-        "open-agent-execution",
-        handleOpenAgentExecution as EventListener,
       );
       window.removeEventListener(
         "open-create-agent-tab",
@@ -347,7 +320,6 @@ export const TabContent: React.FC = () => {
     createChatTab,
     findTabBySessionId,
     createClaudeFileTab,
-    createAgentExecutionTab,
     createCreateAgentTab,
     createImportAgentTab,
     closeTab,

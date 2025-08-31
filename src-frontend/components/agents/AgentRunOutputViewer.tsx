@@ -6,11 +6,11 @@ import { Toast, ToastContainer } from '@/components/ui/toast';
 import { Popover } from '@/components/ui/popover';
 import { api, type AgentRunWithMetrics } from '@/lib/api';
 import { useOutputCache } from '@/lib/outputCache';
-import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import { eventManager } from '@/lib/TauriEventManager';
 import { MessageRouter } from '@/components/messages';
 import { ErrorBoundary, ICON_MAP as AGENT_ICONS } from '@/components/common';
 import { formatISOTimestamp } from '@/lib/date-utils';
-import type { ClaudeStreamMessage } from '@/hooks/useAgentExecution';
+import type { ClaudeStreamMessage } from '@/lib/outputCache';
 import { useTabState } from '@/hooks/useTabState';
 import { logger } from '@/lib/logger';
 
@@ -69,7 +69,7 @@ export function AgentRunOutputViewer({
   
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const outputEndRef = useRef<HTMLDivElement>(null);
-  const unlistenRefs = useRef<UnlistenFn[]>([]);
+  const unsubscribeRefs = useRef<(() => void)[]>([]);
   const { getCachedOutput, setCachedOutput } = useOutputCache();
   
   // Derive execution status from run
@@ -122,8 +122,8 @@ export function AgentRunOutputViewer({
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      unlistenRefs.current.forEach(unlisten => unlisten());
-      unlistenRefs.current = [];
+      unsubscribeRefs.current.forEach(unsubscribe => unsubscribe());
+      unsubscribeRefs.current = [];
       hasSetupListenersRef.current = false;
     };
   }, []);
@@ -244,8 +244,8 @@ export function AgentRunOutputViewer({
     
     try {
       // Clean up existing listeners
-      unlistenRefs.current.forEach(unlisten => unlisten());
-      unlistenRefs.current = [];
+      unsubscribeRefs.current.forEach(unsubscribe => unsubscribe());
+      unsubscribeRefs.current = [];
 
       // Mark that we've set up listeners
       hasSetupListenersRef.current = true;
@@ -257,7 +257,7 @@ export function AgentRunOutputViewer({
       }, 100);
 
       // Set up live event listeners with run ID isolation
-      const outputUnlisten = await listen<string>(`agent-output:${run!.id}`, (event) => {
+      const outputUnsubscribe = await eventManager.subscribe<string>(`agent-output:${run!.id}`, (payload) => {
         try {
           // Skip messages during initial load phase
           if (isInitialLoadRef.current) {
@@ -265,31 +265,31 @@ export function AgentRunOutputViewer({
           }
           
           // Store raw JSONL
-          setRawJsonlOutput(prev => [...prev, event.payload]);
+          setRawJsonlOutput(prev => [...prev, payload]);
           
           // Parse and display
-          const message = JSON.parse(event.payload) as ClaudeStreamMessage;
+          const message = JSON.parse(payload) as ClaudeStreamMessage;
           setMessages(prev => [...prev, message]);
         } catch (err) {
-          logger.error("[AgentRunOutputViewer] Failed to parse message:", err, event.payload);
+          logger.error("[AgentRunOutputViewer] Failed to parse message:", err, payload);
         }
       });
 
-      const errorUnlisten = await listen<string>(`agent-error:${run!.id}`, (event) => {
-        logger.error("[AgentRunOutputViewer] Agent error:", event.payload);
-        setToast({ message: event.payload, type: 'error' });
+      const errorUnsubscribe = await eventManager.subscribe<string>(`agent-error:${run!.id}`, (payload) => {
+        logger.error("[AgentRunOutputViewer] Agent error:", payload);
+        setToast({ message: payload, type: 'error' });
       });
 
-      const completeUnlisten = await listen<boolean>(`agent-complete:${run!.id}`, () => {
+      const completeUnsubscribe = await eventManager.subscribe<boolean>(`agent-complete:${run!.id}`, () => {
         setToast({ message: 'Agent execution completed', type: 'success' });
         // Don't set status here as the parent component should handle it
       });
 
-      const cancelUnlisten = await listen<boolean>(`agent-cancelled:${run!.id}`, () => {
+      const cancelUnsubscribe = await eventManager.subscribe<boolean>(`agent-cancelled:${run!.id}`, () => {
         setToast({ message: 'Agent execution was cancelled', type: 'error' });
       });
 
-      unlistenRefs.current = [outputUnlisten, errorUnlisten, completeUnlisten, cancelUnlisten];
+      unsubscribeRefs.current = [outputUnsubscribe, errorUnsubscribe, completeUnsubscribe, cancelUnsubscribe];
     } catch (error) {
     }
   };
@@ -379,8 +379,8 @@ export function AgentRunOutputViewer({
         setToast({ message: 'Agent execution stopped', type: 'success' });
         
         // Clean up listeners
-        unlistenRefs.current.forEach(unlisten => unlisten());
-        unlistenRefs.current = [];
+        unsubscribeRefs.current.forEach(unsubscribe => unsubscribe());
+        unsubscribeRefs.current = [];
         hasSetupListenersRef.current = false;
         
         // Add a message indicating execution was stopped

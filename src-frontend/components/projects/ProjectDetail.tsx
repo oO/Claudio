@@ -52,10 +52,6 @@ interface ProjectDetailProps {
    */
   onEditClaudeFile?: (file: ClaudeMdFile, activeTab: string) => void;
   /**
-   * Callback when executing an agent
-   */
-  onExecuteAgent?: (agent: Agent) => void;
-  /**
    * Callback when editing an agent
    */
   onEditAgent?: (agent: Agent, activeTab: string) => void;
@@ -134,7 +130,6 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
   onActiveTabChange,
   onSessionClick,
   onEditClaudeFile,
-  onExecuteAgent,
   onEditAgent,
   onExportAgent,
   onDeleteAgent,
@@ -276,7 +271,6 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
         <TabsContent value="agents" className="mt-2">
           <ProjectAgentsTab
             projectPath={projectPath}
-            onExecuteAgent={onExecuteAgent}
             onEditAgent={(agent) => onEditAgent?.(agent, activeTab)}
             onExportAgent={onExportAgent}
             onDeleteAgent={onDeleteAgent}

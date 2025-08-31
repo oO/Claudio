@@ -1,6 +1,6 @@
 import { useAgentMetadata } from '@/hooks';
 import { getAgentColor } from '@/lib/agentColors';
-import type { ClaudeStreamMessage } from '@/components/agents';
+import type { ClaudeStreamMessage } from "@/lib/outputCache";
 
 interface AgentStyling {
   agentName: string;

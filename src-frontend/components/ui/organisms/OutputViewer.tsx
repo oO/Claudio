@@ -6,7 +6,7 @@ import { StatusMessage } from "@/components/ui/molecules/StatusMessage";
 import { ScrollIndicator } from "@/components/ui/atoms/ScrollIndicator";
 import { MessageRouter } from "@/components/messages/MessageRouter";
 import { ErrorBoundary } from "@/components/common";
-import type { ClaudeStreamMessage } from "@/hooks/useAgentExecution";
+import type { ClaudeStreamMessage } from "@/lib/outputCache";
 import { cn } from "@/lib/utils";
 
 export interface OutputViewerProps {

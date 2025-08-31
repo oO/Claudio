@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2025-08-31
+
+### Fixed
+- Replaced React Virtuoso with simple scrollable list to fix rendering issues in session display
+- Restored original session card layout and consistent spacing (8px gap, mb-3, min-h-[80px])
+- Fixed live session detection using live_session_type property instead of broken isEditorSession logic
+- Added proper "native" and "claudio" session type badges with accent styling
+- Disabled delete buttons for native sessions to prevent accidental deletion of active Claude Code sessions
+- Improved container scrolling with proper height calculations for displaying all 26 sessions
+
+### Removed  
+- Cleaned up unused SessionCard component and imports
+- Removed 1,400+ lines of dead execution-related code and hooks
+
 ## [0.4.0] - 2025-08-30
 
 ### Fixed

@@ -24,6 +24,14 @@ export { TAB_SCREEN_NAMES } from './useAnalytics';
 
 // Session file watching hooks
 export { useSessionFileWatcher, useSessionListWatcher } from './useSessionFileWatcher';
+export { 
+  useGlobalEvent, 
+  useSessionFileEvents, 
+  useSessionMessageStream, 
+  useClaudeProcessEvents, 
+  useAgentEvents,
+  useEventManagerDebug 
+} from './useGlobalEvent';
 export { useScrollPinning } from './useScrollPinning';
 
 // Prompt input hooks
@@ -42,9 +50,7 @@ export { useLocalProjectSettings } from './useLocalProjectSettings';
 export { useTriLevelSettings } from './useTriLevelSettings';
 
 // Agent execution hooks
-export { useAgentExecution, type ClaudeStreamMessage } from './useAgentExecution';
 export { useAgentMetadata } from './useAgentMetadata';
-export { useExecutionOutput } from './useExecutionOutput';
 
 // Message hooks
 export { useMessageContent } from './useMessageContent';

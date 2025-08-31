@@ -4,7 +4,7 @@ import {
   ToolCallRenderer,
   ToolResultRenderer,
 } from '@/components/ui';
-import type { ClaudeStreamMessage } from '@/components/agents';
+import type { ClaudeStreamMessage } from "@/lib/outputCache";
 import { useStreamData } from '../contexts/StreamDataContext';
 
 /**

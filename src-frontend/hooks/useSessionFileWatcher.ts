@@ -1,11 +1,12 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 import { logger } from '@/lib/logger';
+import { useSessionFileEvents } from '@/hooks/useGlobalEvent';
 import type { Session } from '@/lib/api';
 
 /**
  * Session file event types that can be received from the backend
+ * This matches the actual structure sent by the backend: {type, data}
  */
 export interface SessionFileEvent {
   type: 'Modified' | 'Created' | 'Removed';
@@ -186,7 +187,6 @@ export function useSessionFileWatcher({
 }: UseSessionFileWatcherOptions) {
   logger.log(`🎬 useSessionFileWatcher called: projectId=${projectId}, enabled=${enabled}, session=${session ? 'exists' : 'null'}, tabId=${tabId}`);
   
-  const unlistenRef = useRef<UnlistenFn | null>(null);
   const scrollPositionRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   // Store scroll position before refresh
@@ -207,39 +207,72 @@ export function useSessionFileWatcher({
 
   // Handle session file events from backend
   const handleSessionFileEvent = useCallback(async (event: SessionFileEvent) => {
+    logger.debug(`🎯 handleSessionFileEvent called with event:`, event);
+    logger.debug(`🎯 Current state: projectId=${projectId}, session=${session ? session.id : 'null'}`);
+    
+    // Extract type and data from new event structure
+    const eventType = event.type;
+    const eventData = event.data;
+
+    logger.debug(`🎯 Event details: type=${eventType}, sessionId=${eventData.session_id}, eventProjectId=${eventData.project_id}`);
+
     // Only handle events for the current project
-    if (projectId && event.data.project_id !== projectId) {
+    if (projectId && eventData.project_id !== projectId) {
+      logger.debug(`🚫 Project ID mismatch: expected ${projectId}, got ${eventData.project_id}`);
       return;
     }
+    
+    logger.debug(`✅ Project ID matches, proceeding with event handling`);
 
-    switch (event.type) {
+    switch (eventType) {
       case 'Modified':
+        logger.debug(`🔄 Modified event: sessionId=${eventData.session_id}`);
+        logger.debug(`🔍 hasActiveTab check: ${sessionTabRegistry.hasActiveTab(eventData.session_id)}`);
+        
         // Only refresh if this session has active tabs (is being watched)
-        if (sessionTabRegistry.hasActiveTab(event.data.session_id)) {
+        if (sessionTabRegistry.hasActiveTab(eventData.session_id)) {
+          logger.debug(`✅ Session has active tabs, checking if current session matches`);
+          
           // If this is the current session, refresh it
-          if (session && event.data.session_id === session.id) {
+          if (session && eventData.session_id === session.id) {
+            logger.debug(`🎯 This is the current session, refreshing...`);
             preserveScrollPosition();
             
             try {
               await onSessionChanged();
               restoreScrollPosition();
+              logger.debug(`✅ Current session refreshed successfully`);
             } catch (error) {
               logger.error('Failed to refresh session after file change:', error);
             }
+          } else if (!session) {
+            logger.debug(`📋 No current session, calling onSessionChanged for list refresh...`);
+            try {
+              await onSessionChanged();
+              logger.debug(`✅ Session list refreshed successfully`);
+            } catch (error) {
+              logger.error('Failed to refresh session list after file change:', error);
+            }
+          } else {
+            logger.debug(`📝 Modified session ${eventData.session_id} is not current session ${session.id}`);
           }
+        } else {
+          logger.debug(`🚫 Session ${eventData.session_id} has no active tabs, skipping`);
         }
         break;
 
       case 'Created':
-        onSessionCreated?.(event.data.session_id);
+        logger.debug(`➕ Created event: sessionId=${eventData.session_id}`);
+        onSessionCreated?.(eventData.session_id);
         break;
 
       case 'Removed':
-        onSessionRemoved?.(event.data.session_id);
+        logger.debug(`❌ Removed event: sessionId=${eventData.session_id}`);
+        onSessionRemoved?.(eventData.session_id);
         break;
 
       default:
-        logger.warn('Unknown session file event type:', event.type);
+        logger.warn('Unknown session file event type:', eventType);
     }
   }, [session, projectId, onSessionChanged, onSessionCreated, onSessionRemoved, preserveScrollPosition, restoreScrollPosition]);
 
@@ -305,44 +338,12 @@ export function useSessionFileWatcher({
     };
   }, [projectId]); // Include projectId dependency for cleanup
 
-  // Setup global event listener for session file changes (shared across all tabs)
-  useEffect(() => {
-    if (!enabled) return;
-
-    let mounted = true;
-
-    const setupListener = async () => {
-      try {
-        // Only setup listener if not already set up globally
-        if (!unlistenRef.current) {
-          const unlisten = await listen<SessionFileEvent>('session-file-changed', (event) => {
-            if (mounted) {
-              handleSessionFileEvent(event.payload);
-            }
-          });
-
-          if (mounted) {
-            unlistenRef.current = unlisten;
-          } else {
-            // Component unmounted before listener was set up
-            unlisten();
-          }
-        }
-      } catch (error) {
-        logger.error('Failed to setup session file event listener:', error);
-      }
-    };
-
-    setupListener();
-
-    return () => {
-      mounted = false;
-      if (unlistenRef.current) {
-        unlistenRef.current();
-        unlistenRef.current = null;
-      }
-    };
-  }, [enabled, handleSessionFileEvent]);
+  // Use global event manager for session file changes
+  useSessionFileEvents<SessionFileEvent>(
+    projectId,
+    handleSessionFileEvent,
+    enabled
+  );
 
   // Manual refresh function for compatibility
   const forceRefresh = useCallback(async () => {
@@ -403,9 +404,21 @@ export function useSessionListWatcher(
   
   return useSessionFileWatcher({
     projectId,
-    onSessionChanged: onSessionListChanged,
-    onSessionCreated: () => onSessionListChanged(),
-    onSessionRemoved: () => onSessionListChanged(),
+    onSessionChanged: async () => {
+      logger.debug(`📋 Session list watcher onSessionChanged called for project ${projectId}`);
+      await onSessionListChanged();
+      logger.debug(`📋 Session list watcher onSessionChanged completed for project ${projectId}`);
+    },
+    onSessionCreated: async () => {
+      logger.debug(`➕ Session list watcher onSessionCreated called for project ${projectId}`);
+      await onSessionListChanged();
+      logger.debug(`➕ Session list watcher onSessionCreated completed for project ${projectId}`);
+    },
+    onSessionRemoved: async () => {
+      logger.debug(`❌ Session list watcher onSessionRemoved called for project ${projectId}`);
+      await onSessionListChanged();
+      logger.debug(`❌ Session list watcher onSessionRemoved completed for project ${projectId}`);
+    },
     enabled,
     tabId: tabId.current
   });

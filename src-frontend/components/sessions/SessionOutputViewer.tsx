@@ -9,7 +9,7 @@ import { Popover } from '@/components/ui/popover';
 import { api } from '@/lib/api';
 import { useOutputCache } from '@/lib/outputCache';
 import type { AgentRun } from '@/lib/api';
-import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import { eventManager } from '@/lib/TauriEventManager';
 import { MessageRouter } from '../messages';
 import { SessionProvider } from '@/contexts/SessionContext';
 import { StreamDataProvider } from '@/contexts/StreamDataContext';
@@ -64,7 +64,7 @@ export function SessionOutputViewer({ session, onClose, className }: SessionOutp
   const outputEndRef = useRef<HTMLDivElement>(null);
   const fullscreenScrollRef = useRef<HTMLDivElement>(null);
   const fullscreenMessagesEndRef = useRef<HTMLDivElement>(null);
-  const unlistenRefs = useRef<UnlistenFn[]>([]);
+  const unsubscribeRefs = useRef<(() => void)[]>([]);
   const { getCachedOutput, setCachedOutput } = useOutputCache();
 
   // Auto-scroll logic similar to AgentExecution
@@ -90,7 +90,7 @@ export function SessionOutputViewer({ session, onClose, className }: SessionOutp
   // Clean up listeners on unmount
   useEffect(() => {
     return () => {
-      unlistenRefs.current.forEach(unlisten => unlisten());
+      unsubscribeRefs.current.forEach(unsubscribe => unsubscribe());
     };
   }, []);
 
@@ -243,38 +243,38 @@ export function SessionOutputViewer({ session, onClose, className }: SessionOutp
     
     try {
       // Clean up existing listeners
-      unlistenRefs.current.forEach(unlisten => unlisten());
-      unlistenRefs.current = [];
+      unsubscribeRefs.current.forEach(unsubscribe => unsubscribe());
+      unsubscribeRefs.current = [];
 
       // Set up live event listeners with run ID isolation
-      const outputUnlisten = await listen<string>(`agent-output:${session.id}`, (event) => {
+      const outputUnsubscribe = await eventManager.subscribe<string>(`agent-output:${session.id}`, (payload) => {
         try {
           // Store raw JSONL
-          setRawJsonlOutput(prev => [...prev, event.payload]);
+          setRawJsonlOutput(prev => [...prev, payload]);
           
           // Parse and display
-          const message = JSON.parse(event.payload) as ClaudeStreamMessage;
+          const message = JSON.parse(payload) as ClaudeStreamMessage;
           setMessages(prev => [...prev, message]);
         } catch (err) {
-          logger.error("Failed to parse message:", err, event.payload);
+          logger.error("Failed to parse message:", err, payload);
         }
       });
 
-      const errorUnlisten = await listen<string>(`agent-error:${session.id}`, (event) => {
-        logger.error("Agent error:", event.payload);
-        setToast({ message: event.payload, type: 'error' });
+      const errorUnsubscribe = await eventManager.subscribe<string>(`agent-error:${session.id}`, (payload) => {
+        logger.error("Agent error:", payload);
+        setToast({ message: payload, type: 'error' });
       });
 
-      const completeUnlisten = await listen<boolean>(`agent-complete:${session.id}`, () => {
+      const completeUnsubscribe = await eventManager.subscribe<boolean>(`agent-complete:${session.id}`, () => {
         setToast({ message: 'Agent execution completed', type: 'success' });
         // Don't set status here as the parent component should handle it
       });
 
-      const cancelUnlisten = await listen<boolean>(`agent-cancelled:${session.id}`, () => {
+      const cancelUnsubscribe = await eventManager.subscribe<boolean>(`agent-cancelled:${session.id}`, () => {
         setToast({ message: 'Agent execution was cancelled', type: 'error' });
       });
 
-      unlistenRefs.current = [outputUnlisten, errorUnlisten, completeUnlisten, cancelUnlisten];
+      unsubscribeRefs.current = [outputUnsubscribe, errorUnsubscribe, completeUnsubscribe, cancelUnsubscribe];
     } catch (error) {
       logger.error('Failed to set up live event listeners:', error);
     }
