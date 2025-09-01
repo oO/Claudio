@@ -24,6 +24,7 @@ import { DebugLabel } from "@/components/ui/atoms";
 import { Badge } from "@/components/ui/badge";
 import { SessionDeleteDialog } from "./SessionDeleteDialog";
 import { useSessionListWatcher } from "@/hooks";
+import { SESSION_TYPES } from "@/lib/sessionHandleApi";
 
 interface ProjectSessionTabProps {
   sessions: DecoratedSession[];
@@ -61,6 +62,11 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
   const [scrollPosition, setScrollPosition] = useState({ start: 0, end: 0 });
   const [containerHeight, setContainerHeight] = useState(600);
   const [showSessionDeleteDialog, setShowSessionDeleteDialog] = useState(false);
+
+  // Session type filters state
+  const [showRegularSessions, setShowRegularSessions] = useState(true);
+  const [showNativeSessions, setShowNativeSessions] = useState(true);
+  const [showClaudioSessions, setShowClaudioSessions] = useState(true);
 
   // Watch for session file changes
   const handleSessionListChanged = async () => {
@@ -105,6 +111,23 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
     handleSessionListChanged,
     true, // enabled
   );
+
+  // Filter sessions based on type toggles
+  const filteredSessions = sessions.filter((session) => {
+    if (!session.live_session_type && !showRegularSessions) return false; // Regular sessions
+    if (
+      session.live_session_type === SESSION_TYPES.NATIVE &&
+      !showNativeSessions
+    )
+      return false; // Native sessions
+    if (
+      session.live_session_type &&
+      session.live_session_type !== SESSION_TYPES.NATIVE &&
+      !showClaudioSessions
+    )
+      return false; // Claudio sessions
+    return true;
+  });
 
   // Calculate container height based on actual position
   useEffect(() => {
@@ -155,11 +178,11 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
       const startIndex = Math.floor(scrollTop / itemHeight);
       const endIndex = Math.min(
         Math.ceil((scrollTop + containerHeight) / itemHeight),
-        sessions.length - 1,
+        filteredSessions.length - 1,
       );
 
       const start = Math.max(1, startIndex + 1); // 1-based
-      const end = Math.min(endIndex + 1, sessions.length);
+      const end = Math.min(endIndex + 1, filteredSessions.length);
       setScrollPosition({ start, end });
     };
 
@@ -169,7 +192,7 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
     return () => {
       element.removeEventListener("scroll", handleScroll);
     };
-  }, [sessions.length]);
+  }, [filteredSessions.length]);
 
   const scrollToTop = () => {
     scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
@@ -219,8 +242,7 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
                   No sessions found
                 </h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Start a new Claude Code session in this project to see it
-                  here.
+                  Start a new session in this project to see it here.
                 </p>
                 <Button onClick={onStartNewSession} size="sm" className="gap-2">
                   <Plus className="h-4 w-4" />
@@ -238,9 +260,9 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
     <Card className="relative flex flex-col h-full">
       <DebugLabel label="ProjectSessionTab" />
 
-      <CardContent className="p-0 flex flex-col flex-1">
+      <CardContent className="p-0 flex flex-col flex-1 gap-1">
         {/* Header */}
-        <div className="p-6 pb-2">
+        <div className="p-6 pb-0">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold mb-2 text-accent">
@@ -269,127 +291,196 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
             </div>
           </div>
 
-          {/* Scroll position counter */}
-          <div className="flex justify-end">
+          {/* Filters and scroll position counter */}
+          <div className="flex items-center justify-between pt-4">
+            <div className="flex items-center gap-1">
+              <button
+                className={cn(
+                  "flex items-center cursor-pointer transition-colors p-1 rounded-md",
+                  showClaudioSessions
+                    ? "text-accent bg-muted"
+                    : "text-muted-foreground bg-none",
+                )}
+                onClick={() => setShowClaudioSessions(!showClaudioSessions)}
+              >
+                <span className="text-xs px-2">Claudio</span>
+                <div className="flex items-center justify-center w-6 h-6 bg-card rounded-full text-xs font-medium">
+                  {
+                    sessions.filter(
+                      (s) =>
+                        s.live_session_type &&
+                        s.live_session_type !== SESSION_TYPES.NATIVE,
+                    ).length
+                  }
+                </div>
+              </button>
+              <button
+                className={cn(
+                  "flex items-center cursor-pointer transition-colors p-1 rounded-md",
+                  showNativeSessions
+                    ? "text-accent bg-muted"
+                    : "text-muted-foreground bg-none",
+                )}
+                onClick={() => setShowNativeSessions(!showNativeSessions)}
+              >
+                <span className="text-xs px-2">Native</span>
+                <div className="flex items-center justify-center w-6 h-6 bg-card rounded-full text-xs font-medium">
+                  {
+                    sessions.filter(
+                      (s) => s.live_session_type === SESSION_TYPES.NATIVE,
+                    ).length
+                  }
+                </div>
+              </button>
+              <button
+                className={cn(
+                  "flex items-center cursor-pointer transition-colors p-1 rounded-md",
+                  showRegularSessions
+                    ? "text-accent bg-muted"
+                    : "text-muted-foreground bg-none",
+                )}
+                onClick={() => setShowRegularSessions(!showRegularSessions)}
+              >
+                <span className="text-xs px-2">Other</span>
+                <div className="flex items-center justify-center w-6 h-6 bg-card rounded-full text-xs font-medium">
+                  {sessions.filter((s) => !s.live_session_type).length}
+                </div>
+              </button>
+            </div>
+
             <div className="bg-muted px-3 py-1 rounded-lg text-xs text-muted-foreground">
               {scrollPosition.start === scrollPosition.end
-                ? `${scrollPosition.start} of ${sessions.length}`
-                : `${scrollPosition.start}-${scrollPosition.end} of ${sessions.length}`}
+                ? `${scrollPosition.start} of ${filteredSessions.length}`
+                : `${scrollPosition.start}-${scrollPosition.end} of ${filteredSessions.length}`}
             </div>
           </div>
         </div>
 
         <div
           ref={scrollContainerRef}
-          className="overflow-auto p-6 pt-0"
+          className="overflow-auto p-6 pt-1"
           style={{
             contain: "strict",
             height: `${containerHeight}px`,
           }}
         >
           <div className="space-y-3">
-            {sessions.map((session) => (
-              <motion.div
-                key={session.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="px-0 py-0"
-              >
-                <div
-                  className={cn(
-                    "group flex items-center justify-between gap-2 px-3 py-2 rounded-lg border bg-card hover:bg-card-hover hover:border-hover transition-colors cursor-pointer min-h-[80px]",
-                    className,
-                  )}
-                  onClick={() => onSessionClick?.(session)}
+            {filteredSessions.length === 0 && sessions.length > 0 ? (
+              <div className="text-center py-8">
+                <MessagesSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                  No sessions match current filters
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Adjust the filter settings above to see sessions.
+                </p>
+              </div>
+            ) : (
+              filteredSessions.map((session) => (
+                <motion.div
+                  key={session.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="px-0 py-0"
                 >
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="flex-shrink-0 p-2">
-                      <MessagesSquare
-                        className={cn(
-                          "h-5 w-5",
-                          session.live_session_type
-                            ? "text-accent"
-                            : "text-muted-foreground",
-                        )}
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-3">
-                        <p
-                          className="text-sm font-medium leading-tight flex-1"
-                          style={{
-                            display: "-webkit-box",
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: "vertical",
-                            overflow: "hidden",
-                            wordBreak: "break-word",
-                          }}
-                        >
-                          {session.first_message || "Untitled Session"}
-                        </p>
+                  <div
+                    className={cn(
+                      "group flex items-center justify-between gap-2 px-3 py-2 rounded-lg border bg-card hover:bg-card-hover hover:border-hover transition-colors cursor-pointer min-h-[80px]",
+                      className,
+                    )}
+                    onClick={() => onSessionClick?.(session)}
+                  >
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="flex-shrink-0 p-2">
+                        <MessagesSquare
+                          className={cn(
+                            "h-5 w-5",
+                            session.live_session_type
+                              ? "text-accent"
+                              : "text-muted-foreground",
+                          )}
+                        />
                       </div>
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          <span>
-                            {session.created_at
-                              ? formatUnixTimestamp(session.created_at)
-                              : "Unknown"}
-                          </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-3">
+                          <p
+                            className="text-sm font-medium leading-tight flex-1"
+                            style={{
+                              display: "-webkit-box",
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: "vertical",
+                              overflow: "hidden",
+                              wordBreak: "break-word",
+                            }}
+                          >
+                            {session.first_message || "Untitled Session"}
+                          </p>
                         </div>
-                        {session.modified_at && (
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
                           <div className="flex items-center gap-1">
-                            <Activity className="h-3 w-3" />
+                            <Clock className="h-3 w-3" />
                             <span>
-                              {formatTimeAgo(session.modified_at * 1000)}
+                              {session.created_at
+                                ? formatUnixTimestamp(session.created_at)
+                                : "Unknown"}
                             </span>
                           </div>
-                        )}
-                        {session.size_bytes !== undefined && (
-                          <div className="flex items-center gap-1">
-                            <HardDrive className="h-3 w-3" />
-                            <span>{formatFileSize(session.size_bytes)}</span>
-                          </div>
-                        )}
-                        {session.live_session_type && (
-                          <Badge
-                            variant="outline"
-                            className="text-xs text-accent border-accent"
-                          >
-                            {session.live_session_type.toLowerCase()}
-                          </Badge>
-                        )}
+                          {session.modified_at && (
+                            <div className="flex items-center gap-1">
+                              <Activity className="h-3 w-3" />
+                              <span>
+                                {formatTimeAgo(session.modified_at * 1000)}
+                              </span>
+                            </div>
+                          )}
+                          {session.size_bytes !== undefined && (
+                            <div className="flex items-center gap-1">
+                              <HardDrive className="h-3 w-3" />
+                              <span>{formatFileSize(session.size_bytes)}</span>
+                            </div>
+                          )}
+                          {session.live_session_type && (
+                            <Badge
+                              variant="outline"
+                              className="text-xs text-accent border-accent"
+                            >
+                              {session.live_session_type.toLowerCase()}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {/* Message count badge */}
-                    {session.message_count !== undefined && (
-                      <div className="flex items-center gap-1 bg-accent px-2 py-1 rounded-full text-xs">
-                        <MessageSquare className="h-3 w-3" />
-                        <span>{session.message_count}</span>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {/* Message count badge */}
+                      {session.message_count !== undefined && (
+                        <div className="flex items-center gap-1 bg-accent px-2 py-1 rounded-full text-xs">
+                          <MessageSquare className="h-3 w-3" />
+                          <span>{session.message_count}</span>
+                        </div>
+                      )}
 
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        disabled={session.live_session_type === "NATIVE"}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSessionDelete?.(session);
-                        }}
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive disabled:opacity-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={
+                            session.live_session_type === SESSION_TYPES.NATIVE
+                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSessionDelete?.(session);
+                          }}
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive disabled:opacity-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              ))
+            )}
           </div>
         </div>
 

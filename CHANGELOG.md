@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.4] - 2025-09-01
+
+### Added
+- Session list filtering with toggleable filter buttons for three session types
+- Filter buttons show session counts with circular counter badges  
+- Clean filtering logic distinguishing Claudio, Native, and Other session types
+- Empty state handling when all sessions are filtered out via filters
+- Responsive flexbox layout with filters on left and scroll counter on right
+
 ## [0.4.3] - 2025-09-01
 
 ### Fixed
