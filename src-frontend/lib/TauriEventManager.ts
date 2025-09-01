@@ -148,7 +148,7 @@ class TauriEventManager {
       logger.log(`🚀 Setting up Tauri listener for '${eventName}'`);
       
       const unlisten = await listen(eventName, (event) => {
-        logger.log(`🎯 Tauri listener received '${eventName}' event:`, event.payload);
+        // logger.log(`🎯 Tauri listener received '${eventName}' event:`, event.payload);
         this.routeEvent(eventName, event.payload);
       });
       
@@ -192,7 +192,7 @@ class TauriEventManager {
       debugger;
     }
     
-    logger.log(`📨 Routing event '${eventName}' to ${subscriptionSet.size} subscription(s)`, { payload });
+    logger.log(`📨 Routing event '${eventName}' to ${subscriptionSet.size} subscription(s)`);
     
     let routedCount = 0;
     let filteredOutCount = 0;

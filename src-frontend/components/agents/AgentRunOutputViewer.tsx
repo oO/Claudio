@@ -271,7 +271,7 @@ export function AgentRunOutputViewer({
           const message = JSON.parse(payload) as ClaudeStreamMessage;
           setMessages(prev => [...prev, message]);
         } catch (err) {
-          logger.error("[AgentRunOutputViewer] Failed to parse message:", err, payload);
+          logger.error("[AgentRunOutputViewer] Failed to parse message:", err);
         }
       });
 

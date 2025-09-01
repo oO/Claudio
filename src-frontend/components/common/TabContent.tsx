@@ -18,7 +18,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { prettifyProjectName } from "@/lib/utils";
 
 // Import SessionHandleView directly instead of lazy loading to prevent mount/unmount cycles
-import { SessionHandleView } from "@/components/sessions";
+import { SessionHandleView } from "@/components/sessions/SessionHandleView";
 const AgentRunOutputViewer = lazy(() =>
   import("@/components/agents").then((m) => ({
     default: m.AgentRunOutputViewer,

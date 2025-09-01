@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.6] - 2025-09-01
+
+### Fixed
+- Native session refresh when viewing native session tabs
+- Active/Idle flow for ThinkingMessage display at end of message list
+- Brain icon display in SessionHeader during streaming
+- Debounce race condition in session watcher by adding file type to debounce keys
+- Performance issues by removing verbose payload logging throughout codebase
+- TypeScript errors in AgentRunOutputViewer where payload was treated as object instead of string
+
+### Added
+- Native badge to SessionHeader with proper styling matching ProjectSessionTab
+- Simple render-time ThinkingMessage approach outside Virtuoso for better performance
+- get_random_thinking_content API endpoint for backend thinking titles/haikus
+
+### Improved
+- Cleaned up prop drilling by using SessionContext appropriately
+- Made styling theme-safe using accent colors instead of hardcoded purple
+- Overall native session display performance and reliability
+
+### Technical
+- Implemented file type differentiation in session watcher debounce system
+- Refactored ThinkingMessage rendering for better integration with Virtuoso
+- Enhanced session state management with improved context usage
+
 ## [0.4.5] - 2025-09-01
 
 ### Added

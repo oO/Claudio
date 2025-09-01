@@ -184,8 +184,13 @@ impl SessionWatcherManager {
             
             // Process events as they come in
             for session_event in rx {
-                let key = format!("{}:{}", session_event.get_project_id(), session_event.get_session_id());
-                log::debug!("Received session event for debouncing: {} ({})", key, session_event.get_session_id());
+                // Use different debounce keys for message files (.jsonl) vs status files (.json)
+                // This prevents status changes from being cancelled by message changes
+                let file_type = if let SessionFileEvent::Modified { file_path, .. } = &session_event {
+                    if file_path.ends_with(".json") { "status" } else { "messages" }
+                } else { "other" };
+                let key = format!("{}:{}:{}", session_event.get_project_id(), session_event.get_session_id(), file_type);
+                // log::debug!("Received session event for debouncing: {} ({})", key, session_event.get_session_id());
                 
                 rt.block_on(async {
                     // Cancel any existing timer for this session
@@ -219,8 +224,8 @@ impl SessionWatcherManager {
                         }
                         
                         // After debounce period, emit the event
-                        log::info!("📁 Emitting debounced session file change: {} in project {}", 
-                                   session_event.get_session_id(), session_event.get_project_id());
+                        // log::info!("📁 Emitting debounced session file change: {} in project {}", 
+                        //            session_event.get_session_id(), session_event.get_project_id());
                         
                         // Send event via broadcast channel
                         if let Err(e) = event_sender_clone.send(session_event.clone()) {

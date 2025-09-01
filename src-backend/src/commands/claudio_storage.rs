@@ -213,13 +213,13 @@ pub async fn get_claudio_session(
     {
         let sessions = CLAUDIO_SESSIONS.read().await;
         if let Some(session) = sessions.get(&claudio_session_id) {
-            log::debug!("✅ Retrieved Claudio session from memory: {}", claudio_session_id);
+            // log::debug!("✅ Retrieved Claudio session from memory: {}", claudio_session_id);
             return Ok(session.clone());
         }
     }
     
     // Fallback to disk (slower path - happens on startup or cache miss)
-    log::debug!("📁 Session not in memory, loading from disk: {}", claudio_session_id);
+    // log::debug!("📁 Session not in memory, loading from disk: {}", claudio_session_id);
     let project_dir = get_project_claudio_dir(&project_path)?;
     let session_file = project_dir.join(format!("{}.json", claudio_session_id));
     

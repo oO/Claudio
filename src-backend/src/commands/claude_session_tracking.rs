@@ -147,6 +147,13 @@ async fn read_claude_session_file(path: &Path) -> Result<LiveClaudeSession, Stri
     Ok(session)
 }
 
+/// Get random thinking content - Public API for frontend
+#[tauri::command]
+pub async fn get_random_thinking_content() -> Result<(String, String), String> {
+    let (title, message) = get_thinking_content();
+    Ok((title, message))
+}
+
 /// Get random thinking content (imported from claude_direct.rs functionality)
 fn get_thinking_content() -> (String, String) {
     // Import the same functions used in claude_direct.rs

@@ -24,7 +24,6 @@ pub async fn get_project_sessions(project_id: String) -> Result<Vec<DecoratedSes
 
     let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
     let project_dir = claude_dir.join("projects").join(&project_id);
-    let todos_dir = claude_dir.join("todos");
 
     if !project_dir.exists() {
         return Err(format!("Project directory not found: {}", project_id));

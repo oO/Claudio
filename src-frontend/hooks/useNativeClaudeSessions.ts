@@ -20,19 +20,15 @@ export interface ClaudeThinkingEvent {
   session_id: string;
   project_path: string;
   status: string; // "thinking" or "idle"
-  title?: string;
-  message?: string;
+  title?: string;    // Still sent by backend but we ignore it
+  message?: string;  // Still sent by backend but we ignore it
 }
 
 /**
- * Thinking state for individual sessions
+ * Thinking state for individual sessions (boolean only)
  */
 interface ThinkingState {
-  [sessionId: string]: {
-    title: string;
-    message: string;
-    isThinking: boolean;
-  };
+  [sessionId: string]: boolean;
 }
 
 /**
@@ -83,18 +79,20 @@ export const useNativeClaudeSessions = () => {
     const setupThinkingListener = async () => {
       try {
         unsubscribe = await eventManager.subscribe<ClaudeThinkingEvent>('claude-session-thinking', (thinkingEvent) => {
-          const { session_id, status, title, message } = thinkingEvent;
+          const { session_id, status } = thinkingEvent;
           
-          logger.debug(`Claude thinking event: ${session_id} → ${status}`);
+          logger.debug(`Claude thinking event received:`, { session_id, status });
           
-          if (status === 'thinking' && title && message) {
-            // Add thinking state
+          if (status === 'thinking') {
+            // Set thinking state to true
+            logger.debug(`Setting thinking state for session ${session_id}`);
             setThinkingSessions(prev => ({
               ...prev,
-              [session_id]: { title, message, isThinking: true }
+              [session_id]: true
             }));
           } else {
             // Remove thinking state
+            logger.debug(`Removing thinking state for session ${session_id} (status: ${status})`);
             setThinkingSessions(prev => {
               const updated = { ...prev };
               delete updated[session_id];
@@ -130,13 +128,9 @@ export const useNativeClaudeSessions = () => {
 
   // Check if session is thinking
   const isSessionThinking = useCallback((sessionId: string): boolean => {
-    return thinkingSessions[sessionId]?.isThinking || false;
+    return thinkingSessions[sessionId] || false;
   }, [thinkingSessions]);
 
-  // Get thinking data for session
-  const getThinkingData = useCallback((sessionId: string) => {
-    return thinkingSessions[sessionId] || null;
-  }, [thinkingSessions]);
 
   return {
     // State
@@ -152,7 +146,6 @@ export const useNativeClaudeSessions = () => {
     // Helpers
     getAllLiveSessions,
     isSessionThinking,
-    getThinkingData,
     
     // Stats
     totalSessions: liveSessions.length,

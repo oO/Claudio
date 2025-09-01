@@ -2,7 +2,7 @@
 export * from "./agents";
 export * from "./common";
 export * from "./projects";
-export * from "./sessions";
+// export * from "./sessions"; // Removed: Using direct imports instead of barrel exports
 export * from "./settings";
 export * from "./dashboard";
 export * from "./mcp";

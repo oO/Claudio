@@ -91,14 +91,6 @@ export const VirtuosoChatMessages = forwardRef<VirtuosoChatMessagesHandle, Virtu
               overscan={20}
             />
             
-            {/* Loading indicator */}
-            {isLoading && !displayableMessages.some(m => (m as any).type === "status") && (
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 pointer-events-none">
-                <div className="flex items-center justify-center py-4">
-                  <div className="rotating-symbol text-primary" />
-                </div>
-              </div>
-            )}
 
             {/* Error indicator */}
             {error && (

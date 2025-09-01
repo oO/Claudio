@@ -1,5 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
+import { invoke } from "@tauri-apps/api/core";
 import {
   ArrowLeft,
   MessagesSquare,
@@ -30,9 +31,9 @@ import {
   formatFileSize,
 } from "@/lib/date-utils";
 import type { Session } from "@/lib/api";
-import { logger } from '@/lib/logger';
-import { useSessionContext } from '@/contexts/SessionContext';
-import { SESSION_TYPES } from '@/lib/sessionHandleApi';
+import { logger } from "@/lib/logger";
+import { useSessionContext } from "@/contexts/SessionContext";
+import { SESSION_TYPES } from "@/lib/sessionHandleApi";
 
 interface SessionHeaderProps {
   claudeSessionId: string | null;
@@ -84,25 +85,50 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
   onScrollToTop,
   onScrollToBottom,
 }) => {
-  const { 
-    liveSessionType, 
-    isStreaming, 
-    projectPath, 
-    sessionId, 
-    sessionData, 
+  const {
+    liveSessionType,
+    isStreaming,
+    projectPath,
+    sessionId,
+    sessionData,
     sessionFilePath,
     isCompactMode,
-    toggleCompactMode
+    toggleCompactMode,
   } = useSessionContext();
+
+  // State for random thinking content
+  const [thinkingTitle, setThinkingTitle] = React.useState(
+    "Claude is thinking...",
+  );
+
+  // Fetch random thinking content when streaming starts
+  React.useEffect(() => {
+    if (isStreaming && liveSessionType === SESSION_TYPES.NATIVE) {
+      const fetchThinkingContent = async () => {
+        try {
+          const [title, _message] = await invoke<[string, string]>(
+            "get_random_thinking_content",
+          );
+          setThinkingTitle(title);
+          logger.debug("🧠 Fetched random thinking title:", title);
+        } catch (error) {
+          logger.error("Failed to fetch thinking content:", error);
+          // Keep default title on error
+        }
+      };
+
+      fetchThinkingContent();
+    }
+  }, [isStreaming, liveSessionType]);
 
   // Debug: Log the streaming state
   React.useEffect(() => {
     if (liveSessionType === SESSION_TYPES.NATIVE) {
-      logger.log('🧠 Native session brain debug:', { 
-        liveSessionType, 
-        isStreaming, 
+      logger.log("🧠 Native session brain debug:", {
+        liveSessionType,
+        isStreaming,
         sessionId: sessionId?.substring(0, 8),
-        hasMessages 
+        hasMessages,
       });
     }
   }, [isStreaming, liveSessionType, sessionId, hasMessages]);
@@ -128,11 +154,11 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
           project: sessionData.project_id,
           session: sessionData.id,
           project_path: projectPath,
-          session_path: sessionFilePath
+          session_path: sessionFilePath,
         };
         const sessionJson = JSON.stringify(sessionInfo, null, 2);
         await navigator.clipboard.writeText(sessionJson);
-        logger.log('Copied session info JSON to clipboard:', sessionInfo);
+        logger.log("Copied session info JSON to clipboard:", sessionInfo);
       } catch (error) {
         logger.error("Failed to copy session info:", error);
       }
@@ -230,7 +256,9 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
                       )}
                     >
                       <Activity className="h-3 w-3" />
-                      <span>{formatTimeAgo(sessionData.modified_at * 1000)}</span>
+                      <span>
+                        {formatTimeAgo(sessionData.modified_at * 1000)}
+                      </span>
                     </div>
                   )}
                   {liveSessionType && (
@@ -242,9 +270,9 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
                     </Badge>
                   )}
                   {isStreaming && (
-                    <div className="flex items-center gap-1 text-accent" title="Claude is thinking...">
-                      <Brain className="h-3 w-3 animate-pulse" />
-                      <span className="text-xs">Thinking</span>
+                    <div className="flex items-center gap-1 text-accent animate-pulse">
+                      <Brain className="h-3 w-3 " />
+                      <span className="text-xs">{thinkingTitle}</span>
                     </div>
                   )}
                 </div>
@@ -305,12 +333,12 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
               onClick={toggleCompactMode}
               className={cn(
                 "h-8 w-8 transition-colors",
-                isCompactMode ? "bg-primary text-primary-foreground" : "hover:bg-muted",
+                isCompactMode
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-muted",
               )}
               title={
-                isCompactMode
-                  ? "Show content excerpts"
-                  : "Header-only mode"
+                isCompactMode ? "Show content excerpts" : "Header-only mode"
               }
             >
               <UnfoldVertical className="h-4 w-4" />

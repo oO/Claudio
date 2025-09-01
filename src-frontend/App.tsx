@@ -16,7 +16,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ProjectList, ProjectDetail } from "@/components/projects";
-import { RunningClaudeSessions } from "@/components/sessions";
+import { RunningClaudeSessions } from "@/components/sessions/RunningClaudeSessions";
 import { Topbar, TabManager, TabContent } from "@/components/common";
 import { ClaudeFileEditor, ClaudeBinaryDialog } from "@/components/claude";
 import { logger } from "@/lib/logger";

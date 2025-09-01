@@ -1,12 +1,16 @@
 import { logger } from '@/lib/logger';
 import type { ClaudeStreamMessage } from "@/lib/outputCache";
 
+// Global tracking of which messages have already triggered resets to prevent spam
+const globalProcessedResets = new Set<string>();
+
 /**
  * Process messages to add agent identification (agentType, agentName, subagentType)
  * Based on the existing logic from useSessionState.ts loadSessionHistory()
  */
 export function processMessagesWithAgentInfo(messages: any[]): ClaudeStreamMessage[] {
   let currentSubagentType: string | undefined;
+  // logger.debug('🔍 Processing messages with agent info, count:', messages.length);
   
   return messages.map((entry, index) => {
     const isSidechain = entry.isSidechain === true;
@@ -38,8 +42,13 @@ export function processMessagesWithAgentInfo(messages: any[]): ClaudeStreamMessa
         // Check if this is a tool result returning from sidechain
         const hasToolResult = Array.isArray(entry.message.content) && 
           entry.message.content.some((c: any) => c.type === "tool_result");
-        if (hasToolResult) {
-          logger.debug('🔄 Resetting subagent context - returning to main conversation');
+        if (hasToolResult && entry.uuid && !globalProcessedResets.has(entry.uuid)) {
+          // logger.debug('🔄 Resetting subagent context - returning to main conversation', { 
+          //   messageIndex: index, 
+          //   uuid: entry.uuid,
+          //   totalMessages: messages.length
+          // });
+          globalProcessedResets.add(entry.uuid); // Mark this message as processed globally
           currentSubagentType = undefined;
         }
       }

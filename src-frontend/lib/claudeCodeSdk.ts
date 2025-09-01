@@ -144,7 +144,7 @@ class ClaudeCodeSDKManager {
       }
 
       const payload = event.payload;
-      logger.debug('Received SDK message:', { sessionId, payload });
+      logger.debug('Received SDK message:', { sessionId, type: payload?.type || 'unknown' });
 
       if (payload.type === 'claude_sdk_message' && payload.message) {
         // Store message in history
@@ -190,7 +190,7 @@ class ClaudeCodeSDKManager {
     });
 
     const unlistenError = await listen(`claude-sdk-error:${sessionId}`, (event: any) => {
-      logger.error('SDK session error:', event.payload);
+      logger.error('SDK session error:', { sessionId: event.payload?.session_id || 'unknown' });
       onMessage({
         type: 'result',
         subtype: 'error',
@@ -214,7 +214,7 @@ class ClaudeCodeSDKManager {
     });
 
     const unlistenCompleted = await listen(`claude-sdk-completed:${sessionId}`, (event: any) => {
-      logger.info('SDK session completed:', event.payload);
+      logger.info('SDK session completed:', { sessionId: event.payload?.session_id || 'unknown' });
       // Clean up
       this.activeSessions.delete(sessionId);
       this.sessionMessageHandlers.delete(sessionId);

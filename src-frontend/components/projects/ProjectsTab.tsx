@@ -6,7 +6,8 @@ import { api, type Project, type Session, type DecoratedSession, type ClaudeMdFi
 import { logger } from "@/lib/logger";
 import { prettifyProjectName } from "@/lib/utils";
 import { ProjectList, ProjectDetail } from "@/components/projects";
-import { RunningClaudeSessions, SessionHandleView } from "@/components/sessions";
+import { RunningClaudeSessions } from "@/components/sessions/RunningClaudeSessions";
+import { SessionHandleView } from "@/components/sessions/SessionHandleView";
 import { Button } from "@/components/ui/button";
 import { ActionButton } from "@/components/ui/atoms/ActionButton";
 import { LoadingSpinner } from "@/components/ui/atoms/LoadingSpinner";

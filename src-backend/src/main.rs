@@ -59,7 +59,7 @@ use commands::claudio_storage::{
 };
 use commands::claude_session_tracking::{
     start_claude_thinking, end_claude_thinking, get_live_claude_sessions,
-    get_claude_session_status,
+    get_claude_session_status, get_random_thinking_content,
 };
 use commands::hook_installer::{
     install_claude_session_hooks, check_hooks_installed, uninstall_claude_session_hooks,
@@ -413,6 +413,7 @@ fn main() {
             end_claude_thinking,
             get_live_claude_sessions,
             get_claude_session_status,
+            get_random_thinking_content,
             
             // Hook Installation
             install_claude_session_hooks,
