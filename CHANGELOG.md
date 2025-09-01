@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.3] - 2025-09-01
+
+### Fixed
+- Fixed critical session list refresh bug in useSessionFileWatcher event handling logic
+- Session list watchers (no specific session) now correctly refresh on ANY session changes  
+- Previously the hasActiveTab check was incorrectly filtering out session list events
+- Real-time session status updates now work perfectly without "web 1.0" full page refreshes
+
 ## [0.4.2] - 2025-08-31
 
 ### Fixed

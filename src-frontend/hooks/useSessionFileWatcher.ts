@@ -227,37 +227,42 @@ export function useSessionFileWatcher({
     switch (eventType) {
       case 'Modified':
         logger.debug(`🔄 Modified event: sessionId=${eventData.session_id}`);
-        logger.debug(`🔍 hasActiveTab check: ${sessionTabRegistry.hasActiveTab(eventData.session_id)}`);
         
-        // Only refresh if this session has active tabs (is being watched)
-        if (sessionTabRegistry.hasActiveTab(eventData.session_id)) {
-          logger.debug(`✅ Session has active tabs, checking if current session matches`);
+        // If we're watching a session list (no specific session), always refresh
+        if (!session) {
+          logger.debug(`📋 Session list watcher - refreshing on any session change`);
+          try {
+            await onSessionChanged();
+            logger.debug(`✅ Session list refreshed successfully`);
+          } catch (error) {
+            logger.error('Failed to refresh session list after file change:', error);
+          }
+        } 
+        // If watching a specific session, check if it has active tabs
+        else {
+          logger.debug(`🔍 hasActiveTab check: ${sessionTabRegistry.hasActiveTab(eventData.session_id)}`);
           
-          // If this is the current session, refresh it
-          if (session && eventData.session_id === session.id) {
-            logger.debug(`🎯 This is the current session, refreshing...`);
-            preserveScrollPosition();
+          if (sessionTabRegistry.hasActiveTab(eventData.session_id)) {
+            logger.debug(`✅ Session has active tabs, checking if current session matches`);
             
-            try {
-              await onSessionChanged();
-              restoreScrollPosition();
-              logger.debug(`✅ Current session refreshed successfully`);
-            } catch (error) {
-              logger.error('Failed to refresh session after file change:', error);
-            }
-          } else if (!session) {
-            logger.debug(`📋 No current session, calling onSessionChanged for list refresh...`);
-            try {
-              await onSessionChanged();
-              logger.debug(`✅ Session list refreshed successfully`);
-            } catch (error) {
-              logger.error('Failed to refresh session list after file change:', error);
+            // If this is the current session, refresh it
+            if (eventData.session_id === session.id) {
+              logger.debug(`🎯 This is the current session, refreshing...`);
+              preserveScrollPosition();
+              
+              try {
+                await onSessionChanged();
+                restoreScrollPosition();
+                logger.debug(`✅ Current session refreshed successfully`);
+              } catch (error) {
+                logger.error('Failed to refresh session after file change:', error);
+              }
+            } else {
+              logger.debug(`📝 Modified session ${eventData.session_id} is not current session ${session.id}`);
             }
           } else {
-            logger.debug(`📝 Modified session ${eventData.session_id} is not current session ${session.id}`);
+            logger.debug(`🚫 Session ${eventData.session_id} has no active tabs, skipping`);
           }
-        } else {
-          logger.debug(`🚫 Session ${eventData.session_id} has no active tabs, skipping`);
         }
         break;
 

@@ -109,7 +109,11 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
   // Calculate container height based on actual position
   useEffect(() => {
     const calculateHeight = () => {
-      if (!scrollContainerRef.current) return;
+      if (!scrollContainerRef.current) {
+        // Retry if ref not ready yet
+        setTimeout(calculateHeight, 50);
+        return;
+      }
 
       const rect = scrollContainerRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
@@ -122,12 +126,16 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
     window.addEventListener("resize", calculateHeight);
 
     // Recalculate when component mounts or sessions change
-    const timeoutId = setTimeout(calculateHeight, 100);
+    const timeout1 = setTimeout(calculateHeight, 10);
+    const timeout2 = setTimeout(calculateHeight, 100);
+    const timeout3 = setTimeout(calculateHeight, 300);
 
     return () => {
       logger.log("ProjectSessionTab: Cleaning up height calculation listeners");
       window.removeEventListener("resize", calculateHeight);
-      clearTimeout(timeoutId);
+      clearTimeout(timeout1);
+      clearTimeout(timeout2);
+      clearTimeout(timeout3);
     };
   }, [sessions.length]);
 
