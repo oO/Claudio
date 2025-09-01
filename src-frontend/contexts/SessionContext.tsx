@@ -8,9 +8,8 @@ interface SessionContextValue {
   sessionFilePath?: string;
   projectPath?: string;
   sessionData?: Session;
-  displayableMessageCount?: number;
-  totalTokens?: number;
   liveSessionType?: SessionTypeValue | null;
+  isStreaming?: boolean;
   isCompactMode?: boolean;
   setIsCompactMode?: (mode: boolean) => void;
   toggleCompactMode?: () => void;
@@ -23,9 +22,8 @@ interface SessionProviderProps {
   sessionFilePath?: string;
   projectPath?: string;
   sessionData?: Session;
-  displayableMessageCount?: number;
-  totalTokens?: number;
   liveSessionType?: SessionTypeValue | null;
+  isStreaming?: boolean;
   isCompactMode?: boolean;
   setIsCompactMode?: (mode: boolean) => void;
   toggleCompactMode?: () => void;
@@ -44,9 +42,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
   sessionFilePath,
   projectPath,
   sessionData,
-  displayableMessageCount,
-  totalTokens,
   liveSessionType,
+  isStreaming = false,
   isCompactMode = false,
   setIsCompactMode,
   toggleCompactMode,
@@ -57,9 +54,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
     sessionFilePath,
     projectPath,
     sessionData,
-    displayableMessageCount,
-    totalTokens,
     liveSessionType,
+    isStreaming,
     isCompactMode,
     setIsCompactMode: setIsCompactMode || (() => {}),
     toggleCompactMode: toggleCompactMode || (() => {}),

@@ -17,6 +17,7 @@ import {
   ArrowUp,
   ArrowDown,
   UnfoldVertical,
+  Brain,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover } from "@/components/ui/popover";
@@ -30,17 +31,14 @@ import {
 } from "@/lib/date-utils";
 import type { Session } from "@/lib/api";
 import { logger } from '@/lib/logger';
-import { isEditorSession } from '@/lib/sessionUtils';
+import { useSessionContext } from '@/contexts/SessionContext';
+import { SESSION_TYPES } from '@/lib/sessionHandleApi';
 
 interface SessionHeaderProps {
-  projectPath: string;
   claudeSessionId: string | null;
-  // Claudio session ID for editor mode detection
-  sessionId?: string;
   // Claudio session ID for display
   claudioId?: string | null;
   totalTokens: number;
-  isStreaming: boolean;
   hasMessages: boolean;
   showTimeline: boolean;
   copyPopoverOpen: boolean;
@@ -51,11 +49,7 @@ interface SessionHeaderProps {
   isReadOnly?: boolean;
   onDeleteProject?: () => void;
   setCopyPopoverOpen: (open: boolean) => void;
-  // Session metadata
-  sessionData?: Session;
-  // Session file path (from file watcher)
-  sessionFilePath?: string;
-  // Current displayable message count
+  // Current displayable message count (computed in UI)
   displayableMessageCount?: number;
   // List of UUIDs for filtered/collapsed messages
   collapsedMessageUuids?: string[];
@@ -66,18 +60,12 @@ interface SessionHeaderProps {
   isPinnedToBottom?: boolean;
   onScrollToTop?: () => void;
   onScrollToBottom?: () => void;
-  // Compact mode
-  isCompactMode?: boolean;
-  onToggleCompactMode?: () => void;
 }
 
 export const SessionHeader: React.FC<SessionHeaderProps> = ({
-  projectPath,
   claudeSessionId,
-  sessionId,
   claudioId,
   totalTokens,
-  isStreaming,
   hasMessages,
   showTimeline,
   copyPopoverOpen,
@@ -88,8 +76,6 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
   isReadOnly = false,
   onDeleteProject,
   setCopyPopoverOpen,
-  sessionData,
-  sessionFilePath,
   displayableMessageCount,
   collapsedMessageUuids,
   isRefreshing,
@@ -97,9 +83,30 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
   isPinnedToBottom,
   onScrollToTop,
   onScrollToBottom,
-  isCompactMode,
-  onToggleCompactMode,
 }) => {
+  const { 
+    liveSessionType, 
+    isStreaming, 
+    projectPath, 
+    sessionId, 
+    sessionData, 
+    sessionFilePath,
+    isCompactMode,
+    toggleCompactMode
+  } = useSessionContext();
+
+  // Debug: Log the streaming state
+  React.useEffect(() => {
+    if (liveSessionType === SESSION_TYPES.NATIVE) {
+      logger.log('🧠 Native session brain debug:', { 
+        liveSessionType, 
+        isStreaming, 
+        sessionId: sessionId?.substring(0, 8),
+        hasMessages 
+      });
+    }
+  }, [isStreaming, liveSessionType, sessionId, hasMessages]);
+
   const handleCopySessionId = async () => {
     if (sessionFilePath) {
       try {
@@ -164,11 +171,6 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
           <div className="min-w-0 flex-1">
             <h1 className="text-3xl font-bold tracking-tight text-accent flex items-center gap-3">
               Claude Code Session
-              {sessionId && isEditorSession({ id: sessionId }) && (
-                <Badge variant="default" className="text-xs bg-green-600 hover:bg-green-700">
-                  Interactive
-                </Badge>
-              )}
               {claudeSessionId && (
                 <span
                   className="inline-flex items-center gap-1 px-2 py-1 text-xs font-normal border border-border rounded cursor-pointer text-accent hover:text-foreground hover:bg-accent transition-colors"
@@ -231,6 +233,20 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
                       <span>{formatTimeAgo(sessionData.modified_at * 1000)}</span>
                     </div>
                   )}
+                  {liveSessionType && (
+                    <Badge
+                      variant="outline"
+                      className="text-xs text-accent border-accent"
+                    >
+                      {liveSessionType.toLowerCase()}
+                    </Badge>
+                  )}
+                  {isStreaming && (
+                    <div className="flex items-center gap-1 text-accent" title="Claude is thinking...">
+                      <Brain className="h-3 w-3 animate-pulse" />
+                      <span className="text-xs">Thinking</span>
+                    </div>
+                  )}
                 </div>
                 {claudioId && (
                   <div className="flex items-center gap-1">
@@ -282,11 +298,11 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
           )}
 
           {/* Compact mode toggle */}
-          {onToggleCompactMode && (
+          {toggleCompactMode && (
             <Button
               variant="ghost"
               size="icon"
-              onClick={onToggleCompactMode}
+              onClick={toggleCompactMode}
               className={cn(
                 "h-8 w-8 transition-colors",
                 isCompactMode ? "bg-primary text-primary-foreground" : "hover:bg-muted",

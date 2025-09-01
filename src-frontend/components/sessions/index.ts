@@ -10,7 +10,6 @@ export { SessionHeader } from './SessionHeader';
 export { PromptInput, type PromptInputRef } from './PromptInput';
 export { PromptQueue } from './PromptQueue';
 export { MessageRouter } from '../messages';
-export { SessionOutputViewer } from './SessionOutputViewer';
 
 // Hooks (re-exported from hooks folder)
 export { useClaudeMessages } from '@/hooks/useClaudeMessages';

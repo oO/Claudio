@@ -6,6 +6,7 @@ import { MessageTemplate } from "./MessageTemplate";
 import { useMessageContent } from "@/hooks/useMessageContent";
 import { useAgentStyling } from "@/hooks/useAgentStyling";
 import type { ClaudeStreamMessage } from "@/lib/outputCache";
+import { MessageEnhancementProvider } from "@/contexts/MessageEnhancementContext";
 
 interface SubAgentMessageProps {
   message: ClaudeStreamMessage;
@@ -22,20 +23,22 @@ export const SubAgentMessage: React.FC<SubAgentMessageProps> = ({
   const { agentName, agentBackgroundClass } = useAgentStyling(message);
 
   return (
-    <MessageTemplate.Container message={message} contentClassName="pb-2">
-      <DebugLabel label="SubAgentMessage" />
-      <MessageTemplate.Header
-        IconComponent={Bot}
-        iconClassName="bg-background"
-        title={agentName}
-        titleClassName={cn(
-          "text-base font-semibold px-2 py-0.5 pb-1 rounded",
-          agentBackgroundClass,
-        )}
-      >
-        <MessageTemplate.Content>{contentItems}</MessageTemplate.Content>
-      </MessageTemplate.Header>
-      <MessageTemplate.Footer message={message} />
-    </MessageTemplate.Container>
+    <MessageEnhancementProvider message={message}>
+      <MessageTemplate.Container message={message} contentClassName="pb-2">
+        <DebugLabel label="SubAgentMessage" />
+        <MessageTemplate.Header
+          IconComponent={Bot}
+          iconClassName="bg-background"
+          title={agentName}
+          titleClassName={cn(
+            "text-base font-semibold px-2 py-0.5 pb-1 rounded",
+            agentBackgroundClass,
+          )}
+        >
+          <MessageTemplate.Content>{contentItems}</MessageTemplate.Content>
+        </MessageTemplate.Header>
+        <MessageTemplate.Footer message={message} />
+      </MessageTemplate.Container>
+    </MessageEnhancementProvider>
   );
 };

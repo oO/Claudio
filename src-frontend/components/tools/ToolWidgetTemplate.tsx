@@ -214,7 +214,7 @@ const Footer: React.FC<ToolFooterProps> = ({ children, className }) => {
   if (!children) return null;
 
   return (
-    <div className={cn("px-4 py-3 border-t bg-muted/20", className)}>
+    <div className={cn("px-0 py-2 border-t bg-muted/20", className)}>
       {children}
     </div>
   );

@@ -38,7 +38,12 @@ export const StreamDataProvider: React.FC<StreamDataProviderProps> = ({
       ) {
         msg.message.content.forEach((content: any) => {
           if (content.type === "tool_result" && content.tool_use_id) {
-            results.set(content.tool_use_id, content);
+            // Enhance tool result with source message UUID for clipboard functionality
+            const enhancedResult = {
+              ...content,
+              _sourceMessageUuid: msg.uuid
+            };
+            results.set(content.tool_use_id, enhancedResult);
           }
         });
       }

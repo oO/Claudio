@@ -3,6 +3,7 @@ import { AlertCircle } from 'lucide-react';
 import { DebugLabel } from '@/components/ui/atoms';
 import { MessageTemplate } from './MessageTemplate';
 import type { ClaudeStreamMessage } from "@/lib/outputCache";
+import { MessageEnhancementProvider } from "@/contexts/MessageEnhancementContext";
 
 interface ErrorMessageProps {
   message: ClaudeStreamMessage;
@@ -17,20 +18,22 @@ export const ErrorMessage: React.FC<ErrorMessageProps> = ({
   error,
 }) => {
   return (
-    <MessageTemplate.Container message={message}>
-      <DebugLabel label="ErrorMessage" />
-      <MessageTemplate.Header
-        IconComponent={AlertCircle}
-        iconClassName="bg-destructive"
-        title="Error rendering message"
-        titleClassName="text-sm font-medium"
-      >
-        <MessageTemplate.Content>
-          <p className="text-xs text-muted-foreground">
-            {error instanceof Error ? error.message : "Unknown error"}
-          </p>
-        </MessageTemplate.Content>
-      </MessageTemplate.Header>
-    </MessageTemplate.Container>
+    <MessageEnhancementProvider message={message}>
+      <MessageTemplate.Container message={message}>
+        <DebugLabel label="ErrorMessage" />
+        <MessageTemplate.Header
+          IconComponent={AlertCircle}
+          iconClassName="bg-destructive"
+          title="Error rendering message"
+          titleClassName="text-sm font-medium"
+        >
+          <MessageTemplate.Content>
+            <p className="text-xs text-muted-foreground">
+              {error instanceof Error ? error.message : "Unknown error"}
+            </p>
+          </MessageTemplate.Content>
+        </MessageTemplate.Header>
+      </MessageTemplate.Container>
+    </MessageEnhancementProvider>
   );
 };

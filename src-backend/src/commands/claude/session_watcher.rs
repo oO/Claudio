@@ -231,6 +231,19 @@ impl SessionWatcherManager {
                         if let Err(e) = app_handle_clone.emit("session-file-changed", &session_event) {
                             log::error!("Failed to emit session file event: {}", e);
                         }
+                        
+                        // Handle ONLY native Claude session status changes for thinking events
+                        // Only process claude-<session_id>.json files, not claudio wrapper files
+                        if let SessionFileEvent::Modified { file_path, .. } = &session_event {
+                            if let Some(filename) = std::path::Path::new(file_path).file_name().and_then(|n| n.to_str()) {
+                                if filename.starts_with("claude-") && filename.ends_with(".json") {
+                                    // Extract session ID from claude-<session_id>.json filename
+                                    if let Some(session_id) = filename.strip_prefix("claude-").and_then(|s| s.strip_suffix(".json")) {
+                                        Self::handle_native_session_status_change(&app_handle_clone, session_id, file_path).await;
+                                    }
+                                }
+                            }
+                        }
                     });
                     
                     // Store the timer handle
@@ -253,12 +266,36 @@ impl SessionWatcherManager {
     ) -> Option<SessionFileEvent> {
         let path = event.paths.first()?;
         
-        // Only handle .jsonl files
-        if path.extension().and_then(|s| s.to_str()) != Some("jsonl") {
-            return None;
+        // Handle .jsonl files (messages) and ONLY native claude-*.json files (status)
+        // Do NOT watch claudio wrapper files (<claudio_id>.json) to avoid circular dependencies
+        let extension = path.extension().and_then(|s| s.to_str());
+        let filename = path.file_stem()?.to_str()?;
+        
+        match extension {
+            Some("jsonl") => {
+                // Always handle .jsonl files (message data from Claude CLI)
+            }
+            Some("json") => {
+                // Only handle native session files (claude-<session_id>.json) from hook scripts
+                // Ignore claudio wrapper files (<claudio_id>.json) to prevent circular dependencies
+                if !filename.starts_with("claude-") {
+                    log::debug!("Ignoring non-native JSON file to prevent circular dependency: {}", filename);
+                    return None;
+                }
+            }
+            _ => {
+                return None;
+            }
         }
 
-        let session_id = path.file_stem()?.to_str()?.to_string();
+        // Extract session ID based on file type and naming convention
+        let session_id = if filename.starts_with("claude-") {
+            // Native Claude session: claude-<session_id>.json → extract session_id
+            filename.strip_prefix("claude-").unwrap_or(filename).to_string()
+        } else {
+            // Regular session (.jsonl) or Claudio session (.json): <id>.<ext> → use full filename as ID
+            filename.to_string()
+        };
         let file_path = path.to_string_lossy().to_string();
 
         match &event.kind {
@@ -302,6 +339,103 @@ impl SessionWatcherManager {
             }
             _ => None,
         }
+    }
+
+    /// Handle native Claude session status changes and emit thinking events
+    async fn handle_native_session_status_change(app_handle: &AppHandle, session_id: &str, file_path: &str) {
+        use crate::commands::claude_session_tracking::ClaudeThinkingEvent;
+        
+        log::debug!("🔍 Handling native session status change for {}", session_id);
+        
+        // Read the JSON status file
+        match tokio::fs::read_to_string(file_path).await {
+            Ok(content) => {
+                match serde_json::from_str::<serde_json::Value>(&content) {
+                    Ok(json) => {
+                        if let Some(status) = json.get("status").and_then(|s| s.as_str()) {
+                            let project_path = json.get("project_path")
+                                .and_then(|p| p.as_str())
+                                .unwrap_or("")
+                                .to_string();
+                            
+                            log::info!("📊 Native session {} status: {} at path {}", session_id, status, project_path);
+                            
+                            // Emit thinking event based on status
+                            let event_data = match status {
+                                "active" => {
+                                    // Get random thinking content
+                                    let (thinking_title, thinking_message) = Self::get_thinking_content();
+                                    Some(ClaudeThinkingEvent {
+                                        session_id: session_id.to_string(),
+                                        project_path,
+                                        status: "thinking".to_string(),
+                                        title: Some(thinking_title),
+                                        message: Some(thinking_message),
+                                    })
+                                }
+                                "idle" => {
+                                    Some(ClaudeThinkingEvent {
+                                        session_id: session_id.to_string(),
+                                        project_path,
+                                        status: "idle".to_string(),
+                                        title: None,
+                                        message: None,
+                                    })
+                                }
+                                _ => {
+                                    log::warn!("Unknown native session status: {}", status);
+                                    None
+                                }
+                            };
+                            
+                            // Emit the thinking event if we have one
+                            if let Some(event) = event_data {
+                                if let Err(e) = app_handle.emit("claude-session-thinking", &event) {
+                                    log::error!("Failed to emit claude-session-thinking event: {}", e);
+                                } else {
+                                    log::info!("✅ Emitted claude-session-thinking event: {} → {}", session_id, event.status);
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        log::error!("Failed to parse native session JSON file {}: {}", file_path, e);
+                    }
+                }
+            }
+            Err(e) => {
+                log::error!("Failed to read native session JSON file {}: {}", file_path, e);
+            }
+        }
+    }
+
+    /// Get random thinking content (copied from claude_session_tracking.rs)
+    fn get_thinking_content() -> (String, String) {
+        use rand::seq::SliceRandom;
+        
+        let titles = vec![
+            "Claude is thinking...".to_string(),
+            "Processing...".to_string(),
+            "Analyzing...".to_string(),
+            "Working...".to_string(),
+            "Computing...".to_string(),
+        ];
+        
+        let messages = vec![
+            "Code flows like water — Through circuits of thought and dream — Beauty takes its form".to_string(),
+            "Algorithms dance — In silicon valleys deep — Logic finds its way".to_string(),
+            "Bits and bytes align — Creating worlds from nothing — Magic in the machine".to_string(),
+            "Functions intertwine — Like vines in digital gardens — Growth through iteration".to_string(),
+        ];
+        
+        let title = titles.choose(&mut rand::thread_rng())
+            .cloned()
+            .unwrap_or_else(|| "Thinking...".to_string());
+        let message = messages.choose(&mut rand::thread_rng())
+            .cloned()
+            .unwrap_or_else(|| "Processing your request...".to_string());
+            
+        (title, message)
     }
 
     /// Check if current session contains last_message_uuid from claudio metadata and cleanup previous sessions

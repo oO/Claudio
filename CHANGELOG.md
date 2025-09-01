@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.5] - 2025-09-01
+
+### Added
+- Universal tool status detection system in MessageEnhancementContext for all tool types
+- New ExitPlanModeWidget with semantic color theming (text-success, text-destructive, text-info)
+- Tool status detection using is_error field and content pattern matching for rejection detection
+- Message filtering to remove interruption system noise messages starting with "[Request interrupted by"
+
+### Improved
+- ExitPlanModeWidget UI cleanup with semantic colors for light/dark theme compatibility
+- Removed status from widget headers and unnecessary UI separators for cleaner interface
+- Enhanced tool status detection across pending, approved, rejected, and error states
+- Streamlined message processing with KISS principle filtering
+
+### Technical
+- Tool status detection works universally across all tool types with consistent API
+- Semantic color classes ensure proper theming adaptation across modes
+- Simple text-based interruption message filtering maintains existing functionality
+- Enhanced MessageRouter with improved filtering logic
+
 ## [0.4.4] - 2025-09-01
 
 ### Added

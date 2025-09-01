@@ -4,6 +4,7 @@ import { DebugLabel } from "@/components/ui/atoms";
 import { MessageTemplate } from "./MessageTemplate";
 import { useMessageContent } from "@/hooks/useMessageContent";
 import type { ClaudeStreamMessage } from "@/lib/outputCache";
+import { MessageEnhancementProvider } from "@/contexts/MessageEnhancementContext";
 
 interface AssistantMessageProps {
   message: ClaudeStreamMessage;
@@ -19,16 +20,18 @@ export const AssistantMessage: React.FC<AssistantMessageProps> = ({
   const contentItems = useMessageContent(message);
 
   return (
-    <MessageTemplate.Container message={message} contentClassName="pb-2">
-      <DebugLabel label="AssistantMessage" />
-      <MessageTemplate.Header
-        IconComponent={Bot}
-        iconClassName="bg-background"
-        title="Assistant"
-      >
-        <MessageTemplate.Content>{contentItems}</MessageTemplate.Content>
-      </MessageTemplate.Header>
-      <MessageTemplate.Footer message={message} />
-    </MessageTemplate.Container>
+    <MessageEnhancementProvider message={message}>
+      <MessageTemplate.Container message={message} contentClassName="pb-2">
+        <DebugLabel label="AssistantMessage" />
+        <MessageTemplate.Header
+          IconComponent={Bot}
+          iconClassName="bg-background"
+          title="Assistant"
+        >
+          <MessageTemplate.Content>{contentItems}</MessageTemplate.Content>
+        </MessageTemplate.Header>
+        <MessageTemplate.Footer message={message} />
+      </MessageTemplate.Container>
+    </MessageEnhancementProvider>
   );
 };

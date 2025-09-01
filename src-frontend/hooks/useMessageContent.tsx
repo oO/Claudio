@@ -6,6 +6,7 @@ import {
 } from '@/components/ui';
 import type { ClaudeStreamMessage } from "@/lib/outputCache";
 import { useStreamData } from '../contexts/StreamDataContext';
+import { logger } from '@/lib/logger';
 
 /**
  * Hook that processes message content into React nodes
@@ -34,11 +35,24 @@ export const useMessageContent = (message: ClaudeStreamMessage): React.ReactNode
         // Thinking content and tool use
         if (content.type === "thinking" || content.type === "tool_use") {
           const toolResult = getToolResult(content.id);
+          
+          // Create enhanced message with combined UUIDs for clipboard functionality
+          const enhancedMessage = {
+            ...message,
+            _contributingMessageUuids: [
+              ...(message._contributingMessageUuids || []),
+              ...(message.uuid ? [message.uuid] : []),
+              // Add tool result UUID if available
+              ...(toolResult?._sourceMessageUuid ? [toolResult._sourceMessageUuid] : [])
+            ].filter((uuid, index, array) => uuid && array.indexOf(uuid) === index) // Remove duplicates
+          };
+          
           contentItems.push(
             <ToolCallRenderer
               key={`tool-${idx}`}
               toolCall={content}
               toolResult={toolResult}
+              originalMessage={enhancedMessage}
             />,
           );
         }
@@ -64,6 +78,7 @@ export const useMessageContent = (message: ClaudeStreamMessage): React.ReactNode
             commandArgs: message._bundledCommand.commandArgs,
             output: message._bundledCommand.output,
           }}
+          originalMessage={message}
         />,
       );
     } else if (
@@ -88,6 +103,7 @@ export const useMessageContent = (message: ClaudeStreamMessage): React.ReactNode
                 commandMessage: commandMessage.trim(),
                 commandArgs: commandArgs?.trim(),
               }}
+              originalMessage={message}
             />,
           );
         } else {
@@ -134,6 +150,7 @@ export const useMessageContent = (message: ClaudeStreamMessage): React.ReactNode
                     "grep",
                     "websearch",
                     "webfetch",
+                    "exitplanmode",
                   ];
                   if (
                     toolsWithWidgets.includes(toolName) ||

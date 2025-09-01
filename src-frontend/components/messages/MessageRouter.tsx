@@ -134,6 +134,15 @@ const MessageRouterComponent: React.FC<MessageRouterProps> = ({
       case "user":
         // Don't render meta messages
         if (message.isMeta) return null;
+        
+        // Filter out interruption messages - they're just noise
+        const content = message.message?.content;
+        if (Array.isArray(content) && content.length === 1 && 
+            typeof content[0]?.text === 'string' && 
+            content[0].text.startsWith('[Request interrupted by')) {
+          return null;
+        }
+        
         return <UserMessage message={message} />;
 
       case "result":

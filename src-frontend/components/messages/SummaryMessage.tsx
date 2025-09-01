@@ -5,6 +5,7 @@ import { MarkdownRenderer } from "@/components/ui/molecules";
 import { MessageTemplate } from "./MessageTemplate";
 import { cn } from "@/lib/utils";
 import type { ClaudeStreamMessage } from "@/lib/outputCache";
+import { MessageEnhancementProvider } from "@/contexts/MessageEnhancementContext";
 
 // Constants
 const PREVIEW_LINES = 8; // Number of lines to show when collapsed
@@ -133,19 +134,21 @@ export const SummaryMessage: React.FC<SummaryMessageProps> = ({ message }) => {
   );
 
   return (
-    <MessageTemplate.Container message={message}>
-      <DebugLabel label="SummaryMessage" />
-      <MessageTemplate.Header
-        IconComponent={Info}
-        iconClassName="bg-info"
-        title="Summary"
-        titleClassName="w-full text-info"
-      >
-        {titleContent}
-        {/* Custom title layout for summary with expand/collapse button */}
-        <MessageTemplate.Content>{summaryContent}</MessageTemplate.Content>
-      </MessageTemplate.Header>
-      <MessageTemplate.Footer message={message} />
-    </MessageTemplate.Container>
+    <MessageEnhancementProvider message={message}>
+      <MessageTemplate.Container message={message}>
+        <DebugLabel label="SummaryMessage" />
+        <MessageTemplate.Header
+          IconComponent={Info}
+          iconClassName="bg-info"
+          title="Summary"
+          titleClassName="w-full text-info"
+        >
+          {titleContent}
+          {/* Custom title layout for summary with expand/collapse button */}
+          <MessageTemplate.Content>{summaryContent}</MessageTemplate.Content>
+        </MessageTemplate.Header>
+        <MessageTemplate.Footer message={message} />
+      </MessageTemplate.Container>
+    </MessageEnhancementProvider>
   );
 };

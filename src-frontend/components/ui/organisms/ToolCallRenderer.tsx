@@ -14,7 +14,9 @@ import {
   WebSearchWidget,
   WebFetchWidget,
   MultiEditWidget,
-  CommandWidget
+  CommandWidget,
+  ExitPlanModeWidget,
+  ToolWithResultWidget
 } from "@/components/tools/ToolWidgets";
 
 interface ToolCallRendererProps {
@@ -33,6 +35,8 @@ interface ToolCallRendererProps {
     commandArgs?: string;
     output?: string;
   };
+  /** Original message containing the tool call - needed for UUID tracking */
+  originalMessage?: any;
 }
 
 /**
@@ -42,7 +46,8 @@ interface ToolCallRendererProps {
 export const ToolCallRenderer: React.FC<ToolCallRendererProps> = ({
   toolCall,
   toolResult,
-  commandContent
+  commandContent,
+  originalMessage
 }) => {
   // Handle thinking content
   if (toolCall.type === "thinking") {
@@ -137,7 +142,85 @@ export const ToolCallRenderer: React.FC<ToolCallRendererProps> = ({
       return <WebFetchWidget url={input.url} prompt={input.prompt} result={toolResult} />;
     }
     
-    // Fallback to basic tool display
+    // ExitPlanMode tool
+    if (toolName === "exitplanmode" && input?.plan) {
+      // Use the original message instead of creating a fake one
+      // This preserves UUID information for clipboard functionality
+      const message = originalMessage || {
+        message: {
+          content: [
+            {
+              type: 'tool_use',
+              id: toolCall.id || 'unknown',
+              name: 'ExitPlanMode',
+              input: input
+            }
+          ]
+        },
+        // Add UUIDs if we have them from toolCall
+        uuid: toolCall.id,
+        _contributingMessageUuids: toolCall.id ? [toolCall.id] : []
+      };
+      
+      // Create tool result message if available
+      const toolResultMessage = toolResult ? {
+        message: {
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: toolCall.id || 'unknown',
+              content: toolResult,
+              is_error: toolResult?.is_error || false
+            }
+          ]
+        },
+        // Add result UUID if available
+        uuid: toolResult?.uuid,
+        _contributingMessageUuids: toolResult?.uuid ? [toolResult.uuid] : []
+      } : undefined;
+      
+      return <ExitPlanModeWidget message={message as any} toolResult={toolResultMessage as any} />;
+    }
+    
+    // Fallback - use generic tool widget for unknown tools
+    if (toolCall.name) {
+      // Use the original message instead of creating a fake one
+      const message = originalMessage || {
+        message: {
+          content: [
+            {
+              type: 'tool_use',
+              id: toolCall.id || 'unknown',
+              name: toolCall.name,
+              input: input || {}
+            }
+          ]
+        },
+        // Add UUIDs if we have them from toolCall
+        uuid: toolCall.id,
+        _contributingMessageUuids: toolCall.id ? [toolCall.id] : []
+      };
+      
+      const toolResultMessage = toolResult ? {
+        message: {
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: toolCall.id || 'unknown',
+              content: toolResult,
+              is_error: toolResult?.is_error || false
+            }
+          ]
+        },
+        // Add result UUID if available
+        uuid: toolResult?.uuid,
+        _contributingMessageUuids: toolResult?.uuid ? [toolResult.uuid] : []
+      } : undefined;
+      
+      return <ToolWithResultWidget message={message as any} toolResult={toolResultMessage as any} />;
+    }
+    
+    // Final fallback to basic tool display
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2">

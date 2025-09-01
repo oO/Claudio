@@ -1,5 +1,15 @@
 # Backend Development Guidelines
 
+## !IMPORTANT: Application Lifecycle Management
+
+**NEVER start, stop, kill, or restart the Claudio application from agents/code!**
+
+- Only the user should start/stop the Claudio app
+- Agents cannot interact with UI buttons anyway  
+- User needs to see logs and control the development process
+- If restart is needed, ask the user to restart manually
+- Use `cargo check` for compilation verification, not `cargo run` or `npm run tauri dev`
+
 ## Session Management Architecture
 
 **Claudio Session Flow:**

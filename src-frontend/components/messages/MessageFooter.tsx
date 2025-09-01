@@ -8,6 +8,7 @@ import {
 import type { ClaudeStreamMessage } from "@/lib/outputCache";
 import { useMessageClipboard } from "@/hooks/useMessageClipboard";
 import { useSessionContext } from "@/contexts/SessionContext";
+import { useMessageEnhancement } from "@/contexts/MessageEnhancementContext";
 
 interface MessageFooterProps {
   message: ClaudeStreamMessage;
@@ -20,9 +21,12 @@ interface MessageFooterProps {
 export const MessageFooter: React.FC<MessageFooterProps> = ({ message }) => {
   // Get session data from context instead of props
   const { projectPath, sessionId, sessionFilePath } = useSessionContext();
+  
+  // Get enhanced message with combined UUIDs from context
+  const { enhancedMessage } = useMessageEnhancement();
 
   const handleClipboard = useMessageClipboard({
-    message,
+    message: enhancedMessage,
     projectPath,
     sessionId,
     sessionFilePath,

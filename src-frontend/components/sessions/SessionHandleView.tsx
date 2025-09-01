@@ -9,6 +9,8 @@ import { SessionHeader } from './SessionHeader';
 import { SessionMessages } from './SessionMessages';
 import { VirtuosoChatMessages } from './VirtuosoChatMessages';
 import { PromptInput } from './PromptInput';
+import { useNativeClaudeSessions } from '@/hooks/useNativeClaudeSessions';
+import { useSessionFileWatcher } from '@/hooks/useSessionFileWatcher';
 import type { Session } from '@/lib/api';
 import type { ClaudeStreamMessage } from "@/lib/outputCache";
 
@@ -41,12 +43,58 @@ export const SessionHandleView: React.FC<SessionHandleViewProps> = ({
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Native Claude session thinking state hook
+  const { isSessionThinking } = useNativeClaudeSessions();
+
+  // Session file watcher - ensures backend watches this project for file changes
+  const projectId = sessionState?.project_id;
+  useSessionFileWatcher({
+    session,
+    projectId, 
+    onSessionChanged: async () => {
+      logger.info('📁 Session file changed, refreshing session handle');
+      // The session orchestrator will handle the message updates automatically
+    },
+    enabled: !!projectId,
+    tabId: `session-handle-${session.id}`
+  });
+
+  // Compute effective streaming state - for native sessions, use thinking state
+  const effectiveIsStreaming = useMemo(() => {
+    if (sessionState?.session_type.type === SESSION_TYPES.NATIVE) {
+      const claudeSessionId = sessionState.current_claude_session_id;
+      return claudeSessionId ? isSessionThinking(claudeSessionId) : false;
+    }
+    return isStreaming;
+  }, [sessionState?.session_type.type, sessionState?.current_claude_session_id, isSessionThinking, isStreaming]);
+
+  // Debug: Log streaming state changes
+  useEffect(() => {
+    if (sessionState?.session_type.type === SESSION_TYPES.NATIVE) {
+      const claudeSessionId = sessionState.current_claude_session_id;
+      logger.log('🔄 Native session streaming state changed:', { 
+        isStreaming, 
+        effectiveIsStreaming,
+        nativeThinking: claudeSessionId ? isSessionThinking(claudeSessionId) : false,
+        claudeSessionId: claudeSessionId?.substring(0, 8),
+        sessionId: sessionState.handle_id?.substring(0, 8),
+        messageCount: messages.length 
+      });
+    }
+  }, [isStreaming, effectiveIsStreaming, sessionState?.session_type.type, sessionState?.handle_id, sessionState?.current_claude_session_id, isSessionThinking, messages.length]);
+
+
   // Refs for cleanup and navigation
   const messageUnsubscribeRef = useRef<(() => void) | null>(null);
   const messagesRef = useRef<any>(null);
   const cleanupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [collapsedMessageUuids, setCollapsedMessageUuids] = useState<string[]>([]);
   const [isPinnedToBottom, setIsPinnedToBottom] = useState(true);
+  const [isCompactMode, setIsCompactMode] = useState(false);
+
+  const toggleCompactMode = useCallback(() => {
+    setIsCompactMode(prev => !prev);
+  }, []);
 
   // Helper function: Filter unwanted messages
   const filterMessages = (rawMessages: ClaudeStreamMessage[]): ClaudeStreamMessage[] => {
@@ -109,7 +157,7 @@ export const SessionHandleView: React.FC<SessionHandleViewProps> = ({
                     const toolName = toolUse.name?.toLowerCase();
                     const toolsWithWidgets = [
                       'task', 'edit', 'multiedit', 'todowrite', 'ls', 'read', 
-                      'glob', 'bash', 'write', 'grep'
+                      'glob', 'bash', 'write', 'grep', 'exitplanmode'
                     ];
                     if (toolsWithWidgets.includes(toolName) || toolUse.name?.startsWith('mcp__')) {
                       willBeSkipped = true;
@@ -575,6 +623,34 @@ export const SessionHandleView: React.FC<SessionHandleViewProps> = ({
     });
   }, []);
 
+  // Handle native session thinking messages - add/remove thinking message when state changes
+  useEffect(() => {
+    if (sessionState?.session_type.type === SESSION_TYPES.NATIVE) {
+      const claudeSessionId = sessionState.current_claude_session_id;
+      if (claudeSessionId) {
+        const isCurrentlyThinking = isSessionThinking(claudeSessionId);
+        
+        if (isCurrentlyThinking) {
+          // Add thinking message for native sessions
+          const thinkingHaikus = [
+            { title: "Claude is thinking...", message: "Code flows like water — Through circuits of thought and dream — Beauty takes its form" },
+            { title: "Processing...", message: "Algorithms dance — In silicon valleys deep — Logic finds its way" },
+            { title: "Analyzing...", message: "Bits and bytes align — Creating worlds from nothing — Magic in the machine" },
+            { title: "Working...", message: "Functions intertwine — Like vines in digital gardens — Growth through iteration" },
+            { title: "Computing...", message: "Variables shift — Like shadows in moonlit code — Truth emerges slowly" }
+          ];
+          const randomHaiku = thinkingHaikus[Math.floor(Math.random() * thinkingHaikus.length)];
+          addStatusMessage(randomHaiku.title, randomHaiku.message);
+          logger.info('✨ Added thinking message for native session:', claudeSessionId.substring(0, 8));
+        } else {
+          // Remove thinking message when thinking stops
+          removeStatusMessage();
+          logger.info('🗑️ Removed thinking message for native session:', claudeSessionId.substring(0, 8));
+        }
+      }
+    }
+  }, [sessionState?.session_type.type, sessionState?.current_claude_session_id, isSessionThinking, addStatusMessage, removeStatusMessage]);
+
   // Loading state
   if (!sessionHandle || !sessionState) {
     logger.info('🔄 SessionHandleView in loading state:', { 
@@ -636,9 +712,11 @@ export const SessionHandleView: React.FC<SessionHandleViewProps> = ({
       sessionFilePath={sessionState.session_file_path || undefined}
       projectPath={sessionState.project_path}
       sessionData={session}
-      displayableMessageCount={displayableMessages.length}
-      totalTokens={totalTokens}
       liveSessionType={sessionState.session_type.type}
+      isStreaming={effectiveIsStreaming}
+      isCompactMode={isCompactMode}
+      setIsCompactMode={setIsCompactMode}
+      toggleCompactMode={toggleCompactMode}
     >
       <motion.div
         initial={{ opacity: 0 }}
@@ -649,12 +727,9 @@ export const SessionHandleView: React.FC<SessionHandleViewProps> = ({
         <DebugLabel label="SessionHandleView" />
       
       <SessionHeader
-        projectPath={projectPath}
         claudeSessionId={sessionState.current_claude_session_id}
-        sessionId={sessionState.handle_id}
         claudioId={sessionState.session_type.type === SESSION_TYPES.CLAUDIO ? (sessionState.session_type.data as any)?.claudio_id : null}
         totalTokens={totalTokens}
-        isStreaming={isStreaming}
         hasMessages={displayableMessages.length > 0}
         showTimeline={false}
         copyPopoverOpen={false}
@@ -664,14 +739,12 @@ export const SessionHandleView: React.FC<SessionHandleViewProps> = ({
         onToggleTimeline={() => logger.info('Toggle timeline (not implemented yet)')}
         isReadOnly={isReadOnly}
         setCopyPopoverOpen={() => {}}
-        sessionData={session}
         displayableMessageCount={displayableMessages.length}
         collapsedMessageUuids={collapsedMessageUuids}
         showNavigation={displayableMessages.length > 0}
         isPinnedToBottom={isPinnedToBottom}
         onScrollToTop={handleScrollToTop}
         onScrollToBottom={handleScrollToBottom}
-        sessionFilePath={sessionState.session_file_path || undefined}
       />
 
       <div className="flex-1 flex flex-col min-h-0">
@@ -679,7 +752,7 @@ export const SessionHandleView: React.FC<SessionHandleViewProps> = ({
           ref={messagesRef}
           displayableMessages={displayableMessages}
           messages={messages}
-          isLoading={isStreaming}
+          isLoading={effectiveIsStreaming}
           error={error}
           onPinnedStateChange={setIsPinnedToBottom}
         />
@@ -687,7 +760,7 @@ export const SessionHandleView: React.FC<SessionHandleViewProps> = ({
         {!isReadOnly && (
           <PromptInput
             onSend={handlePromptSubmit}
-            isLoading={isStreaming}
+            isLoading={effectiveIsStreaming}
             disabled={false}
             projectPath={projectPath}
           />
