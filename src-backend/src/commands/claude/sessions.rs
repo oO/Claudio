@@ -135,17 +135,27 @@ pub async fn get_session_todos(session_id: String) -> Result<serde_json::Value, 
     let todos_dir = claude_dir.join("todos");
     let pattern = format!("{}-agent-", session_id);
     
+    log::debug!("📂 Todos dir: {:?}, pattern: {}", todos_dir, pattern);
+    
     let mut agent_todos = Vec::new();
     let mut total_counts = super::types::TodoCounts { open: 0, completed: 0, total: 0 };
     
     // Find all agent todo files for this session
     if todos_dir.exists() {
+        log::debug!("✅ Todos directory exists, reading entries");
         if let Ok(entries) = fs::read_dir(&todos_dir) {
+            let mut found_files = Vec::new();
+            let mut matching_files = Vec::new();
+            
             for entry in entries.flatten() {
                 let file_name = entry.file_name().to_string_lossy().to_string();
+                found_files.push(file_name.clone());
                 
                 // Check if this is an agent todo file for our session
                 if file_name.starts_with(&pattern) && file_name.ends_with(".json") {
+                    matching_files.push(file_name.clone());
+                    log::debug!("🎯 Found matching todo file: {}", file_name);
+                    
                     // Extract agent ID from filename: {session_id}-agent-{agent_id}.json
                     let agent_id = file_name
                         .strip_prefix(&pattern)
@@ -153,32 +163,54 @@ pub async fn get_session_todos(session_id: String) -> Result<serde_json::Value, 
                         .unwrap_or("unknown")
                         .to_string();
                     
-                    if let Ok(todos) = super::types::parse_agent_todo_file(&entry.path()) {
-                        let counts = super::types::count_todos_by_status(&todos);
-                        
-                        // Add to totals
-                        total_counts.open += counts.open;
-                        total_counts.completed += counts.completed;
-                        total_counts.total += counts.total;
-                        
-                        agent_todos.push(serde_json::json!({
-                            "agent_id": agent_id,
-                            "file_path": entry.path().to_string_lossy(),
-                            "todos": todos,
-                            "counts": counts,
-                        }));
+                    log::debug!("🤖 Parsing todo file for agent: {}", agent_id);
+                    
+                    match super::types::parse_agent_todo_file(&entry.path()) {
+                        Ok(todos) => {
+                            log::debug!("📋 Found {} todos in file {}", todos.len(), file_name);
+                            let counts = super::types::count_todos_by_status(&todos);
+                            log::debug!("📊 Todo counts for {}: open={}, completed={}, total={}", 
+                                       agent_id, counts.open, counts.completed, counts.total);
+                            
+                            // Add to totals
+                            total_counts.open += counts.open;
+                            total_counts.completed += counts.completed;
+                            total_counts.total += counts.total;
+                            
+                            agent_todos.push(serde_json::json!({
+                                "agent_id": agent_id,
+                                "file_path": entry.path().to_string_lossy(),
+                                "todos": todos,
+                                "counts": counts,
+                            }));
+                        }
+                        Err(e) => {
+                            log::warn!("❌ Failed to parse todo file {}: {}", file_name, e);
+                        }
                     }
                 }
             }
+            
+            log::debug!("📁 Found {} total files in todos dir: {:?}", found_files.len(), found_files);
+            log::debug!("🎯 Found {} matching files for session {}: {:?}", matching_files.len(), session_id, matching_files);
+        } else {
+            log::warn!("❌ Failed to read todos directory: {:?}", todos_dir);
         }
+    } else {
+        log::warn!("❌ Todos directory does not exist: {:?}", todos_dir);
     }
     
-    Ok(serde_json::json!({
+    let result = serde_json::json!({
         "session_id": session_id,
         "agent_todos": agent_todos,
         "total_counts": total_counts,
         "agent_count": agent_todos.len(),
-    }))
+    });
+    
+    log::info!("📝 Returning todo data for session {}: agent_count={}, total_open={}, total_completed={}, total_todos={}", 
+               session_id, agent_todos.len(), total_counts.open, total_counts.completed, total_counts.total);
+    
+    Ok(result)
 }
 
 /// Helper function to get project path from Claudio session file 

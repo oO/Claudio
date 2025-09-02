@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.11] - 2025-09-02
+- Fixed filter state persistence across navigation using localStorage for session type filters
+- Removed full-page loading spinner that blocked entire UI during session loading
+- Implemented progressive loading where interface shows immediately while data loads in background
+- Added conditional rendering to hide filter buttons when their session count is 0
+- Improved session refresh with smooth updates and no blocking loading states
+
 ## [0.4.10] - 2025-09-02
 - Fixed critical orphan cleanup bug that incorrectly deleted valid todo files
 - Fixed filename parsing to properly extract session IDs from agent todo filenames

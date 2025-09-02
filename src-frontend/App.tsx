@@ -13,6 +13,7 @@ import {
 import { OutputCacheProvider } from "@/lib/outputCache";
 import { TabProvider } from "@/contexts/TabContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { TodoProvider } from "@/contexts/TodoContext";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ProjectList, ProjectDetail } from "@/components/projects";
@@ -683,7 +684,9 @@ function App() {
     <ThemeProvider>
       <OutputCacheProvider>
         <TabProvider>
-          <AppContent />
+          <TodoProvider>
+            <AppContent />
+          </TodoProvider>
         </TabProvider>
       </OutputCacheProvider>
     </ThemeProvider>

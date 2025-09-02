@@ -34,6 +34,9 @@ use commands::claude::{
     // Session watcher functionality
     init_session_watcher, start_session_watching, stop_session_watching, 
     stop_all_session_watching, get_session_watching_status,
+    // Todo watcher functionality
+    init_todo_watcher, start_todo_watching, stop_todo_watching,
+    get_todo_watching_status,
 };
 use commands::logger::log_frontend_debug;
 use commands::mcp::{
@@ -197,6 +200,10 @@ fn main() {
             // Initialize session file watcher
             let session_watcher_state = init_session_watcher(app.handle().clone());
             app.manage(session_watcher_state.clone());
+
+            // Initialize global todo watcher
+            let todo_watcher_state = init_todo_watcher(app.handle().clone());
+            app.manage(todo_watcher_state);
 
             // Initialize SessionOrchestrator (new architecture)
             commands::session_orchestrator::initialize_orchestrator(app.handle().clone(), session_watcher_state);
@@ -401,6 +408,11 @@ fn main() {
             stop_session_watching,
             stop_all_session_watching,
             get_session_watching_status,
+
+            // Todo File Watching
+            start_todo_watching,
+            stop_todo_watching,
+            get_todo_watching_status,
             
             // Frontend Debug Logging
             log_frontend_debug,

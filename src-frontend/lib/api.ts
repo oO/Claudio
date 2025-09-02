@@ -547,6 +547,47 @@ export interface SlashCommand {
 }
 
 /**
+ * Todo item structure
+ */
+export interface TodoItem {
+  content: string;
+  status: "pending" | "in_progress" | "completed";
+  activeForm: string;
+}
+
+/**
+ * Todo counts by status
+ */
+export interface TodoCounts {
+  /** Number of open todos (pending + in_progress) */
+  open: number;
+  /** Number of completed todos */
+  completed: number;
+  /** Total number of todos */
+  total: number;
+}
+
+/**
+ * Agent-specific todo data
+ */
+export interface AgentTodos {
+  agent_id: string;
+  file_path: string;
+  todos: TodoItem[];
+  counts: TodoCounts;
+}
+
+/**
+ * Complete session todo data
+ */
+export interface SessionTodoData {
+  session_id: string;
+  agent_todos: AgentTodos[];
+  total_counts: TodoCounts;
+  agent_count: number;
+}
+
+/**
  * Result of adding a server
  */
 export interface AddServerResult {
@@ -2422,6 +2463,20 @@ export const api = {
       }));
     } catch (error) {
       logger.error("Failed to get decorated sessions:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Gets todo data for a specific session
+   * @param sessionId - The session ID
+   * @returns Promise resolving to the todo data
+   */
+  async getSessionTodos(sessionId: string): Promise<SessionTodoData> {
+    try {
+      return await invoke<SessionTodoData>('get_session_todos', { sessionId });
+    } catch (error) {
+      logger.error("Failed to get session todos:", error);
       throw error;
     }
   }

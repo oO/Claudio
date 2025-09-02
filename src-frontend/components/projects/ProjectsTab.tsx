@@ -468,29 +468,8 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
               </motion.div>
             )}
 
-            {/* Loading state */}
-            {loading && (
-              <div className="flex items-center justify-center gap-2 py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">
-                  {selectedProject ? (
-                    <>
-                      Loading the{" "}
-                      <strong className="text-accent">
-                        {getProjectName(selectedProject.path)}
-                      </strong>{" "}
-                      project...
-                    </>
-                  ) : (
-                    "Loading projects..."
-                  )}
-                </span>
-              </div>
-            )}
-
-            {/* Content */}
-            {!loading && (
-              <AnimatePresence mode="wait">
+            {/* Content - always show, loading handled inside components */}
+            <AnimatePresence mode="wait">
                 {selectedProject ? (
                   <motion.div
                     key="sessions"
@@ -729,7 +708,6 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                   </motion.div>
                 )}
               </AnimatePresence>
-            )}
           </div>
         </div>
 

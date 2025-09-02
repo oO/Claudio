@@ -9,6 +9,7 @@
 // - settings: Settings and configuration management
 // - hooks: Hook configuration and validation
 // - session_watcher: Real-time session file watching functionality
+// - todo_watcher: Global todo file watching functionality
 
 mod types;
 mod projects;
@@ -19,6 +20,7 @@ mod filesystem;
 mod settings;
 mod hooks;
 mod session_watcher;
+mod todo_watcher;
 
 // Re-export everything from the modular structure for backward compatibility
 pub use types::*;
@@ -30,3 +32,4 @@ pub use filesystem::*;
 pub use settings::*;
 pub use hooks::*;
 pub use session_watcher::*;
+pub use todo_watcher::*;

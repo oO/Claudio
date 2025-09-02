@@ -32,40 +32,15 @@ pub enum SessionFileEvent {
         project_id: String,
         file_path: String,
     },
-    /// Todo file was created (new todos for a session)
-    TodoCreated {
-        session_id: String,
-        agent_id: String,
-        file_path: String,
-        todo_counts: crate::commands::claude::types::TodoCounts,
-        created_at: u64,
-    },
-    /// Todo file was modified (todos updated)
-    TodoModified {
-        session_id: String,
-        agent_id: String,
-        file_path: String,
-        todo_counts: crate::commands::claude::types::TodoCounts,
-        modified_at: u64,
-    },
-    /// Todo file was removed (todos deleted)
-    TodoRemoved {
-        session_id: String,
-        agent_id: String,
-        file_path: String,
-    },
 }
 
 impl SessionFileEvent {
-    /// Get the project ID for this event (todo events don't have project_id directly)
+    /// Get the project ID for this event
     pub fn get_project_id(&self) -> Option<&str> {
         match self {
             SessionFileEvent::Modified { project_id, .. } => Some(project_id),
             SessionFileEvent::Created { project_id, .. } => Some(project_id),
             SessionFileEvent::Removed { project_id, .. } => Some(project_id),
-            SessionFileEvent::TodoCreated { .. } => None,
-            SessionFileEvent::TodoModified { .. } => None,
-            SessionFileEvent::TodoRemoved { .. } => None,
         }
     }
     
@@ -75,9 +50,6 @@ impl SessionFileEvent {
             SessionFileEvent::Modified { session_id, .. } => session_id,
             SessionFileEvent::Created { session_id, .. } => session_id,
             SessionFileEvent::Removed { session_id, .. } => session_id,
-            SessionFileEvent::TodoCreated { session_id, .. } => session_id,
-            SessionFileEvent::TodoModified { session_id, .. } => session_id,
-            SessionFileEvent::TodoRemoved { session_id, .. } => session_id,
         }
     }
 }
@@ -116,13 +88,12 @@ impl SessionWatcherManager {
         // Setup directories to watch
         let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
         let claude_sessions_dir = claude_dir.join("projects").join(project_id);
-        let claude_todos_dir = claude_dir.join("todos");
         
         let home_dir = dirs::home_dir().ok_or("Cannot find home directory")?;
         let claudio_sessions_dir = home_dir.join(".claudio").join("projects").join(project_id);
 
         // Create directories if they don't exist
-        for dir in [&claude_sessions_dir, &claudio_sessions_dir, &claude_todos_dir] {
+        for dir in [&claude_sessions_dir, &claudio_sessions_dir] {
             if !dir.exists() {
                 std::fs::create_dir_all(dir)
                     .map_err(|e| format!("Failed to create sessions directory: {}", e))?;
@@ -147,15 +118,12 @@ impl SessionWatcherManager {
             notify::Config::default(),
         ).map_err(|e| format!("Failed to create watcher: {}", e))?;
 
-        // Watch session directories and todos directory
+        // Watch session directories only (todos are handled by separate global watcher)
         watcher.watch(&claude_sessions_dir, RecursiveMode::NonRecursive)
             .map_err(|e| format!("Failed to start watching .claude sessions directory: {}", e))?;
         
         watcher.watch(&claudio_sessions_dir, RecursiveMode::NonRecursive)
             .map_err(|e| format!("Failed to start watching .claudio sessions directory: {}", e))?;
-            
-        watcher.watch(&claude_todos_dir, RecursiveMode::NonRecursive)
-            .map_err(|e| format!("Failed to start watching .claude todos directory: {}", e))?;
 
         // Spawn async task to handle file events
         tokio::spawn(async move {
@@ -163,7 +131,7 @@ impl SessionWatcherManager {
         });
 
         watchers.insert(project_id.to_string(), watcher);
-        log::info!("Started watching session and todo files for project: {} (.claude sessions, .claudio sessions, todos)", project_id);
+        log::info!("Started watching session files for project: {} (.claude sessions, .claudio sessions)", project_id);
         
         Ok(())
     }
@@ -306,147 +274,76 @@ impl SessionWatcherManager {
         let filename = path.file_stem()?.to_str()?;
         let file_path = path.to_string_lossy().to_string();
         
-        // Check if this is a todo file in ~/.claude/todos/
-        let path_str = path.to_string_lossy();
-        let is_todo_file = path_str.contains("/todos/") && extension == Some("json");
-        
-        if is_todo_file {
-            // Handle agent todo files: {session_id}-agent-{agent_id}.json
-            if let Some(dash_pos) = filename.find("-agent-") {
-                let session_id = filename[..dash_pos].to_string();
-                let agent_id = filename[dash_pos + 7..].to_string(); // +7 for "-agent-"
-                
-                match &event.kind {
-                    EventKind::Create(_) => {
-                        let created_at = std::fs::metadata(path)
-                            .and_then(|meta| meta.created())
-                            .or_else(|_| std::fs::metadata(path).and_then(|meta| meta.modified()))
-                            .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
-                            .duration_since(std::time::SystemTime::UNIX_EPOCH)
-                            .unwrap_or_default()
-                            .as_secs();
-                            
-                        let todo_counts = Self::parse_todo_file_counts(path)?;
-
-                        Some(SessionFileEvent::TodoCreated {
-                            session_id,
-                            agent_id,
-                            file_path,
-                            todo_counts,
-                            created_at,
-                        })
-                    }
-                    EventKind::Modify(_) => {
-                        let modified_at = std::fs::metadata(path)
-                            .and_then(|meta| meta.modified())
-                            .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
-                            .duration_since(std::time::SystemTime::UNIX_EPOCH)
-                            .unwrap_or_default()
-                            .as_secs();
-                            
-                        let todo_counts = Self::parse_todo_file_counts(path)?;
-
-                        Some(SessionFileEvent::TodoModified {
-                            session_id,
-                            agent_id,
-                            file_path,
-                            todo_counts,
-                            modified_at,
-                        })
-                    }
-                    EventKind::Remove(_) => {
-                        Some(SessionFileEvent::TodoRemoved {
-                            session_id,
-                            agent_id,
-                            file_path,
-                        })
-                    }
-                    _ => None,
-                }
-            } else {
-                // Ignore non-agent todo files
-                log::debug!("Ignoring non-agent todo file: {}", filename);
-                None
+        // Only handle session files (todos are handled by separate global watcher)
+        match extension {
+            Some("jsonl") => {
+                // Always handle .jsonl files (message data from Claude CLI)
             }
-        } else {
-            // Handle session files (existing logic)
-            match extension {
-                Some("jsonl") => {
-                    // Always handle .jsonl files (message data from Claude CLI)
-                }
-                Some("json") => {
-                    // Only handle native session files (claude-<session_id>.json) from hook scripts
-                    // Ignore claudio wrapper files (<claudio_id>.json) to prevent circular dependencies
-                    if !filename.starts_with("claude-") {
-                        log::debug!("Ignoring non-native JSON file to prevent circular dependency: {}", filename);
-                        return None;
-                    }
-                }
-                _ => {
+            Some("json") => {
+                // Only handle native session files (claude-<session_id>.json) from hook scripts
+                // Ignore claudio wrapper files (<claudio_id>.json) to prevent circular dependencies
+                if !filename.starts_with("claude-") {
+                    log::debug!("Ignoring non-native JSON file to prevent circular dependency: {}", filename);
                     return None;
                 }
             }
-
-            // Extract session ID based on file type and naming convention
-            let session_id = if filename.starts_with("claude-") {
-                // Native Claude session: claude-<session_id>.json → extract session_id
-                filename.strip_prefix("claude-").unwrap_or(filename).to_string()
-            } else {
-                // Regular session (.jsonl): <id>.<ext> → use full filename as ID
-                filename.to_string()
-            };
-
-            match &event.kind {
-                EventKind::Create(_) => {
-                    let created_at = std::fs::metadata(path)
-                        .and_then(|meta| meta.created())
-                        .or_else(|_| std::fs::metadata(path).and_then(|meta| meta.modified()))
-                        .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
-                        .duration_since(std::time::SystemTime::UNIX_EPOCH)
-                        .unwrap_or_default()
-                        .as_secs();
-
-                    Some(SessionFileEvent::Created {
-                        session_id,
-                        project_id: project_id.to_string(),
-                        file_path,
-                        created_at,
-                    })
-                }
-                EventKind::Modify(_) => {
-                    let modified_at = std::fs::metadata(path)
-                        .and_then(|meta| meta.modified())
-                        .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
-                        .duration_since(std::time::SystemTime::UNIX_EPOCH)
-                        .unwrap_or_default()
-                        .as_secs();
-
-                    Some(SessionFileEvent::Modified {
-                        session_id,
-                        project_id: project_id.to_string(),
-                        file_path,
-                        modified_at,
-                    })
-                }
-                EventKind::Remove(_) => {
-                    Some(SessionFileEvent::Removed {
-                        session_id,
-                        project_id: project_id.to_string(),
-                        file_path,
-                    })
-                }
-                _ => None,
+            _ => {
+                return None;
             }
+        }
+
+        // Extract session ID based on file type and naming convention
+        let session_id = if filename.starts_with("claude-") {
+            // Native Claude session: claude-<session_id>.json → extract session_id
+            filename.strip_prefix("claude-").unwrap_or(filename).to_string()
+        } else {
+            // Regular session (.jsonl): <id>.<ext> → use full filename as ID
+            filename.to_string()
+        };
+
+        match &event.kind {
+            EventKind::Create(_) => {
+                let created_at = std::fs::metadata(path)
+                    .and_then(|meta| meta.created())
+                    .or_else(|_| std::fs::metadata(path).and_then(|meta| meta.modified()))
+                    .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
+                    .duration_since(std::time::SystemTime::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs();
+
+                Some(SessionFileEvent::Created {
+                    session_id,
+                    project_id: project_id.to_string(),
+                    file_path,
+                    created_at,
+                })
+            }
+            EventKind::Modify(_) => {
+                let modified_at = std::fs::metadata(path)
+                    .and_then(|meta| meta.modified())
+                    .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
+                    .duration_since(std::time::SystemTime::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs();
+
+                Some(SessionFileEvent::Modified {
+                    session_id,
+                    project_id: project_id.to_string(),
+                    file_path,
+                    modified_at,
+                })
+            }
+            EventKind::Remove(_) => {
+                Some(SessionFileEvent::Removed {
+                    session_id,
+                    project_id: project_id.to_string(),
+                    file_path,
+                })
+            }
+            _ => None,
         }
     }
 
-    /// Parse todo counts from a todo file
-    fn parse_todo_file_counts(path: &std::path::Path) -> Option<crate::commands::claude::types::TodoCounts> {
-        use crate::commands::claude::types::{parse_agent_todo_file, count_todos_by_status};
-        
-        let todos = parse_agent_todo_file(&path.to_path_buf()).ok()?;
-        Some(count_todos_by_status(&todos))
-    }
 
     /// Handle native Claude session status changes and emit thinking events
     async fn handle_native_session_status_change(app_handle: &AppHandle, session_id: &str, file_path: &str) {
