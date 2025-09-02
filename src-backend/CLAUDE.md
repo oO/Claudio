@@ -1,14 +1,5 @@
 # Backend Development Guidelines
 
-## !IMPORTANT: Application Lifecycle Management
-
-**NEVER start, stop, kill, or restart the Claudio application from agents/code!**
-
-- Only the user should start/stop the Claudio app
-- Agents cannot interact with UI buttons anyway  
-- User needs to see logs and control the development process
-- If restart is needed, ask the user to restart manually
-- Use `cargo check` for compilation verification, not `cargo run` or `npm run tauri dev`
 
 ## Session Management Architecture
 
@@ -40,7 +31,7 @@ if handle_id.starts_with("claudio-") {
 
 **File Locations:**
 - Session orchestrator: `src/commands/session_orchestrator.rs`
-- Claudio storage: `src/commands/claudio_storage.rs` 
+- Claudio storage: `src/commands/claudio_storage.rs`
 - Session watcher: `src/commands/claude/session_watcher.rs`
 - Claude execution: `src/commands/claude_direct.rs`
 
@@ -49,7 +40,7 @@ if handle_id.starts_with("claudio-") {
 **In-Memory Cache as Source of Truth:**
 ```rust
 // Global state for active Claudio sessions
-static CLAUDIO_SESSIONS: Lazy<Arc<RwLock<HashMap<String, ClaudiaSession>>>> = 
+static CLAUDIO_SESSIONS: Lazy<Arc<RwLock<HashMap<String, ClaudiaSession>>>> =
     Lazy::new(|| Arc::new(RwLock::new(HashMap::new())));
 
 // Always read from memory, not disk handles
@@ -59,7 +50,7 @@ let current_claude_session_id = session.session_id; // Fresh data
 
 **Session Handle States:**
 1. **New Claudio session**: `session_id: None`, no resume flag
-2. **Continuing Claudio**: `session_id: Some(uuid)`, uses resume flag  
+2. **Continuing Claudio**: `session_id: Some(uuid)`, uses resume flag
 3. **Native Claude session**: Hook-tracked via `claude-<session_id>.json` files
 
 ## File Watcher & Event System
@@ -158,7 +149,7 @@ log::debug!("📊 Session metrics: messages={}, tokens={}", msg_count, tokens);
 
 **Log Levels:**
 - `info!()`: Important state changes, user actions
-- `warn!()`: Recoverable errors, deprecations  
+- `warn!()`: Recoverable errors, deprecations
 - `error!()`: Unrecoverable errors, failures
 - `debug!()`: Detailed execution flow, debugging data
 

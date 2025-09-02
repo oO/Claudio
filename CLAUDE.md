@@ -1,7 +1,7 @@
 # Purpose
 
 Your name is **Claudio**   (they/them ) and you are  an expert  development.
- 
+
 ## MANDATORY Commit Message Format
 
 **ALWAYS USE THIS EXACT FORMAT FOR EVERY COMMIT - NO EXCEPTIONS:**
@@ -25,34 +25,18 @@ Co-authored-by: Claude.AI <noreply@anthropic.com>
 
 ## Development Commands
 
-### Core Development
-```bash
-# Development with auto-reload
-npm run dev              # Frontend only (Vite dev server)
-npm run tauri dev        # Full stack with Tauri backend
+## !IMPORTANT: Application Lifecycle Management
 
-# Building
-npm run build           # TypeScript compilation + Vite build
-npm run tauri build     # Full application build (all platforms)
+**NEVER start, stop, kill, or restart the Claudio application from agents/code!**
 
-# Type checking
-npm run check           # Frontend + backend type/syntax check
-tsc --noEmit           # Frontend TypeScript check only
-cd src-backend && cargo check  # Rust syntax check only
-```
-
-### Version Management
-```bash
-npm run sync-version    # Sync version between package.json and Cargo.toml
-# Automatically runs before build/dev
-```
-
-### Tauri Commands
-```bash
-npm run tauri dev       # Development with hot reload
-npm run tauri build     # Production build
-npm run tauri info      # System info for debugging
-```
+- Only the user should start/stop the Claudio app
+- Agents cannot interact with UI buttons anyway
+- User needs to see logs and control the development process
+- If restart is needed, ask the user to restart manually
+- Use `cargo check` for compilation verification, not `cargo run` or `npm run tauri dev`
+- the user starts the application in dev more with
+  `RUST_LOG=debug npm run tauri dev 2>&1 | tee claudio-dev.log`
+  so both of you can parse the log
 
 ## Project Architecture
 
@@ -92,7 +76,7 @@ Claudio is a **Claude Code Native Agent Manager** built on Tauri (Rust backend +
 
 ### Key Backend Modules
 - **`commands/claude/`** - Core Claude Code integration (projects, sessions, execution)
-- **`commands/agents.rs`** - Agent CRUD operations and execution management  
+- **`commands/agents.rs`** - Agent CRUD operations and execution management
 - **`commands/usage.rs`** - Usage analytics and session statistics
 - **`commands/mcp.rs`** - Model Context Protocol server management
 - **`checkpoint/`** - Session checkpoint management and timeline features

@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { DragEvent as ReactDragEvent, ClipboardEvent as ReactClipboardEvent } from 'react';
+import { logger } from '@/lib/logger';
 
 interface UseImageHandlingProps {
   projectPath?: string;
@@ -17,13 +18,13 @@ export const useImageHandling = (props: UseImageHandlingProps) => {
   const [dragActive, setDragActive] = useState(false);
   const handleImageUpload = useCallback((files: FileList) => {
     // Stub implementation - just log for now
-    console.warn('Image upload not implemented - files:', Array.from(files).map(f => f.name));
+    logger.warn('Image upload not implemented - files:', Array.from(files).map(f => f.name));
   }, []);
 
   const handleImagePaste = useCallback((e: ReactClipboardEvent) => {
     // Handle clipboard image paste
     if (e.clipboardData?.files.length) {
-      console.warn('Image paste not implemented - files:', Array.from(e.clipboardData.files).map(f => f.name));
+      logger.warn('Image paste not implemented - files:', Array.from(e.clipboardData.files).map(f => f.name));
       handleImageUpload(e.clipboardData.files);
     }
   }, []);
