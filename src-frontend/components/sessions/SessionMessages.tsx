@@ -7,13 +7,13 @@ import { LinkNotificationProvider } from '@/contexts/LinkNotificationContext';
 import { logger } from '@/lib/logger';
 import type { ClaudeStreamMessage } from "@/lib/outputCache";
 
-export interface VirtuosoChatMessagesHandle {
+export interface SessionMessagesHandle {
   scrollToBottom: () => void;
   scrollToIndex: (index: number) => void;
   scrollToTop: () => void;
 }
 
-interface VirtuosoChatMessagesProps {
+interface SessionMessagesProps {
   displayableMessages: ClaudeStreamMessage[];
   messages: any[];
   isLoading?: boolean;
@@ -22,7 +22,7 @@ interface VirtuosoChatMessagesProps {
   onPinnedStateChange?: (isPinned: boolean) => void;
 }
 
-export const VirtuosoChatMessages = forwardRef<VirtuosoChatMessagesHandle, VirtuosoChatMessagesProps>(({
+export const SessionMessages = forwardRef<SessionMessagesHandle, SessionMessagesProps>(({ 
   displayableMessages,
   messages,
   isLoading = false,
@@ -51,17 +51,17 @@ export const VirtuosoChatMessages = forwardRef<VirtuosoChatMessagesHandle, Virtu
   }));
 
   // Log for debugging
-  logger.info('🎯 VirtuosoChatMessages props:', { 
+  logger.info('🎯 SessionMessages props:', { 
     messageCount: displayableMessages.length,
     initialIndex: Math.max(0, displayableMessages.length - 1)
   });
 
-  logger.info('🎯 VirtuosoChatMessages rendering with messages:', displayableMessages.length);
+  logger.info('🎯 SessionMessages rendering with messages:', displayableMessages.length);
 
   return (
     <StreamDataProvider streamMessages={messages}>
       <LinkNotificationProvider onLinkDetected={onLinkDetected || (() => {})}>
-        <DebugLabel label="VirtuosoChatMessages" />
+        <DebugLabel label="SessionMessages" />
         <div className="relative flex-1 overflow-hidden">
             <Virtuoso
               ref={virtuosoRef}
@@ -106,4 +106,4 @@ export const VirtuosoChatMessages = forwardRef<VirtuosoChatMessagesHandle, Virtu
   );
 });
 
-VirtuosoChatMessages.displayName = 'VirtuosoChatMessages';
+SessionMessages.displayName = 'SessionMessages';

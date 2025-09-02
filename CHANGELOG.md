@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.7] - 2025-09-02
+
+### Major Refactoring
+- **SessionHandleView Architecture Overhaul**: Complete redesign of 925-line monolithic component
+- **Custom Hook Extraction**: Created 4 specialized hooks for separation of concerns
+  - `useMessageProcessing.ts` (309 lines) - Message filtering, bundling, processing logic
+  - `useSessionHandle.ts` (303 lines) - Session lifecycle, events, WebSocket management
+  - `useStreamingState.ts` (85 lines) - Native Claude thinking state computation
+  - `useSessionNavigation.ts` (41 lines) - Scroll handlers, compact mode, UI refs
+- **Component Decomposition**: Created 3 focused UI components
+  - `SessionLoadingState.tsx` - Loading spinner with DebugLabel
+  - `SessionErrorState.tsx` - Error display with back button and DebugLabel  
+  - `ThinkingIndicator.tsx` - Context-aware native session thinking animation
+- **Component Renaming**: Improved naming consistency
+  - `SessionHandleView.tsx` → `SessionDetail.tsx` (matches ProjectDetail pattern)
+  - `VirtuosoChatMessages.tsx` → `SessionMessages.tsx` (clearer naming)
+
+### Architecture Improvements
+- **79% Size Reduction**: Main component reduced from 925 lines to 193 lines
+- **Perfect Separation of Concerns**: Logic in hooks, UI in components
+- **SessionContext Integration**: Eliminates prop drilling, proper context usage
+- **Full DebugLabel Coverage**: All components have debug tracking
+- **Reusable Architecture**: Hooks can be used across other session components
+- **Maintainable Design**: Each piece has single responsibility
+
+### Technical
+- **Deprecated Code Cleanup**: Removed 4,017 lines of legacy deprecated components
+- **Type Safety**: All TypeScript compilation passes with clean architecture
+- **Hybrid Approach**: Complex logic in hooks, UI patterns in components
+- **Clean Component Coordinator**: Main component orchestrates specialized pieces
+
 ## [0.4.6] - 2025-09-01
 
 ### Fixed

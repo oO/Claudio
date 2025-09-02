@@ -60,7 +60,7 @@ const MessageRouterComponent: React.FC<MessageRouterProps> = ({
       return null;
     }
 
-    // Summary bundling is now handled in SessionHandleView, not here
+    // Summary bundling is now handled in SessionDetail, not here
 
     // Handle summary messages - check if we should bundle consecutive ones
     if (

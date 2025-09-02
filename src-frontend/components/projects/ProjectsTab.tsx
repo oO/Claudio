@@ -7,7 +7,7 @@ import { logger } from "@/lib/logger";
 import { prettifyProjectName } from "@/lib/utils";
 import { ProjectList, ProjectDetail } from "@/components/projects";
 import { RunningClaudeSessions } from "@/components/sessions/RunningClaudeSessions";
-import { SessionHandleView } from "@/components/sessions/SessionHandleView";
+import { SessionDetail } from "@/components/sessions/SessionDetail";
 import { Button } from "@/components/ui/button";
 import { ActionButton } from "@/components/ui/atoms/ActionButton";
 import { LoadingSpinner } from "@/components/ui/atoms/LoadingSpinner";
@@ -51,7 +51,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Session viewing state - to render SessionHandleView directly
+  // Session viewing state - to render SessionDetail directly
   const [viewingSession, setViewingSession] = useState<{
     session: any;
     projectPath: string;
@@ -336,7 +336,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   const handleNewSDKSession = async (projectPath?: string) => {
     logger.log('🔥 DEBUGGING: handleNewSDKSession called with:', projectPath);
     if (projectPath) {
-      // Set viewing session state to render SessionHandleView directly
+      // Set viewing session state to render SessionDetail directly
       setViewingSession({
         session: null, // New session
         projectPath: projectPath,
@@ -357,7 +357,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
         
         if (selectedPath) {
           logger.log('Selected folder:', selectedPath);
-          // Set viewing session state to render SessionHandleView directly
+          // Set viewing session state to render SessionDetail directly
           setViewingSession({
             session: null, // New session
             projectPath: selectedPath,
@@ -386,12 +386,12 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
     }
   };
 
-  // Render SessionHandleView if viewing a session
+  // Render SessionDetail if viewing a session
   if (viewingSession) {
     return (
       <>
         <DebugLabel label="ProjectsTab" />
-        <SessionHandleView 
+        <SessionDetail 
           session={viewingSession.session}
           projectPath={viewingSession.projectPath}
           onBack={handleBackFromSession}
@@ -530,7 +530,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                               claudioId: freshClaudioMetadata.claudio_id
                             });
                             
-                            // Set viewing session state to render SessionHandleView directly
+                            // Set viewing session state to render SessionDetail directly
                             setViewingSession({
                               session: freshSession,
                               projectPath: session.project_path,
