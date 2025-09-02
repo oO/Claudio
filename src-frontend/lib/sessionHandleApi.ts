@@ -198,8 +198,17 @@ export class SessionHandle {
    * Append a new message and notify all listeners
    */
   private appendMessageAndNotify(newMessage: any): void {
+    // Check for duplicate messages by UUID to prevent display issues
+    if (newMessage.uuid) {
+      const existingMessage = this.allMessages.find(msg => msg.uuid === newMessage.uuid);
+      if (existingMessage) {
+        logger.info('🔄 Ignoring duplicate streaming message for handle:', this.handleId, 'uuid:', newMessage.uuid);
+        return;
+      }
+    }
+    
     this.allMessages.push(newMessage);
-    logger.info('📝 Appended streaming message for handle:', this.handleId, 'new count:', this.allMessages.length);
+    logger.info('📝 Appended streaming message for handle:', this.handleId, 'new count:', this.allMessages.length, 'uuid:', newMessage.uuid);
     
     // Process all messages with agent attribution (subagent detection, etc.)
     const processedMessages = processMessagesWithAgentInfo(this.allMessages);

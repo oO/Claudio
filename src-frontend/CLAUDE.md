@@ -23,7 +23,7 @@ useEffect(() => {
 **File Locations:**
 - Session API: `src-frontend/lib/sessionHandleApi.ts`
 - React hooks: `src-frontend/hooks/useSessionFileWatcher.ts`
-- Components: `src-frontend/components/sessions/SessionHandleView.tsx`
+- Components: `src-frontend/components/sessions/SessionDetail.tsx`
 
 ## 🚨 MANDATORY: Use Centralized Logger System
 
