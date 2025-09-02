@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.8] - 2025-09-02
+
+### Added
+- **ANSI Escape Code Stripping**: New `useAnsiStrip` hook removes terminal color codes from command output
+- **Universal Command Output Cleaning**: All command widgets now display clean, readable text without raw ANSI codes
+
+### Fixed
+- **Command Widget Display**: Commands like `/context` now show clean output instead of unreadable escape sequences
+- **Terminal Output Formatting**: Preserves intended formatting (Unicode progress bars) while removing color codes
+
 ## [0.4.7] - 2025-09-02
 
 ### Major Refactoring
