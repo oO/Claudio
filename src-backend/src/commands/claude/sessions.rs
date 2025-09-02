@@ -126,6 +126,61 @@ pub async fn get_project_sessions(project_id: String) -> Result<Vec<DecoratedSes
     Ok(sessions)
 }
 
+/// Gets all todo files for a specific session
+#[command]
+pub async fn get_session_todos(session_id: String) -> Result<serde_json::Value, String> {
+    log::info!("🔍 Getting todos for session: {}", session_id);
+    
+    let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
+    let todos_dir = claude_dir.join("todos");
+    let pattern = format!("{}-agent-", session_id);
+    
+    let mut agent_todos = Vec::new();
+    let mut total_counts = super::types::TodoCounts { open: 0, completed: 0, total: 0 };
+    
+    // Find all agent todo files for this session
+    if todos_dir.exists() {
+        if let Ok(entries) = fs::read_dir(&todos_dir) {
+            for entry in entries.flatten() {
+                let file_name = entry.file_name().to_string_lossy().to_string();
+                
+                // Check if this is an agent todo file for our session
+                if file_name.starts_with(&pattern) && file_name.ends_with(".json") {
+                    // Extract agent ID from filename: {session_id}-agent-{agent_id}.json
+                    let agent_id = file_name
+                        .strip_prefix(&pattern)
+                        .and_then(|s| s.strip_suffix(".json"))
+                        .unwrap_or("unknown")
+                        .to_string();
+                    
+                    if let Ok(todos) = super::types::parse_agent_todo_file(&entry.path()) {
+                        let counts = super::types::count_todos_by_status(&todos);
+                        
+                        // Add to totals
+                        total_counts.open += counts.open;
+                        total_counts.completed += counts.completed;
+                        total_counts.total += counts.total;
+                        
+                        agent_todos.push(serde_json::json!({
+                            "agent_id": agent_id,
+                            "file_path": entry.path().to_string_lossy(),
+                            "todos": todos,
+                            "counts": counts,
+                        }));
+                    }
+                }
+            }
+        }
+    }
+    
+    Ok(serde_json::json!({
+        "session_id": session_id,
+        "agent_todos": agent_todos,
+        "total_counts": total_counts,
+        "agent_count": agent_todos.len(),
+    }))
+}
+
 /// Helper function to get project path from Claudio session file 
 /// This is more reliable than parsing Claude's JSONL files
 async fn get_project_path_from_claudio_session(session_id: &str, project_id: &str) -> Result<String, String> {
@@ -202,29 +257,18 @@ async fn build_session_metadata(session_path: &std::path::Path, session_id: &str
     let session_path_buf = session_path.to_path_buf();
     let (first_message, message_timestamp) = extract_first_user_message(&session_path_buf);
 
-    // Try to load associated todo data
-    let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
-    let todos_dir = claude_dir.join("todos");
-    let todo_path = todos_dir.join(format!("{}.json", session_id));
-    let todo_data = if todo_path.exists() {
-        fs::read_to_string(&todo_path)
-            .ok()
-            .and_then(|content| serde_json::from_str(&content).ok())
-    } else {
-        None
-    };
-
     // Parse session analytics
     let analytics = parse_session_analytics(&session_path_buf);
 
     // Aggregate todo counts from agent executions
+    let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
     let todo_counts = aggregate_session_todos(&claude_dir, session_id);
 
     Ok(Session {
         id: session_id.to_string(),
         project_id: project_id.to_string(),
         project_path,
-        todo_data,
+        todo_data: None, // Removed: unused single-file pattern, only agent todos exist
         todo_counts,
         created_at,
         modified_at,

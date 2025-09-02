@@ -21,6 +21,7 @@ use commands::claude::{
     clear_checkpoint_manager, continue_claude_code, create_checkpoint, execute_claude_code,
     find_claude_md_files, fork_from_checkpoint, get_checkpoint_diff, get_checkpoint_settings,
     get_checkpoint_state_stats, get_claude_session_output, get_claude_settings, get_project_sessions,
+    get_session_todos,
     get_recently_modified_files, get_session_timeline, get_system_prompt, list_checkpoints,
     list_directory_contents, list_projects, list_running_claude_sessions, load_session_history,
     open_new_session, read_claude_md_file, restore_checkpoint, resume_claude_code,
@@ -249,6 +250,7 @@ fn main() {
             // Claude & Project Management
             list_projects,
             get_project_sessions,
+            get_session_todos,
             get_claude_settings,
             open_new_session,
             get_system_prompt,

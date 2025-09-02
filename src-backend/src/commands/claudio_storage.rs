@@ -379,7 +379,30 @@ pub async fn cleanup_orphaned_files() -> Result<serde_json::Value, String> {
         return Ok(stats.to_json());
     }
 
-    // For each project, find orphans
+    // Build global list of existing sessions first
+    let mut all_existing_sessions = std::collections::HashSet::new();
+    if let Ok(project_entries) = std::fs::read_dir(&projects_dir) {
+        for project_entry in project_entries.flatten() {
+            let project_path = project_entry.path();
+            if project_path.is_dir() {
+                if let Ok(entries) = std::fs::read_dir(&project_path) {
+                    for entry in entries.flatten() {
+                        let path = entry.path();
+                        if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("jsonl") {
+                            if let Some(session_id) = path.file_stem().and_then(|s| s.to_str()) {
+                                all_existing_sessions.insert(session_id.to_string());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Clean up orphaned todos ONCE globally
+    stats.orphaned_todos = cleanup_global_orphaned_todos(&claude_dir, &all_existing_sessions)?;
+
+    // For each project, find other orphans (claudio sessions and timelines)
     if let Ok(project_entries) = std::fs::read_dir(&projects_dir) {
         for project_entry in project_entries.flatten() {
             let project_path = project_entry.path();
@@ -388,7 +411,7 @@ pub async fn cleanup_orphaned_files() -> Result<serde_json::Value, String> {
                 .unwrap_or("unknown");
             
             if project_path.is_dir() {
-                stats.merge(cleanup_project_orphans(&project_path, project_id).await?);
+                stats.merge(cleanup_project_orphans(&project_path, project_id, &all_existing_sessions).await?);
             }
         }
     }
@@ -431,25 +454,50 @@ impl OrphanCleanupStats {
     }
 }
 
-async fn cleanup_project_orphans(
-    project_path: &std::path::Path,
-    project_id: &str,
-) -> Result<OrphanCleanupStats, String> {
-    let mut stats = OrphanCleanupStats::default();
-    stats.projects_processed = 1;
+/// Clean up orphaned todos globally (called once, not per project)
+fn cleanup_global_orphaned_todos(
+    claude_dir: &std::path::Path,
+    existing_sessions: &std::collections::HashSet<String>,
+) -> Result<u32, String> {
+    let mut todos_deleted = 0;
+    let todos_dir = claude_dir.join("todos");
     
-    // Get all existing Claude session IDs for this project
-    let mut existing_sessions = std::collections::HashSet::new();
-    if let Ok(entries) = std::fs::read_dir(project_path) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("jsonl") {
-                if let Some(session_id) = path.file_stem().and_then(|s| s.to_str()) {
-                    existing_sessions.insert(session_id.to_string());
+    if todos_dir.exists() {
+        if let Ok(entries) = std::fs::read_dir(&todos_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("json") {
+                    if let Some(filename) = path.file_stem().and_then(|s| s.to_str()) {
+                        // Extract session ID from agent todo filename pattern: {session_id}-agent-{agent_id}.json
+                        let session_id = if let Some(dash_pos) = filename.find("-agent-") {
+                            &filename[..dash_pos]
+                        } else {
+                            filename  // fallback for non-agent format
+                        };
+                        
+                        if !existing_sessions.contains(session_id) {
+                            // Orphaned todo - delete it
+                            if std::fs::remove_file(&path).is_ok() {
+                                todos_deleted += 1;
+                                log::info!("🗑️ Deleted orphaned todo: {}", path.display());
+                            }
+                        }
+                    }
                 }
             }
         }
     }
+    
+    Ok(todos_deleted)
+}
+
+async fn cleanup_project_orphans(
+    project_path: &std::path::Path,
+    project_id: &str,
+    existing_sessions: &std::collections::HashSet<String>,
+) -> Result<OrphanCleanupStats, String> {
+    let mut stats = OrphanCleanupStats::default();
+    stats.projects_processed = 1;
     
     // Decode project path for claudio directory lookup
     let decoded_project_path = crate::commands::claude::decode_project_path(project_id);
@@ -495,7 +543,14 @@ async fn cleanup_project_orphans(
             for entry in entries.flatten() {
                 let path = entry.path();
                 if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("json") {
-                    if let Some(session_id) = path.file_stem().and_then(|s| s.to_str()) {
+                    if let Some(filename) = path.file_stem().and_then(|s| s.to_str()) {
+                        // Extract session ID from agent todo filename pattern: {session_id}-agent-{agent_id}.json
+                        let session_id = if let Some(dash_pos) = filename.find("-agent-") {
+                            &filename[..dash_pos]
+                        } else {
+                            filename  // fallback for non-agent format (should not exist)
+                        };
+                        
                         if !existing_sessions.contains(session_id) {
                             // Orphaned todo - delete it
                             if std::fs::remove_file(&path).is_ok() {

@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.10] - 2025-09-02
+- Fixed critical orphan cleanup bug that incorrectly deleted valid todo files
+- Fixed filename parsing to properly extract session IDs from agent todo filenames
+- Moved todo cleanup to run once globally with complete session list from all projects
+- Added new backend infrastructure for todo file watching and API endpoints
+- Extended session watcher to watch ~/.claude/todos/ directory with new event types
+- Added get_session_todos Tauri command for fetching todo data
+- Removed dead code that checked for non-existent session todo pattern
+
 ## [0.4.9] - 2025-09-02
 - Condensed verbose changelog from 685 lines to 199 lines with streamlined format
 - Fixed frontend logging compliance by replacing console.warn with proper logger calls
