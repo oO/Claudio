@@ -47,6 +47,9 @@ class TauriEventManager {
   /** Counter for generating unique subscription IDs */
   private subscriptionCounter = 0;
   
+  /** Track last logged state to prevent spam */
+  private lastLoggedState: string | null = null;
+  
   private constructor() {
     logger.log('🌐 TauriEventManager singleton created');
   }
@@ -56,25 +59,22 @@ class TauriEventManager {
       TauriEventManager.instance = new TauriEventManager();
     }
     
-    // Debug: Log current state periodically
-    setTimeout(() => {
-      TauriEventManager.instance?.logCurrentState();
-    }, 2000);
-    
     return TauriEventManager.instance;
   }
   
   /**
-   * Log current state for debugging
+   * Log current state when it changes (not periodically)
    */
-  logCurrentState(): void {
+  private logStateIfChanged(): void {
     const debugInfo = this.getDebugInfo();
-    logger.log(`🔍 TauriEventManager State:`, debugInfo);
-    logger.log(`🔍 Active listeners: ${debugInfo.listeners.length}`, debugInfo.listeners);
-    logger.log(`🔍 Active subscriptions:`, debugInfo.subscriptions);
+    const currentStateHash = JSON.stringify(debugInfo);
     
-    // Schedule next check
-    setTimeout(() => this.logCurrentState(), 10000); // Every 10 seconds
+    if (this.lastLoggedState !== currentStateHash) {
+      logger.log(`🔍 TauriEventManager State Changed:`, debugInfo);
+      logger.log(`🔍 Active listeners: ${debugInfo.listeners.length}`, debugInfo.listeners);
+      logger.log(`🔍 Active subscriptions:`, debugInfo.subscriptions);
+      this.lastLoggedState = currentStateHash;
+    }
   }
   
   /**
@@ -110,6 +110,9 @@ class TauriEventManager {
       await this.setupTauriListener(eventName);
     }
     
+    // Log state change after adding subscription
+    this.logStateIfChanged();
+    
     // Return unsubscribe function
     return () => this.unsubscribe(eventName, subscriptionId);
   }
@@ -138,6 +141,9 @@ class TauriEventManager {
       await this.teardownTauriListener(eventName);
       this.subscriptions.delete(eventName);
     }
+    
+    // Log state change after removing subscription
+    this.logStateIfChanged();
   }
   
   /**
@@ -155,6 +161,9 @@ class TauriEventManager {
       this.listeners.set(eventName, unlisten);
       logger.log(`✅ Tauri listener active for '${eventName}'`);
       
+      // Log state change after setting up listener
+      this.logStateIfChanged();
+      
     } catch (error) {
       logger.error(`❌ Failed to setup Tauri listener for '${eventName}':`, error);
       throw error;
@@ -171,6 +180,9 @@ class TauriEventManager {
         await unlisten();
         this.listeners.delete(eventName);
         logger.log(`🧹 Torn down Tauri listener for '${eventName}'`);
+        
+        // Log state change after tearing down listener
+        this.logStateIfChanged();
       } catch (error) {
         logger.error(`❌ Failed to teardown Tauri listener for '${eventName}':`, error);
       }
