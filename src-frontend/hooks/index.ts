@@ -24,6 +24,8 @@ export { TAB_SCREEN_NAMES } from './useAnalytics';
 
 // Session file watching hooks
 export { useSessionFileWatcher, useSessionListWatcher } from './useSessionFileWatcher';
+// Project file watching hooks
+export { useProjectListWatcher } from './useProjectListWatcher';
 export { 
   useGlobalEvent, 
   useSessionFileEvents, 

@@ -50,7 +50,7 @@ interface TabContextType {
   reorderTabs: (startIndex: number, endIndex: number) => void;
   getTabById: (id: string) => Tab | undefined;
   closeAllTabs: () => void;
-  getTabsByType: (type: 'session' | 'agent') => Tab[];
+  getTabsByType: (type: Tab['type']) => Tab[];
 }
 
 const TabContext = createContext<TabContextType | undefined>(undefined);
@@ -214,7 +214,7 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // localStorage.removeItem(STORAGE_KEY); // Persistence disabled
   }, [tabs]);
 
-  const getTabsByType = useCallback((type: 'session' | 'agent'): Tab[] => {
+  const getTabsByType = useCallback((type: Tab['type']): Tab[] => {
     return tabs.filter(tab => tab.type === type);
   }, [tabs]);
 

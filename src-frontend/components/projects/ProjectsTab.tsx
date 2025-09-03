@@ -34,6 +34,7 @@ import { Input } from "@/components/ui/input";
 import { TabPageLayout } from "@/components/common";
 import { useTabState } from "@/hooks/useTabState";
 import { useScreenTracking } from "@/hooks/useAnalytics";
+import { useProjectListWatcher } from "@/hooks/useProjectListWatcher";
 import { Tab } from "@/contexts/TabContext";
 
 interface ProjectsTabProps {
@@ -92,6 +93,18 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
     isActive ? tab.type : undefined,
     isActive ? tab.id : undefined,
   );
+
+  // Watch for project list changes using file watcher
+  useProjectListWatcher({
+    onProjectListChanged: async () => {
+      // Only refresh if we're in project list view (not single project view)
+      if (isActive && tab.type === "projects" && !selectedProject) {
+        logger.debug("Project list changed, refreshing...");
+        await loadProjects();
+      }
+    },
+    enabled: isActive && tab.type === "projects",
+  });
 
   // Debug dialog state changes
   useEffect(() => {

@@ -27,18 +27,14 @@ export interface Project {
   id: string;
   /** The original project path (decoded from the directory name) */
   path: string;
-  /** List of session IDs (JSONL file names without extension) */
-  sessions: string[];
+  /** Number of sessions (JSONL files) in this project */
+  session_count: number;
   /** Unix timestamp when the project directory was created */
   created_at: number;
   /** Total size of all project files in bytes */
   total_size_bytes?: number;
   /** Last activity timestamp (most recent session) */
   last_active?: number;
-  /** Total token count across all sessions */
-  total_tokens?: number;
-  /** Estimated total cost in USD */
-  total_cost_usd?: number;
 }
 
 /**
@@ -630,6 +626,7 @@ export const api = {
       throw error;
     }
   },
+
 
   /**
    * Retrieves sessions for a specific project

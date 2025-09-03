@@ -142,11 +142,9 @@ pub async fn list_projects() -> Result<Vec<Project>, String> {
                 }
             };
 
-            // List all JSONL files (sessions) in this project directory
-            let mut sessions = Vec::new();
+            // Count JSONL files (sessions) and collect basic metadata
+            let mut session_count = 0usize;
             let mut project_total_size = 0u64;
-            let mut project_total_tokens = 0u64;
-            let mut project_total_cost = 0.0f64;
             let mut project_last_active = created_at;
             
             if let Ok(session_entries) = fs::read_dir(&path) {
@@ -155,32 +153,24 @@ pub async fn list_projects() -> Result<Vec<Project>, String> {
                     if session_path.is_file()
                         && session_path.extension().and_then(|s| s.to_str()) == Some("jsonl")
                     {
-                        if let Some(session_id) = session_path.file_stem().and_then(|s| s.to_str())
-                        {
-                            sessions.push(session_id.to_string());
+                        session_count += 1;
+                        
+                        // Add file size and update last activity time
+                        if let Ok(metadata) = fs::metadata(&session_path) {
+                            project_total_size += metadata.len();
                             
-                            // Add file size
-                            if let Ok(metadata) = fs::metadata(&session_path) {
-                                project_total_size += metadata.len();
-                                
-                                // Update last activity time
-                                let file_time = metadata
-                                    .modified()
-                                    .or_else(|_| metadata.created())
-                                    .unwrap_or(SystemTime::UNIX_EPOCH)
-                                    .duration_since(SystemTime::UNIX_EPOCH)
-                                    .unwrap_or_default()
-                                    .as_secs();
-                                
-                                if file_time > project_last_active {
-                                    project_last_active = file_time;
-                                }
+                            // Update last activity time
+                            let file_time = metadata
+                                .modified()
+                                .or_else(|_| metadata.created())
+                                .unwrap_or(SystemTime::UNIX_EPOCH)
+                                .duration_since(SystemTime::UNIX_EPOCH)
+                                .unwrap_or_default()
+                                .as_secs();
+                            
+                            if file_time > project_last_active {
+                                project_last_active = file_time;
                             }
-                            
-                            // Parse session analytics
-                            let analytics = parse_session_analytics(&session_path);
-                            project_total_tokens += analytics.token_count;
-                            project_total_cost += analytics.cost_usd;
                         }
                     }
                 }
@@ -189,12 +179,10 @@ pub async fn list_projects() -> Result<Vec<Project>, String> {
             projects.push(Project {
                 id: dir_name.to_string(),
                 path: project_path.clone(),
-                sessions,
+                session_count,
                 created_at,
                 total_size_bytes: if project_total_size > 0 { Some(project_total_size) } else { None },
                 last_active: if project_last_active > created_at { Some(project_last_active) } else { None },
-                total_tokens: if project_total_tokens > 0 { Some(project_total_tokens) } else { None },
-                total_cost_usd: if project_total_cost > 0.0 { Some(project_total_cost) } else { None },
                 agent_count: count_project_agents(&project_path),
             });
         }

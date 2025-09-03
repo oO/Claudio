@@ -101,15 +101,13 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                         {prettifyProjectName(project.path)}
                       </h3>
                     </div>
-                    {project.sessions.length > 0 && (
-                      <Badge
-                        variant="secondary"
-                        className="shrink-0 ml-2 flex items-center gap-1 bg-accent"
-                      >
-                        <MessagesSquare className="h-3 w-3" />
-                        {project.sessions.length}
-                      </Badge>
-                    )}
+                    <Badge
+                      variant="secondary"
+                      className="shrink-0 ml-2 flex items-center gap-1 bg-accent"
+                    >
+                      <MessagesSquare className="h-3 w-3" />
+                      {project.session_count}
+                    </Badge>
                   </div>
 
                   <p className="text-sm text-muted-foreground mb-3 font-mono truncate" title={project.path}>

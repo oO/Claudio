@@ -7,6 +7,7 @@ mod commands;
 mod process;
 
 use checkpoint::state::CheckpointState;
+use std::sync::{Arc, Mutex};
 use commands::agents::{
     cleanup_finished_processes, create_agent, delete_agent, execute_agent, export_agent,
     export_agent_to_file, fetch_github_agent_content, fetch_github_agents, get_agent,
@@ -37,6 +38,8 @@ use commands::claude::{
     // Todo watcher functionality
     init_todo_watcher, start_todo_watching, stop_todo_watching,
     get_todo_watching_status,
+    // Project watcher functionality
+    start_project_watching, stop_project_watching, ProjectWatcherState,
 };
 use commands::logger::log_frontend_debug;
 use commands::mcp::{
@@ -69,7 +72,6 @@ use commands::hook_installer::{
     install_claude_session_hooks, check_hooks_installed, uninstall_claude_session_hooks,
 };
 use process::ProcessRegistryState;
-use std::sync::Mutex;
 use tauri::Manager;
 use std::io::Write;
 
@@ -204,6 +206,9 @@ fn main() {
             // Initialize global todo watcher
             let todo_watcher_state = init_todo_watcher(app.handle().clone());
             app.manage(todo_watcher_state);
+
+            // Initialize project watcher
+            app.manage(Arc::new(Mutex::new(None)) as ProjectWatcherState);
 
             // Initialize SessionOrchestrator (new architecture)
             commands::session_orchestrator::initialize_orchestrator(app.handle().clone(), session_watcher_state);
@@ -408,6 +413,10 @@ fn main() {
             stop_session_watching,
             stop_all_session_watching,
             get_session_watching_status,
+
+            // Project File Watching  
+            start_project_watching,
+            stop_project_watching,
 
             // Todo File Watching
             start_todo_watching,

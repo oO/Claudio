@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.13] - 2025-09-03
+- Optimized project listing performance by replacing sessions array with session_count integer
+- Removed expensive session file parsing from list_projects command 
+- Simplified Project struct to avoid over-engineering with unnecessary session analytics
+- Updated frontend to use session_count instead of sessions.length for display
+- Maintained fast on-demand filesystem scanning without complex caching
+
 ## [0.4.12] - 2025-09-03
 - Removed orphaned 'session' tab type - sessions now maintain project hierarchy
 - Added 'project-session' tab type for sessions within project context

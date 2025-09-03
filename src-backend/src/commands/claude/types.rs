@@ -38,18 +38,14 @@ pub struct Project {
     pub id: String,
     /// The original project path (decoded from the directory name)
     pub path: String,
-    /// List of session IDs (JSONL file names without extension)
-    pub sessions: Vec<String>,
+    /// Number of sessions (JSONL files) in this project
+    pub session_count: usize,
     /// Unix timestamp when the project directory was created
     pub created_at: u64,
     /// Total size of all project files in bytes
     pub total_size_bytes: Option<u64>,
     /// Last activity timestamp (most recent session)
     pub last_active: Option<u64>,
-    /// Total token count across all sessions
-    pub total_tokens: Option<u64>,
-    /// Estimated total cost in USD
-    pub total_cost_usd: Option<f64>,
     /// Number of local project agents in .claude/agents/
     pub agent_count: Option<u32>,
 }
