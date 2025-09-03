@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.12] - 2025-09-03
+- Removed orphaned 'session' tab type - sessions now maintain project hierarchy
+- Added 'project-session' tab type for sessions within project context
+- Updated TabContent, TabManager, and ProjectsTab to handle new tab types
+- Fixed session deduplication to work at session level (same session = focus existing tab)
+- Updated project loading states - removed loading spinners, added actionable empty state
+- Fixed navigation flow: Projects → Project → Session with proper hierarchy
+
 ## [0.4.11] - 2025-09-02
 - Fixed filter state persistence across navigation using localStorage for session type filters
 - Removed full-page loading spinner that blocked entire UI during session loading

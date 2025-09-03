@@ -67,6 +67,7 @@ export const RunningClaudeSessions: React.FC<RunningClaudeSessionsProps> = ({
       };
       
       // Emit event to navigate to the session
+      logger.log('🚀 RunningClaudeSessions dispatching claude-session-selected for session:', session.id);
       const event = new CustomEvent('claude-session-selected', { 
         detail: { session, projectPath: processInfo.project_path } 
       });

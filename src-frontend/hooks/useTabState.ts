@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { useTabContext } from '@/contexts/TabContext';
 import { Tab } from '@/contexts/TabContext';
+import { logger } from '@/lib/logger';
 
 interface UseTabStateReturn {
   // State
@@ -8,11 +9,11 @@ interface UseTabStateReturn {
   activeTab: Tab | undefined;
   activeTabId: string | null;
   tabCount: number;
-  chatTabCount: number;
+  sessionTabCount: number;
   agentTabCount: number;
   
   // Operations
-  createChatTab: (initialProjectPath?: string, title?: string, sessionId?: string) => string;
+  createSessionTab: (initialProjectPath?: string, title?: string, sessionId?: string) => string;
   createAgentTab: (agentRunId: string, agentName: string) => string;
   createProjectsTab: () => string | null;
   createUsageTab: () => string | null;
@@ -58,21 +59,49 @@ export const useTabState = (): UseTabStateReturn => {
   );
 
   const tabCount = tabs.length;
-  const chatTabCount = useMemo(() => getTabsByType('chat').length, [getTabsByType]);
+  const sessionTabCount = useMemo(() => getTabsByType('project-session').length, [getTabsByType]);
   const agentTabCount = useMemo(() => getTabsByType('agent').length, [getTabsByType]);
 
-  const createChatTab = useCallback((initialProjectPath?: string, title?: string, sessionId?: string): string => {
-    const tabTitle = title || `Chat ${chatTabCount + 1}`;
-    return addTab({
-      type: 'chat',
+  const createSessionTab = useCallback((initialProjectPath?: string, title?: string, sessionId?: string): string => {
+    logger.log('🔥 createSessionTab called with:', { initialProjectPath, title, sessionId });
+    
+    // Check if tab already exists for this session
+    if (sessionId) {
+      const currentTabs = getTabsByType('project-session');
+      const existingTab = currentTabs.find(tab => tab.sessionId === sessionId);
+      logger.log('🔍 Checking for existing tab with sessionId:', sessionId, 'found:', existingTab?.id);
+      
+      if (existingTab) {
+        logger.log('✅ Found existing tab, switching to:', existingTab.id);
+        setActiveTab(existingTab.id);
+        return existingTab.id;
+      }
+    }
+
+    // Build session tab title: <project name>:<first 4 of session_id>
+    let tabTitle = title;
+    if (!tabTitle && sessionId && initialProjectPath) {
+      const projectName = initialProjectPath.split('/').pop() || 'Project';
+      const sessionShort = sessionId.slice(0, 4);
+      tabTitle = `${projectName}:${sessionShort}`;
+    } else if (!tabTitle) {
+      tabTitle = `Session ${sessionTabCount + 1}`;
+    }
+    
+    logger.log('📝 Creating new tab with title:', tabTitle, 'sessionId:', sessionId);
+    
+    const newTabId = addTab({
+      type: 'project-session',
       title: tabTitle,
       sessionId: sessionId, // Use provided sessionId, or undefined for legacy behavior
       initialProjectPath, // Set the project path for new sessions
       status: 'idle',
-      hasUnsavedChanges: false,
-      icon: 'message-square'
+      hasUnsavedChanges: false
     });
-  }, [addTab, chatTabCount]);
+    
+    logger.log('✨ Created new tab with ID:', newTabId);
+    return newTabId;
+  }, [addTab, sessionTabCount, getTabsByType, setActiveTab]);
 
   const createAgentTab = useCallback((agentRunId: string, agentName: string): string => {
     // Check if tab already exists
@@ -98,8 +127,7 @@ export const useTabState = (): UseTabStateReturn => {
       type: 'projects',
       title: 'Projects',
       status: 'idle',
-      hasUnsavedChanges: false,
-      icon: 'folder'
+      hasUnsavedChanges: false
     });
   }, [addTab]);
 
@@ -289,7 +317,7 @@ export const useTabState = (): UseTabStateReturn => {
   }, [updateTab]);
 
   const findTabBySessionId = useCallback((sessionId: string): Tab | undefined => {
-    return tabs.find(tab => tab.type === 'chat' && tab.sessionId === sessionId);
+    return tabs.find(tab => (tab.type === 'project-session' || tab.type === 'chat') && tab.sessionId === sessionId);
   }, [tabs]);
 
   const findTabByAgentRunId = useCallback((agentRunId: string): Tab | undefined => {
@@ -310,11 +338,11 @@ export const useTabState = (): UseTabStateReturn => {
     activeTab,
     activeTabId,
     tabCount,
-    chatTabCount,
+    sessionTabCount,
     agentTabCount,
     
     // Operations
-    createChatTab,
+    createSessionTab,
     createAgentTab,
     createProjectsTab,
     createUsageTab,

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
-import { X, Plus, MessageSquare, Bot, AlertCircle, Loader2, Folder, FolderOpen, BarChart, Server, Settings, FileText } from 'lucide-react';
+import { X, Plus, MessageSquare, MessagesSquare, Bot, AlertCircle, Loader2, Folder, FolderOpen, BarChart, Server, Settings, FileText } from 'lucide-react';
 import { useTabState } from '@/hooks/useTabState';
 import { Tab, useTabContext } from '@/contexts/TabContext';
 import { cn } from '@/lib/utils';
@@ -24,14 +24,18 @@ const TabItem: React.FC<TabItemProps> = ({ tab, isActive, onClose, onClick, isDr
   
   const getIcon = () => {
     switch (tab.type) {
-      case 'chat':
+      case 'chat': // Legacy support
         return MessageSquare;
       case 'agent':
         return Bot;
       case 'agents':
         return Bot;
       case 'projects':
-        return FolderOpen;
+        return FolderOpen; // Project list (browsing)
+      case 'project':
+        return Folder; // Single project (focused)
+      case 'project-session':
+        return MessagesSquare; // Project showing session
       case 'usage':
         return BarChart;
       case 'mcp':
@@ -142,7 +146,7 @@ export const TabManager: React.FC<TabManagerProps> = ({ className }) => {
   const {
     tabs,
     activeTabId,
-    createChatTab,
+    createSessionTab,
     closeTab,
     switchToTab
   } = useTabState();
@@ -178,8 +182,8 @@ export const TabManager: React.FC<TabManagerProps> = ({ className }) => {
   // Listen for keyboard shortcut events
   useEffect(() => {
     const handleCreateTab = () => {
-      createChatTab();
-      trackEvent.tabCreated('chat');
+      createSessionTab();
+      trackEvent.tabCreated('session');
     };
 
     const handleCloseTab = async () => {
@@ -228,7 +232,7 @@ export const TabManager: React.FC<TabManagerProps> = ({ className }) => {
       window.removeEventListener('switch-to-previous-tab', handlePreviousTab);
       window.removeEventListener('switch-to-tab-by-index', handleTabByIndex as EventListener);
     };
-  }, [tabs, activeTabId, createChatTab, closeTab, switchToTab]);
+  }, [tabs, activeTabId, createSessionTab, closeTab, switchToTab]);
 
   // Check scroll buttons visibility
   const checkScrollButtons = () => {

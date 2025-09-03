@@ -16,6 +16,7 @@ import { DebugLabel } from "@/components/ui/atoms";
 import { SessionDeleteDialog } from "./SessionDeleteDialog";
 import { SessionCard } from "@/components/sessions/SessionCard";
 import { useSessionListWatcher } from "@/hooks";
+import { useTabState } from "@/hooks/useTabState";
 import { SESSION_TYPES } from "@/lib/sessionHandleApi";
 
 interface ProjectSessionTabProps {
@@ -55,17 +56,21 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
   const [containerHeight, setContainerHeight] = useState(600);
   const [showSessionDeleteDialog, setShowSessionDeleteDialog] = useState(false);
 
-  // Session type filters state with localStorage persistence
+  // Get current tab ID for scoped filter persistence
+  const { activeTabId } = useTabState();
+  const tabId = activeTabId || 'unknown-tab';
+
+  // Session type filters state with tab-scoped localStorage persistence
   const [showRegularSessions, setShowRegularSessions] = useState(() => {
-    const saved = localStorage.getItem('claudio-session-filters-regular');
+    const saved = localStorage.getItem(`claudio-session-filters-regular-${tabId}`);
     return saved !== null ? JSON.parse(saved) : true;
   });
   const [showNativeSessions, setShowNativeSessions] = useState(() => {
-    const saved = localStorage.getItem('claudio-session-filters-native');
+    const saved = localStorage.getItem(`claudio-session-filters-native-${tabId}`);
     return saved !== null ? JSON.parse(saved) : true;
   });
   const [showClaudioSessions, setShowClaudioSessions] = useState(() => {
-    const saved = localStorage.getItem('claudio-session-filters-claudio');
+    const saved = localStorage.getItem(`claudio-session-filters-claudio-${tabId}`);
     return saved !== null ? JSON.parse(saved) : true;
   });
 
@@ -113,18 +118,18 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
     true, // enabled
   );
 
-  // Persist filter state to localStorage
+  // Persist filter state to localStorage with tab-scoped keys
   useEffect(() => {
-    localStorage.setItem('claudio-session-filters-regular', JSON.stringify(showRegularSessions));
-  }, [showRegularSessions]);
+    localStorage.setItem(`claudio-session-filters-regular-${tabId}`, JSON.stringify(showRegularSessions));
+  }, [showRegularSessions, tabId]);
 
   useEffect(() => {
-    localStorage.setItem('claudio-session-filters-native', JSON.stringify(showNativeSessions));
-  }, [showNativeSessions]);
+    localStorage.setItem(`claudio-session-filters-native-${tabId}`, JSON.stringify(showNativeSessions));
+  }, [showNativeSessions, tabId]);
 
   useEffect(() => {
-    localStorage.setItem('claudio-session-filters-claudio', JSON.stringify(showClaudioSessions));
-  }, [showClaudioSessions]);
+    localStorage.setItem(`claudio-session-filters-claudio-${tabId}`, JSON.stringify(showClaudioSessions));
+  }, [showClaudioSessions, tabId]);
 
   // Filter sessions based on type toggles
   const filteredSessions = sessions.filter((session) => {

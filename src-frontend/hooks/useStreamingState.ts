@@ -23,7 +23,9 @@ export const useStreamingState = (
   const effectiveIsStreaming = useMemo(() => {
     if (sessionState?.session_type.type === SESSION_TYPES.NATIVE) {
       const claudeSessionId = sessionState.current_claude_session_id;
-      return claudeSessionId ? isSessionThinking(claudeSessionId) : false;
+      const isThinking = claudeSessionId ? isSessionThinking(claudeSessionId) : false;
+      
+      return isThinking;
     }
     return isStreaming;
   }, [

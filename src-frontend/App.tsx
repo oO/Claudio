@@ -44,7 +44,7 @@ type View =
 function AppContent() {
   const [view, setView] = useState<View>("tabs");
   const {
-    createChatTab,
+    createSessionTab,
     createClaudeMdTab,
     createSettingsTab,
     createUsageTab,
@@ -285,7 +285,8 @@ function AppContent() {
       handleViewChange("tabs");
       
       // Create a chat tab with the real session ID (Dumb Frontend just displays what backend tells it)
-      const tabId = createChatTab("", `Session ${claudioId.replace('claudio-', '')}`, claudioId);
+      const sessionShort = claudioId.replace('claudio-', '').slice(0, 4);
+      const tabId = createSessionTab("", `Session:${sessionShort}`, claudioId);
       logger.log("Created chat tab with Claudio ID:", claudioId, "Tab ID:", tabId);
     } catch (error) {
       logger.error("Failed to create new session:", error);
@@ -312,7 +313,8 @@ function AppContent() {
       
       // Create a chat tab with the real session ID (Dumb Frontend just displays what backend tells it)
       const projectName = projectPath.split("/").pop() || "Project";
-      const tabId = createChatTab(projectPath, `${projectName} ${claudioId.replace('claudio-', '')}`, claudioId);
+      const sessionShort = claudioId.replace('claudio-', '').slice(0, 4);
+      const tabId = createSessionTab(projectPath, `${projectName}:${sessionShort}`, claudioId);
       logger.log("Created chat tab for project with Claudio ID:", claudioId, "Tab ID:", tabId);
     } catch (error) {
       logger.error("Failed to create new session for project:", error);

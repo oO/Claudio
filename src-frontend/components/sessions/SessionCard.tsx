@@ -92,7 +92,10 @@ export const SessionCard: React.FC<SessionCardProps> = ({
           "group relative flex items-center justify-between gap-2 px-3 py-2 rounded-lg border bg-card hover:bg-card-hover hover:border-hover transition-colors cursor-pointer min-h-[80px]",
           className,
         )}
-        onClick={() => onSessionClick?.(session)}
+        onClick={() => {
+          logger.log('🎯 SessionCard clicked for session:', session.id);
+          onSessionClick?.(session);
+        }}
       >
         <DebugLabel label="SessionCard" />
         <div className="flex items-center gap-3 min-w-0 flex-1">

@@ -43,6 +43,8 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
     session?.id,
     "projectPath:",
     projectPath,
+    "session object structure:",
+    session
   );
 
   // Native Claude session thinking state hook
@@ -69,8 +71,8 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
       logger.info("📁 Session file changed, refreshing session handle");
       // The session orchestrator will handle the message updates automatically
     },
-    enabled: !!projectId,
-    tabId: `session-handle-${session.id}`,
+    enabled: !!projectId && !!session?.id,
+    tabId: session?.id ? `session-handle-${session?.id}` : 'no-session',
   });
 
   // All streaming state logic is now handled by useStreamingState hook

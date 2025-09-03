@@ -16,6 +16,7 @@ import { ClaudeMdTab } from "@/components/claude";
 import { WelcomeScreen } from "./Welcome";
 import { invoke } from "@tauri-apps/api/core";
 import { prettifyProjectName } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 
 // Import SessionDetail directly instead of lazy loading to prevent mount/unmount cycles
 import { SessionDetail } from "@/components/sessions/SessionDetail";
@@ -44,6 +45,8 @@ const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
   const renderContent = () => {
     switch (tab.type) {
       case "projects":
+      case "project":
+      case "project-session":
         return (
           <NavigationProvider tabId={tab.id}>
             <ProjectsTab tab={tab} isActive={isActive} />
@@ -86,8 +89,9 @@ const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
           </NavigationProvider>
         );
 
+
       case "chat":
-        // REMOVED: Chat tab no longer needed - users can create sessions via Projects tab "Start New Session" button
+        // LEGACY: Chat tab no longer needed - users can create sessions via Projects tab "Start New Session" button
         return (
           <div className="p-4 text-center">
             <h2 className="text-lg font-semibold mb-2">Chat Tab Removed</h2>
@@ -160,7 +164,7 @@ export const TabContent: React.FC = () => {
   const {
     tabs,
     activeTabId,
-    createChatTab,
+    createSessionTab,
     findTabBySessionId,
     createClaudeFileTab,
     createCreateAgentTab,
@@ -183,9 +187,12 @@ export const TabContent: React.FC = () => {
   useEffect(() => {
     const handleOpenSessionInTab = (event: CustomEvent) => {
       const { session } = event.detail;
+      logger.log('🎯 handleOpenSessionInTab called with session:', session.id);
 
       // Check if tab already exists for this session
       const existingTab = findTabBySessionId(session.id);
+      logger.log('🔍 TabContent deduplication check - existing tab:', existingTab?.id);
+      
       if (existingTab) {
         // Update existing tab with session data and switch to it
         updateTab(existingTab.id, {
@@ -200,7 +207,9 @@ export const TabContent: React.FC = () => {
       } else {
         // Create new tab for this session
         const projectName = session.project_path.split("/").pop() || "Session";
-        const newTabId = createChatTab(session.id, projectName);
+        const sessionShort = session.id.slice(0, 4);
+        const tabTitle = `${projectName}:${sessionShort}`;
+        const newTabId = createSessionTab(session.project_path, tabTitle, session.id);
         // Update the new tab with session data
         updateTab(newTabId, {
           sessionData: session,
@@ -248,9 +257,14 @@ export const TabContent: React.FC = () => {
 
     const handleClaudeSessionSelected = (event: CustomEvent) => {
       const { session } = event.detail;
+      logger.log('🎯 handleClaudeSessionSelected called with session:', session.id);
+      
       // Reuse same logic as handleOpenSessionInTab
       const existingTab = findTabBySessionId(session.id);
+      logger.log('🔍 TabContent claude session deduplication check - existing tab:', existingTab?.id);
+      
       if (existingTab) {
+        // Update existing tab with session data and switch to it
         updateTab(existingTab.id, {
           sessionData: session,
           title: prettifyProjectName(session.project_path),
@@ -262,7 +276,9 @@ export const TabContent: React.FC = () => {
         );
       } else {
         const projectName = session.project_path.split("/").pop() || "Session";
-        const newTabId = createChatTab(session.id, projectName);
+        const sessionShort = session.id.slice(0, 4);
+        const tabTitle = `${projectName}:${sessionShort}`;
+        const newTabId = createSessionTab(session.project_path, tabTitle, session.id);
         updateTab(newTabId, {
           sessionData: session,
           initialProjectPath: session.project_path,
@@ -317,7 +333,7 @@ export const TabContent: React.FC = () => {
       );
     };
   }, [
-    createChatTab,
+    createSessionTab,
     findTabBySessionId,
     createClaudeFileTab,
     createCreateAgentTab,

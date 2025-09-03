@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Loader2, Plus, MoreVertical, Trash2, Settings } from "lucide-react";
+import { Loader2, Plus, MoreVertical, Trash2, Settings, Activity, FolderOpen } from "lucide-react";
 import { api, type Project, type Session, type DecoratedSession, type ClaudeMdFile } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { prettifyProjectName } from "@/lib/utils";
@@ -42,7 +42,7 @@ interface ProjectsTabProps {
 }
 
 export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
-  const { updateTab, createChatTab } = useTabState();
+  const { updateTab, findTabBySessionId } = useTabState();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [sessions, setSessions] = useState<DecoratedSession[]>([]);
@@ -101,9 +101,9 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
     );
   }, [projectDeleteDialogOpen]);
 
-  // Load projects when tab becomes active and is of type 'projects'
+  // Load projects when tab becomes active and is of type 'projects' or 'project'
   useEffect(() => {
-    if (isActive && tab.type === "projects") {
+    if (isActive && (tab.type === "projects" || tab.type === "project")) {
       // Check if we need to restore project state first
       if (tab.restoreProjectState) {
         setSelectedProject(tab.restoreProjectState.selectedProject);
@@ -111,7 +111,8 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
         setActiveProjectTab(tab.restoreProjectState.activeTab || "sessions");
         // Clear the restore state after using it
         updateTab(tab.id, { restoreProjectState: undefined });
-      } else {
+      } else if (tab.type === "projects") {
+        // Only load project list if we're in projects mode (not single project mode)
         loadProjects();
       }
     }
@@ -141,9 +142,18 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
       const sessionList = await api.getProjectSessions(project.id);
       setSessions(sessionList);
 
-      // Update tab title to project name
+      // Update tab title and type to single project mode, store project info
       const projectName = getProjectName(project.path);
-      updateTab(tab.id, { title: projectName });
+      logger.log('📂 Updating tab to single project mode:', { title: projectName, type: 'project' });
+      updateTab(tab.id, { 
+        title: projectName, 
+        type: 'project',
+        restoreProjectState: {
+          selectedProject: project,
+          sessions: sessionList,
+          activeTab: activeProjectTab
+        }
+      });
     } catch (err) {
       logger.error("Failed to load sessions:", err);
       setError("Failed to load sessions for this project.");
@@ -159,8 +169,9 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
     setSelectedProject(null);
     setSessions([]);
     setActiveProjectTab("sessions"); // Reset to default
-    // Restore tab title to "Projects"
-    updateTab(tab.id, { title: "Projects" });
+    // Restore tab title and type to project list mode
+    logger.log('📂 Updating tab to project list mode:', { title: "Projects", type: 'projects' });
+    updateTab(tab.id, { title: "Projects", type: 'projects' });
   };
 
   // Get project name from path
@@ -383,11 +394,18 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
       setSessions(viewingSession.backState.sessions);
       setActiveProjectTab(viewingSession.backState.activeTab);
       setViewingSession(null);
+      
+      // Restore tab type to 'project' since we're going back to single project view
+      if (viewingSession.backState.selectedProject) {
+        const projectName = getProjectName(viewingSession.backState.selectedProject.path);
+        logger.log('📂 Restoring tab to single project mode after session:', { title: projectName, type: 'project' });
+        updateTab(tab.id, { title: projectName, type: 'project' });
+      }
     }
   };
 
-  // Render SessionDetail if viewing a session
-  if (viewingSession) {
+  // Render SessionDetail if viewing a session (with valid session object)
+  if (viewingSession && viewingSession.session) {
     return (
       <>
         <DebugLabel label="ProjectsTab" />
@@ -485,6 +503,18 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                       initialActiveTab={activeProjectTab}
                       onActiveTabChange={setActiveProjectTab}
                       onSessionClick={async (session) => {
+                        // Check for deduplication FIRST - before any processing
+                        const existingTab = findTabBySessionId(session.id);
+                        if (existingTab && existingTab.id !== tab.id) {
+                          logger.log('🔍 Session already open in tab:', existingTab.id, 'focusing that tab instead');
+                          window.dispatchEvent(
+                            new CustomEvent("switch-to-tab", {
+                              detail: { tabId: existingTab.id },
+                            }),
+                          );
+                          return; // Don't proceed with opening in current tab
+                        }
+                        
                         if ((session as any).claudio) {
                           // Interactive claudio session - set viewing session state for continuation
                           logger.log('Continuing claudio session:', (session as any).claudio.claudio_id);
@@ -509,7 +539,19 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                               claudioId: freshClaudioMetadata.claudio_id
                             });
                             
-                            // Set viewing session state to render SessionDetail directly
+                            // Update tab to project-session type and set viewing session state
+                            const projectName = getProjectName(session.project_path);
+                            const sessionShort = session.id ? session.id.slice(0, 4) : 'unknown';
+                            const sessionTitle = `${projectName}:${sessionShort}`;
+                            logger.log('📂 Updating tab to project-session view:', { title: sessionTitle, sessionId: session.id });
+                            updateTab(tab.id, { 
+                              title: sessionTitle, 
+                              type: 'project-session', 
+                              sessionId: session.id,
+                              sessionData: freshSession 
+                            });
+                            
+                            // Set viewing session state to render SessionDetail inline
                             setViewingSession({
                               session: freshSession,
                               projectPath: session.project_path,
@@ -531,10 +573,33 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                                 activeTab: activeProjectTab,
                               },
                             });
+                            
+                            // Fallback to cached metadata if refresh fails
+                            setViewingSession({
+                              session: session,
+                              projectPath: session.project_path,
+                              backState: {
+                                selectedProject: selectedProject,
+                                sessions: sessions,
+                                activeTab: activeProjectTab,
+                              },
+                            });
                           }
                         } else {
                           // Native Claude Code session - set viewing session state for read-only view
                           logger.log('Opening native session:', session.id);
+                          // Update tab to project-session type for native session
+                          const projectName = getProjectName(session.project_path);
+                          const sessionShort = session.id ? session.id.slice(0, 4) : 'unknown';
+                          const sessionTitle = `${projectName}:${sessionShort}`;
+                          logger.log('📂 Updating tab to project-session view (native):', { title: sessionTitle, sessionId: session.id });
+                          updateTab(tab.id, { 
+                            title: sessionTitle, 
+                            type: 'project-session', 
+                            sessionId: session.id,
+                            sessionData: session 
+                          });
+                          
                           setViewingSession({
                             session: session,
                             projectPath: session.project_path,
@@ -544,6 +609,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                               activeTab: activeProjectTab,
                             },
                           });
+                          
                         }
                       }}
                       onEditClaudeFile={(
@@ -691,20 +757,28 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                     <RunningClaudeSessions />
 
                     {/* Project list */}
-                    {projects.length > 0 ? (
+                    {projects.length === 0 && !loading ? (
+                      <div className="text-center py-8">
+                        <FolderOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                          No projects found
+                        </h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Create a new Claude Code session to get started.
+                        </p>
+                        <Button onClick={() => handleNewSDKSession()} size="sm" className="gap-2">
+                          <Plus className="h-4 w-4" />
+                          New Session
+                        </Button>
+                      </div>
+                    ) : projects.length > 0 ? (
                       <ProjectList
                         projects={projects}
                         onProjectClick={handleProjectClick}
                         loading={loading}
                         className="animate-fade-in"
                       />
-                    ) : (
-                      <div className="py-8 text-center">
-                        <p className="text-sm text-muted-foreground">
-                          No projects found in ~/.claude/projects
-                        </p>
-                      </div>
-                    )}
+                    ) : null}
                   </motion.div>
                 )}
               </AnimatePresence>

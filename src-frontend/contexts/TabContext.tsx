@@ -3,7 +3,7 @@ import type { NavigationStack } from './NavigationContext';
 
 export interface Tab {
   id: string;
-  type: 'chat' | 'agent' | 'agents' | 'projects' | 'usage' | 'mcp' | 'settings' | 'claude-md' | 'claude-file' | 'create-agent' | 'import-agent';
+  type: 'chat' | 'agent' | 'agents' | 'projects' | 'project' | 'project-session' | 'usage' | 'mcp' | 'settings' | 'claude-md' | 'claude-file' | 'create-agent' | 'import-agent';
   title: string;
   sessionId?: string;  // for chat tabs
   sessionData?: any; // for chat tabs - stores full session object
@@ -50,7 +50,7 @@ interface TabContextType {
   reorderTabs: (startIndex: number, endIndex: number) => void;
   getTabById: (id: string) => Tab | undefined;
   closeAllTabs: () => void;
-  getTabsByType: (type: 'chat' | 'agent') => Tab[];
+  getTabsByType: (type: 'session' | 'agent') => Tab[];
 }
 
 const TabContext = createContext<TabContextType | undefined>(undefined);
@@ -126,6 +126,17 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
     
+    // Clean up localStorage entries for this tab
+    const filterKeys = [
+      `claudio-session-filters-regular-${id}`,
+      `claudio-session-filters-native-${id}`,
+      `claudio-session-filters-claudio-${id}`,
+    ];
+    
+    filterKeys.forEach(key => {
+      localStorage.removeItem(key);
+    });
+    
     setTabs(prevTabs => {
       const filteredTabs = prevTabs.filter(tab => tab.id !== id);
       
@@ -185,12 +196,25 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [tabs]);
 
   const closeAllTabs = useCallback(() => {
+    // Clean up all tab-scoped localStorage entries
+    tabs.forEach(tab => {
+      const filterKeys = [
+        `claudio-session-filters-regular-${tab.id}`,
+        `claudio-session-filters-native-${tab.id}`,
+        `claudio-session-filters-claudio-${tab.id}`,
+      ];
+      
+      filterKeys.forEach(key => {
+        localStorage.removeItem(key);
+      });
+    });
+    
     setTabs([]);
     setActiveTabId(null);
     // localStorage.removeItem(STORAGE_KEY); // Persistence disabled
-  }, []);
+  }, [tabs]);
 
-  const getTabsByType = useCallback((type: 'chat' | 'agent'): Tab[] => {
+  const getTabsByType = useCallback((type: 'session' | 'agent'): Tab[] => {
     return tabs.filter(tab => tab.type === type);
   }, [tabs]);
 
