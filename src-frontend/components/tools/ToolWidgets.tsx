@@ -21,6 +21,5 @@ export * from './WebFetchWidget';
 export * from './SystemReminderWidget';
 export * from './SystemInitializedWidget';
 export * from './ThinkingWidget';
-export * from './SummaryWidget';
 export * from './ExitPlanModeWidget';
 export * from './ToolWithResultWidget';

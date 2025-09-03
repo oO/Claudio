@@ -78,6 +78,7 @@ export const SummaryMessage: React.FC<SummaryMessageProps> = ({ message }) => {
             ...
           </div>
         )}
+
       </div>
     </>
   );

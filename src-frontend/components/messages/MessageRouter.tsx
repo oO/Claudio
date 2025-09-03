@@ -1,6 +1,6 @@
 import React from "react";
 import type { ClaudeStreamMessage } from "@/lib/outputCache";
-import { SummaryWidget, SystemInitializedWidget } from "../tools/ToolWidgets";
+import { SystemInitializedWidget } from "../tools/ToolWidgets";
 import { UserMessage } from "./UserMessage";
 import { AssistantMessage } from "./AssistantMessage";
 import { SubAgentMessage } from "./SubAgentMessage";
@@ -104,21 +104,22 @@ const MessageRouterComponent: React.FC<MessageRouterProps> = ({
       );
     }
 
-    // Handle compact summaries with SummaryWidget (preserves multi-message functionality)
+    // Handle compact summaries with SummaryMessage (preserves multi-message functionality)
     if (message.type === "user" && (message as any).isCompactSummary) {
       const msg = message.message || message;
       const content = typeof msg.content === 'string' ? msg.content : 
         Array.isArray(msg.content) ? msg.content.map(c => c.text || c).join('') :
         JSON.stringify(msg.content);
       
-      return (
-        <SummaryWidget 
-          summary={content}
-          leafUuid={message.uuid}
-          messageNumber={message.messageNumber}
-          contributingMessageUuids={message._contributingMessageUuids}
-        />
-      );
+      // Create a summary message structure for compact summaries
+      const compactSummaryMessage = {
+        ...message,
+        summary: content,
+        _contributingMessageUuids: message._contributingMessageUuids,
+        _isCompactSummary: true
+      };
+      
+      return <SummaryMessage message={compactSummaryMessage} />;
     }
 
     // Route to specialized message components based on type

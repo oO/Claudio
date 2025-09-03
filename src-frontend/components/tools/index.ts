@@ -28,6 +28,5 @@ export { WebFetchWidget } from './WebFetchWidget';
 export { SystemReminderWidget } from './SystemReminderWidget';
 export { SystemInitializedWidget } from './SystemInitializedWidget';
 export { ThinkingWidget } from './ThinkingWidget';
-export { SummaryWidget } from './SummaryWidget';
 
 // All widgets are now extracted to individual files for better maintainability
