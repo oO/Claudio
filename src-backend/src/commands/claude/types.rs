@@ -373,7 +373,8 @@ fn extract_text_from_content(content: &serde_json::Value) -> Option<String> {
     }
 }
 
-/// Extracts the first valid user message from a JSONL file
+/// Extracts the first meaningful user message from a JSONL file
+/// Prefers messages with 8+ words, but falls back to the longest message found (up to 5 messages scanned)
 pub fn extract_first_user_message(jsonl_path: &PathBuf) -> (Option<String>, Option<String>) {
     let file = match fs::File::open(jsonl_path) {
         Ok(file) => file,
@@ -381,6 +382,13 @@ pub fn extract_first_user_message(jsonl_path: &PathBuf) -> (Option<String>, Opti
     };
 
     let reader = BufReader::new(file);
+    
+    let mut longest_message: Option<String> = None;
+    let mut longest_timestamp: Option<String> = None;
+    let mut longest_word_count = 0;
+    let mut messages_checked = 0;
+    const MAX_MESSAGES_TO_CHECK: usize = 5;
+    const MIN_WORDS_FOR_GOOD_TITLE: usize = 8;
 
     for line in reader.lines() {
         if let Ok(line) = line {
@@ -402,8 +410,25 @@ pub fn extract_first_user_message(jsonl_path: &PathBuf) -> (Option<String>, Opti
                                     continue;
                                 }
 
-                                // Found a valid user message
-                                return (Some(text_content), entry.timestamp);
+                                // Count words in the message
+                                let word_count = text_content.split_whitespace().count();
+                                
+                                // If this message has enough words, use it immediately
+                                if word_count >= MIN_WORDS_FOR_GOOD_TITLE {
+                                    return (Some(text_content), entry.timestamp);
+                                }
+                                
+                                // Otherwise, track it if it's the longest so far
+                                if word_count > longest_word_count {
+                                    longest_message = Some(text_content);
+                                    longest_timestamp = entry.timestamp.clone();
+                                    longest_word_count = word_count;
+                                }
+                                
+                                messages_checked += 1;
+                                if messages_checked >= MAX_MESSAGES_TO_CHECK {
+                                    break;
+                                }
                             }
                         }
                     }
@@ -412,7 +437,8 @@ pub fn extract_first_user_message(jsonl_path: &PathBuf) -> (Option<String>, Opti
         }
     }
 
-    (None, None)
+    // Return the longest message we found (even if it's shorter than ideal)
+    (longest_message, longest_timestamp)
 }
 
 /// Helper function to create a tokio Command with proper environment variables

@@ -78,35 +78,12 @@ export const SummaryMessage: React.FC<SummaryMessageProps> = ({ message }) => {
             ...
           </div>
         )}
-
       </div>
     </>
   );
 
   const titleContent = (
     <div className="flex items-center justify-between w-full">
-      <div>
-        <div className="text-base font-semibold">
-          {isBundle ? "Context Summaries" : "Context Summary"}
-        </div>
-        <div className="text-xs text-muted-foreground mt-1">
-          AI-generated {isBundle ? "summaries" : "summary"}
-          {lineCount > 0 && (
-            <span className="ml-2">
-              ({lineCount}{" "}
-              {isBundle
-                ? lineCount === 1
-                  ? "item"
-                  : "items"
-                : lineCount === 1
-                  ? "line"
-                  : "lines"}
-              )
-            </span>
-          )}
-        </div>
-      </div>
-
       {isLargeSummary && (
         <button
           onClick={handleExpandToggle}
@@ -141,7 +118,7 @@ export const SummaryMessage: React.FC<SummaryMessageProps> = ({ message }) => {
         <MessageTemplate.Header
           IconComponent={Info}
           iconClassName="bg-info"
-          title="Summary"
+          title="Context Summary"
           titleClassName="w-full text-info"
         >
           {titleContent}

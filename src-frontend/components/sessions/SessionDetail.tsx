@@ -16,6 +16,7 @@ import { useSessionHandle } from "@/hooks/useSessionHandle";
 import { useMessageProcessing } from "@/hooks/useMessageProcessing";
 import { useStreamingState } from "@/hooks/useStreamingState";
 import { useSessionNavigation } from "@/hooks/useSessionNavigation";
+import { useThinkingScrollSync } from "@/hooks/useThinkingScrollSync";
 import type { Session } from "@/lib/api";
 
 interface SessionDetailProps {
@@ -87,6 +88,19 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
 
   // All prompt submission logic is now handled by useSessionHandle hook
 
+  // Get computed values from hooks (must be before early returns for hook order)
+  const { isReadOnly } = sessionData;
+  const { displayableMessages, collapsedMessageUuids, totalTokens } = messageData;
+  const { effectiveIsStreaming, thinkingContent } = streamingData;
+
+  // Sync scroll position when thinking state changes (must be before early returns)
+  useThinkingScrollSync({
+    isThinking: effectiveIsStreaming,
+    isPinnedToBottom: navigation.isPinnedToBottom,
+    messagesRef: navigation.messagesRef,
+    messageCount: displayableMessages.length,
+  });
+
   // Loading state
   if (sessionData.loading) {
     logger.info("🔄 SessionDetail in loading state");
@@ -98,11 +112,6 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
     logger.info("❌ SessionDetail in error state:", { error: sessionData.error });
     return <SessionErrorState error={sessionData.error} onBack={onBack} />;
   }
-
-  // Get computed values from hooks
-  const { isReadOnly } = sessionData;
-  const { displayableMessages, collapsedMessageUuids, totalTokens } = messageData;
-  const { effectiveIsStreaming, thinkingContent } = streamingData;
 
   logger.info("✨ SessionDetail rendering main component:", {
     hasSessionHandle: !!sessionData.sessionHandle,

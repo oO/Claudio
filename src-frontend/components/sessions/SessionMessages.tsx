@@ -11,6 +11,7 @@ export interface SessionMessagesHandle {
   scrollToBottom: () => void;
   scrollToIndex: (index: number) => void;
   scrollToTop: () => void;
+  forceScrollToBottom: () => void;
 }
 
 interface SessionMessagesProps {
@@ -47,6 +48,15 @@ export const SessionMessages = forwardRef<SessionMessagesHandle, SessionMessages
     },
     scrollToTop: () => {
       virtuosoRef.current?.scrollToIndex({ index: 0, align: 'start' });
+    },
+    forceScrollToBottom: () => {
+      // Force scroll to bottom with smooth behavior, regardless of current position
+      // This is used when layout changes (thinking indicator appears/disappears)
+      virtuosoRef.current?.scrollToIndex({ 
+        index: displayableMessages.length - 1, 
+        align: 'end',
+        behavior: 'smooth'
+      });
     }
   }));
 
@@ -88,6 +98,12 @@ export const SessionMessages = forwardRef<SessionMessagesHandle, SessionMessages
                 );
               }}
               followOutput={true}
+              atBottomStateChange={(atBottom) => {
+                // Notify parent when scroll position changes relative to bottom
+                if (onPinnedStateChange) {
+                  onPinnedStateChange(atBottom);
+                }
+              }}
               overscan={20}
             />
             

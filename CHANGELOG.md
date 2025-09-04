@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.4.15] - 2025-09-04
+- Enhanced session title selection with intelligent message prioritization
+- Session titles now prefer user messages with 8+ words for better clarity
+- Added fallback to longest message found when scanning up to 5 user messages
+- Eliminates useless session titles like "Hello" or "Hi there"
+- Maintains all existing performance characteristics and message filtering logic
+- Bridge between Virtuoso's internal scrolling and external layout changes
+- Proper state synchronization when ThinkingIndicator appears/disappears
+- Only auto-scroll when user was actually at bottom (preserves user intent)
+- Enhanced debugging to track scroll method availability and execution
+
 ## [0.4.14] - 2025-09-04
 - Fixed streaming state race condition when opening session tabs for active Claude sessions
 - Added queryInitialSessionState function to immediately detect and display thinking state on tab open

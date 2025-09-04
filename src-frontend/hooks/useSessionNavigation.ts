@@ -1,11 +1,12 @@
 import { useRef, useCallback, useState } from "react";
+import type { SessionMessagesHandle } from "@/components/sessions/SessionMessages";
 
 /**
  * Hook for managing session navigation and scrolling behavior
  * Handles message list navigation, pinning state, compact mode, and streaming state
  */
 export const useSessionNavigation = () => {
-  const messagesRef = useRef<any>(null);
+  const messagesRef = useRef<SessionMessagesHandle>(null);
   const [isPinnedToBottom, setIsPinnedToBottom] = useState(true);
   const [isCompactMode, setIsCompactMode] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
