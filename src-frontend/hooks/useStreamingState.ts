@@ -9,7 +9,8 @@ import { SESSION_TYPES, type SessionState } from "@/lib/sessionHandleApi";
  */
 export const useStreamingState = (
   sessionState: SessionState | null,
-  isSessionThinking: (sessionId: string) => boolean
+  isSessionThinking: (sessionId: string) => boolean,
+  queryInitialSessionState?: (sessionId: string) => Promise<void>
 ) => {
   const [isStreaming, setIsStreaming] = useState(false);
   
@@ -35,6 +36,19 @@ export const useStreamingState = (
     isStreaming,
   ]);
 
+  // Query initial session state when a native session first loads
+  useEffect(() => {
+    if (
+      sessionState?.session_type.type === SESSION_TYPES.NATIVE &&
+      sessionState.current_claude_session_id &&
+      queryInitialSessionState
+    ) {
+      const claudeSessionId = sessionState.current_claude_session_id;
+      logger.info(`🔍 Querying initial state for native session: ${claudeSessionId?.substring(0, 8)}`);
+      queryInitialSessionState(claudeSessionId);
+    }
+  }, [sessionState?.session_type.type, sessionState?.current_claude_session_id, queryInitialSessionState]);
+  
   // Fetch random thinking content when streaming starts
   useEffect(() => {
     if (

@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.14] - 2025-09-04
+- Fixed streaming state race condition when opening session tabs for active Claude sessions
+- Added queryInitialSessionState function to immediately detect and display thinking state on tab open
+- Updated useStreamingState hook to query initial state when native sessions load
+- Eliminated UI delay where thinking indicators only appeared after next session event
+
 ## [0.4.13] - 2025-09-03
 - Optimized project listing performance by replacing sessions array with session_count integer
 - Removed expensive session file parsing from list_projects command 

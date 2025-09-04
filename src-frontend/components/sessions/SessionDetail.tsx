@@ -48,7 +48,7 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
   );
 
   // Native Claude session thinking state hook
-  const { isSessionThinking } = useNativeClaudeSessions();
+  const { isSessionThinking, queryInitialSessionState } = useNativeClaudeSessions();
 
   // Navigation and UI state management
   const navigation = useSessionNavigation();
@@ -60,7 +60,7 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
   const messageData = useMessageProcessing(sessionData.messages);
 
   // Streaming state management
-  const streamingData = useStreamingState(sessionData.sessionState, isSessionThinking);
+  const streamingData = useStreamingState(sessionData.sessionState, isSessionThinking, queryInitialSessionState);
 
   // Session file watcher - ensures backend watches this project for file changes
   const projectId = sessionData.sessionState?.project_id;

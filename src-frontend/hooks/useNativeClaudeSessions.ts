@@ -130,6 +130,31 @@ export const useNativeClaudeSessions = () => {
   const isSessionThinking = useCallback((sessionId: string): boolean => {
     return thinkingSessions[sessionId] || false;
   }, [thinkingSessions]);
+  
+  // Query initial state for a session (async version)
+  const queryInitialSessionState = useCallback(async (sessionId: string): Promise<void> => {
+    // Don't query if we already have state for this session
+    if (sessionId in thinkingSessions) {
+      logger.debug(`🧠 Session ${sessionId} already has cached thinking state`);
+      return;
+    }
+    
+    try {
+      const sessionStatus = await getSessionStatus(sessionId);
+      if (sessionStatus && sessionStatus.status === "active") {
+        // Update thinking state for this session
+        setThinkingSessions(prev => ({
+          ...prev,
+          [sessionId]: true
+        }));
+        logger.info(`🧠 Initial query: Session ${sessionId} is active (thinking)`);
+      } else {
+        logger.debug(`🧠 Initial query: Session ${sessionId} is idle or not found`);
+      }
+    } catch (error) {
+      logger.error(`Failed to query initial session status for ${sessionId}:`, error);
+    }
+  }, [thinkingSessions, getSessionStatus]);
 
 
   return {
@@ -142,6 +167,7 @@ export const useNativeClaudeSessions = () => {
     // Actions
     refreshLiveSessions,
     getSessionStatus,
+    queryInitialSessionState,
     
     // Helpers
     getAllLiveSessions,
