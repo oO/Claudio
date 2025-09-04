@@ -171,10 +171,6 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
           setCopyPopoverOpen={() => {}}
           displayableMessageCount={displayableMessages.length}
           collapsedMessageUuids={collapsedMessageUuids}
-          showNavigation={displayableMessages.length > 0}
-          isPinnedToBottom={navigation.isPinnedToBottom}
-          onScrollToTop={navigation.handleScrollToTop}
-          onScrollToBottom={navigation.handleScrollToBottom}
         />
 
         <div className="flex-1 flex flex-col min-h-0">
@@ -185,6 +181,7 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
             isLoading={effectiveIsStreaming}
             error={sessionData.error}
             onPinnedStateChange={navigation.setIsPinnedToBottom}
+            showNavigation={displayableMessages.length > 0}
           />
 
           <ThinkingIndicator content={thinkingContent} />

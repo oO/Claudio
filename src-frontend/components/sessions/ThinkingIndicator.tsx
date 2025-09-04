@@ -40,7 +40,9 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
             {/* Content wrapper matching MessageTemplate */}
             <div className="flex-1 min-w-0">
               {/* Title */}
-              <span className="font-semibold text-foreground">{content.title}</span>
+              <span className="font-semibold text-foreground">
+                {content.title}
+              </span>
 
               {/* Haiku content */}
               <h1 className="text-accent animate-pulse text-lg italic font-serif text-center">

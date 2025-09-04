@@ -102,6 +102,8 @@ pub struct DecoratedSession {
     pub message_count: Option<u64>,
     /// Live session type for decoration
     pub live_session_type: Option<String>,
+    /// Aggregated todo counts from all agent executions in this session
+    pub todo_counts: Option<TodoCounts>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

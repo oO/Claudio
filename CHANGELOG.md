@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.18] - 2025-09-04
+- Moved session navigation from SessionHeader to SessionMessages with contextual overlay placement
+- Added 4-button segmented pill navigation (jump to top, prev/next user message, jump to bottom/pin)
+- Implemented smart button state management with intelligent disable states based on scroll position
+- Added user message tracking with indices for proper prev/next navigation functionality
+- Enhanced streaming-aware navigation updates that respond correctly to new message arrivals
+- Improved visual design with connected pill layout, accent hover colors, and proper disabled states
+- Fixed missing logger import in MessageFooter component for proper debugging support
+
 ## [0.4.17] - 2025-09-04
 - Fixed critical tab context bug where remaining tabs lost state after closing other tabs
 - Removed AnimatePresence mode="wait" that was unmounting inactive tabs and destroying state

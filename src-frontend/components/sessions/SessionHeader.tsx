@@ -15,8 +15,6 @@ import {
   ArrowDownToLine,
   Download as LucideDownload,
   MoreVertical,
-  ArrowUp,
-  ArrowDown,
   UnfoldVertical,
   Brain,
   ListTodo,
@@ -58,11 +56,6 @@ interface SessionHeaderProps {
   collapsedMessageUuids?: string[];
   // Refresh state
   isRefreshing?: boolean;
-  // Navigation
-  showNavigation?: boolean;
-  isPinnedToBottom?: boolean;
-  onScrollToTop?: () => void;
-  onScrollToBottom?: () => void;
 }
 
 export const SessionHeader: React.FC<SessionHeaderProps> = ({
@@ -82,10 +75,6 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
   displayableMessageCount,
   collapsedMessageUuids,
   isRefreshing,
-  showNavigation,
-  isPinnedToBottom,
-  onScrollToTop,
-  onScrollToBottom,
 }) => {
   const {
     liveSessionType,
@@ -134,6 +123,16 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
       });
     }
   }, [isStreaming, liveSessionType, sessionId, hasMessages]);
+
+  // Debug: Log sessionData.todo_counts to see what we're getting
+  React.useEffect(() => {
+    logger.log("🎯 SessionHeader todo_counts debug:", {
+      sessionId: sessionId?.substring(0, 8),
+      hasTodoCounts: !!sessionData?.todo_counts,
+      todoCounts: sessionData?.todo_counts,
+      sessionDataKeys: sessionData ? Object.keys(sessionData) : 'no sessionData'
+    });
+  }, [sessionData?.todo_counts, sessionId]);
 
   const handleCopySessionInfo = async () => {
     // Copy session metadata JSON structure
@@ -231,16 +230,15 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
                       <span>{formatFileSize(sessionData.size_bytes)}</span>
                     </div>
                   )}
-                  {sessionData?.todo_counts &&
-                    sessionData.todo_counts.total > 0 && (
-                      <div className="flex items-center gap-1">
-                        <ListTodo className="h-3 w-3" />
-                        <span>
-                          {sessionData.todo_counts.completed}/
-                          {sessionData.todo_counts.total}
-                        </span>
-                      </div>
-                    )}
+                  {sessionData?.todo_counts && (
+                    <div className="flex items-center gap-1">
+                      <ListTodo className="h-3 w-3" />
+                      <span>
+                        {sessionData.todo_counts.completed}/
+                        {sessionData.todo_counts.total}
+                      </span>
+                    </div>
+                  )}
                   {sessionData && (
                     <div className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
@@ -287,43 +285,6 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-1">
-          {/* Navigation buttons */}
-          {showNavigation && onScrollToTop && onScrollToBottom && (
-            <>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  logger.log("Top button clicked");
-                  onScrollToTop?.();
-                }}
-                className="h-8 w-8"
-                title="Jump to first message"
-              >
-                <ArrowUp className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={isPinnedToBottom ? "default" : "ghost"}
-                size="icon"
-                onClick={() => {
-                  logger.log(
-                    "Bottom button clicked, isPinnedToBottom:",
-                    isPinnedToBottom,
-                  );
-                  onScrollToBottom?.();
-                }}
-                className="h-8 w-8"
-                title={
-                  isPinnedToBottom
-                    ? "Following new messages"
-                    : "Jump to latest message"
-                }
-              >
-                <ArrowDown className="h-4 w-4" />
-              </Button>
-            </>
-          )}
-
           {/* Compact mode toggle */}
           {toggleCompactMode && (
             <Button

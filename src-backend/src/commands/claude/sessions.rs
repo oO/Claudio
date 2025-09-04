@@ -98,6 +98,10 @@ pub async fn get_project_sessions(project_id: String) -> Result<Vec<DecoratedSes
                     None
                 };
 
+                // Aggregate todo counts from agent executions
+                let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
+                let todo_counts = aggregate_session_todos(&claude_dir, &session_id);
+
                 sessions.push(DecoratedSession {
                     id: session_id.to_string(),
                     project_id: project_id.clone(),
@@ -108,6 +112,7 @@ pub async fn get_project_sessions(project_id: String) -> Result<Vec<DecoratedSes
                     size_bytes: Some(file_size),
                     message_count: if message_count > 0 { Some(message_count) } else { None },
                     live_session_type,
+                    todo_counts,
                 });
             }
         }

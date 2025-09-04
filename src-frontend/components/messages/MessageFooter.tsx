@@ -9,6 +9,7 @@ import type { ClaudeStreamMessage } from "@/lib/outputCache";
 import { useMessageClipboard } from "@/hooks/useMessageClipboard";
 import { useSessionContext } from "@/contexts/SessionContext";
 import { useMessageEnhancement } from "@/contexts/MessageEnhancementContext";
+import { logger } from "@/lib/logger";
 
 interface MessageFooterProps {
   message: ClaudeStreamMessage;
