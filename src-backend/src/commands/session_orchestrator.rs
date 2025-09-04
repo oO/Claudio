@@ -484,8 +484,7 @@ impl SessionHandle {
                 };
                 
                 // Emit to frontend
-                log::info!("🚀 Emitting streamed message to frontend: handle={}, type={}, uuid={}", 
-                          handle_id, streamed_message.message_type, streamed_message.uuid);
+                log::debug!("🚀 Emitting streamed message to frontend: type={}", streamed_message.message_type);
                 if let Err(e) = app_handle.emit("session_message_stream", &streamed_message) {
                     log::error!("❌ Failed to emit message stream event: {}", e);
                 } else {

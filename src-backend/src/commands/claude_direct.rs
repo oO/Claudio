@@ -115,7 +115,7 @@ fn emit_process_event(
     app_handle.emit("claude-process-event", &event)
         .map_err(|e| format!("Failed to emit process event: {}", e))?;
     
-    log::info!("🚀 Process event emitted: {:?}", event);
+    log::info!("🚀 Process event emitted successfully");
     Ok(())
 }
 
@@ -508,7 +508,7 @@ async fn update_session_claude_id(
     // Save updated metadata (now updates memory immediately!)
     let first_history = session.session_history.first().cloned();
     update_claudio_session(claudio_id.clone(), project_path.clone(), session).await?;
-    log::info!("✅ Updated Claudio session {} to track Claude session {} (history: {:?})", claudio_id, new_session_id, first_history);
+    log::info!("✅ Updated Claudio session {} to track Claude session {}", claudio_id, new_session_id);
     
     // Emit event to notify frontend that session state has changed (no delay needed!)
     // Memory is immediately consistent, so frontend will get fresh data

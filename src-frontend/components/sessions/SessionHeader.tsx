@@ -19,6 +19,7 @@ import {
   ArrowDown,
   UnfoldVertical,
   Brain,
+  ListTodo,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover } from "@/components/ui/popover";
@@ -30,6 +31,7 @@ import {
   formatTimeAgo,
   formatFileSize,
 } from "@/lib/date-utils";
+import { getSessionTitle, formatSessionIdCompact } from "@/lib/sessionUtils";
 import type { Session } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { useSessionContext } from "@/contexts/SessionContext";
@@ -133,19 +135,6 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
     }
   }, [isStreaming, liveSessionType, sessionId, hasMessages]);
 
-  const handleCopySessionId = async () => {
-    if (sessionFilePath) {
-      try {
-        await navigator.clipboard.writeText(sessionFilePath);
-        logger.log(
-          `Session absolute path copied to clipboard: ${sessionFilePath}`,
-        );
-      } catch (error) {
-        logger.error("Failed to copy session path:", error);
-      }
-    }
-  };
-
   const handleCopySessionInfo = async () => {
     // Copy session metadata JSON structure
     if (sessionData && sessionFilePath) {
@@ -195,37 +184,37 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
           </Button>
 
           <div className="min-w-0 flex-1">
-            <h1 className="text-3xl font-bold tracking-tight text-accent flex items-center gap-3">
+            <h1 className="text-3xl font-bold tracking-tight text-accent">
               Claude Code Session
-              {claudeSessionId && (
-                <span
-                  className="inline-flex items-center gap-1 px-2 py-1 text-xs font-normal border border-border rounded cursor-pointer text-accent hover:text-foreground hover:bg-accent transition-colors"
-                  onClick={handleCopySessionId}
-                  title="Click to copy absolute session path"
-                >
-                  {claudeSessionId}
-                </span>
-              )}
             </h1>
+            {sessionData && (
+              <p className="text-lg font-bold text-muted-foreground truncate">
+                {getSessionTitle(sessionData)}
+              </p>
+            )}
             {projectPath && (
               <p className="mt-1 text-sm text-muted-foreground flex items-center gap-2">
                 <FolderOpen className="h-4 w-4" />
                 <span className="font-mono truncate">{projectPath}</span>
               </p>
             )}
-            {/* Project selection removed - no longer needed */}
 
             {/* Session metadata */}
             {(sessionData || claudioId) && (
               <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
                 <div className="flex items-center gap-4">
+                  {claudeSessionId !== undefined && (
+                    <div
+                      className="flex items-center gap-1 bg-accent px-2 py-1 rounded-full font-mono cursor-pointer hover:bg-accent/80 transition-colors"
+                      onClick={handleCopySessionInfo}
+                      title={`Click to copy session metadata JSON`}
+                    >
+                      {formatSessionIdCompact(claudeSessionId)}
+                    </div>
+                  )}
                   {displayableMessageCount !== undefined &&
                     displayableMessageCount > 0 && (
-                      <div
-                        className="flex items-center gap-1 bg-accent px-2 py-1 rounded-full text-xs cursor-pointer hover:bg-accent/80 transition-colors"
-                        onClick={handleCopySessionInfo}
-                        title={`Click to copy session metadata JSON`}
-                      >
+                      <div className="flex items-center gap-1">
                         <MessageSquare className="h-3 w-3" />
                         <span>{displayableMessageCount}</span>
                       </div>
@@ -242,6 +231,16 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
                       <span>{formatFileSize(sessionData.size_bytes)}</span>
                     </div>
                   )}
+                  {sessionData?.todo_counts &&
+                    sessionData.todo_counts.total > 0 && (
+                      <div className="flex items-center gap-1">
+                        <ListTodo className="h-3 w-3" />
+                        <span>
+                          {sessionData.todo_counts.completed}/
+                          {sessionData.todo_counts.total}
+                        </span>
+                      </div>
+                    )}
                   {sessionData && (
                     <div className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />

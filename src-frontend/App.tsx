@@ -21,6 +21,7 @@ import { RunningClaudeSessions } from "@/components/sessions/RunningClaudeSessio
 import { Topbar, TabManager, TabContent } from "@/components/common";
 import { ClaudeFileEditor, ClaudeBinaryDialog } from "@/components/claude";
 import { logger } from "@/lib/logger";
+import { formatSessionIdCompact } from "@/lib/sessionUtils";
 import { Settings, AnalyticsConsentBanner } from "@/components/settings";
 import { UsageDashboard } from "@/components/dashboard";
 import { MCPManager } from "@/components/mcp";
@@ -285,7 +286,7 @@ function AppContent() {
       handleViewChange("tabs");
       
       // Create a chat tab with the real session ID (Dumb Frontend just displays what backend tells it)
-      const sessionShort = claudioId.replace('claudio-', '').slice(0, 4);
+      const sessionShort = formatSessionIdCompact(claudioId.replace('claudio-', ''));
       const tabId = createSessionTab("", `Session:${sessionShort}`, claudioId);
       logger.log("Created chat tab with Claudio ID:", claudioId, "Tab ID:", tabId);
     } catch (error) {
@@ -313,7 +314,7 @@ function AppContent() {
       
       // Create a chat tab with the real session ID (Dumb Frontend just displays what backend tells it)
       const projectName = projectPath.split("/").pop() || "Project";
-      const sessionShort = claudioId.replace('claudio-', '').slice(0, 4);
+      const sessionShort = formatSessionIdCompact(claudioId.replace('claudio-', ''));
       const tabId = createSessionTab(projectPath, `${projectName}:${sessionShort}`, claudioId);
       logger.log("Created chat tab for project with Claudio ID:", claudioId, "Tab ID:", tabId);
     } catch (error) {

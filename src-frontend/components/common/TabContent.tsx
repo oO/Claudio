@@ -17,6 +17,7 @@ import { WelcomeScreen } from "./Welcome";
 import { invoke } from "@tauri-apps/api/core";
 import { prettifyProjectName } from "@/lib/utils";
 import { logger } from "@/lib/logger";
+import { formatSessionIdCompact } from "@/lib/sessionUtils";
 
 // Import SessionDetail directly instead of lazy loading to prevent mount/unmount cycles
 import { SessionDetail } from "@/components/sessions/SessionDetail";
@@ -207,7 +208,7 @@ export const TabContent: React.FC = () => {
       } else {
         // Create new tab for this session
         const projectName = session.project_path.split("/").pop() || "Session";
-        const sessionShort = session.id.slice(0, 4);
+        const sessionShort = formatSessionIdCompact(session.id);
         const tabTitle = `${projectName}:${sessionShort}`;
         const newTabId = createSessionTab(session.project_path, tabTitle, session.id);
         // Update the new tab with session data
@@ -276,7 +277,7 @@ export const TabContent: React.FC = () => {
         );
       } else {
         const projectName = session.project_path.split("/").pop() || "Session";
-        const sessionShort = session.id.slice(0, 4);
+        const sessionShort = formatSessionIdCompact(session.id);
         const tabTitle = `${projectName}:${sessionShort}`;
         const newTabId = createSessionTab(session.project_path, tabTitle, session.id);
         updateTab(newTabId, {

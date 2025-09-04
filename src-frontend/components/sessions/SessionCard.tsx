@@ -19,6 +19,7 @@ import {
   formatFileSize,
   formatTimeAgo,
 } from "@/lib/date-utils";
+import { getSessionTitle } from "@/lib/sessionUtils";
 import type { DecoratedSession, SessionTodoData } from "@/lib/api";
 import { SESSION_TYPES } from "@/lib/sessionHandleApi";
 import { logger } from "@/lib/logger";
@@ -121,7 +122,7 @@ export const SessionCard: React.FC<SessionCardProps> = ({
                   wordBreak: "break-word",
                 }}
               >
-                {session.first_message || "Untitled Session"}
+                {getSessionTitle(session)}
               </p>
             </div>
             <div className="flex items-center gap-4 text-xs text-muted-foreground">

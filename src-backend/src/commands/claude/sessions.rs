@@ -191,8 +191,7 @@ pub async fn get_session_todos(session_id: String) -> Result<serde_json::Value, 
                 }
             }
             
-            log::debug!("📁 Found {} total files in todos dir: {:?}", found_files.len(), found_files);
-            log::debug!("🎯 Found {} matching files for session {}: {:?}", matching_files.len(), session_id, matching_files);
+            log::debug!("📁 Found {} total files in todos dir, {} matching for session {}", found_files.len(), matching_files.len(), session_id);
         } else {
             log::warn!("❌ Failed to read todos directory: {:?}", todos_dir);
         }

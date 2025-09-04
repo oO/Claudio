@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { useTabContext } from '@/contexts/TabContext';
 import { Tab } from '@/contexts/TabContext';
+import { formatSessionIdCompact } from '@/lib/sessionUtils';
 import { logger } from '@/lib/logger';
 
 interface UseTabStateReturn {
@@ -78,11 +79,11 @@ export const useTabState = (): UseTabStateReturn => {
       }
     }
 
-    // Build session tab title: <project name>:<first 4 of session_id>
+    // Build session tab title: <project name>:<compact session_id>
     let tabTitle = title;
     if (!tabTitle && sessionId && initialProjectPath) {
       const projectName = initialProjectPath.split('/').pop() || 'Project';
-      const sessionShort = sessionId.slice(0, 4);
+      const sessionShort = formatSessionIdCompact(sessionId);
       tabTitle = `${projectName}:${sessionShort}`;
     } else if (!tabTitle) {
       tabTitle = `Session ${sessionTabCount + 1}`;

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.16] - 2025-09-04
+- Enhanced SessionHeader UI with session title subtitle and todo counter
+- Added shared session utility functions (getSessionTitle, formatSessionIdCompact)  
+- Standardized session ID display format across all tabs and components
+- Improved session metadata display with robust null/undefined handling
+- Reduced debug logging noise in backend session orchestrator
+
 ## [0.4.15] - 2025-09-04
 - Enhanced session title selection with intelligent message prioritization
 - Session titles now prefer user messages with 8+ words for better clarity

@@ -94,13 +94,13 @@ pub async fn get_claudio_settings() -> Result<ClaudioSettings, String> {
 #[tauri::command]
 pub async fn save_proxy_settings(settings: ProxySettings) -> Result<(), String> {
     log::info!("=== SAVE PROXY SETTINGS DEBUG START ===");
-    log::info!("Received settings: {:?}", settings);
+    log::info!("Received proxy settings for save");
     
     // Load existing Claudio settings
     log::info!("Loading existing Claudio settings...");
     let mut claudio_settings = match get_claudio_settings().await {
         Ok(s) => {
-            log::info!("Successfully loaded existing settings: {:?}", s);
+            log::info!("Successfully loaded existing claudio settings");
             s
         }
         Err(e) => {

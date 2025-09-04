@@ -5,6 +5,7 @@ import { Loader2, Plus, MoreVertical, Trash2, Settings, Activity, FolderOpen } f
 import { api, type Project, type Session, type DecoratedSession, type ClaudeMdFile } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { prettifyProjectName } from "@/lib/utils";
+import { formatSessionIdCompact } from "@/lib/sessionUtils";
 import { ProjectList, ProjectDetail } from "@/components/projects";
 import { RunningClaudeSessions } from "@/components/sessions/RunningClaudeSessions";
 import { SessionDetail } from "@/components/sessions/SessionDetail";
@@ -554,7 +555,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                             
                             // Update tab to project-session type and set viewing session state
                             const projectName = getProjectName(session.project_path);
-                            const sessionShort = session.id ? session.id.slice(0, 4) : 'unknown';
+                            const sessionShort = session.id ? formatSessionIdCompact(session.id) : 'unknown';
                             const sessionTitle = `${projectName}:${sessionShort}`;
                             logger.log('📂 Updating tab to project-session view:', { title: sessionTitle, sessionId: session.id });
                             updateTab(tab.id, { 
@@ -603,7 +604,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                           logger.log('Opening native session:', session.id);
                           // Update tab to project-session type for native session
                           const projectName = getProjectName(session.project_path);
-                          const sessionShort = session.id ? session.id.slice(0, 4) : 'unknown';
+                          const sessionShort = session.id ? formatSessionIdCompact(session.id) : 'unknown';
                           const sessionTitle = `${projectName}:${sessionShort}`;
                           logger.log('📂 Updating tab to project-session view (native):', { title: sessionTitle, sessionId: session.id });
                           updateTab(tab.id, { 

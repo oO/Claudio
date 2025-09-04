@@ -53,7 +53,7 @@ pub async fn save_window_state(_app_handle: AppHandle, state: WindowState) -> Re
     // Save back to file
     save_claudio_settings(settings).await?;
     
-    log::info!("Window state saved: {:?}", state);
+    log::info!("Window state saved successfully");
     Ok(())
 }
 
@@ -65,7 +65,7 @@ pub async fn load_window_state() -> Result<WindowState, String> {
     // Return window state if it exists, otherwise use defaults
     let state = settings.window_state.unwrap_or_else(WindowState::default);
     
-    log::info!("Window state loaded: {:?}", state);
+    log::info!("Window state loaded successfully");
     Ok(state)
 }
 
@@ -117,7 +117,7 @@ pub async fn restore_window_state(app_handle: AppHandle) -> Result<(), String> {
             .map_err(|e| format!("Failed to maximize window: {}", e))?;
     }
     
-    log::info!("Window state restored: {:?}", state);
+    log::info!("Window state restored successfully");
     Ok(())
 }
 
