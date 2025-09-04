@@ -115,22 +115,13 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
     );
   }, [projectDeleteDialogOpen]);
 
-  // Load projects when tab becomes active and is of type 'projects' or 'project'
+  // Load projects when component first mounts or when explicitly switching to projects mode
   useEffect(() => {
-    if (isActive && (tab.type === "projects" || tab.type === "project")) {
-      // Check if we need to restore project state first
-      if (tab.restoreProjectState) {
-        setSelectedProject(tab.restoreProjectState.selectedProject);
-        setSessions(tab.restoreProjectState.sessions || []);
-        setActiveProjectTab(tab.restoreProjectState.activeTab || "sessions");
-        // Clear the restore state after using it
-        updateTab(tab.id, { restoreProjectState: undefined });
-      } else if (tab.type === "projects") {
-        // Only load project list if we're in projects mode (not single project mode)
-        loadProjects();
-      }
+    if (tab.type === "projects" && projects.length === 0 && !loading && !selectedProject) {
+      // Only load project list if we're in projects mode and haven't loaded yet
+      loadProjects();
     }
-  }, [isActive, tab.type, tab.restoreProjectState]);
+  }, [tab.type]);
 
   const loadProjects = async () => {
     try {
@@ -151,27 +142,17 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   const handleProjectClick = async (project: Project) => {
     try {
       setSelectedProject(project);
-      setSessionsLoading(true); // Only loading sessions, not entire UI
+      setSessionsLoading(true);
       setError(null);
       const sessionList = await api.getProjectSessions(project.id);
       setSessions(sessionList);
 
-      // Update tab title and type to single project mode, store project info
+      // Update tab title to show project name
       const projectName = getProjectName(project.path);
-      logger.log('📂 Updating tab to single project mode:', { title: projectName, type: 'project' });
-      updateTab(tab.id, { 
-        title: projectName, 
-        type: 'project',
-        restoreProjectState: {
-          selectedProject: project,
-          sessions: sessionList,
-          activeTab: activeProjectTab
-        }
-      });
+      updateTab(tab.id, { title: projectName });
     } catch (err) {
       logger.error("Failed to load sessions:", err);
       setError("Failed to load sessions for this project.");
-      // Reset selectedProject on error
       setSelectedProject(null);
     } finally {
       setSessionsLoading(false);
@@ -179,13 +160,10 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   };
 
   const handleBack = () => {
-    // Simple back navigation without navigation stack
     setSelectedProject(null);
     setSessions([]);
-    setActiveProjectTab("sessions"); // Reset to default
-    // Restore tab title and type to project list mode
-    logger.log('📂 Updating tab to project list mode:', { title: "Projects", type: 'projects' });
-    updateTab(tab.id, { title: "Projects", type: 'projects' });
+    setActiveProjectTab("sessions");
+    updateTab(tab.id, { title: "Projects" });
   };
 
   // Get project name from path
@@ -409,11 +387,10 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
       setActiveProjectTab(viewingSession.backState.activeTab);
       setViewingSession(null);
       
-      // Restore tab type to 'project' since we're going back to single project view
+      // Restore tab title to project name
       if (viewingSession.backState.selectedProject) {
         const projectName = getProjectName(viewingSession.backState.selectedProject.path);
-        logger.log('📂 Restoring tab to single project mode after session:', { title: projectName, type: 'project' });
-        updateTab(tab.id, { title: projectName, type: 'project' });
+        updateTab(tab.id, { title: projectName });
       }
     }
   };
@@ -553,14 +530,12 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                               claudioId: freshClaudioMetadata.claudio_id
                             });
                             
-                            // Update tab to project-session type and set viewing session state
+                            // Update tab title for session view
                             const projectName = getProjectName(session.project_path);
                             const sessionShort = session.id ? formatSessionIdCompact(session.id) : 'unknown';
                             const sessionTitle = `${projectName}:${sessionShort}`;
-                            logger.log('📂 Updating tab to project-session view:', { title: sessionTitle, sessionId: session.id });
                             updateTab(tab.id, { 
-                              title: sessionTitle, 
-                              type: 'project-session', 
+                              title: sessionTitle,
                               sessionId: session.id,
                               sessionData: freshSession 
                             });
@@ -602,14 +577,12 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                         } else {
                           // Native Claude Code session - set viewing session state for read-only view
                           logger.log('Opening native session:', session.id);
-                          // Update tab to project-session type for native session
+                          // Update tab title for native session view
                           const projectName = getProjectName(session.project_path);
                           const sessionShort = session.id ? formatSessionIdCompact(session.id) : 'unknown';
                           const sessionTitle = `${projectName}:${sessionShort}`;
-                          logger.log('📂 Updating tab to project-session view (native):', { title: sessionTitle, sessionId: session.id });
                           updateTab(tab.id, { 
-                            title: sessionTitle, 
-                            type: 'project-session', 
+                            title: sessionTitle,
                             sessionId: session.id,
                             sessionData: session 
                           });
@@ -630,44 +603,20 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                         file: ClaudeMdFile,
                         currentActiveTab: string,
                       ) => {
-                        // Open CLAUDE.md file in same tab with restore state
+                        // Open CLAUDE.md file in same tab
                         updateTab(tab.id, {
                           type: "claude-file",
                           title: file.relative_path,
                           claudeFileId: file.absolute_path,
-                          sourceContext: currentActiveTab, // Track where the file was opened from
-                          // Store state to return to
-                          restoreProjectState: {
-                            selectedProject: selectedProject,
-                            sessions: sessions,
-                            activeTab: currentActiveTab, // Preserve the current tab
-                          },
-                          previousState: {
-                            type: "projects",
-                            title: getProjectName(selectedProject.path),
-                            selectedProject: selectedProject,
-                            sessions: sessions,
-                          },
+                          sourceContext: currentActiveTab,
                         });
                       }}
                       onEditAgent={(agent, currentActiveTab: string) => {
-                        // Open agent edit in same tab with restore state
+                        // Open agent edit in same tab
                         updateTab(tab.id, {
                           type: "create-agent",
                           title: `Edit ${agent.name}`,
                           agentData: agent,
-                          // Store state to return to
-                          restoreProjectState: {
-                            selectedProject: selectedProject,
-                            sessions: sessions,
-                            activeTab: currentActiveTab, // Preserve the current tab
-                          },
-                          previousState: {
-                            type: "projects",
-                            title: getProjectName(selectedProject.path),
-                            selectedProject: selectedProject,
-                            sessions: sessions,
-                          },
                         });
                       }}
                       onExportAgent={(agent) => {

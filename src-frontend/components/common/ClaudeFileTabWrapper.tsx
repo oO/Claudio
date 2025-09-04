@@ -16,31 +16,12 @@ export const ClaudeFileTabWrapper: React.FC<ClaudeFileTabWrapperProps> = ({ tab 
   const { updateTab } = useTabState();
 
   const handleBack = () => {
-    // Check if we came from a project detail view
-    if (tab.previousState?.type === "projects" && tab.previousState?.selectedProject) {
-      // Return to the project detail view with the correct state
-      updateTab(tab.id, {
-        type: "projects",
-        title: tab.previousState.title || "Projects",
-        // Restore the full project state to show project detail, not project list
-        restoreProjectState: {
-          selectedProject: tab.previousState.selectedProject,
-          sessions: tab.previousState.sessions || [],
-          activeTab: tab.restoreProjectState?.activeTab || "memories",
-        },
-        // Clear the claude file data
-        claudeFileId: undefined,
-      });
-    } else {
-      // Fallback to projects tab list
-      updateTab(tab.id, {
-        type: "projects",
-        title: "Projects",
-        // Clear any restore state to show project list
-        restoreProjectState: undefined,
-        claudeFileId: undefined,
-      });
-    }
+    // Just go back to projects - the ProjectsTab will maintain its own state
+    updateTab(tab.id, {
+      type: "projects", 
+      title: "Projects",
+      claudeFileId: undefined,
+    });
   };
 
   if (!tab.claudeFileId) {

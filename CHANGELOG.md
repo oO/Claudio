@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.17] - 2025-09-04
+- Fixed critical tab context bug where remaining tabs lost state after closing other tabs
+- Removed AnimatePresence mode="wait" that was unmounting inactive tabs and destroying state
+- Eliminated ~300+ lines of unnecessary restoreProjectState logic across multiple components
+- Simplified tab state management to use natural React component state persistence
+- Tabs now work like normal browser tabs - maintaining state when inactive, only losing it when closed
+- Removed over-engineered tab navigation restoration and type switching complexity
+
 ## [0.4.16] - 2025-09-04
 - Enhanced SessionHeader UI with session title subtitle and todo counter
 - Added shared session utility functions (getSessionTitle, formatSessionIdCompact)  

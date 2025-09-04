@@ -10,6 +10,8 @@ color: green
 
 Git commit workflow expert. Keep operations minimal and memory-efficient.
 
+**IMPORTANT! do not try to use `bash(claude ... )` to spawn another claude instance. use the tools directly**
+
 ## IMPORTANT! Memory Best Practices
 
 **ALWAYS use these patterns to prevent OOM crashes:**
@@ -42,7 +44,7 @@ Git commit workflow expert. Keep operations minimal and memory-efficient.
 
 2. **Version Update** (targeted reads)
    - `Read(package.json, limit: 10)` for version field only
-   - Increment: MINOR (features) or PATCH (fixes)  
+   - Increment: MINOR (features) or PATCH (fixes)
    - Sync Cargo.toml if exists
 
 3. **Minimal CHANGELOG**
@@ -66,7 +68,7 @@ Git commit workflow expert. Keep operations minimal and memory-efficient.
 
 **Memory Efficiency Rules:**
 - ALWAYS use `Read(file, limit: N)` - never read files without limit
-- Use `git diff --stat` instead of full diffs  
+- Use `git diff --stat` instead of full diffs
 - Use `Read(file, offset: X, limit: Y)` for specific sections
 - Batch git commands in single operations
 - Skip verbose build outputs, node_modules, dist folders

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import {
   MessageSquare,
   Clock,
@@ -25,12 +25,22 @@ export const MessageFooter: React.FC<MessageFooterProps> = ({ message }) => {
   // Get enhanced message with combined UUIDs from context
   const { enhancedMessage } = useMessageEnhancement();
 
-  const handleClipboard = useMessageClipboard({
+  const rawClipboardHandler = useMessageClipboard({
     message: enhancedMessage,
     projectPath,
     sessionId,
     sessionFilePath,
   });
+
+  const handleClipboard = useCallback(async () => {
+    try {
+      await rawClipboardHandler();
+    } catch (error) {
+      logger.error("Clipboard operation failed:", error);
+      // Show user-friendly error (you could also use a toast here)
+      alert(`Failed to copy message location: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }, [rawClipboardHandler]);
 
   // Resolve usage from message object
   const resolvedUsage =
@@ -76,11 +86,7 @@ export const MessageFooter: React.FC<MessageFooterProps> = ({ message }) => {
         <div
           className="flex items-center gap-1 cursor-pointer bg-accent text-foreground hover:text-accent-foreground px-2 py-1 rounded-full transition-colors"
           onClick={handleClipboard}
-          title={
-            projectPath && sessionId && sessionFilePath
-              ? "Click to copy message location JSON (all contributing messages)"
-              : "Click to copy message UUID"
-          }
+          title="Click to copy message location JSON (all contributing messages)"
         >
           <MessageSquare className="h-3 w-3" />
           {message.messageNumber.toString().padStart(3, "0")}

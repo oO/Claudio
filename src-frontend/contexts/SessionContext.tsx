@@ -71,12 +71,12 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
 /**
  * Hook to access session context data
  * Used primarily by MessageFooter for clipboard functionality
+ * Throws error if used outside of SessionProvider
  */
 export const useSessionContext = (): SessionContextValue => {
   const context = useContext(SessionContext);
   if (context === null) {
-    // Return empty object if no provider (graceful degradation)
-    return {};
+    throw new Error('useSessionContext must be used within a SessionProvider');
   }
   return context;
 };

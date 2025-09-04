@@ -345,11 +345,9 @@ export const TabContent: React.FC = () => {
 
   return (
     <div className="flex-1 h-full relative">
-      <AnimatePresence mode="wait">
-        {tabs.map((tab) => (
-          <TabPanel key={tab.id} tab={tab} isActive={tab.id === activeTabId} />
-        ))}
-      </AnimatePresence>
+      {tabs.map((tab) => (
+        <TabPanel key={tab.id} tab={tab} isActive={tab.id === activeTabId} />
+      ))}
 
       {tabs.length === 0 && <WelcomeScreen key={welcomeKey} />}
     </div>

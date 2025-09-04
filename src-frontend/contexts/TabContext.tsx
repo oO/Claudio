@@ -14,13 +14,6 @@ export interface Tab {
   sourceContext?: string; // context about where the file was opened from (e.g., "memories", "agents")
   initialProjectPath?: string; // for chat tabs
   
-  // For restoring project detail state when navigating back from sessions
-  restoreProjectState?: {
-    selectedProject?: any;
-    sessions?: any[];
-    activeTab?: string;
-  };
-  
   // Navigation stack for hierarchical navigation
   navigationStack?: NavigationStack;
   
