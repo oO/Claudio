@@ -20,10 +20,10 @@ pub async fn install_claude_session_hooks() -> Result<String, String> {
         .map_err(|e| format!("Failed to create ~/.claude/hooks directory: {}", e))?;
     
     // Install hook scripts
-    install_hook_script(&hooks_dir, "session-start.sh").await?;
-    install_hook_script(&hooks_dir, "user-prompt-submit.sh").await?;
-    install_hook_script(&hooks_dir, "stop.sh").await?;
-    install_hook_script(&hooks_dir, "session-end.sh").await?;
+    install_hook_script(&hooks_dir, "claudio-session-start.sh").await?;
+    install_hook_script(&hooks_dir, "claudio-session-active.sh").await?;
+    install_hook_script(&hooks_dir, "claudio-session-idle.sh").await?;
+    install_hook_script(&hooks_dir, "claudio-session-end.sh").await?;
     
     // Update settings.json with hook configuration
     update_claude_settings(&settings_file).await?;
@@ -41,7 +41,7 @@ pub async fn check_hooks_installed() -> Result<bool, String> {
     let settings_file = claude_dir.join("settings.json");
     
     // Check if hook scripts exist
-    let scripts = ["session-start.sh", "user-prompt-submit.sh", "stop.sh", "session-end.sh"];
+    let scripts = ["claudio-session-start.sh", "claudio-session-active.sh", "claudio-session-idle.sh", "claudio-session-end.sh"];
     for script in &scripts {
         if !hooks_dir.join(script).exists() {
             return Ok(false);
@@ -83,7 +83,7 @@ pub async fn uninstall_claude_session_hooks() -> Result<String, String> {
     let settings_file = claude_dir.join("settings.json");
     
     // Remove hook scripts
-    let scripts = ["session-start.sh", "user-prompt-submit.sh", "stop.sh", "session-end.sh"];
+    let scripts = ["claudio-session-start.sh", "claudio-session-active.sh", "claudio-session-idle.sh", "claudio-session-end.sh"];
     for script in &scripts {
         let script_path = hooks_dir.join(script);
         if script_path.exists() {
@@ -129,10 +129,10 @@ pub async fn uninstall_claude_session_hooks() -> Result<String, String> {
 /// Install a single hook script from embedded resource
 async fn install_hook_script(hooks_dir: &Path, script_name: &str) -> Result<(), String> {
     let script_content = match script_name {
-        "session-start.sh" => include_str!("../../../hook_scripts/session-start.sh"),
-        "user-prompt-submit.sh" => include_str!("../../../hook_scripts/user-prompt-submit.sh"),
-        "stop.sh" => include_str!("../../../hook_scripts/stop.sh"),
-        "session-end.sh" => include_str!("../../../hook_scripts/session-end.sh"),
+        "claudio-session-start.sh" => include_str!("../../../hook_scripts/claudio-session-start.sh"),
+        "claudio-session-active.sh" => include_str!("../../../hook_scripts/claudio-session-active.sh"),
+        "claudio-session-idle.sh" => include_str!("../../../hook_scripts/claudio-session-idle.sh"),
+        "claudio-session-end.sh" => include_str!("../../../hook_scripts/claudio-session-end.sh"),
         _ => return Err(format!("Unknown hook script: {}", script_name)),
     };
     
@@ -175,7 +175,7 @@ async fn update_claude_settings(settings_file: &Path) -> Result<(), String> {
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "~/.claude/hooks/session-start.sh"
+                        "command": "~/.claude/hooks/claudio-session-start.sh"
                     }
                 ]
             }
@@ -185,7 +185,7 @@ async fn update_claude_settings(settings_file: &Path) -> Result<(), String> {
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "~/.claude/hooks/user-prompt-submit.sh"
+                        "command": "~/.claude/hooks/claudio-session-active.sh"
                     }
                 ]
             }
@@ -195,7 +195,7 @@ async fn update_claude_settings(settings_file: &Path) -> Result<(), String> {
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "~/.claude/hooks/stop.sh"
+                        "command": "~/.claude/hooks/claudio-session-idle.sh"
                     }
                 ]
             }
@@ -205,7 +205,7 @@ async fn update_claude_settings(settings_file: &Path) -> Result<(), String> {
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "~/.claude/hooks/session-end.sh"
+                        "command": "~/.claude/hooks/claudio-session-end.sh"
                     }
                 ]
             }
