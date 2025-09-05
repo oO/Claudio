@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.4.22] - 2025-09-05
+- Implemented Cmd+click to open projects and sessions in new tabs for enhanced browser-like navigation
+- Fixed tab activity flash animations for all project-related tabs (projects, project, project-session)
+- Added createProjectTab function to useTabState hook for proper project tab management
+- Updated session watchers to trigger flash animations even when tabs aren't active
+- Moved session Cmd+click logic directly to SessionCard component, eliminating prop drilling
+- Enhanced ProjectList and ProjectsTab components to support modifier key detection
+
+## [0.4.21] - 2025-09-05
+- Implemented DRY user message navigation system with enhanced tab titles and activity notifications
+
 ## [0.4.20] - 2025-09-05
 - Enhanced tab title display with dual-layout format showing [project name (truncated) | session ID (never truncated)]
 - Added displayId field to Tab interface for better session ID visibility in tab titles

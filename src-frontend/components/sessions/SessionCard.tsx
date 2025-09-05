@@ -23,6 +23,7 @@ import { getSessionTitle } from "@/lib/sessionUtils";
 import type { DecoratedSession, SessionTodoData } from "@/lib/api";
 import { SESSION_TYPES } from "@/lib/sessionHandleApi";
 import { logger } from "@/lib/logger";
+import { useTabState } from "@/hooks/useTabState";
 
 interface SessionCardProps {
   session: DecoratedSession;
@@ -39,6 +40,7 @@ export const SessionCard: React.FC<SessionCardProps> = ({
 }) => {
   // Get todo data from context and fetch if not available
   const { getTodoData, setSessionTodos } = useTodoContext();
+  const { createSessionTab } = useTabState();
   const [todoData, setTodoData] = React.useState(getTodoData(session.id));
   
   // Fetch todo data on mount if not in context
@@ -93,8 +95,17 @@ export const SessionCard: React.FC<SessionCardProps> = ({
           "group relative flex items-center justify-between gap-2 px-3 py-2 rounded-lg border bg-card hover:bg-card-hover hover:border-hover transition-colors cursor-pointer min-h-[80px]",
           className,
         )}
-        onClick={() => {
-          logger.log('🎯 SessionCard clicked for session:', session.id);
+        onClick={(event) => {
+          logger.log('🎯 SessionCard clicked for session:', session.id, 'metaKey:', event.metaKey);
+          
+          // Handle Cmd+click (Mac) or Ctrl+click (Windows/Linux) directly
+          if (event.metaKey || event.ctrlKey) {
+            logger.log('🆕 Opening session in new tab due to modifier key:', session.id);
+            createSessionTab(session.project_path, undefined, session.id);
+            return; // Don't call onSessionClick for modifier clicks
+          }
+          
+          // Normal click - call the provided callback
           onSessionClick?.(session);
         }}
       >

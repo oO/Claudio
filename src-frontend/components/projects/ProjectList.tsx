@@ -22,7 +22,7 @@ interface ProjectListProps {
   /**
    * Callback when a project is clicked
    */
-  onProjectClick: (project: Project) => void;
+  onProjectClick: (project: Project, event?: React.MouseEvent) => void;
   /**
    * Whether the list is currently loading
    */
@@ -90,7 +90,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
               data-testid="project-card"
               data-project-id={project.id}
               className="p-4 hover:bg-card-hover hover:border-hover transition-all duration-200 cursor-pointer group h-full"
-              onClick={() => onProjectClick(project)}
+              onClick={(event) => onProjectClick(project, event)}
             >
               <div className="flex flex-col h-full">
                 <div className="flex-1">

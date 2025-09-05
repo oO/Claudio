@@ -45,7 +45,7 @@ interface ProjectsTabProps {
 }
 
 export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
-  const { updateTab, findTabBySessionId } = useTabState();
+  const { updateTab, findTabBySessionId, createProjectTab } = useTabState();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [sessions, setSessions] = useState<DecoratedSession[]>([]);
@@ -99,37 +99,41 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   // Watch for project list changes using file watcher
   useProjectListWatcher({
     onProjectListChanged: async () => {
-      // Only refresh if we're in project list view (not single project view)
+      // Always trigger flash animation
+      logger.debug(`Triggering flash animation for project list change on tab ${tab.id} (blinky-blinky!)`);
+      updateTab(tab.id, { lastActivityAt: Date.now() });
+      
+      // Only refresh data if tab is visible and in project list mode
       if (isActive && tab.type === "projects" && !selectedProject) {
         logger.debug("Project list changed, refreshing...");
         await loadProjects();
       }
     },
-    enabled: isActive && tab.type === "projects",
+    enabled: tab.type === "projects", // Watch even when tab is not active so it can flash
   });
 
   // Watch for session list changes when viewing a specific project
   useSessionListWatcher(
     selectedProject?.id,
     async () => {
-      // Refresh session data if we're viewing this project
-      if (tab.type === "projects" && selectedProject) {
+      // Always trigger flash animation
+      logger.debug(`Triggering flash animation for session activity on tab ${tab.id} (blinky-blinky!)`);
+      updateTab(tab.id, { lastActivityAt: Date.now() });
+      
+      // Only refresh data if we're viewing this project and tab is visible
+      if (selectedProject && isActive) {
         logger.debug(`Session list changed for project ${selectedProject.id}, refreshing...`);
         try {
           const updatedSessions = await api.getProjectSessions(selectedProject.id);
           setSessions(updatedSessions);
           logger.debug("Session list refreshed successfully");
-          
-          // Set activity timestamp for flash animation!
-          logger.debug(`Triggering flash animation for tab ${tab.id} (blinky-blinky!)`);
-          updateTab(tab.id, { lastActivityAt: Date.now() });
         } catch (error) {
           logger.error("Failed to refresh session list:", error);
         }
       }
     },
     // Enabled when viewing a specific project (regardless of tab active state)
-    tab.type === "projects" && !!selectedProject
+    (tab.type === "projects" || tab.type === "project" || tab.type === "project-session") && !!selectedProject
   );
 
   // Debug dialog state changes
@@ -142,19 +146,37 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
 
   // Load projects when tab becomes active and is of type 'projects' or 'project'
   useEffect(() => {
-    if (isActive && (tab.type === "projects" || tab.type === "project")) {
-      // Check if we need to restore project state first
-      if (tab.restoreProjectState) {
-        setSelectedProject(tab.restoreProjectState.selectedProject);
-        setSessions(tab.restoreProjectState.sessions || []);
-        setActiveProjectTab(tab.restoreProjectState.activeTab || "sessions");
-        // Clear the restore state after using it
-        updateTab(tab.id, { restoreProjectState: undefined });
-      } else if (tab.type === "projects") {
-        // Only load project list if we're in projects mode (not single project mode)
-        loadProjects();
+    const loadTabContent = async () => {
+      if (isActive && (tab.type === "projects" || tab.type === "project")) {
+        // Check if we need to restore project state first
+        if (tab.restoreProjectState) {
+          const project = tab.restoreProjectState.selectedProject;
+          setSelectedProject(project);
+          setActiveProjectTab(tab.restoreProjectState.activeTab || "sessions");
+          
+          // Load sessions for the restored project
+          if (project) {
+            setSessionsLoading(true);
+            try {
+              const sessions = await api.getProjectSessions(project.id);
+              setSessions(sessions);
+            } catch (error) {
+              logger.error("Failed to load sessions for restored project:", error);
+            } finally {
+              setSessionsLoading(false);
+            }
+          }
+          
+          // Clear the restore state after using it
+          updateTab(tab.id, { restoreProjectState: undefined });
+        } else if (tab.type === "projects") {
+          // Only load project list if we're in projects mode (not single project mode)
+          loadProjects();
+        }
       }
-    }
+    };
+    
+    loadTabContent();
   }, [isActive, tab.type, tab.restoreProjectState]);
 
   const loadProjects = async () => {
@@ -173,7 +195,14 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
     }
   };
 
-  const handleProjectClick = async (project: Project) => {
+  const handleProjectClick = async (project: Project, event?: React.MouseEvent) => {
+    // Check for Cmd+click (Mac) or Ctrl+click (Windows/Linux) to open in new tab
+    if (event?.metaKey || event?.ctrlKey) {
+      logger.log('🆕 Opening project in new tab due to modifier key:', project.id);
+      const projectName = getProjectName(project.path);
+      createProjectTab(project, projectName);
+      return; // Don't process normal click
+    }
     try {
       setSelectedProject(project);
       setSessionsLoading(true); // Only loading sessions, not entire UI

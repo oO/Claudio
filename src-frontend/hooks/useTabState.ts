@@ -16,6 +16,7 @@ interface UseTabStateReturn {
   // Operations
   createSessionTab: (initialProjectPath?: string, title?: string, sessionId?: string) => string;
   createAgentTab: (agentRunId: string, agentName: string) => string;
+  createProjectTab: (project: any, projectName: string) => string;
   createProjectsTab: () => string | null;
   createUsageTab: () => string | null;
   createMCPTab: () => string | null;
@@ -269,6 +270,21 @@ export const useTabState = (): UseTabStateReturn => {
     });
   }, [addTab, tabs, setActiveTab]);
 
+  const createProjectTab = useCallback((project: any, projectName: string): string => {
+    return addTab({
+      type: 'project',
+      title: projectName,
+      status: 'idle',
+      hasUnsavedChanges: false,
+      restoreProjectState: {
+        selectedProject: project,
+        sessions: [],
+        activeTab: 'sessions'
+      }
+    });
+  }, [addTab]);
+
+
 
   const closeTab = useCallback(async (id: string, force: boolean = false): Promise<boolean> => {
     const tab = getTabById(id);
@@ -345,6 +361,7 @@ export const useTabState = (): UseTabStateReturn => {
     // Operations
     createSessionTab,
     createAgentTab,
+    createProjectTab,
     createProjectsTab,
     createUsageTab,
     createMCPTab,
