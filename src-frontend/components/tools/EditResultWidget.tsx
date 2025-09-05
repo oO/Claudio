@@ -116,7 +116,7 @@ export const EditResultWidget: React.FC<{ content: string }> = ({ content }) => 
           </span>
         }
       >
-        {(excerptedContent, isShowingExcerpt) => (
+        {(excerptedContent, isShowingExcerpt, isExpanded) => (
           <>
             <div className="overflow-x-auto">
               <SyntaxHighlighter

@@ -132,10 +132,10 @@ export const WebFetchWidget: React.FC<{
             )
           }
         >
-          {(excerptedContent, isShowingExcerpt) => (
+          {(excerptedContent, isShowingExcerpt, isExpanded) => (
             <>
               {fetchedContent ? (
-                <ToolWidgetTemplate.CodeOutput>
+                <ToolWidgetTemplate.CodeOutput isExpanded={isExpanded}>
                   {excerptedContent}
                 </ToolWidgetTemplate.CodeOutput>
               ) : (

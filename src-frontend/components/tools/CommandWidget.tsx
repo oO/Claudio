@@ -51,8 +51,8 @@ export const CommandWidget: React.FC<{
           </div>
         }
       >
-        {(excerptedContent, isShowingExcerpt) => (
-          <ToolWidgetTemplate.CodeOutput>
+        {(excerptedContent, isShowingExcerpt, isExpanded) => (
+          <ToolWidgetTemplate.CodeOutput isExpanded={isExpanded}>
             {cleanOutput && cleanOutput.trim() && cleanOutput !== "(no content)" 
               ? (isShowingExcerpt ? excerptedContent : cleanOutput)
               : <span className="text-muted-foreground text-sm">No output</span>

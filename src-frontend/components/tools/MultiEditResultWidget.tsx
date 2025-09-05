@@ -38,9 +38,9 @@ export const MultiEditResultWidget: React.FC<{
             </span>
           }
         >
-          {(excerptedContent, isShowingExcerpt) => (
+          {(excerptedContent, isShowingExcerpt, isExpanded) => (
             <>
-              <ToolWidgetTemplate.PlainOutput>
+              <ToolWidgetTemplate.PlainOutput isExpanded={isExpanded}>
                 <div className="space-y-4">
                   {edits.map((edit, index) => {
                     // Split the strings into lines for diff display
@@ -117,9 +117,9 @@ export const MultiEditResultWidget: React.FC<{
           </span>
         }
       >
-        {(excerptedContent, isShowingExcerpt) => (
+        {(excerptedContent, isShowingExcerpt, isExpanded) => (
           <>
-            <ToolWidgetTemplate.CodeOutput>
+            <ToolWidgetTemplate.CodeOutput isExpanded={isExpanded}>
               {excerptedContent}
             </ToolWidgetTemplate.CodeOutput>
           </>

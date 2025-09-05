@@ -61,7 +61,7 @@ const MultiEditContent: React.FC<{
   return (
     <div className={cn(
       "space-y-3 p-3 overflow-y-auto overflow-x-auto",
-      isLargeContent && !isExpanded ? "max-h-[200px]" : "max-h-[440px]"
+      isLargeContent && !isExpanded && "max-h-[200px]"
     )}>
       {edits.map((edit, index) => {
         // For collapsed view, limit the number of edits shown
@@ -85,7 +85,10 @@ const MultiEditContent: React.FC<{
           <div key={index} className="space-y-1">
             <div className="text-xs font-medium text-muted-foreground">Edit {index + 1}</div>
             <div className="rounded-lg border bg-card overflow-hidden text-xs font-mono">
-              <div className="max-h-[300px] overflow-y-auto overflow-x-auto">
+              <div className={cn(
+                "overflow-y-auto overflow-x-auto",
+                !isExpanded && "max-h-[300px]"
+              )}>
                 {diffResult.map((part, partIndex) => {
                   const partClass = part.added 
                     ? 'bg-green-500/20' 
@@ -200,12 +203,13 @@ export const MultiEditWidget: React.FC<{
           </span>
         }
       >
-        {(excerptedContent, isShowingExcerpt) => (
+        {(excerptedContent, isShowingExcerpt, isExpanded) => (
           <>
             <MultiEditContent
               edits={edits}
               language={language}
               syntaxTheme={syntaxTheme}
+              isExpanded={isExpanded}
             />
           </>
         )}

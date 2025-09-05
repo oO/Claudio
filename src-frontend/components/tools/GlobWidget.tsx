@@ -66,9 +66,9 @@ export const GlobWidget: React.FC<{ pattern: string; result?: any }> = ({ patter
             </>
           }
         >
-          {(excerptedContent, isShowingExcerpt) => (
+          {(excerptedContent, isShowingExcerpt, isExpanded) => (
             <>
-              <ToolWidgetTemplate.CodeOutput>
+              <ToolWidgetTemplate.CodeOutput isExpanded={isExpanded}>
                 <div className={cn(
                   isError 
                     ? "text-destructive" 

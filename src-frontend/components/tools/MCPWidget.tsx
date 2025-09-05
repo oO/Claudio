@@ -108,9 +108,9 @@ export const MCPWidget: React.FC<{
         rawContent={inputString}
         lineCount={inputString ? inputString.split('\n').length : 0}
       >
-        {(excerptedContent, isShowingExcerpt) => (
+        {(excerptedContent, isShowingExcerpt, isExpanded) => (
           <>
-            <ToolWidgetTemplate.PlainOutput>
+            <ToolWidgetTemplate.PlainOutput isExpanded={isExpanded}>
               {/* Input Parameters */}
               {hasInput ? (
                 <div className="space-y-3">

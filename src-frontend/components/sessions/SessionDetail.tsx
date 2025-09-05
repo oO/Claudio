@@ -102,7 +102,7 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
 
   // Get computed values from hooks (must be before early returns for hook order)
   const { isReadOnly } = sessionData;
-  const { displayableMessages, collapsedMessageUuids, totalTokens } = messageData;
+  const { displayableMessages, collapsedMessageUuids, totalTokens, userMessages } = messageData;
   const { effectiveIsStreaming, thinkingContent } = streamingData;
 
   // Sync scroll position when thinking state changes (must be before early returns)
@@ -149,6 +149,7 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
       isCompactMode={navigation.isCompactMode}
       setIsCompactMode={navigation.setIsCompactMode}
       toggleCompactMode={navigation.toggleCompactMode}
+      userMessages={userMessages}
     >
       <motion.div
         initial={{ opacity: 0 }}
@@ -179,6 +180,7 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
           setCopyPopoverOpen={() => {}}
           displayableMessageCount={displayableMessages.length}
           collapsedMessageUuids={collapsedMessageUuids}
+          onNavigateToMessage={navigation.navigateToMessage}
         />
 
         <div className="flex-1 flex flex-col min-h-0">

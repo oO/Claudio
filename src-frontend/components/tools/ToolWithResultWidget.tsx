@@ -109,8 +109,8 @@ export const ToolWithResultWidget: React.FC<ToolWithResultWidgetProps> = ({
             </span>
           }
         >
-          {(excerptedContent, isShowingExcerpt) => (
-            <ToolWidgetTemplate.CodeOutput>
+          {(excerptedContent, isShowingExcerpt, isExpanded) => (
+            <ToolWidgetTemplate.CodeOutput isExpanded={isExpanded}>
               {isShowingExcerpt ? excerptedContent : inputString}
               {isShowingExcerpt && (
                 <div className="mt-2 text-xs text-muted-foreground italic">
@@ -137,9 +137,10 @@ export const ToolWithResultWidget: React.FC<ToolWithResultWidgetProps> = ({
           }
           className={resultInfo.isError ? "border-red-200 bg-red-50/50" : ""}
         >
-          {(excerptedContent, isShowingExcerpt) => (
+          {(excerptedContent, isShowingExcerpt, isExpanded) => (
             <ToolWidgetTemplate.CodeOutput
               className={resultInfo.isError ? "text-red-900 bg-red-50" : ""}
+              isExpanded={isExpanded}
             >
               {isShowingExcerpt ? excerptedContent : resultInfo.content}
               {isShowingExcerpt && (

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { logger } from "@/lib/logger";
 import type { ClaudeStreamMessage } from "@/lib/outputCache";
+import type { UserMessageItem } from "@/contexts/SessionContext";
 
 /**
  * Hook for processing raw messages into displayable format
@@ -8,6 +9,53 @@ import type { ClaudeStreamMessage } from "@/lib/outputCache";
  */
 export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
   const [collapsedMessageUuids, setCollapsedMessageUuids] = useState<string[]>([]);
+
+  // Helper function: Extract user messages for navigation
+  const extractUserMessages = (messages: ClaudeStreamMessage[]): UserMessageItem[] => {
+    const userMessages: UserMessageItem[] = [];
+
+    messages.forEach((message, index) => {
+      // Check if this is a user message
+      if (
+        message.role === "user" ||
+        message.type === "user" ||
+        message.sender === "user"
+      ) {
+        // Skip meta messages or messages without content
+        if (message.isMeta || !message.message?.content) {
+          return;
+        }
+
+        // Extract text content and truncate to 100 chars
+        let content = "";
+        const msgContent = message.message.content;
+
+        if (typeof msgContent === "string") {
+          content = msgContent;
+        } else if (Array.isArray(msgContent)) {
+          // Find text content in array, skip tool_result entries
+          const textContent = msgContent
+            .filter((c: any) => c.type === "text" || typeof c === "string")
+            .map((c: any) => (typeof c === "string" ? c : c.text || ""))
+            .join(" ");
+          content = textContent;
+        }
+
+        // Truncate to 100 chars (data level truncation)
+        const truncatedContent = content.trim().substring(0, 100);
+
+        if (truncatedContent.length > 0) {
+          userMessages.push({
+            index,
+            content: truncatedContent,
+            messageNumber: (message as any).messageNumber || index + 1,
+          });
+        }
+      }
+    });
+
+    return userMessages;
+  };
 
   // Helper function: Filter unwanted messages
   const filterMessages = (rawMessages: ClaudeStreamMessage[]): ClaudeStreamMessage[] => {
@@ -292,6 +340,11 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
     return messagesWithUuids;
   }, [messages]);
 
+  // Extract user messages for navigation
+  const userMessages = useMemo(() => {
+    return extractUserMessages(displayableMessages);
+  }, [displayableMessages]);
+
   // Calculate total tokens from displayable messages
   const totalTokens = useMemo(() => {
     return displayableMessages.reduce((sum, msg) => {
@@ -306,5 +359,6 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
     displayableMessages,
     collapsedMessageUuids,
     totalTokens,
+    userMessages,
   };
 };

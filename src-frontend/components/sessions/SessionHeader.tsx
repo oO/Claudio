@@ -33,6 +33,7 @@ import type { Session } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { useSessionContext } from "@/contexts/SessionContext";
 import { SESSION_TYPES } from "@/lib/sessionHandleApi";
+import { UserMessageNavigation } from "./UserMessageNavigation";
 
 interface SessionHeaderProps {
   claudeSessionId: string | null;
@@ -53,6 +54,8 @@ interface SessionHeaderProps {
   collapsedMessageUuids?: string[];
   // Refresh state
   isRefreshing?: boolean;
+  // Navigation
+  onNavigateToMessage?: (messageIndex: number) => void;
 }
 
 export const SessionHeader: React.FC<SessionHeaderProps> = ({
@@ -70,6 +73,7 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
   displayableMessageCount,
   collapsedMessageUuids,
   isRefreshing,
+  onNavigateToMessage,
 }) => {
   const {
     liveSessionType,
@@ -337,6 +341,24 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
           )}
         </div>
       </div>
+
+      {/* Control bar with navigation and future filters */}
+      {hasMessages && (
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
+          <div className="flex items-center gap-2">
+            {/* User message navigation dropdown */}
+            <UserMessageNavigation 
+              onNavigate={onNavigateToMessage || (() => {})}
+            />
+            
+            {/* Space for future filter buttons */}
+          </div>
+          
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            {/* Future: Message counts or other info */}
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 };

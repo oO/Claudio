@@ -28,7 +28,7 @@ interface ToolHeaderProps {
 interface ExpandableResultProps {
   children:
     | ReactNode
-    | ((excerptedContent: string, isShowingExcerpt: boolean) => ReactNode);
+    | ((excerptedContent: string, isShowingExcerpt: boolean, isExpanded: boolean) => ReactNode);
   isExpandable?: boolean;
   initiallyExpanded?: boolean;
   largeContentThreshold?: number;
@@ -201,7 +201,7 @@ const ExpandableResult: React.FC<ExpandableResultProps> = ({
       <div className="relative">
         <div className={cn("relative", contentClassName)}>
           {typeof children === "function"
-            ? children(excerptedContent, !!isShowingExcerpt)
+            ? children(excerptedContent, !!isShowingExcerpt, isExpanded)
             : children}
         </div>
       </div>
@@ -224,11 +224,13 @@ const Footer: React.FC<ToolFooterProps> = ({ children, className }) => {
 const CodeOutput: React.FC<{
   children: ReactNode;
   className?: string;
-}> = ({ children, className }) => {
+  isExpanded?: boolean;
+}> = ({ children, className, isExpanded = false }) => {
   return (
     <div
       className={cn(
-        "p-3 text-xs font-mono whitespace-pre-wrap bg-background overflow-auto max-h-[440px]",
+        "p-3 text-xs font-mono whitespace-pre-wrap bg-background overflow-auto",
+        !isExpanded && "max-h-[440px]",
         className,
       )}
     >
@@ -240,9 +242,14 @@ const CodeOutput: React.FC<{
 const PlainOutput: React.FC<{
   children: ReactNode;
   className?: string;
-}> = ({ children, className }) => {
+  isExpanded?: boolean;
+}> = ({ children, className, isExpanded = false }) => {
   return (
-    <div className={cn("p-3 text-sm overflow-auto max-h-[440px]", className)}>
+    <div className={cn(
+      "p-3 text-sm overflow-auto",
+      !isExpanded && "max-h-[440px]",
+      className
+    )}>
       {children}
     </div>
   );

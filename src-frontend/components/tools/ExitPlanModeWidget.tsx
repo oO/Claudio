@@ -115,8 +115,8 @@ export const ExitPlanModeWidget: React.FC<ExitPlanModeWidgetProps> = ({
           </span>
         }
       >
-        {(excerptedContent, isShowingExcerpt) => (
-          <ToolWidgetTemplate.PlainOutput>
+        {(excerptedContent, isShowingExcerpt, isExpanded) => (
+          <ToolWidgetTemplate.PlainOutput isExpanded={isExpanded}>
             <MarkdownRenderer
               content={isShowingExcerpt ? excerptedContent : planContent}
               compact={true}

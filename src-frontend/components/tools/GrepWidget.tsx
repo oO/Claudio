@@ -191,13 +191,13 @@ export const GrepWidget: React.FC<{
             </>
           }
         >
-          {(excerptedContent, isShowingExcerpt) => {
+          {(excerptedContent, isShowingExcerpt, isExpanded) => {
             const displayContent = isShowingExcerpt ? excerptedContent : resultContent;
             const displayParsedContent = parseGrepOutput(displayContent);
             
             return (
               <>
-                <ToolWidgetTemplate.CodeOutput>
+                <ToolWidgetTemplate.CodeOutput isExpanded={isExpanded}>
                   {isError ? (
                     <div className="text-destructive whitespace-pre-wrap">
                       {displayContent || "Search failed"}

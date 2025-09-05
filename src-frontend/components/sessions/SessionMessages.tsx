@@ -121,7 +121,8 @@ export const SessionMessages = forwardRef<
         setIsPinnedToBottom(true);
       },
       scrollToIndex: (index: number) => {
-        virtuosoRef.current?.scrollToIndex({ index, align: "end" });
+        virtuosoRef.current?.scrollToIndex({ index, align: "center" });
+        setIsPinnedToBottom(false);
       },
       scrollToTop: () => {
         virtuosoRef.current?.scrollToIndex({ index: 0, align: "start" });

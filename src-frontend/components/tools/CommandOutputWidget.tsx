@@ -74,9 +74,9 @@ export const CommandOutputWidget: React.FC<{
         rawContent={output}
         lineCount={output ? output.split('\n').length : 0}
       >
-        {(excerptedContent, isShowingExcerpt) => (
+        {(excerptedContent, isShowingExcerpt, isExpanded) => (
           <>
-            <ToolWidgetTemplate.CodeOutput>
+            <ToolWidgetTemplate.CodeOutput isExpanded={isExpanded}>
               {output ? parseAnsiToReact(excerptedContent) : <span className="text-muted-foreground italic">No output</span>}
             </ToolWidgetTemplate.CodeOutput>
           </>

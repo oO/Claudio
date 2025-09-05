@@ -88,8 +88,8 @@ export const SubAgentTaskWidget: React.FC<{
         rawContent={prompt || ""}
         initiallyExpanded={false}
       >
-        {(excerptedContent, isShowingExcerpt) => (
-          <ToolWidgetTemplate.PlainOutput>
+        {(excerptedContent, isShowingExcerpt, isExpanded) => (
+          <ToolWidgetTemplate.PlainOutput isExpanded={isExpanded}>
             <div className="space-y-3">
               {excerptedContent && (
                 <MarkdownRenderer

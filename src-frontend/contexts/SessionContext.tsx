@@ -2,6 +2,12 @@ import React, { createContext, useContext } from 'react';
 import type { Session } from '@/lib/api';
 import type { SessionTypeValue } from '@/lib/sessionHandleApi';
 
+export interface UserMessageItem {
+  index: number;
+  content: string;
+  messageNumber: number;
+}
+
 interface SessionContextValue {
   projectId?: string;
   sessionId?: string;
@@ -13,6 +19,7 @@ interface SessionContextValue {
   isCompactMode?: boolean;
   setIsCompactMode?: (mode: boolean) => void;
   toggleCompactMode?: () => void;
+  userMessages?: UserMessageItem[];
 }
 
 interface SessionProviderProps {
@@ -27,6 +34,7 @@ interface SessionProviderProps {
   isCompactMode?: boolean;
   setIsCompactMode?: (mode: boolean) => void;
   toggleCompactMode?: () => void;
+  userMessages?: UserMessageItem[];
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -47,6 +55,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
   isCompactMode = false,
   setIsCompactMode,
   toggleCompactMode,
+  userMessages = [],
 }) => {
   const value: SessionContextValue = {
     projectId,
@@ -59,6 +68,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
     isCompactMode,
     setIsCompactMode: setIsCompactMode || (() => {}),
     toggleCompactMode: toggleCompactMode || (() => {}),
+    userMessages,
   };
 
   return (

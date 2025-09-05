@@ -315,7 +315,7 @@ export const FileWidget: React.FC<{
         lineCount={lineCount}
         rawContent={codeContent}
       >
-        {(excerptedContent, isShowingExcerpt) => (
+        {(excerptedContent, isShowingExcerpt, isExpanded) => (
           <>
             <div className="relative overflow-x-auto bg-background">
               <SyntaxHighlighter

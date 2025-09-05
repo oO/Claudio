@@ -66,8 +66,8 @@ export const BashWidget: React.FC<{
             </span>
           }
         >
-          {(excerptedContent, isShowingExcerpt) => (
-            <ToolWidgetTemplate.CodeOutput>
+          {(excerptedContent, isShowingExcerpt, isExpanded) => (
+            <ToolWidgetTemplate.CodeOutput isExpanded={isExpanded}>
               {/* Command at top */}
               <div className="mb-3 pb-2 border-b border-border">
                 <code className="text-info font-semibold">

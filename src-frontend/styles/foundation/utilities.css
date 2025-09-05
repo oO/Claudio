@@ -8,6 +8,9 @@
 .bg-card {
     background-color: var(--color-card);
 }
+.bg-card-hover {
+    background-color: var(--color-card-hover);
+}
 .bg-popover {
     background-color: var(--color-popover);
 }

@@ -68,7 +68,7 @@ const DiffContent: React.FC<{
     <div
       className={cn(
         "overflow-y-auto overflow-x-auto bg-background text-xs font-mono",
-        isLargeContent && !isExpanded ? "max-h-[200px]" : "max-h-[440px]",
+        isLargeContent && !isExpanded && "max-h-[200px]",
       )}
     >
       {diffResult.map((part, index) => {
@@ -199,7 +199,7 @@ export const EditWidget: React.FC<{
           </span>
         }
       >
-        {(excerptedContent, isShowingExcerpt) => {
+        {(excerptedContent, isShowingExcerpt, isExpanded) => {
           // When showing excerpt, truncate the diff array directly
           let displayDiffResult = diffResult;
 
@@ -239,6 +239,7 @@ export const EditWidget: React.FC<{
                 diffResult={displayDiffResult}
                 language={language}
                 syntaxTheme={syntaxTheme}
+                isExpanded={isExpanded}
               />
             </>
           );

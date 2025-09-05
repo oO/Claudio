@@ -35,9 +35,9 @@ export const ThinkingWidget: React.FC<{
           </span>
         }
       >
-        {(excerptedContent, isShowingExcerpt) => (
+        {(excerptedContent, isShowingExcerpt, isExpanded) => (
           <>
-            <ToolWidgetTemplate.PlainOutput>
+            <ToolWidgetTemplate.PlainOutput isExpanded={isExpanded}>
               <MarkdownRenderer
                 content={excerptedContent}
                 compact={true}
