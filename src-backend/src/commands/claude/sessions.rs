@@ -364,39 +364,6 @@ pub async fn load_session_history(
     })
 }
 
-/// Track session messages from the frontend for checkpointing
-#[command]
-pub async fn track_session_messages(
-    state: tauri::State<'_, crate::checkpoint::state::CheckpointState>,
-    session_id: String,
-    project_id: String,
-    project_path: String,
-    messages: Vec<String>,
-) -> Result<(), String> {
-    log::info!(
-        "Tracking {} messages for session {}",
-        messages.len(),
-        session_id
-    );
-
-    let manager = state
-        .get_or_create_manager(
-            session_id.clone(),
-            project_id.clone(),
-            PathBuf::from(&project_path),
-        )
-        .await
-        .map_err(|e| format!("Failed to get checkpoint manager: {}", e))?;
-
-    for message in messages {
-        manager
-            .track_message(message)
-            .await
-            .map_err(|e| format!("Failed to track message: {}", e))?;
-    }
-
-    Ok(())
-}
 
 /// Deletes a specific session from a project and all associated data
 #[command]

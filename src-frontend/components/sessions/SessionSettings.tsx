@@ -3,7 +3,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { CheckpointSettings } from './CheckpointSettings';
 import { DebugLabel } from '@/components/ui/atoms';
 import type { Session } from '@/lib/api';
 
@@ -92,12 +91,22 @@ export const SessionSettings: React.FC<SessionSettingsProps> = ({
       {showSettings && effectiveSession && (
         <Dialog open={showSettings} onOpenChange={onSettingsChange}>
           <DialogContent className="max-w-2xl">
-            <CheckpointSettings
-              sessionId={effectiveSession.id}
-              projectId={effectiveSession.project_id}
-              projectPath={projectPath}
-              onClose={() => onSettingsChange(false)}
-            />
+            <DialogHeader>
+              <DialogTitle>Session Settings</DialogTitle>
+              <DialogDescription>
+                Configure settings for this session.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <p className="text-sm text-muted-foreground">
+                Session settings panel - features to be added.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => onSettingsChange(false)}>
+                Close
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       )}

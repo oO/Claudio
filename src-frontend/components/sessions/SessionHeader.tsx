@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   MessagesSquare,
   FolderOpen,
-  GitBranch,
   Hash,
   Clock,
   Activity,
@@ -41,12 +40,10 @@ interface SessionHeaderProps {
   claudioId?: string | null;
   totalTokens: number;
   hasMessages: boolean;
-  showTimeline: boolean;
   copyPopoverOpen: boolean;
   onBack: () => void;
   onExportAsJson: () => void;
   onExportAsMarkdown: () => void;
-  onToggleTimeline: () => void;
   isReadOnly?: boolean;
   onDeleteProject?: () => void;
   setCopyPopoverOpen: (open: boolean) => void;
@@ -63,12 +60,10 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
   claudioId,
   totalTokens,
   hasMessages,
-  showTimeline,
   copyPopoverOpen,
   onBack,
   onExportAsJson,
   onExportAsMarkdown,
-  onToggleTimeline,
   isReadOnly = false,
   onDeleteProject,
   setCopyPopoverOpen,
@@ -305,17 +300,6 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
             </Button>
           )}
 
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onToggleTimeline}
-            className={cn(
-              "h-8 w-8 transition-colors",
-              showTimeline && "bg-accent text-accent-foreground",
-            )}
-          >
-            <GitBranch className="h-4 w-4" />
-          </Button>
 
           {hasMessages && !isStreaming && claudeSessionId && (
             <Popover

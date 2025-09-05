@@ -155,7 +155,6 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
           }
           totalTokens={totalTokens}
           hasMessages={displayableMessages.length > 0}
-          showTimeline={false}
           copyPopoverOpen={false}
           onBack={onBack}
           onExportAsJson={() =>
@@ -163,9 +162,6 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
           }
           onExportAsMarkdown={() =>
             logger.info("Export as Markdown (not implemented yet)")
-          }
-          onToggleTimeline={() =>
-            logger.info("Toggle timeline (not implemented yet)")
           }
           isReadOnly={isReadOnly}
           setCopyPopoverOpen={() => {}}

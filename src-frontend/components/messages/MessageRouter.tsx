@@ -136,8 +136,13 @@ const MessageRouterComponent: React.FC<MessageRouterProps> = ({
         // Don't render meta messages
         if (message.isMeta) return null;
         
-        // Filter out interruption messages - they're just noise
+        // Filter out fake user tool result messages (should be bundled by messageProcessor)
         const content = message.message?.content;
+        if (Array.isArray(content) && content.length === 1 && content[0]?.type === "tool_result") {
+          return null;
+        }
+        
+        // Filter out interruption messages - they're just noise
         if (Array.isArray(content) && content.length === 1 && 
             typeof content[0]?.text === 'string' && 
             content[0].text.startsWith('[Request interrupted by')) {

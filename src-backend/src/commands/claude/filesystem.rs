@@ -108,35 +108,6 @@ pub async fn save_claude_md_file(file_path: String, content: String) -> Result<S
     Ok("File saved successfully".to_string())
 }
 
-/// Gets files modified in the last N minutes for a session
-#[command]
-pub async fn get_recently_modified_files(
-    app: tauri::State<'_, crate::checkpoint::state::CheckpointState>,
-    session_id: String,
-    project_id: String,
-    project_path: String,
-    minutes: u32,
-) -> Result<Vec<String>, String> {
-    log::info!(
-        "Getting files modified in last {} minutes for session: {}",
-        minutes,
-        session_id
-    );
-
-    let _manager = app
-        .get_or_create_manager(session_id, project_id, std::path::PathBuf::from(&project_path))
-        .await
-        .map_err(|e| format!("Failed to get checkpoint manager: {}", e))?;
-
-    let _cutoff = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap()
-        .as_secs() - (minutes as u64 * 60);
-
-    // This is a placeholder - the actual implementation would depend on the checkpoint manager
-    // For now, return an empty list
-    Ok(Vec::new())
-}
 
 /// Deletes a file from the filesystem
 #[command]

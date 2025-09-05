@@ -31,6 +31,16 @@ export const StreamDataProvider: React.FC<StreamDataProviderProps> = ({
 
     // Iterate through all messages to find tool results
     streamMessages.forEach((msg) => {
+      // Check for bundled tool results in assistant messages (new bundling system)
+      if (msg.type === "assistant" && msg._bundledToolResults) {
+        msg._bundledToolResults.forEach((toolResult: any) => {
+          if (toolResult.tool_use_id) {
+            results.set(toolResult.tool_use_id, toolResult);
+          }
+        });
+      }
+      
+      // Legacy: Check for tool results in user messages (fallback)
       if (
         msg.type === "user" &&
         msg.message?.content &&

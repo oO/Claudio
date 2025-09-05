@@ -5,6 +5,92 @@ import type { ClaudeStreamMessage } from "@/lib/outputCache";
 const globalProcessedResets = new Set<string>();
 
 /**
+ * Detect if a user message is actually a fake tool result message from Claude Code
+ * These should be bundled with their corresponding tool use messages
+ */
+function isFakeUserToolResult(entry: any): boolean {
+  if (entry.type !== "user" || !entry.message?.content) return false;
+  
+  // Check if content is array with single tool_result
+  if (Array.isArray(entry.message.content) && entry.message.content.length === 1) {
+    const content = entry.message.content[0];
+    return content.type === "tool_result" && content.tool_use_id;
+  }
+  
+  return false;
+}
+
+/**
+ * Bundle fake user tool result messages with their corresponding tool use messages
+ */
+function bundleToolResults(messages: ClaudeStreamMessage[]): ClaudeStreamMessage[] {
+  const result: ClaudeStreamMessage[] = [];
+  const processedToolResults = new Set<string>();
+  
+  for (let i = 0; i < messages.length; i++) {
+    const message = messages[i];
+    
+    // Check if this is a fake user tool result
+    if (isFakeUserToolResult(message) && !processedToolResults.has(message.uuid)) {
+      const toolResult = message.message?.content?.[0];
+      if (!toolResult?.tool_use_id) continue;
+      const toolUseId = toolResult.tool_use_id;
+      
+      // Find the corresponding tool use message by searching backwards
+      let foundToolUse = false;
+      for (let j = i - 1; j >= 0; j--) {
+        const prevMessage = messages[j];
+        
+        if (prevMessage.type === "assistant" && 
+            prevMessage.message?.content && 
+            Array.isArray(prevMessage.message.content)) {
+          
+          // Look for tool use with matching ID
+          const toolUseIndex = prevMessage.message.content.findIndex(
+            (c: any) => c.type === "tool_use" && c.id === toolUseId
+          );
+          
+          if (toolUseIndex !== -1) {
+            // Bundle the tool result with this assistant message
+            const enhancedMessage = {
+              ...prevMessage,
+              _bundledToolResults: [
+                ...(prevMessage._bundledToolResults || []),
+                {
+                  ...toolResult,
+                  _sourceMessageUuid: message.uuid,
+                  _originalMessage: message
+                }
+              ]
+            };
+            
+            // Update the message in result array if it's already there
+            const resultIndex = result.findIndex(m => m.uuid === prevMessage.uuid);
+            if (resultIndex !== -1) {
+              result[resultIndex] = enhancedMessage;
+            }
+            
+            processedToolResults.add(message.uuid);
+            foundToolUse = true;
+            break;
+          }
+        }
+      }
+      
+      // Skip adding this fake user message since it's now bundled
+      if (foundToolUse) {
+        continue;
+      }
+    }
+    
+    // Add regular messages
+    result.push(message);
+  }
+  
+  return result;
+}
+
+/**
  * Process messages to add agent identification (agentType, agentName, subagentType)
  * Based on the existing logic from useSessionState.ts loadSessionHistory()
  */
@@ -12,7 +98,7 @@ export function processMessagesWithAgentInfo(messages: any[]): ClaudeStreamMessa
   let currentSubagentType: string | undefined;
   // logger.debug('🔍 Processing messages with agent info, count:', messages.length);
   
-  return messages.map((entry, index) => {
+  const processedMessages = messages.map((entry, index) => {
     const isSidechain = entry.isSidechain === true;
     let agentType: "main" | "subagent" = isSidechain ? "subagent" : "main";
     let agentName: string | undefined;
@@ -68,4 +154,7 @@ export function processMessagesWithAgentInfo(messages: any[]): ClaudeStreamMessa
       messageNumber: index + 1
     } as ClaudeStreamMessage;
   });
+
+  // Bundle fake user tool results with their corresponding tool use messages
+  return bundleToolResults(processedMessages);
 }

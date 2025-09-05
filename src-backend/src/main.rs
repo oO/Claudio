@@ -1,12 +1,10 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod checkpoint;
 mod claude_binary;
 mod commands;
 mod process;
 
-use checkpoint::state::CheckpointState;
 use std::sync::{Arc, Mutex};
 use commands::agents::{
     cleanup_finished_processes, create_agent, delete_agent, execute_agent, export_agent,
@@ -18,16 +16,13 @@ use commands::agents::{
     list_running_sessions, load_agent_session_history, set_claude_binary_path, stream_session_output, update_agent, AgentDb,
 };
 use commands::claude::{
-    cancel_claude_execution, check_auto_checkpoint, check_claude_version, cleanup_old_checkpoints,
-    clear_checkpoint_manager, continue_claude_code, create_checkpoint, execute_claude_code,
-    find_claude_md_files, fork_from_checkpoint, get_checkpoint_diff, get_checkpoint_settings,
-    get_checkpoint_state_stats, get_claude_session_output, get_claude_settings, get_project_sessions,
+    cancel_claude_execution, check_claude_version, continue_claude_code, execute_claude_code,
+    find_claude_md_files, get_claude_session_output, get_claude_settings, get_project_sessions,
     get_session_todos,
-    get_recently_modified_files, get_session_timeline, get_system_prompt, list_checkpoints,
+    get_system_prompt,
     list_directory_contents, list_projects, list_running_claude_sessions, load_session_history,
-    open_new_session, read_claude_md_file, restore_checkpoint, resume_claude_code,
+    open_new_session, read_claude_md_file, resume_claude_code,
     save_claude_md_file, save_claude_settings, save_system_prompt, search_files, start_settings_watcher, delete_file,
-    track_checkpoint_message, track_session_messages, update_checkpoint_settings,
     get_hooks_config, update_hooks_config, validate_hook_command,
     delete_claude_project, delete_session, prune_old_sessions, check_project_settings,
     preview_session_deletion_by_age, delete_sessions_by_age, get_session_age_range,
@@ -172,26 +167,6 @@ fn main() {
             let conn = init_database(&app.handle()).expect("Failed to initialize agents database");
             app.manage(AgentDb(Mutex::new(conn)));
 
-            // Initialize checkpoint state
-            let checkpoint_state = CheckpointState::new();
-
-            // Set the Claude directory path
-            if let Ok(claude_dir) = dirs::home_dir()
-                .ok_or_else(|| "Could not find home directory")
-                .and_then(|home| {
-                    let claude_path = home.join(".claude");
-                    claude_path
-                        .canonicalize()
-                        .map_err(|_| "Could not find ~/.claude directory")
-                })
-            {
-                let state_clone = checkpoint_state.clone();
-                tauri::async_runtime::spawn(async move {
-                    state_clone.set_claude_dir(claude_dir).await;
-                });
-            }
-
-            app.manage(checkpoint_state);
 
             // Initialize process registry
             app.manage(ProcessRegistryState::default());
@@ -283,7 +258,6 @@ fn main() {
             get_claude_session_output,
             list_directory_contents,
             search_files,
-            get_recently_modified_files,
             get_hooks_config,
             update_hooks_config,
             validate_hook_command,
@@ -295,21 +269,6 @@ fn main() {
             delete_sessions_by_age,
             get_session_age_range,
             
-            // Checkpoint Management
-            create_checkpoint,
-            restore_checkpoint,
-            list_checkpoints,
-            fork_from_checkpoint,
-            get_session_timeline,
-            update_checkpoint_settings,
-            get_checkpoint_diff,
-            track_checkpoint_message,
-            track_session_messages,
-            check_auto_checkpoint,
-            cleanup_old_checkpoints,
-            get_checkpoint_settings,
-            clear_checkpoint_manager,
-            get_checkpoint_state_stats,
             
             // Agent Management
             list_agents,

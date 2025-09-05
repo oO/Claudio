@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.4.19] - 2025-09-05
+- Removed entire timeline/checkpoint legacy system from Claudia donor project codebase
+- Deleted SessionTimeline, TimelineNavigator, and CheckpointSettings components
+- Removed checkpoint backend commands, storage, and manager modules
+- Cleaned up checkpoint API methods, TypeScript interfaces, and analytics tracking
+- Simplified SessionHeader by removing timeline toggle functionality
+- Removed forkFromCheckpoint and useCheckpoints hook integration
+- Eliminated ~1000+ lines of disconnected legacy code with data loss warnings
+- Codebase now focused on core functionality with native Claude Code conversation forking via ESC-ESC
+
 ## [0.4.18] - 2025-09-04
 - Moved session navigation from SessionHeader to SessionMessages with contextual overlay placement
 - Added 4-button segmented pill navigation (jump to top, prev/next user message, jump to bottom/pin)

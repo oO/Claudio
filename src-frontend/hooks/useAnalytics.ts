@@ -148,15 +148,6 @@ export function useTrackEvent() {
       analytics.track(event.event, event.properties);
     },
     
-    checkpointCreated: (props: Parameters<typeof eventBuilders.checkpointCreated>[0]) => {
-      const event = eventBuilders.checkpointCreated(props);
-      analytics.track(event.event, event.properties);
-    },
-    
-    checkpointRestored: (props: Parameters<typeof eventBuilders.checkpointRestored>[0]) => {
-      const event = eventBuilders.checkpointRestored(props);
-      analytics.track(event.event, event.properties);
-    },
     
     toolExecuted: (props: Parameters<typeof eventBuilders.toolExecuted>[0]) => {
       const event = eventBuilders.toolExecuted(props);

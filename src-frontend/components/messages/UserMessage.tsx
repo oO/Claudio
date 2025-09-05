@@ -19,7 +19,7 @@ export const UserMessage: React.FC<UserMessageProps> = ({ message }) => {
 
   return (
     <MessageEnhancementProvider message={message}>
-      <MessageTemplate.Container message={message}>
+      <MessageTemplate.Container message={message} className="border-accent">
         <DebugLabel label="UserMessage" />
         <MessageTemplate.Header
           IconComponent={CircleUser}

@@ -110,40 +110,6 @@ export const SessionActions: React.FC<SessionActionsProps> = ({
     }
   }, [messages, projectPath, onError]);
 
-  // Fork session from checkpoint
-  const _forkFromCheckpoint = useCallback(async (
-    checkpointId: string, 
-    sessionName: string
-  ) => {
-    if (!effectiveSession) {
-      onError('No session available for forking');
-      return;
-    }
-
-    try {
-      onLoading(true);
-      onError('');
-      
-      const newSessionId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      await api.forkFromCheckpoint(
-        checkpointId,
-        effectiveSession.id,
-        effectiveSession.project_id,
-        projectPath,
-        newSessionId,
-        sessionName
-      );
-      
-      // Fork operation completed
-      return newSessionId;
-    } catch (err) {
-      logger.error("Failed to fork checkpoint:", err);
-      onError("Failed to fork checkpoint");
-      throw err;
-    } finally {
-      onLoading(false);
-    }
-  }, [effectiveSession, projectPath, onError, onLoading]);
 
   // Export session data
   const _exportSession = useCallback(async (format: 'json' | 'markdown' = 'json') => {
@@ -318,39 +284,6 @@ export function useSessionActions(props: SessionActionsProps) {
     }
   }, [messages, projectPath, onError]);
 
-  const forkFromCheckpoint = useCallback(async (
-    checkpointId: string, 
-    sessionName: string
-  ) => {
-    if (!effectiveSession) {
-      onError('No session available for forking');
-      return;
-    }
-
-    try {
-      onLoading(true);
-      onError('');
-      
-      const newSessionId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      await api.forkFromCheckpoint(
-        checkpointId,
-        effectiveSession.id,
-        effectiveSession.project_id,
-        projectPath,
-        newSessionId,
-        sessionName
-      );
-      
-      // Fork operation completed
-      return newSessionId;
-    } catch (err) {
-      logger.error("Failed to fork checkpoint:", err);
-      onError("Failed to fork checkpoint");
-      throw err;
-    } finally {
-      onLoading(false);
-    }
-  }, [effectiveSession, projectPath, onError, onLoading]);
 
   const exportSession = useCallback(async (format: 'json' | 'markdown' = 'json') => {
     try {
@@ -413,7 +346,6 @@ export function useSessionActions(props: SessionActionsProps) {
   return {
     copyAsJsonl,
     copyAsMarkdown,
-    forkFromCheckpoint,
     exportSession,
   };
 }

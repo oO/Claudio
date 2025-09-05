@@ -205,15 +205,6 @@ export interface EnhancedSessionStoppedProperties extends SessionStoppedProperti
   pending_prompts_count?: number;
 }
 
-export interface CheckpointCreatedProperties {
-  checkpoint_number: number;
-  session_duration_at_checkpoint: number;
-}
-
-export interface CheckpointRestoredProperties {
-  checkpoint_id: string;
-  time_since_checkpoint_ms: number;
-}
 
 export interface ToolExecutedProperties {
   tool_name: string;
