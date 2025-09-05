@@ -5,6 +5,7 @@ export interface Tab {
   id: string;
   type: 'chat' | 'agent' | 'agents' | 'projects' | 'project' | 'project-session' | 'usage' | 'mcp' | 'settings' | 'claude-md' | 'claude-file' | 'create-agent' | 'import-agent';
   title: string;
+  displayId?: string; // For session tabs - shows session ID that never truncates
   sessionId?: string;  // for chat tabs
   sessionData?: any; // for chat tabs - stores full session object
   claudeSession?: any; // legacy field - stores claudio session metadata
@@ -25,8 +26,16 @@ export interface Tab {
     sessions?: any[];
   };
   
+  // Project state restoration - used for proper tab hierarchy navigation
+  restoreProjectState?: {
+    selectedProject: any;
+    sessions?: any[];
+    activeTab?: string;
+  };
+  
   status: 'active' | 'idle' | 'running' | 'complete' | 'error';
   hasUnsavedChanges: boolean;
+  lastActivityAt?: number; // Timestamp of last activity for flash animation
   order: number;
   icon?: string;
   createdAt: Date;
@@ -102,6 +111,7 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...tabData,
       id: generateTabId(),
       order: tabs.length,
+      lastActivityAt: tabData.lastActivityAt ?? undefined, // Default to undefined if not provided
       createdAt: new Date(),
       updatedAt: new Date()
     };

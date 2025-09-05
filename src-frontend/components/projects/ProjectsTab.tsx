@@ -36,6 +36,7 @@ import { TabPageLayout } from "@/components/common";
 import { useTabState } from "@/hooks/useTabState";
 import { useScreenTracking } from "@/hooks/useAnalytics";
 import { useProjectListWatcher } from "@/hooks/useProjectListWatcher";
+import { useSessionListWatcher } from "@/hooks/useSessionFileWatcher";
 import { Tab } from "@/contexts/TabContext";
 
 interface ProjectsTabProps {
@@ -107,6 +108,30 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
     enabled: isActive && tab.type === "projects",
   });
 
+  // Watch for session list changes when viewing a specific project
+  useSessionListWatcher(
+    selectedProject?.id,
+    async () => {
+      // Refresh session data if we're viewing this project
+      if (tab.type === "projects" && selectedProject) {
+        logger.debug(`Session list changed for project ${selectedProject.id}, refreshing...`);
+        try {
+          const updatedSessions = await api.getProjectSessions(selectedProject.id);
+          setSessions(updatedSessions);
+          logger.debug("Session list refreshed successfully");
+          
+          // Set activity timestamp for flash animation!
+          logger.debug(`Triggering flash animation for tab ${tab.id} (blinky-blinky!)`);
+          updateTab(tab.id, { lastActivityAt: Date.now() });
+        } catch (error) {
+          logger.error("Failed to refresh session list:", error);
+        }
+      }
+    },
+    // Enabled when viewing a specific project (regardless of tab active state)
+    tab.type === "projects" && !!selectedProject
+  );
+
   // Debug dialog state changes
   useEffect(() => {
     logger.log(
@@ -115,13 +140,22 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
     );
   }, [projectDeleteDialogOpen]);
 
-  // Load projects when component first mounts or when explicitly switching to projects mode
+  // Load projects when tab becomes active and is of type 'projects' or 'project'
   useEffect(() => {
-    if (tab.type === "projects" && projects.length === 0 && !loading && !selectedProject) {
-      // Only load project list if we're in projects mode and haven't loaded yet
-      loadProjects();
+    if (isActive && (tab.type === "projects" || tab.type === "project")) {
+      // Check if we need to restore project state first
+      if (tab.restoreProjectState) {
+        setSelectedProject(tab.restoreProjectState.selectedProject);
+        setSessions(tab.restoreProjectState.sessions || []);
+        setActiveProjectTab(tab.restoreProjectState.activeTab || "sessions");
+        // Clear the restore state after using it
+        updateTab(tab.id, { restoreProjectState: undefined });
+      } else if (tab.type === "projects") {
+        // Only load project list if we're in projects mode (not single project mode)
+        loadProjects();
+      }
     }
-  }, [tab.type]);
+  }, [isActive, tab.type, tab.restoreProjectState]);
 
   const loadProjects = async () => {
     try {
@@ -142,14 +176,23 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   const handleProjectClick = async (project: Project) => {
     try {
       setSelectedProject(project);
-      setSessionsLoading(true);
+      setSessionsLoading(true); // Only loading sessions, not entire UI
       setError(null);
       const sessionList = await api.getProjectSessions(project.id);
       setSessions(sessionList);
 
-      // Update tab title to show project name
+      // Update tab title and type to single project mode, store project info
       const projectName = getProjectName(project.path);
-      updateTab(tab.id, { title: projectName });
+      logger.log('📂 Updating tab to single project mode:', { title: projectName, type: 'project' });
+      updateTab(tab.id, { 
+        title: projectName, 
+        type: 'project',
+        restoreProjectState: {
+          selectedProject: project,
+          sessions: sessionList,
+          activeTab: activeProjectTab
+        }
+      });
     } catch (err) {
       logger.error("Failed to load sessions:", err);
       setError("Failed to load sessions for this project.");
@@ -160,10 +203,13 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   };
 
   const handleBack = () => {
+    // Simple back navigation without navigation stack
     setSelectedProject(null);
     setSessions([]);
-    setActiveProjectTab("sessions");
-    updateTab(tab.id, { title: "Projects" });
+    setActiveProjectTab("sessions"); // Reset to default
+    // Restore tab title and type to project list mode
+    logger.log('📂 Updating tab to project list mode:', { title: "Projects", type: 'projects' });
+    updateTab(tab.id, { title: "Projects", type: 'projects' });
   };
 
   // Get project name from path
@@ -387,10 +433,11 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
       setActiveProjectTab(viewingSession.backState.activeTab);
       setViewingSession(null);
       
-      // Restore tab title to project name
+      // Restore tab type to 'project' since we're going back to single project view
       if (viewingSession.backState.selectedProject) {
         const projectName = getProjectName(viewingSession.backState.selectedProject.path);
-        updateTab(tab.id, { title: projectName });
+        logger.log('📂 Restoring tab to single project mode after session:', { title: projectName, type: 'project' });
+        updateTab(tab.id, { title: projectName, type: 'project', displayId: undefined });
       }
     }
   };
@@ -404,6 +451,9 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
           session={viewingSession.session}
           projectPath={viewingSession.projectPath}
           onBack={handleBackFromSession}
+          tabId={tab.id}
+          isActive={isActive}
+          onSetTabActivity={() => updateTab(tab.id, { lastActivityAt: Date.now() })}
         />
       </>
     );
@@ -530,12 +580,13 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                               claudioId: freshClaudioMetadata.claudio_id
                             });
                             
-                            // Update tab title for session view
+                            // Update tab for session view: title=project, displayId=session
                             const projectName = getProjectName(session.project_path);
-                            const sessionShort = session.id ? formatSessionIdCompact(session.id) : 'unknown';
-                            const sessionTitle = `${projectName}:${sessionShort}`;
+                            const sessionShort = session.id ? formatSessionIdCompact(session.id) ?? undefined : undefined;
                             updateTab(tab.id, { 
-                              title: sessionTitle,
+                              title: projectName,
+                              displayId: sessionShort,
+                              type: 'project-session',
                               sessionId: session.id,
                               sessionData: freshSession 
                             });
@@ -577,12 +628,13 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                         } else {
                           // Native Claude Code session - set viewing session state for read-only view
                           logger.log('Opening native session:', session.id);
-                          // Update tab title for native session view
+                          // Update tab for native session view: title=project, displayId=session  
                           const projectName = getProjectName(session.project_path);
-                          const sessionShort = session.id ? formatSessionIdCompact(session.id) : 'unknown';
-                          const sessionTitle = `${projectName}:${sessionShort}`;
+                          const sessionShort = session.id ? formatSessionIdCompact(session.id) ?? undefined : undefined;
                           updateTab(tab.id, { 
-                            title: sessionTitle,
+                            title: projectName,
+                            displayId: sessionShort,
+                            type: 'project-session',
                             sessionId: session.id,
                             sessionData: session 
                           });

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.20] - 2025-09-05
+- Enhanced tab title display with dual-layout format showing [project name (truncated) | session ID (never truncated)]
+- Added displayId field to Tab interface for better session ID visibility in tab titles
+- Implemented CSS-based flash animation on tab icons for session activity notifications (3-second fade)
+- Restored proper dynamic tab type transformations during navigation (projects → project → project-session)
+- Fixed session list watcher to properly filter events per project, preventing cross-tab contamination
+- Replaced persistent activity dots with fade-based flash notifications for cleaner UI feedback
+
 ## [0.4.19] - 2025-09-05
 - Removed entire timeline/checkpoint legacy system from Claudia donor project codebase
 - Deleted SessionTimeline, TimelineNavigator, and CheckpointSettings components

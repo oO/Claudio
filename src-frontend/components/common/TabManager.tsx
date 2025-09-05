@@ -21,6 +21,17 @@ interface TabItemProps {
 
 const TabItem: React.FC<TabItemProps> = ({ tab, isActive, onClose, onClick, isDragging = false, setDraggedTabId }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [shouldFade, setShouldFade] = useState(false);
+
+  // Trigger fade animation when activity timestamp changes
+  useEffect(() => {
+    if (tab.lastActivityAt) {
+      setShouldFade(false); // Reset to opaque
+      // Trigger fade on next frame
+      const timer = setTimeout(() => setShouldFade(true), 10);
+      return () => clearTimeout(timer);
+    }
+  }, [tab.lastActivityAt]);
   
   const getIcon = () => {
     switch (tab.type) {
@@ -54,19 +65,7 @@ const TabItem: React.FC<TabItemProps> = ({ tab, isActive, onClose, onClick, isDr
     }
   };
 
-  const getStatusIcon = () => {
-    switch (tab.status) {
-      case 'running':
-        return <LoadingSpinner size="sm" className="w-3 h-3" />;
-      case 'error':
-        return <AlertCircle className="w-3 h-3 text-destructive" />;
-      default:
-        return null;
-    }
-  };
-
   const Icon = getIcon();
-  const statusIcon = getStatusIcon();
 
   return (
     <Reorder.Item
@@ -91,30 +90,35 @@ const TabItem: React.FC<TabItemProps> = ({ tab, isActive, onClose, onClick, isDr
       onDragEnd={() => setDraggedTabId?.(null)}
     >
       {/* Tab Icon */}
-      <div className="flex-shrink-0">
+      <div className="flex-shrink-0 relative">
         <Icon className="w-4 h-4" />
-      </div>
-      
-      {/* Tab Title */}
-      <span className="flex-1 truncate text-xs font-medium min-w-0">
-        {tab.title}
-      </span>
-
-      {/* Status Indicators - always takes up space */}
-      <div className="flex items-center gap-1.5 flex-shrink-0 w-6 justify-end">
-        {statusIcon && (
-          <span className="flex items-center justify-center">
-            {statusIcon}
-          </span>
-        )}
-
-        {tab.hasUnsavedChanges && !statusIcon && (
-          <span 
-            className="w-1.5 h-1.5 bg-primary rounded-full"
-            title="Unsaved changes"
+        {/* Flash overlay */}
+        {tab.lastActivityAt && (
+          <div 
+            key={tab.lastActivityAt} // Key changes force re-mount and restart animation
+            className={`absolute inset-0 rounded-sm bg-orange-500 mix-blend-multiply pointer-events-none transition-opacity duration-[3000ms] ease-linear ${shouldFade ? 'opacity-0' : 'opacity-100'}`}
           />
         )}
       </div>
+      
+      {/* Tab Title */}
+      {tab.displayId ? (
+        // Session tabs: [title(truncate) | id(no truncate)]
+        <div className="flex-1 flex items-center gap-1 min-w-0">
+          <span className="truncate text-xs font-medium min-w-0">
+            {tab.title}
+          </span>
+          <span className="flex-shrink-0 text-xs font-medium">
+            {tab.displayId}
+          </span>
+        </div>
+      ) : (
+        // Other tabs: just title (truncates)
+        <span className="flex-1 truncate text-xs font-medium min-w-0">
+          {tab.title}
+        </span>
+      )}
+
 
       {/* Close Button - Always reserves space */}
       <button

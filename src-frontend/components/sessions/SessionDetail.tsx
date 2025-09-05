@@ -25,6 +25,9 @@ interface SessionDetailProps {
   onBack: () => void;
   onSessionsDeleted?: () => void;
   onToast?: (message: string, type: "success" | "error") => void;
+  tabId?: string; // Tab ID for activity notifications
+  isActive?: boolean; // Whether the tab is currently active
+  onSetTabActivity?: () => void; // Callback to trigger tab activity flash
 }
 
 /**
@@ -37,6 +40,9 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
   onBack,
   onSessionsDeleted,
   onToast,
+  tabId,
+  isActive = true,
+  onSetTabActivity,
 }) => {
   // DEBUG: Test if logging works at all
   logger.info(
@@ -71,6 +77,12 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
     onSessionChanged: async () => {
       logger.info("📁 Session file changed, refreshing session handle");
       // The session orchestrator will handle the message updates automatically
+      
+      // Trigger flash animation for blinky-blinky action!
+      if (onSetTabActivity && tabId) {
+        logger.debug(`Triggering flash animation for session tab ${tabId} (blinky-blinky!)`);
+        onSetTabActivity();
+      }
     },
     enabled: !!projectId && !!session?.id,
     tabId: session?.id ? `session-handle-${session?.id}` : 'no-session',
