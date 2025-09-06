@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { DebugLabel } from "@/components/ui/atoms";
+import { logger } from "@/lib/logger";
 
 // Constants
 const LETTER_DELAY = 30; // ms delay per letter
@@ -71,7 +73,7 @@ const useCharacterTypewriter = (text: string, shouldStart: boolean) => {
     isVisible: index < visibleCount,
   }));
 
-  return { characters, isComplete };
+  return { characters, isComplete, visibleCount };
 };
 
 // Props for the reusable TypewriterText component
@@ -92,7 +94,7 @@ export const TypewriterText: React.FC<TypewriterTextProps> = ({
   const [shouldAnimate] = useState(alwaysAnimate || !hasPlayed);
 
   // Use character typewriter for text
-  const { characters, isComplete } = useCharacterTypewriter(
+  const { characters, isComplete, visibleCount } = useCharacterTypewriter(
     children,
     shouldAnimate,
   );
@@ -110,10 +112,36 @@ export const TypewriterText: React.FC<TypewriterTextProps> = ({
 
   return (
     <span className={className}>
+      <style>
+        {`
+          .typing-cursor {
+            border-left: 5px solid white;
+            background-color: var(--color-card);
+            animation: cursor-fade 0.6s ease-out forwards;
+          }
+
+          @keyframes cursor-fade {
+            0% {
+              border-left-color: rgba(255, 255, 255, 1);
+              background-color: var(--color-card);
+            }
+            60% {
+              border-left-color: rgba(255, 255, 255, 1);
+              background-color: var(--color-card);
+            }
+            100% {
+              border-left-color: rgba(255, 255, 255, 0);
+              background-color: transparent;
+            }
+          }
+        `}
+      </style>
       {characters.map((char, index) => (
         <span
           key={index}
-          className={char.isVisible ? "opacity-100" : "opacity-0"}
+          className={`${char.isVisible ? "opacity-100" : "opacity-0"} ${
+            index === visibleCount - 1 && char.isVisible ? "typing-cursor" : ""
+          }`}
           style={{ transition: "opacity 0.1s ease-in" }}
         >
           {char.char}
@@ -125,17 +153,60 @@ export const TypewriterText: React.FC<TypewriterTextProps> = ({
 
 // Full welcome screen component (specific to Claudio)
 export const WelcomeScreen: React.FC = () => {
+  const [haiku, setHaiku] = useState<string>("Welcome to Claudio");
+
+  // Fetch random thinking haiku on component mount
+  useEffect(() => {
+    const fetchHaiku = async () => {
+      try {
+        const [_title, message] = await invoke<[string, string]>(
+          "get_random_thinking_content",
+        );
+        setHaiku(message);
+        logger.debug("🌸 Fetched random haiku:", message);
+      } catch (error) {
+        logger.error("Failed to fetch thinking haiku:", error);
+        // Keep default message on error
+      }
+    };
+
+    fetchHaiku();
+  }, []);
+
   return (
     <div className="flex flex-col h-full relative">
       <DebugLabel label="Welcome" />
       {/* Main content - centered */}
       <div className="flex items-center justify-center flex-1">
         <div className="text-center">
-          <h1 className="text-9xl font-bold mb-8 bg-gradient-to-r from-red-500 via-orange-500 to-yellow-400 bg-clip-text text-transparent min-h-[1.2em]">
+          <h1 className="text-9xl font-bold bg-gradient-to-r from-red-500 via-orange-500 to-yellow-400 bg-clip-text text-transparent min-h-[1.2em] gradient-rotate">
+            <style>
+              {`
+                .gradient-rotate {
+                  background-size: 300% 300%;
+                  animation: gradient-spin 8s ease-in-out infinite;
+                }
+
+                @keyframes gradient-spin {
+                  0% { background-position: 0% 50%; }
+                  25% { background-position: 100% 50%; }
+                  50% { background-position: 100% 100%; }
+                  75% { background-position: 0% 100%; }
+                  100% { background-position: 0% 50%; }
+                }
+              `}
+            </style>
             <TypewriterText alwaysAnimate={true}>
               Hello, I'm Claudio.
             </TypewriterText>
           </h1>
+
+          {/* Random thinking haiku */}
+          <div className="text-center m-4 relative -top-8">
+            <span className="text-2xl px-4 py-1 bg-card text-accent italic font-serif leading-relaxed animate-pulse">
+              {haiku}
+            </span>
+          </div>
         </div>
       </div>
 
