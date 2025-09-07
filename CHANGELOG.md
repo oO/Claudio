@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.4.25] - 2025-09-07
+- Expanded Claude thinking message resources with 500+ new haiku-style messages covering development, cybersecurity, AI, and tech history
+- Enhanced thinking indicator variety with 400+ new verbs and creative expressions for Claude's processing states
+
 ## [0.4.22] - 2025-09-05
 - Implemented Cmd+click to open projects and sessions in new tabs for enhanced browser-like navigation
 - Fixed tab activity flash animations for all project-related tabs (projects, project, project-session)
