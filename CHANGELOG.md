@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.28] - 2025-09-07
+- Enhanced InProgressTodoWidget with improved two-flex layout structure for better visual hierarchy
+- Added ListTodo icon and "Todo" label for clear component identification
+- Improved widget container sizing (w-100) and overflow handling with min-w-0 for proper text truncation
+- Enhanced visual styling with secondary-foreground colors and consistent height matching User button
+- Fixed progress bar positioning and animation with smooth transitions (h-1.5 for current, h-1 for others)
+- Removed unused priority indicator code and improved overall content containment
+- Enhanced carousel animation system for seamless todo cycling display
+
 ## [0.4.27] - 2025-09-07
 - Fixed SessionHeader export dropdown by replacing broken Popover with DropdownMenu component
 - Moved action buttons (compact mode toggle, export menu) from header to control bar for better organization

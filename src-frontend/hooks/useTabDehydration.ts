@@ -94,14 +94,23 @@ export const useTabDehydration = () => {
    * Rehydrate a single tab using its specific dehydrator
    */
   const rehydrateTab = (data: BasePersistedTab, index: number): Tab | null => {
+    logger.info(`🔄 REHYDRATING SINGLE TAB:`, { index, type: data.type, title: data.title, data });
+    
     const dehydrator = dehydrators[data.type];
     
     if (!dehydrator) {
-      logger.warn(`No dehydrator found for tab type: ${data.type}`);
+      logger.warn(`❌ No dehydrator found for tab type: ${data.type}`);
       return null;
     }
     
-    return dehydrator.rehydrate(data, index);
+    try {
+      const rehydratedTab = dehydrator.rehydrate(data, index);
+      logger.info(`✅ SINGLE TAB REHYDRATION SUCCESS:`, { index, type: data.type, rehydratedTab });
+      return rehydratedTab;
+    } catch (error) {
+      logger.error(`❌ SINGLE TAB REHYDRATION FAILED:`, { index, type: data.type, error });
+      return null;
+    }
   };
 
   /**

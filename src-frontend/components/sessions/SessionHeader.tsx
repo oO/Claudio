@@ -286,7 +286,7 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
                   {isStreaming && (
                     <div className="flex items-center gap-1 text-accent animate-pulse">
                       <Brain className="h-3 w-3 " />
-                      <span className="text-xs">
+                      <span className="text-s">
                         Claude is {thinkingTitle}...
                       </span>
                     </div>

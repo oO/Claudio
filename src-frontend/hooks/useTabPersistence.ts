@@ -58,8 +58,12 @@ export const useTabPersistence = () => {
    */
   const loadTabs = useCallback(async (): Promise<PersistedTabSession> => {
     try {
+      logger.info('📂 CALLING API.GETSETTING FOR TABS...', { key: STORAGE_KEY });
       const serialized = await api.getSetting(STORAGE_KEY);
+      logger.info('📂 API.GETSETTING RESULT:', { serialized: serialized ? serialized.substring(0, 100) + '...' : null });
+      
       if (!serialized) {
+        logger.info('📂 NO SERIALIZED DATA FOUND - RETURNING EMPTY');
         return { tabs: [], panelBreaks: [], activePanelIndex: 0 };
       }
 

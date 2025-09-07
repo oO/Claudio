@@ -100,8 +100,11 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Auto-restore tabs on app startup (independent of Welcome screen)
   useEffect(() => {
     const attemptInitialRestore = async () => {
+      logger.info('🚀 RESTORATION USEEFFECT FIRED', { tabsLength: tabs.length });
+      
       // Only attempt restoration if we haven't loaded tabs yet
       if (tabs.length > 0) {
+        logger.info('🚫 SKIPPING RESTORATION - TABS ALREADY EXIST', { tabsLength: tabs.length });
         return;
       }
 
@@ -111,14 +114,22 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         
         if (sessionData.tabs.length > 0) {
           logger.info('🔄 RESTORING TABS ON STARTUP:', sessionData);
-          const restoredTabs = rehydrateTabs(sessionData.tabs);
           
-          if (restoredTabs.length > 0) {
-            setTabs(restoredTabs);
-            setPanelBreaks(sessionData.panelBreaks || []);
-            setActivePanelIndex(sessionData.activePanelIndex || 0);
-            setActiveTabId(restoredTabs[0].id);
-            logger.info('✅ STARTUP RESTORATION COMPLETE:', { tabCount: restoredTabs.length });
+          try {
+            const restoredTabs = rehydrateTabs(sessionData.tabs);
+            logger.info('🔄 REHYDRATION RESULT:', { restoredTabsLength: restoredTabs.length, restoredTabs });
+            
+            if (restoredTabs.length > 0) {
+              setTabs(restoredTabs);
+              setPanelBreaks(sessionData.panelBreaks || []);
+              setActivePanelIndex(sessionData.activePanelIndex || 0);
+              setActiveTabId(restoredTabs[0].id);
+              logger.info('✅ STARTUP RESTORATION COMPLETE:', { tabCount: restoredTabs.length });
+            } else {
+              logger.error('❌ REHYDRATION RETURNED NO TABS');
+            }
+          } catch (rehydrationError) {
+            logger.error('❌ REHYDRATION FAILED:', rehydrationError);
           }
         } else {
           logger.info('📭 NO SAVED TABS TO RESTORE ON STARTUP');
