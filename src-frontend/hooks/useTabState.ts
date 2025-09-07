@@ -339,6 +339,7 @@ export const useTabState = (): UseTabStateReturn => {
       title: projectName,
       status: 'idle',
       hasUnsavedChanges: false,
+      initialProjectPath: project.path, // Store project path for persistence
       restoreProjectState: {
         selectedProject: project,
         sessions: [],

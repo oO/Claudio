@@ -2,17 +2,14 @@ import { useCallback, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { Tab } from '@/contexts/TabContext';
 import { logger } from '@/lib/logger';
+import { useTabDehydration, type BasePersistedTab } from './useTabDehydration';
 
 const STORAGE_KEY = 'tabs_session';
 
-export interface PersistedTab {
-  type: Tab['type'];
-  title: string;
-  sessionId?: string;
-  initialProjectPath?: string;
-  agentRunId?: string;
-  claudeFileId?: string;
-  restoreProjectState?: any;
+export interface PersistedTabSession {
+  tabs: BasePersistedTab[];
+  panelBreaks: number[];
+  activePanelIndex: number;
 }
 
 /**
@@ -20,30 +17,16 @@ export interface PersistedTab {
  * Provides save/load functionality with automatic tab filtering
  */
 export const useTabPersistence = () => {
+  const { dehydrateTabs } = useTabDehydration();
+
   /**
-   * Save tabs to backend storage
+   * Save tabs and panel state to backend storage
    * Only saves tabs that can be meaningfully restored
    */
-  const saveTabs = useCallback(async (tabs: Tab[]) => {
+  const saveTabs = useCallback(async (tabs: Tab[], panelBreaks: number[] = [], activePanelIndex: number = 0) => {
     try {
-      // Filter to only restorable tab types
-      const restorableTabs: PersistedTab[] = tabs
-        .filter(tab => {
-          // Exclude temporary tabs that can't be restored
-          return ![
-            'create-agent',
-            'import-agent'
-          ].includes(tab.type);
-        })
-        .map(tab => ({
-          type: tab.type,
-          title: tab.title,
-          sessionId: tab.sessionId,
-          initialProjectPath: tab.initialProjectPath,
-          agentRunId: tab.agentRunId,
-          claudeFileId: tab.claudeFileId,
-          restoreProjectState: tab.restoreProjectState,
-        }));
+      // Use dehydration system to convert tabs to persistable data
+      const restorableTabs: BasePersistedTab[] = dehydrateTabs(tabs);
 
       if (restorableTabs.length === 0) {
         // Clear storage if no tabs to restore
@@ -51,37 +34,60 @@ export const useTabPersistence = () => {
         return;
       }
 
-      await api.saveSetting(STORAGE_KEY, JSON.stringify(restorableTabs));
+      const sessionData: PersistedTabSession = {
+        tabs: restorableTabs,
+        panelBreaks,
+        activePanelIndex,
+      };
+
+      await api.saveSetting(STORAGE_KEY, JSON.stringify(sessionData));
       
-      logger.debug('💾 Saved tab session:', { count: restorableTabs.length });
+      logger.debug('💾 Saved tab session:', { 
+        tabCount: restorableTabs.length, 
+        panelCount: panelBreaks.length + 1,
+        activePanelIndex 
+      });
     } catch (error) {
       logger.error('Failed to save tab session:', error);
     }
-  }, []);
+  }, [dehydrateTabs]);
 
   /**
-   * Load tabs from backend storage
-   * Returns array of persisted tab data that can be restored
+   * Load tabs and panel state from backend storage
+   * Returns persisted session data that can be restored
    */
-  const loadTabs = useCallback(async (): Promise<PersistedTab[]> => {
+  const loadTabs = useCallback(async (): Promise<PersistedTabSession> => {
     try {
       const serialized = await api.getSetting(STORAGE_KEY);
       if (!serialized) {
-        return [];
+        return { tabs: [], panelBreaks: [], activePanelIndex: 0 };
       }
 
       // The data is already a JSON string from backend, parse it once
-      const parsed = JSON.parse(serialized) as PersistedTab[];
-      if (!Array.isArray(parsed)) {
+      const parsed = JSON.parse(serialized) as PersistedTabSession;
+      
+      // Validate structure
+      if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.tabs)) {
         logger.warn('Invalid tab session data found, ignoring');
-        return [];
+        return { tabs: [], panelBreaks: [], activePanelIndex: 0 };
       }
 
-      logger.debug('📂 Loaded tab session:', { count: parsed.length });
-      return parsed;
+      // Ensure panelBreaks and activePanelIndex exist
+      const sessionData: PersistedTabSession = {
+        tabs: parsed.tabs,
+        panelBreaks: parsed.panelBreaks || [],
+        activePanelIndex: parsed.activePanelIndex || 0,
+      };
+
+      logger.debug('📂 Loaded tab session:', { 
+        tabCount: sessionData.tabs.length,
+        panelCount: sessionData.panelBreaks.length + 1,
+        activePanelIndex: sessionData.activePanelIndex
+      });
+      return sessionData;
     } catch (error) {
       logger.error('Failed to load tab session:', error);
-      return [];
+      return { tabs: [], panelBreaks: [], activePanelIndex: 0 };
     }
   }, []);
 

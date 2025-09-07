@@ -1,14 +1,5 @@
 # Changelog
 
-## [0.4.27] - 2025-09-07
-- Fixed SessionHeader export dropdown by replacing broken Popover with DropdownMenu component
-- Moved action buttons (compact mode toggle, export menu) from header to control bar for better organization
-- Implemented new InProgressTodoWidget with 3-second cycling carousel showing all todos with status icons
-- Added animated progress bar with height indicators showing current todo completion status
-- Enhanced SessionHeader with real-time TodoContext integration for live todo updates
-- Applied DRY principle to dropdown menu styling across components
-- Improved tab persistence and dehydration system for better state management
-
 ## [0.4.25] - 2025-09-07
 - Expanded Claude thinking message resources with 500+ new haiku-style messages covering development, cybersecurity, AI, and tech history
 - Enhanced thinking indicator variety with 400+ new verbs and creative expressions for Claude's processing states

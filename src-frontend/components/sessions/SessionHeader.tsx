@@ -19,7 +19,12 @@ import {
   ListTodo,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Popover } from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { DebugLabel } from "@/components/ui/atoms";
 import { cn } from "@/lib/utils";
@@ -32,8 +37,10 @@ import { getSessionTitle, formatSessionIdCompact } from "@/lib/sessionUtils";
 import type { Session } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { useSessionContext } from "@/contexts/SessionContext";
+import { useTodoContext } from "@/contexts/TodoContext";
 import { SESSION_TYPES } from "@/lib/sessionHandleApi";
 import { UserMessageNavigation } from "./UserMessageNavigation";
+import { InProgressTodoWidget } from "./InProgressTodoWidget";
 
 interface SessionHeaderProps {
   claudeSessionId: string | null;
@@ -41,13 +48,11 @@ interface SessionHeaderProps {
   claudioId?: string | null;
   totalTokens: number;
   hasMessages: boolean;
-  copyPopoverOpen: boolean;
   onBack: () => void;
   onExportAsJson: () => void;
   onExportAsMarkdown: () => void;
   isReadOnly?: boolean;
   onDeleteProject?: () => void;
-  setCopyPopoverOpen: (open: boolean) => void;
   // Current displayable message count (computed in UI)
   displayableMessageCount?: number;
   // List of UUIDs for filtered/collapsed messages
@@ -63,13 +68,11 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
   claudioId,
   totalTokens,
   hasMessages,
-  copyPopoverOpen,
   onBack,
   onExportAsJson,
   onExportAsMarkdown,
   isReadOnly = false,
   onDeleteProject,
-  setCopyPopoverOpen,
   displayableMessageCount,
   collapsedMessageUuids,
   isRefreshing,
@@ -85,6 +88,11 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
     isCompactMode,
     toggleCompactMode,
   } = useSessionContext();
+
+  const { getTodoData } = useTodoContext();
+
+  // Get todo data from TodoContext instead of sessionData
+  const todoData = sessionId ? getTodoData(sessionId) : null;
 
   // State for random thinking content
   const [thinkingTitle, setThinkingTitle] = React.useState(
@@ -123,15 +131,24 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
     }
   }, [isStreaming, liveSessionType, sessionId, hasMessages]);
 
-  // Debug: Log sessionData.todo_counts to see what we're getting
+  // Debug: Log TodoContext data instead of sessionData
   React.useEffect(() => {
-    logger.log("🎯 SessionHeader todo_counts debug:", {
-      sessionId: sessionId?.substring(0, 8),
-      hasTodoCounts: !!sessionData?.todo_counts,
-      todoCounts: sessionData?.todo_counts,
-      sessionDataKeys: sessionData ? Object.keys(sessionData) : 'no sessionData'
-    });
-  }, [sessionData?.todo_counts, sessionId]);
+    if (sessionId) {
+      logger.log("🎯 SessionHeader TodoContext debug:", {
+        sessionId: sessionId?.substring(0, 8),
+        hasTodoData: !!todoData,
+        todoData: todoData,
+        totalCounts: todoData?.total_counts,
+        agentCount: todoData?.agent_todos?.length || 0,
+        inProgressTodos:
+          todoData?.agent_todos?.flatMap(
+            (agent) =>
+              agent.todos?.filter((todo) => todo.status === "in_progress") ||
+              [],
+          ).length || 0,
+      });
+    }
+  }, [sessionId, todoData]);
 
   const handleCopySessionInfo = async () => {
     // Copy session metadata JSON structure
@@ -229,15 +246,16 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
                       <span>{formatFileSize(sessionData.size_bytes)}</span>
                     </div>
                   )}
-                  {sessionData?.todo_counts && (
-                    <div className="flex items-center gap-1">
-                      <ListTodo className="h-3 w-3" />
-                      <span>
-                        {sessionData.todo_counts.completed}/
-                        {sessionData.todo_counts.total}
-                      </span>
-                    </div>
-                  )}
+                  {todoData?.total_counts &&
+                    todoData.total_counts.total > 0 && (
+                      <div className="flex items-center gap-1">
+                        <ListTodo className="h-3 w-3" />
+                        <span>
+                          {todoData.total_counts.completed}/
+                          {todoData.total_counts.total}
+                        </span>
+                      </div>
+                    )}
                   {sessionData && (
                     <div className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
@@ -268,7 +286,9 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
                   {isStreaming && (
                     <div className="flex items-center gap-1 text-accent animate-pulse">
                       <Brain className="h-3 w-3 " />
-                      <span className="text-xs">{thinkingTitle}</span>
+                      <span className="text-xs">
+                        Claude is {thinkingTitle}...
+                      </span>
                     </div>
                   )}
                 </div>
@@ -282,7 +302,27 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
             )}
           </div>
         </div>
+      </div>
 
+      {/* Control bar with navigation, todos, and actions */}
+      <div className="flex relative items-center justify-between mt-3 pt-2 border-t border-border/50">
+        <DebugLabel label="ControlBar" />
+        {/* Left section: User navigation */}
+        <div className="flex items-center gap-2">
+          {hasMessages && (
+            <UserMessageNavigation
+              onNavigate={onNavigateToMessage || (() => {})}
+            />
+          )}
+          <InProgressTodoWidget
+            todos={todoData?.agent_todos.flatMap((agent) => agent.todos) || []}
+          />
+        </div>
+
+        {/* Center section: In-progress todo */}
+        <div className="flex-1 flex justify-center"></div>
+
+        {/* Right section: View controls and actions */}
         <div className="flex items-center gap-1">
           {/* Compact mode toggle */}
           {toggleCompactMode && (
@@ -304,61 +344,28 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
             </Button>
           )}
 
-
+          {/* Export menu - only show if we have messages and not streaming */}
           {hasMessages && !isStreaming && claudeSessionId && (
-            <Popover
-              open={copyPopoverOpen}
-              onOpenChange={setCopyPopoverOpen}
-              trigger={
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8">
                   <MoreVertical className="h-4 w-4" />
                 </Button>
-              }
-              content={
-                <div className="space-y-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={onExportAsJson}
-                  >
-                    <LucideDownload className="h-4 w-4 mr-2" />
-                    Export as JSON
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={onExportAsMarkdown}
-                  >
-                    <LucideDownload className="h-4 w-4 mr-2" />
-                    Export as Markdown
-                  </Button>
-                </div>
-              }
-              className="w-48 p-2"
-            />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={onExportAsJson}>
+                  <LucideDownload className="h-4 w-4 mr-2" />
+                  Export as JSON
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onExportAsMarkdown}>
+                  <LucideDownload className="h-4 w-4 mr-2" />
+                  Export as Markdown
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
       </div>
-
-      {/* Control bar with navigation and future filters */}
-      {hasMessages && (
-        <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
-          <div className="flex items-center gap-2">
-            {/* User message navigation dropdown */}
-            <UserMessageNavigation 
-              onNavigate={onNavigateToMessage || (() => {})}
-            />
-            
-            {/* Space for future filter buttons */}
-          </div>
-          
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            {/* Future: Message counts or other info */}
-          </div>
-        </div>
-      )}
     </motion.div>
   );
 };

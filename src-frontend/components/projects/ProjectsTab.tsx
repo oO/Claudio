@@ -216,6 +216,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
       updateTab(tab.id, { 
         title: projectName, 
         type: 'project',
+        initialProjectPath: project.path, // Store project path for persistence
         restoreProjectState: {
           selectedProject: project,
           sessions: sessionList,

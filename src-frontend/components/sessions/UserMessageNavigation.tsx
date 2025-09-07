@@ -56,7 +56,7 @@ export const UserMessageNavigation: React.FC<UserMessageNavigationProps> = ({
             <DropdownMenuItem
               key={userMsg.index}
               onClick={() => handleNavigate(userMsg.index)}
-              className="cursor-pointer p-1 px-3 text-sm hover:bg-accent"
+              className="p-1 px-3 text-sm"
             >
               <div className="w-full truncate">{userMsg.content}</div>
             </DropdownMenuItem>

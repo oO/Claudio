@@ -28,7 +28,7 @@ pub struct ClaudioSettings {
     #[serde(default)]
     pub window_state: Option<WindowState>,
     #[serde(default)]
-    pub tabs_session: Option<serde_json::Value>, // Tab session data as JSON (array for legacy, object for new format)
+    pub tabs_session: Option<Vec<serde_json::Value>>, // Tab session data as proper JSON array
     // Future Claudio-specific settings can be added here
     // pub analytics: AnalyticsSettings,
 }
@@ -183,8 +183,8 @@ pub async fn get_setting(key: String) -> Result<Option<String>, String> {
         "theme_custom_colors" => Ok(settings.theme.custom_colors),
         "tabs_session" => {
             match &settings.tabs_session {
-                Some(tabs_data) => {
-                    let json_string = serde_json::to_string(tabs_data)
+                Some(tabs_array) => {
+                    let json_string = serde_json::to_string(tabs_array)
                         .map_err(|e| format!("Failed to serialize tabs_session: {}", e))?;
                     log::info!("Retrieved tabs_session setting: {} chars", json_string.len());
                     Ok(Some(json_string))
@@ -216,29 +216,11 @@ pub async fn save_setting(key: String, value: String) -> Result<(), String> {
             settings.tabs_session = if value.is_empty() {
                 None
             } else {
-                // Parse the JSON string - can be array (legacy) or object (new format)
-                match serde_json::from_str::<serde_json::Value>(&value) {
-                    Ok(parsed_data) => {
-                        match &parsed_data {
-                            serde_json::Value::Array(tabs_array) => {
-                                log::info!("Updated tabs_session setting (legacy format): {} tabs", tabs_array.len());
-                            }
-                            serde_json::Value::Object(session_obj) => {
-                                let tabs_count = session_obj.get("tabs")
-                                    .and_then(|t| t.as_array())
-                                    .map(|arr| arr.len())
-                                    .unwrap_or(0);
-                                let panel_count = session_obj.get("panelBreaks")
-                                    .and_then(|p| p.as_array())
-                                    .map(|arr| arr.len() + 1)
-                                    .unwrap_or(1);
-                                log::info!("Updated tabs_session setting (new format): {} tabs, {} panels", tabs_count, panel_count);
-                            }
-                            _ => {
-                                log::warn!("Unexpected tabs_session format, treating as generic data");
-                            }
-                        }
-                        Some(parsed_data)
+                // Parse the JSON string into a proper array
+                match serde_json::from_str::<Vec<serde_json::Value>>(&value) {
+                    Ok(tabs_array) => {
+                        log::info!("Updated tabs_session setting: {} tabs", tabs_array.len());
+                        Some(tabs_array)
                     }
                     Err(e) => {
                         return Err(format!("Failed to parse tabs_session JSON: {}", e));
