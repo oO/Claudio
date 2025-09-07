@@ -216,21 +216,21 @@ export const GeneralSettings: React.FC<GeneralSettingsProps> = ({
             />
           </div>
           
-          {/* Session Polling Interval */}
+          {/* Panel Minimum Width */}
           <div className="space-y-2">
-            <Label htmlFor="sessionPollingInterval">Session Polling Interval (seconds)</Label>
+            <Label htmlFor="panelMinWidth">Panel Minimum Width (pixels)</Label>
             <p className="text-xs text-muted-foreground">
-              How often to check for session file updates (3-30 seconds)
+              Minimum width for each panel when splitting tabs (300-800 pixels)
             </p>
             <Input
-              id="sessionPollingInterval"
+              id="panelMinWidth"
               type="number"
-              min="3"
-              max="30"
-              value={settings?.sessionPollingInterval || 5}
+              min="300"
+              max="800"
+              value={settings?.panelMinWidth || 500}
               onChange={(e) => {
-                const value = Math.max(3, Math.min(30, parseInt(e.target.value) || 5));
-                onUpdateSetting("sessionPollingInterval", value);
+                const value = Math.max(300, Math.min(800, parseInt(e.target.value) || 500));
+                onUpdateSetting("panelMinWidth", value);
               }}
               className="w-24"
             />

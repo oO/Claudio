@@ -41,7 +41,7 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
             <div className="flex-1 min-w-0">
               {/* Title */}
               <span className="font-semibold text-foreground">
-                {content.title}
+                Claude is {content.title}...
               </span>
 
               {/* Haiku content */}

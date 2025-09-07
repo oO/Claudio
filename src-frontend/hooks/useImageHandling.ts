@@ -27,7 +27,7 @@ export const useImageHandling = (props: UseImageHandlingProps) => {
       logger.warn('Image paste not implemented - files:', Array.from(e.clipboardData.files).map(f => f.name));
       handleImageUpload(e.clipboardData.files);
     }
-  }, []);
+  }, [handleImageUpload]);
 
   const handleDrag = useCallback((e: ReactDragEvent) => {
     e.preventDefault();
@@ -41,14 +41,14 @@ export const useImageHandling = (props: UseImageHandlingProps) => {
     if (e.dataTransfer?.files) {
       handleImageUpload(e.dataTransfer.files);
     }
-  }, []);
+  }, [handleImageUpload]);
 
   const handlePaste = useCallback((e: ReactClipboardEvent) => {
     // Convert React clipboard event to regular ClipboardEvent for compatibility
     if (e.clipboardData?.files.length) {
       handleImageUpload(e.clipboardData.files);
     }
-  }, []);
+  }, [handleImageUpload]);
 
   const handleRemoveImage = useCallback((index: number, prompt?: string) => {
     setEmbeddedImages(prev => prev.filter((_, i) => i !== index));
@@ -66,10 +66,19 @@ export const useImageHandling = (props: UseImageHandlingProps) => {
   }, []);
 
   const extractImagePaths = useCallback((prompt?: string) => {
-    // Extract image paths from embedded images array
-    // If prompt is provided, could also extract from markdown image syntax
-    return embeddedImages.map(img => img.path || img.name || 'unknown');
-  }, [embeddedImages]);
+    // Extract image paths from prompt markdown syntax like ![Image](path/to/image.png)
+    if (!prompt) return [];
+    
+    const imageRegex = /!\[.*?\]\((.*?)\)/g;
+    const matches = [];
+    let match;
+    
+    while ((match = imageRegex.exec(prompt)) !== null) {
+      matches.push(match[1]);
+    }
+    
+    return matches;
+  }, []);
 
   return {
     embeddedImages,

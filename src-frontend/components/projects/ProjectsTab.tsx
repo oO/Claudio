@@ -34,9 +34,8 @@ import { Toast, type ToastType } from "@/components/ui/toast";
 import { Input } from "@/components/ui/input";
 import { TabPageLayout } from "@/components/common";
 import { useTabState } from "@/hooks/useTabState";
-import { useScreenTracking } from "@/hooks/useAnalytics";
-import { useProjectListWatcher } from "@/hooks/useProjectListWatcher";
-import { useSessionListWatcher } from "@/hooks/useSessionFileWatcher";
+import { useScreenTracking, useProjectListWatcher, useSessionListWatcher, useSessionCreation } from "@/hooks";
+import { SESSION_TYPES } from "@/lib/sessionHandleApi";
 import { Tab } from "@/contexts/TabContext";
 
 interface ProjectsTabProps {
@@ -46,6 +45,7 @@ interface ProjectsTabProps {
 
 export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   const { updateTab, findTabBySessionId, createProjectTab } = useTabState();
+  const { createClaudioSession } = useSessionCreation();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [sessions, setSessions] = useState<DecoratedSession[]>([]);
@@ -411,44 +411,72 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
     }));
   };
 
-  const handleNewSDKSession = async (projectPath?: string) => {
-    logger.log('🔥 DEBUGGING: handleNewSDKSession called with:', projectPath);
-    if (projectPath) {
-      // Set viewing session state to render SessionDetail directly
-      setViewingSession({
-        session: null, // New session
-        projectPath: projectPath,
-        backState: {
-          selectedProject: selectedProject,
-          sessions: sessions,
-          activeTab: "sessions",
-        },
-      });
-    } else {
-      // Show native folder picker dialog
-      try {
+  const handleNewClaudioSession = async (projectPath?: string) => {
+    logger.log('🔥 DEBUGGING: handleNewClaudioSession called with:', projectPath);
+    try {
+      let pathToUse = projectPath;
+      
+      if (!pathToUse) {
+        // Show native folder picker dialog
         const selectedPath = await open({
           directory: true,
           multiple: false,
           title: "Select Project Folder",
         });
         
-        if (selectedPath) {
-          logger.log('Selected folder:', selectedPath);
-          // Set viewing session state to render SessionDetail directly
-          setViewingSession({
-            session: null, // New session
-            projectPath: selectedPath,
-            backState: {
-              selectedProject: selectedProject,
-              sessions: sessions,
-              activeTab: "sessions",
-            },
-          });
+        if (!selectedPath) {
+          logger.log('No folder selected, cancelling session creation');
+          return;
         }
-      } catch (error) {
-        logger.error('Failed to open folder dialog:', error);
+        
+        pathToUse = selectedPath;
+        logger.log('Selected folder:', pathToUse);
       }
+      
+      // Use shared session creation hook
+      const claudioId = await createClaudioSession({ projectPath: pathToUse });
+      
+      // Create a minimal Session object for the new Claudio session
+      const newSession: Session = {
+        id: claudioId, // Just the claudioId - backend will handle everything else
+        project_id: pathToUse.split('/').pop() || 'project',
+        project_path: pathToUse,
+        created_at: Date.now(),
+        modified_at: Date.now(),
+        first_message: undefined,
+        message_timestamp: undefined,
+        size_bytes: 0,
+        live_session_type: SESSION_TYPES.CLAUDIO,
+      };
+      
+      // Update current tab to project-session type and show inline like native sessions
+      const projectName = pathToUse.split("/").pop() || "Project";
+      const sessionShort = formatSessionIdCompact(claudioId.replace('claudio-', ''));
+      
+      updateTab(tab.id, { 
+        title: projectName,
+        displayId: sessionShort || undefined,
+        type: 'project-session',
+        sessionId: claudioId,
+        sessionData: newSession 
+      });
+      
+      // Set viewing session state to render SessionDetail inline
+      setViewingSession({
+        session: newSession,
+        projectPath: pathToUse,
+        backState: {
+          selectedProject: selectedProject,
+          sessions: sessions,
+          activeTab: "sessions",
+        },
+      });
+      
+      logger.log("Updated tab to project-session for Claudio session:", claudioId);
+      
+    } catch (error) {
+      logger.error('Failed to create Claudio session:', error);
+      // TODO: Show toast notification if available
     }
   };
 
@@ -471,7 +499,8 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
     }
   };
 
-  // Render SessionDetail if viewing a session (with valid session object)
+
+  // Render SessionDetail if viewing a session (with valid session object) - legacy inline view
   if (viewingSession && viewingSession.session) {
     return (
       <>
@@ -573,6 +602,13 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                       initialActiveTab={activeProjectTab}
                       onActiveTabChange={setActiveProjectTab}
                       onSessionClick={async (session) => {
+                        logger.log('🔍 DEBUG: Session clicked with data:', {
+                          sessionId: session.id,
+                          liveSessionType: session.live_session_type,
+                          isClaudiaSession: session.live_session_type === SESSION_TYPES.CLAUDIO,
+                          sessionData: session
+                        });
+                        
                         // Check for deduplication FIRST - before any processing
                         const existingTab = findTabBySessionId(session.id);
                         if (existingTab && existingTab.id !== tab.id) {
@@ -585,75 +621,29 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                           return; // Don't proceed with opening in current tab
                         }
                         
-                        if ((session as any).claudio) {
-                          // Interactive claudio session - set viewing session state for continuation
-                          logger.log('Continuing claudio session:', (session as any).claudio.claudio_id);
+                        if (session.live_session_type === SESSION_TYPES.CLAUDIO) {
+                          // Interactive claudio session - same pattern as native sessions
+                          logger.log('Continuing claudio session:', session.id);
                           
-                          try {
-                            // 🔧 FIX: Fetch fresh claudio metadata to avoid stale session_id
-                            logger.info('🔄 Refreshing claudio metadata before resume:', (session as any).claudio.claudio_id);
-                            const freshClaudioMetadata = await api.getClaudioSession(
-                              (session as any).claudio.claudio_id,
-                              session.project_path
-                            );
-                            
-                            // Create updated session object with fresh metadata
-                            const freshSession = {
-                              ...session,
-                              claudio: freshClaudioMetadata
-                            };
-                            
-                            logger.info('✅ Updated session metadata:', {
-                              oldSessionId: (session as any).claudio.session_id,
-                              newSessionId: freshClaudioMetadata.session_id,
-                              claudioId: freshClaudioMetadata.claudio_id
-                            });
-                            
-                            // Update tab for session view: title=project, displayId=session
-                            const projectName = getProjectName(session.project_path);
-                            const sessionShort = session.id ? formatSessionIdCompact(session.id) ?? undefined : undefined;
-                            updateTab(tab.id, { 
-                              title: projectName,
-                              displayId: sessionShort,
-                              type: 'project-session',
-                              sessionId: session.id,
-                              sessionData: freshSession 
-                            });
-                            
-                            // Set viewing session state to render SessionDetail inline
-                            setViewingSession({
-                              session: freshSession,
-                              projectPath: session.project_path,
-                              backState: {
-                                selectedProject: selectedProject,
-                                sessions: sessions,
-                                activeTab: activeProjectTab,
-                              },
-                            });
-                          } catch (error) {
-                            logger.error('Failed to refresh claudio metadata:', error);
-                            // Fallback to cached metadata if refresh fails
-                            setViewingSession({
-                              session: session,
-                              projectPath: session.project_path,
-                              backState: {
-                                selectedProject: selectedProject,
-                                sessions: sessions,
-                                activeTab: activeProjectTab,
-                              },
-                            });
-                            
-                            // Fallback to cached metadata if refresh fails
-                            setViewingSession({
-                              session: session,
-                              projectPath: session.project_path,
-                              backState: {
-                                selectedProject: selectedProject,
-                                sessions: sessions,
-                                activeTab: activeProjectTab,
-                              },
-                            });
-                          }
+                          const projectName = getProjectName(session.project_path);
+                          const sessionShort = session.id ? formatSessionIdCompact(session.id) ?? undefined : undefined;
+                          updateTab(tab.id, { 
+                            title: projectName,
+                            displayId: sessionShort,
+                            type: 'project-session',
+                            sessionId: session.id,
+                            sessionData: session 
+                          });
+                          
+                          setViewingSession({
+                            session: session,
+                            projectPath: session.project_path,
+                            backState: {
+                              selectedProject: selectedProject,
+                              sessions: sessions,
+                              activeTab: activeProjectTab,
+                            },
+                          });
                         } else {
                           // Native Claude Code session - set viewing session state for read-only view
                           logger.log('Opening native session:', session.id);
@@ -769,7 +759,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                       selectedProject={selectedProject}
                       currentTab={tab}
                       onUpdateTab={updateTab}
-                      onStartNewSDKSession={handleNewSDKSession}
+                      onStartNewClaudioSession={handleNewClaudioSession}
                     />
                   </motion.div>
                 ) : (
@@ -788,7 +778,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                       className="mb-4 flex gap-2 justify-end"
                     >
                       <Button
-                        onClick={() => handleNewSDKSession()}
+                        onClick={() => handleNewClaudioSession()}
                         size="default"
                         className="accent-button"
                       >
@@ -810,7 +800,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                         <p className="text-sm text-muted-foreground mb-4">
                           Create a new Claude Code session to get started.
                         </p>
-                        <Button onClick={() => handleNewSDKSession()} size="sm" className="gap-2">
+                        <Button onClick={() => handleNewClaudioSession()} size="sm" className="gap-2">
                           <Plus className="h-4 w-4" />
                           New Session
                         </Button>

@@ -14,7 +14,8 @@ interface ThinkingMessageProps {
  * Shows Claude's current processing state with title and shimmering haiku message
  */
 export const ThinkingMessage: React.FC<ThinkingMessageProps> = ({ message }) => {
-  const title = (message as any).title || "Claude is thinking...";
+  const rawTitle = (message as any).title;
+  const title = rawTitle ? `Claude is ${rawTitle}...` : "Claude is thinking...";
   const haiku =
     message.message?.content?.[0]?.text || "Processing your request";
 

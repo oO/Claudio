@@ -155,8 +155,15 @@ export const TabManager: React.FC<TabManagerProps> = ({ className }) => {
     switchToTab
   } = useTabState();
 
-  // Access reorderTabs from context
-  const { reorderTabs } = useTabContext();
+  // Access panel methods and reorderTabs from context
+  const { 
+    reorderTabs, 
+    getPanelCounts, 
+    getTabsForPanel, 
+    addPanel, 
+    closePanel, 
+    canAddPanel 
+  } = useTabContext();
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showLeftScroll, setShowLeftScroll] = useState(false);
@@ -367,31 +374,101 @@ export const TabManager: React.FC<TabManagerProps> = ({ className }) => {
         )}
       </AnimatePresence>
 
-      {/* Tabs container */}
+      {/* Tabs container with panel groups */}
       <div
         ref={scrollContainerRef}
         className="flex-1 flex overflow-x-auto scrollbar-hide"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
-        <Reorder.Group
-          axis="x"
-          values={tabs}
-          onReorder={handleReorder}
-          className="flex items-stretch h-8"
-          layoutScroll={false}
-        >
-          {tabs.map((tab) => (
-            <TabItem
-              key={tab.id}
-              tab={tab}
-              isActive={tab.id === activeTabId}
-              onClose={handleCloseTab}
-              onClick={switchToTab}
-              isDragging={draggedTabId === tab.id}
-              setDraggedTabId={setDraggedTabId}
-            />
-          ))}
-        </Reorder.Group>
+        <div className="flex items-center h-8">
+          {getPanelCounts().map((panelTabCount, panelIndex) => {
+            const panelTabs = getTabsForPanel(panelIndex);
+            const panelCounts = getPanelCounts();
+            const isLastPanel = panelIndex === panelCounts.length - 1;
+            const canDelete = panelCounts.length > 1;
+            
+            return (
+              <React.Fragment key={`panel-${panelIndex}`}>
+                {/* Panel tabs */}
+                <Reorder.Group
+                  axis="x"
+                  values={panelTabs}
+                  onReorder={handleReorder}
+                  className="flex items-stretch"
+                  layoutScroll={false}
+                >
+                  {panelTabs.map((tab) => (
+                    <TabItem
+                      key={tab.id}
+                      tab={tab}
+                      isActive={tab.id === activeTabId}
+                      onClose={handleCloseTab}
+                      onClick={switchToTab}
+                      isDragging={draggedTabId === tab.id}
+                      setDraggedTabId={setDraggedTabId}
+                    />
+                  ))}
+                </Reorder.Group>
+                
+                {/* Panel controls - just buttons, no separator styling */}
+                {panelIndex < panelCounts.length - 1 && (
+                  <button
+                    onClick={() => closePanel(panelIndex, true)}
+                    disabled={!canDelete}
+                    className={cn(
+                      "w-4 h-4 flex items-center justify-center rounded-sm mx-1",
+                      "transition-all duration-100 hover:bg-destructive/20 hover:text-destructive",
+                      "focus:outline-none focus:ring-1 focus:ring-destructive/50",
+                      canDelete 
+                        ? "opacity-60 hover:opacity-100 cursor-pointer" 
+                        : "opacity-30 cursor-not-allowed"
+                    )}
+                    title={canDelete ? `Close panel ${panelIndex + 1}` : "Cannot close the last panel"}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+                
+                {/* Add panel button (only after last panel) */}
+                {isLastPanel && (
+                  <>
+                    <button
+                      onClick={() => closePanel(panelIndex, true)}
+                      disabled={!canDelete}
+                      className={cn(
+                        "w-4 h-4 flex items-center justify-center rounded-sm mx-1",
+                        "transition-all duration-100 hover:bg-destructive/20 hover:text-destructive",
+                        "focus:outline-none focus:ring-1 focus:ring-destructive/50",
+                        canDelete 
+                          ? "opacity-60 hover:opacity-100 cursor-pointer" 
+                          : "opacity-30 cursor-not-allowed"
+                      )}
+                      title={canDelete ? `Close panel ${panelIndex + 1}` : "Cannot close the last panel"}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                    
+                    <button
+                      onClick={addPanel}
+                      disabled={!canAddPanel()}
+                      className={cn(
+                        "w-4 h-4 flex items-center justify-center rounded-sm mr-1",
+                        "transition-all duration-100 hover:bg-primary/20 hover:text-primary",
+                        "focus:outline-none focus:ring-1 focus:ring-primary/50",
+                        canAddPanel()
+                          ? "opacity-60 hover:opacity-100 cursor-pointer"
+                          : "opacity-30 cursor-not-allowed"
+                      )}
+                      title={canAddPanel() ? "Split panel" : "Window too narrow to add another panel"}
+                    >
+                      <Plus className="w-3 h-3" />
+                    </button>
+                  </>
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
       </div>
 
       {/* Right fade gradient */}

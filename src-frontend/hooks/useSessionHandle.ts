@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { listen } from '@tauri-apps/api/event';
 import { logger } from "@/lib/logger";
 import {
   SessionHandleManager,
@@ -9,6 +10,16 @@ import {
 } from "@/lib/sessionHandleApi";
 import type { Session } from "@/lib/api";
 import type { ClaudeStreamMessage } from "@/lib/outputCache";
+
+/**
+ * Event payload when Claude session is ready with new session ID
+ */
+interface ClaudeSessionReadyEvent {
+  type: "session_started";
+  session_id: string;    // Claude's native session ID
+  claudio_id: string;    // Our Claudio session pointer ID
+  project_path: string;
+}
 
 /**
  * Hook for managing session handle lifecycle and operations
@@ -28,21 +39,21 @@ export const useSessionHandle = (
 
   // Refs for cleanup and navigation
   const messageUnsubscribeRef = useRef<(() => void) | null>(null);
+  const sessionUnlistenRef = useRef<(() => void) | null>(null);
   const cleanupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Use useMemo to create stable session ID to prevent unnecessary re-initializations
   const sessionId = useMemo(() => {
-    return session ? (session as any)?.claudio?.claudio_id || session.id : null;
-  }, [session?.id, (session as any)?.claudio?.claudio_id]);
+    // For Claudio sessions, session.id is already the claudio_id (e.g., "claudio-1234567890")
+    // For native sessions, session.id is the native session UUID
+    // Backend will determine session type based on ID format
+    return session ? session.id : null;
+  }, [session?.id]);
 
   // Session initialization effect
   useEffect(() => {
     // Skip re-initialization if we already have the same session initialized
     if (sessionHandle && sessionState && sessionId === sessionState.handle_id) {
-      logger.info(
-        "🔄 Skipping re-initialization - same session already loaded:",
-        sessionId,
-      );
       return;
     }
 
@@ -52,31 +63,22 @@ export const useSessionHandle = (
         setLoading(true);
 
         if (sessionId) {
-          logger.info("🔗 Resuming existing session:", {
-            sessionId,
-            projectPath,
-          });
         } else {
-          logger.info("🆕 Creating new session:", {
-            sessionId: "null",
-            projectPath,
-          });
         }
 
-        logger.info("🔗 Initializing session handle:", {
-          sessionId,
-          projectPath,
-        });
 
         // Get session handle from manager
-        logger.info("📞 Calling SessionHandleManager.getHandle...");
         const handle = await SessionHandleManager.getHandle(sessionId, projectPath);
-        logger.info("✅ Got session handle from manager");
 
         // Get initial state
-        logger.info("📞 Getting initial state from handle...");
         const state = await handle.getState();
-        logger.info("✅ Got initial state:", state);
+        logger.info("🔍 useSessionHandle received sessionState:", {
+          sessionId: sessionId,
+          handleId: state.handle_id,
+          sessionType: state.session_type,
+          sessionTypeType: state.session_type?.type,
+          isClaudiaSession: state.session_type?.type === SESSION_TYPES.CLAUDIO
+        });
 
         // For new sessions (no current Claude session), skip loading messages entirely
         // They don't exist yet and we should show empty UI immediately
@@ -84,21 +86,14 @@ export const useSessionHandle = (
         if (state.current_claude_session_id) {
           // Only load messages for existing sessions that have Claude sessions
           try {
-            logger.info("📞 Loading messages for existing session...");
             initialMessages = await handle.getMessages();
-            logger.info(
-              "📥 Loaded existing messages for resumed session:",
-              initialMessages.length,
-            );
           } catch (err) {
             logger.error("❌ Failed to load messages for existing session:", err);
             initialMessages = [];
           }
         } else {
-          logger.info("🆕 New session - no messages to load, showing empty UI");
         }
 
-        logger.info("🔄 Setting session handle and state...");
 
         // Batch state updates to prevent multiple re-renders
         setSessionHandle(handle);
@@ -106,27 +101,12 @@ export const useSessionHandle = (
         setMessages(initialMessages);
         setLoading(false);
 
-        logger.info("✅ Session handle initialized:", {
-          handleId: state.handle_id,
-          messageCount: state.message_count,
-          sessionType: state.session_type.type,
-        });
 
         // Setup real-time message listener for live streaming
         try {
-          logger.info("🔗 Setting up message listener for handle:", state.handle_id);
           const unsubscribe = handle.onMessagesUpdate((allMessages: any[]) => {
-            logger.info("📨 SessionDetail received message list update:", {
-              handleId: state.handle_id,
-              totalMessages: allMessages.length,
-              receivedAt: new Date().toISOString(),
-            });
 
             // Simple message replacement - just use the real messages from backend
-            logger.info(
-              "📝 Setting complete message list, new count:",
-              allMessages.length,
-            );
             setMessages((prev) => {
               // Remove fake user messages that have been replaced by real ones
               const realUserMessages = allMessages.filter((msg) => msg.type === "user");
@@ -205,6 +185,37 @@ export const useSessionHandle = (
           } catch (err) {
             logger.error("❌ Failed to setup process event listener:", err);
           }
+
+          // Setup listener for Claude session ready events (new session ID notifications)
+          try {
+            const sessionReadyUnlisten = await listen<ClaudeSessionReadyEvent>('claude_session_ready', (event) => {
+              const { session_id, claudio_id, project_path } = event.payload;
+              
+              // Only handle events for our specific session and project
+              if (claudio_id === sessionId && project_path === projectPath) {
+                logger.info("🔄 Claude session ready - updating session state with native session ID:", {
+                  claudio_id,
+                  session_id,
+                  project_path
+                });
+                
+                // Update the session state with the new Claude session ID
+                setSessionState(prevState => {
+                  if (!prevState) return prevState;
+                  return {
+                    ...prevState,
+                    current_claude_session_id: session_id
+                  };
+                });
+              }
+            });
+            
+            // Store cleanup function
+            sessionUnlistenRef.current = sessionReadyUnlisten;
+            logger.info("✅ Claude session ready listener setup complete");
+          } catch (err) {
+            logger.error("❌ Failed to setup Claude session ready listener:", err);
+          }
         } catch (err) {
           logger.error("❌ Failed to setup message listener:", err);
         }
@@ -231,6 +242,9 @@ export const useSessionHandle = (
       if (messageUnsubscribeRef.current) {
         messageUnsubscribeRef.current();
       }
+      if (sessionUnlistenRef.current) {
+        sessionUnlistenRef.current();
+      }
     };
   }, [sessionId, projectPath, setIsStreaming]);
 
@@ -251,12 +265,12 @@ export const useSessionHandle = (
   // Handle prompt submission
   const handlePromptSubmit = useCallback(
     async (prompt: string, model: "sonnet" | "opus") => {
-      if (!sessionHandle) {
-        logger.error("Cannot send prompt: no session handle available");
-        return;
-      }
-
       try {
+        
+        if (!sessionHandle) {
+          logger.error("❌ Cannot send prompt: no session handle available");
+          return;
+        }
         setIsStreaming(true);
         setError(null);
 

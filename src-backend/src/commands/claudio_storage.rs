@@ -92,14 +92,20 @@ pub fn get_claudio_settings_file() -> Result<PathBuf, String> {
 
 /// Ensure the claudio directory structure exists
 pub async fn ensure_claudio_dirs() -> Result<(), String> {
+    log::info!("📁 ensure_claudio_dirs: Getting claudio dir path...");
     let claudio_dir = get_claudio_dir()?;
+    log::info!("📁 ensure_claudio_dirs: claudio_dir = {:?}", claudio_dir);
     
     // Create main directories
+    log::info!("📁 Creating main claudio directory...");
     fs::create_dir_all(&claudio_dir).await
         .map_err(|e| format!("Failed to create ~/.claudio: {}", e))?;
+    log::info!("✅ Main claudio directory created");
     
+    log::info!("📁 Creating projects directory...");
     fs::create_dir_all(claudio_dir.join("projects")).await
         .map_err(|e| format!("Failed to create ~/.claudio/projects: {}", e))?;
+    log::info!("✅ Projects directory created");
     
     // Create settings.json if it doesn't exist
     let settings_path = claudio_dir.join("settings.json");
@@ -123,9 +129,14 @@ pub async fn create_claudio_session(
     project_path: String,
     settings: ClaudeSettings,
 ) -> Result<String, String> {
+    log::error!("🔥🔥🔥 CLAUDIO_STORAGE: create_claudio_session CALLED for project: {}", project_path);
+    
+    log::info!("📁 Ensuring claudio directories...");
     ensure_claudio_dirs().await?;
+    log::info!("✅ Claudio directories ensured");
     
     let claudio_id = format!("claudio-{}", chrono::Utc::now().timestamp_millis());
+    log::info!("🆔 Generated claudio_id: {}", claudio_id);
     
     let new_session = ClaudioSession {
         claudio_id: claudio_id.clone(),
@@ -137,14 +148,18 @@ pub async fn create_claudio_session(
         session_history: Vec::new(),
     };
     
+    log::info!("🔒 Acquiring write lock on CLAUDIO_SESSIONS...");
     // Put the session in memory immediately during creation
     {
         let mut sessions = CLAUDIO_SESSIONS.write().await;
         sessions.insert(claudio_id.clone(), new_session.clone());
         log::info!("💾 Cached new Claudio session in memory: {}", claudio_id);
     }
+    log::info!("🔓 Released write lock on CLAUDIO_SESSIONS");
     
+    log::info!("💾 Calling update_claudio_session for persistence...");
     update_claudio_session(claudio_id.clone(), project_path, new_session).await?;
+    log::info!("✅ update_claudio_session completed");
     
     log::info!("✨ Created new Claudio session: {}", claudio_id);
     Ok(claudio_id)

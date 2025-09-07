@@ -127,10 +127,19 @@ export class SessionHandle {
    */
   async sendPrompt(prompt: string): Promise<void> {
     try {
-      await invoke('send_session_prompt', {
+      
+      // Add timeout wrapper to detect hanging calls
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Tauri invoke timed out after 10 seconds')), 10000);
+      });
+      
+      const invokePromise = invoke('send_session_prompt', {
         handleId: this.handleId,
         prompt,
       });
+      
+      await Promise.race([invokePromise, timeoutPromise]);
+      
     } catch (error) {
       logger.error('Failed to send prompt:', error);
       throw error;

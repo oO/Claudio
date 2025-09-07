@@ -28,7 +28,7 @@ import { MCPManager } from "@/components/mcp";
 import { NFOCredits } from "@/components/common";
 import { Toast, ToastContainer } from "@/components/ui/toast";
 import { useTabState } from "@/hooks/useTabState";
-import { useAppLifecycle, useTrackEvent } from "@/hooks";
+import { useAppLifecycle, useTrackEvent, useSessionCreation } from "@/hooks";
 
 type View =
   | "welcome"
@@ -53,6 +53,7 @@ function AppContent() {
     createAgentsTab,
     createProjectsTab,
   } = useTabState();
+  const { createClaudioSession } = useSessionCreation();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -296,18 +297,16 @@ function AppContent() {
   };
 
   /**
-   * Opens a new Claude Code session for a specific project
+   * Opens a new Claudio session for a specific project
    * Smart Backend + Dumb Frontend: Backend creates session first, then frontend gets told what to display
    */
-  const handleNewSessionFromProject = async (projectPath: string) => {
+  const handleNewClaudioSessionFromProject = async (projectPath: string) => {
     try {
       // DEBUG: This should appear in logs if my function is called
-      logger.log("🔥 DEBUGGING: handleNewSessionFromProject called with:", projectPath);
+      logger.log("🔥 DEBUGGING: handleNewClaudioSessionFromProject called with:", projectPath);
       
-      // First, create the session via backend (Smart Backend)
-      logger.log("Creating new Claudio session via backend for project:", projectPath);
-      const claudioId = await api.createClaudioSession(projectPath, {});
-      logger.log("Backend created Claudio session:", claudioId);
+      // Use shared session creation hook
+      const claudioId = await createClaudioSession({ projectPath });
       
       // Switch to tabs view
       handleViewChange("tabs");
@@ -545,7 +544,7 @@ function AppContent() {
                         onDeleteAgent={handleDeleteAgent}
                         onCreateAgent={handleCreateAgent}
                         onImportAgent={handleImportAgent}
-                        onStartNewSDKSession={handleNewSessionFromProject}
+                        onStartNewClaudioSession={handleNewClaudioSessionFromProject}
                       />
                     </motion.div>
                   ) : (

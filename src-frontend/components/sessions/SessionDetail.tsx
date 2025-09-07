@@ -128,6 +128,8 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
   logger.info("✨ SessionDetail rendering main component:", {
     hasSessionHandle: !!sessionData.sessionHandle,
     hasSessionState: !!sessionData.sessionState,
+    hasHandlePromptSubmit: !!sessionData.handlePromptSubmit,
+    handlePromptSubmitType: typeof sessionData.handlePromptSubmit,
     displayableMessagesCount: displayableMessages.length,
     rawMessagesCount: sessionData.messages.length,
     isReadOnly,

@@ -1,5 +1,8 @@
 import React, { createContext, useState, useContext, useCallback, useEffect } from 'react';
 import type { NavigationStack } from './NavigationContext';
+import { useTabPersistence, type PersistedTab } from '@/hooks/useTabPersistence';
+import { useSettingsState } from '@/hooks/useSettingsState';
+import { logger } from '@/lib/logger';
 
 export interface Tab {
   id: string;
@@ -45,7 +48,9 @@ export interface Tab {
 interface TabContextType {
   tabs: Tab[];
   activeTabId: string | null;
-  addTab: (tab: Omit<Tab, 'id' | 'order' | 'createdAt' | 'updatedAt'>) => string;
+  panelBreaks: number[]; // Panel break points: [3, 6] means panel 0: tabs 0-2, panel 1: tabs 3-5, panel 2: tabs 6+
+  activePanelIndex: number; // Which panel is currently active
+  addTab: (tab: Omit<Tab, 'id' | 'order' | 'createdAt' | 'updatedAt'>, panelIndex?: number) => string;
   removeTab: (id: string, force?: boolean) => boolean;
   updateTab: (id: string, updates: Partial<Tab>) => void;
   setActiveTab: (id: string) => void;
@@ -53,16 +58,42 @@ interface TabContextType {
   getTabById: (id: string) => Tab | undefined;
   closeAllTabs: () => void;
   getTabsByType: (type: Tab['type']) => Tab[];
+  restoreTabs: (persistedTabs: PersistedTab[]) => Promise<void>;
+  
+  // Panel management  
+  addPanel: () => void; // Add a new empty panel
+  closePanel: (panelIndex: number, keepTabs?: boolean) => void;
+  getTabsForPanel: (panelIndex: number) => Tab[];
+  getActivePanelIndex: () => number;
+  getPanelCount: () => number;
+  getPanelCounts: () => number[]; // For backwards compatibility
+  canAddPanel: () => boolean; // Check if window width allows another panel
 }
 
 const TabContext = createContext<TabContextType | undefined>(undefined);
 
 // const STORAGE_KEY = 'claudia_tabs'; // No longer needed - persistence disabled
 const MAX_TABS = 20;
+const PANEL_MIN_WIDTH = 500; // Minimum width per panel in pixels
 
 export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
+  const [panelBreaks, setPanelBreaks] = useState<number[]>([]); // Empty array = single panel with all tabs
+  const [activePanelIndex, setActivePanelIndex] = useState<number>(0);
+  const [windowWidth, setWindowWidth] = useState<number>(window.innerWidth);
+  const { saveTabs } = useTabPersistence();
+  const { settings } = useSettingsState();
+
+  // Track window width changes for panel calculations
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Start with welcome message, then open default Projects tab after delay
   // Removed automatic project tab creation - users should manually open tabs
@@ -86,23 +117,47 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   //   return () => clearTimeout(timer);
   // }, []);
 
-  // Tab persistence disabled - no longer saving to localStorage
-  // useEffect(() => {
-  //   if (tabs.length > 0) {
-  //     const tabsToSave = tabs.map(tab => ({
-  //       ...tab,
-  //       createdAt: tab.createdAt.toISOString(),
-  //       updatedAt: tab.updatedAt.toISOString()
-  //     }));
-  //     localStorage.setItem(STORAGE_KEY, JSON.stringify(tabsToSave));
-  //   }
-  // }, [tabs]);
+  // Auto-save tabs to backend storage when they change (immediate + aggressive)
+  useEffect(() => {
+    const saveTabsImmediately = async () => {
+      if (tabs.length > 0) {
+        logger.debug('🔥 SAVING TABS:', tabs.length, tabs.map(t => ({ type: t.type, title: t.title })));
+        await saveTabs(tabs);
+        logger.debug('✅ TABS SAVED SUCCESSFULLY');
+      } else {
+        logger.debug('📭 NO TABS TO SAVE');
+      }
+    };
+
+    // Save immediately on every change
+    saveTabsImmediately().catch(err => {
+      logger.error('❌ FAILED TO SAVE TABS:', err);
+    });
+  }, [tabs, saveTabs]);
+
+  // Save tabs on component unmount (app closing) and window unload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (tabs.length > 0) {
+        saveTabs(tabs);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      if (tabs.length > 0) {
+        saveTabs(tabs);
+      }
+    };
+  }, [tabs, saveTabs]);
 
   const generateTabId = () => {
     return `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   };
 
-  const addTab = useCallback((tabData: Omit<Tab, 'id' | 'order' | 'createdAt' | 'updatedAt'>): string => {
+  const addTab = useCallback((tabData: Omit<Tab, 'id' | 'order' | 'createdAt' | 'updatedAt'>, panelIndex?: number): string => {
     if (tabs.length >= MAX_TABS) {
       throw new Error(`Maximum number of tabs (${MAX_TABS}) reached`);
     }
@@ -111,13 +166,14 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...tabData,
       id: generateTabId(),
       order: tabs.length,
-      lastActivityAt: tabData.lastActivityAt ?? undefined, // Default to undefined if not provided
+      lastActivityAt: tabData.lastActivityAt ?? undefined,
       createdAt: new Date(),
       updatedAt: new Date()
     };
 
     setTabs(prevTabs => [...prevTabs, newTab]);
     setActiveTabId(newTab.id);
+
     return newTab.id;
   }, [tabs.length]);
 
@@ -161,8 +217,36 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return reorderedTabs;
     });
     
+    // Auto-cleanup: If removing a tab leaves a panel empty, remove that panel
+    const newTabCount = tabs.length - 1; // tabs.length after removal
+    if (newTabCount > 0) {
+      setPanelBreaks(prevBreaks => {
+        // Filter out any breaks that would create empty panels
+        const validBreaks = prevBreaks.filter(breakPoint => breakPoint < newTabCount);
+        
+        // If breaks changed, adjust active panel and log the cleanup
+        if (validBreaks.length !== prevBreaks.length) {
+          const newPanelCount = validBreaks.length + 1;
+          setActivePanelIndex(prev => Math.min(prev, newPanelCount - 1));
+          
+          logger.debug('🧹 Auto-cleaned empty panels:', {
+            oldBreaks: prevBreaks,
+            newBreaks: validBreaks,
+            removedEmptyPanels: prevBreaks.length - validBreaks.length,
+            adjustedActivePanelIndex: Math.min(activePanelIndex, newPanelCount - 1)
+          });
+        }
+        
+        return validBreaks;
+      });
+    } else {
+      // No tabs left, reset to single empty panel
+      setPanelBreaks([]);
+      setActivePanelIndex(0);
+    }
+    
     return true;
-  }, [activeTabId, tabs]);
+  }, [activeTabId, tabs, activePanelIndex]);
 
   const updateTab = useCallback((id: string, updates: Partial<Tab>) => {
     setTabs(prevTabs => 
@@ -221,9 +305,167 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return tabs.filter(tab => tab.type === type);
   }, [tabs]);
 
+  // Helper function to get panel count
+  const getPanelCount = useCallback((): number => {
+    return panelBreaks.length + 1; // breaks array + 1 = number of panels
+  }, [panelBreaks]);
+
+  // Helper function to compute panel counts (for backwards compatibility)
+  const getPanelCounts = useCallback((): number[] => {
+    if (panelBreaks.length === 0) {
+      // Single panel with all tabs
+      return [tabs.length];
+    }
+    
+    const counts: number[] = [];
+    let previousBreak = 0;
+    
+    for (const breakPoint of panelBreaks) {
+      counts.push(breakPoint - previousBreak);
+      previousBreak = breakPoint;
+    }
+    
+    // Last panel gets remaining tabs
+    counts.push(tabs.length - previousBreak);
+    
+    return counts;
+  }, [panelBreaks, tabs.length]);
+
+  // Panel management methods  
+  const addPanel = useCallback(() => {
+    if (tabs.length < 2) {
+      logger.warn('➕ Cannot split with less than 2 tabs');
+      return;
+    }
+    
+    // Split before the last tab (move last tab to new panel)
+    const newPanelBreaks = [...panelBreaks, tabs.length - 1];
+    setPanelBreaks(newPanelBreaks);
+    setActivePanelIndex(newPanelBreaks.length); // Focus the new panel (last index)
+    
+    logger.debug('➕ Split panel - moved last tab to new panel:', {
+      newPanelBreaks,
+      activePanelIndex: newPanelBreaks.length,
+      lastTabMovedToNewPanel: true
+    });
+  }, [panelBreaks, tabs.length]);
+
+  const closePanel = useCallback((panelIndex: number, keepTabs: boolean = true) => {
+    const panelCount = getPanelCount();
+    if (panelCount <= 1) {
+      logger.warn('🗑️ Cannot close the last panel');
+      return;
+    }
+    
+    if (panelIndex < 0 || panelIndex >= panelCount) {
+      logger.warn('🗑️ Invalid panel index:', panelIndex);
+      return;
+    }
+    
+    const newPanelBreaks = [...panelBreaks];
+    
+    if (panelIndex === 0) {
+      // Closing first panel: remove the first break
+      newPanelBreaks.shift();
+    } else if (panelIndex === panelCount - 1) {
+      // Closing last panel: remove the last break
+      newPanelBreaks.pop();
+    } else {
+      // Closing middle panel: merge with previous panel
+      newPanelBreaks.splice(panelIndex - 1, 1);
+    }
+    
+    // Adjust active panel index if needed
+    let newActivePanelIndex = activePanelIndex;
+    if (activePanelIndex >= panelIndex) {
+      newActivePanelIndex = Math.max(0, activePanelIndex - 1);
+    }
+    
+    setPanelBreaks(newPanelBreaks);
+    setActivePanelIndex(newActivePanelIndex);
+    
+    logger.debug('🗑️ Closed panel:', { 
+      panelIndex, 
+      keepTabs, 
+      newPanelBreaks,
+      newActivePanelIndex
+    });
+  }, [panelBreaks, activePanelIndex, getPanelCount]);
+
+  const getTabsForPanel = useCallback((panelIndex: number): Tab[] => {
+    const panelCount = getPanelCount();
+    if (panelIndex < 0 || panelIndex >= panelCount) {
+      return [];
+    }
+    
+    if (panelBreaks.length === 0) {
+      // Single panel with all tabs
+      return panelIndex === 0 ? tabs : [];
+    }
+    
+    // Calculate start and end indices based on panel breaks
+    let startIndex = 0;
+    if (panelIndex > 0) {
+      startIndex = panelBreaks[panelIndex - 1] || 0;
+    }
+    
+    const endIndex = panelBreaks[panelIndex] || tabs.length;
+    
+    return tabs.slice(startIndex, endIndex);
+  }, [tabs, panelBreaks, getPanelCount]);
+
+  const getActivePanelIndex = useCallback((): number => {
+    return activePanelIndex;
+  }, [activePanelIndex]);
+
+  const canAddPanel = useCallback((): boolean => {
+    // Need at least 2 tabs to split
+    if (tabs.length < 2) return false;
+    
+    const currentPanelCount = getPanelCount();
+    const panelMinWidth = settings?.panelMinWidth || PANEL_MIN_WIDTH;
+    const requiredWidth = (currentPanelCount + 1) * panelMinWidth;
+    return windowWidth >= requiredWidth;
+  }, [tabs.length, getPanelCount, settings?.panelMinWidth, windowWidth]);
+
+  const restoreTabs = useCallback(async (persistedTabs: PersistedTab[]): Promise<void> => {
+    if (persistedTabs.length === 0) return;
+
+    // Convert persisted tabs back to full Tab objects
+    const restoredTabs: Tab[] = persistedTabs.map((persistedTab, index) => ({
+      id: generateTabId(),
+      type: persistedTab.type,
+      title: persistedTab.title,
+      sessionId: persistedTab.sessionId,
+      initialProjectPath: persistedTab.initialProjectPath,
+      agentRunId: persistedTab.agentRunId,
+      claudeFileId: persistedTab.claudeFileId,
+      restoreProjectState: persistedTab.restoreProjectState,
+      status: 'idle' as const,
+      hasUnsavedChanges: false,
+      order: index,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }));
+
+    // Limit to MAX_TABS
+    const tabsToRestore = restoredTabs.slice(0, MAX_TABS);
+
+    setTabs(tabsToRestore);
+    
+    // Set the first restored tab as active
+    if (tabsToRestore.length > 0) {
+      setActiveTabId(tabsToRestore[0].id);
+    }
+
+    logger.info('✨ Restored tab session:', { count: tabsToRestore.length });
+  }, []);
+
   const value: TabContextType = {
     tabs,
     activeTabId,
+    panelBreaks,
+    activePanelIndex,
     addTab,
     removeTab,
     updateTab,
@@ -231,7 +473,15 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     reorderTabs,
     getTabById,
     closeAllTabs,
-    getTabsByType
+    getTabsByType,
+    restoreTabs,
+    addPanel,
+    closePanel,
+    getTabsForPanel,
+    getActivePanelIndex,
+    getPanelCount,
+    getPanelCounts,
+    canAddPanel
   };
 
   return (

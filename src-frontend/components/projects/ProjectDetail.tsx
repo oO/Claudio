@@ -108,9 +108,9 @@ interface ProjectDetailProps {
    */
   onUpdateTab?: (tabId: string, updates: any) => void;
   /**
-   * Callback when starting a new SDK session
+   * Callback when starting a new Claudio session
    */
-  onStartNewSDKSession?: (projectPath: string) => void;
+  onStartNewClaudioSession?: (projectPath: string) => void;
   /**
    * Optional className for styling
    */
@@ -144,7 +144,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
   selectedProject,
   currentTab,
   onUpdateTab,
-  onStartNewSDKSession,
+  onStartNewClaudioSession,
   className,
 }) => {
   const [activeTab, setActiveTab] = useState(initialActiveTab);
@@ -192,13 +192,13 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
   };
 
   const handleStartNewSession = () => {
-    logger.log('Starting new Claude Code SDK session for project:', projectPath);
+    logger.log('Starting new Claudio session for project:', projectPath);
     
-    if (onStartNewSDKSession) {
-      // Use callback to delegate to parent (ProjectsTab)
-      onStartNewSDKSession(projectPath);
+    if (onStartNewClaudioSession) {
+      // Use callback to delegate to parent (App.tsx -> handleNewClaudioSessionFromProject)
+      onStartNewClaudioSession(projectPath);
     } else {
-      logger.error('No onStartNewSDKSession callback provided');
+      logger.error('No onStartNewClaudioSession callback provided');
     }
   };
 

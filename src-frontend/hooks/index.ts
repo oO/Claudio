@@ -62,4 +62,8 @@ export { useAgentStyling } from './useAgentStyling';
 // Session hooks
 export { useClaudeMessages } from './useClaudeMessages';
 export { useNativeClaudeSessions } from './useNativeClaudeSessions';
+export { useSessionCreation } from './useSessionCreation';
 // export { useSessionState } from './useSessionState'; // DEPRECATED: moved to /deprecated folder
+
+// Tab management hooks
+export { useTabPersistence } from './useTabPersistence';

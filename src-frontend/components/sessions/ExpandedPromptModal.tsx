@@ -57,7 +57,6 @@ export const ExpandedPromptModal: React.FC<ExpandedPromptModalProps> = ({
 }) => {
   return (
     <>
-      <DebugLabel label="ExpandedPromptModal" />
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -67,6 +66,7 @@ export const ExpandedPromptModal: React.FC<ExpandedPromptModalProps> = ({
           className="relative fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm"
           onClick={onClose}
         >
+          <DebugLabel label="ExpandedPromptModal" />
           <motion.div
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}

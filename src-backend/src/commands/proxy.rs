@@ -27,6 +27,8 @@ pub struct ClaudioSettings {
     pub theme: ThemeSettings,
     #[serde(default)]
     pub window_state: Option<WindowState>,
+    #[serde(default)]
+    pub tabs_session: Option<Vec<serde_json::Value>>, // Tab session data as proper JSON array
     // Future Claudio-specific settings can be added here
     // pub analytics: AnalyticsSettings,
 }
@@ -59,6 +61,7 @@ impl Default for ClaudioSettings {
             claude_binary_path: None,
             theme: ThemeSettings::default(),
             window_state: None,
+            tabs_session: None,
         }
     }
 }
@@ -178,6 +181,20 @@ pub async fn get_setting(key: String) -> Result<Option<String>, String> {
     match key.as_str() {
         "theme_preference" => Ok(settings.theme.theme_mode),
         "theme_custom_colors" => Ok(settings.theme.custom_colors),
+        "tabs_session" => {
+            match &settings.tabs_session {
+                Some(tabs_array) => {
+                    let json_string = serde_json::to_string(tabs_array)
+                        .map_err(|e| format!("Failed to serialize tabs_session: {}", e))?;
+                    log::info!("Retrieved tabs_session setting: {} chars", json_string.len());
+                    Ok(Some(json_string))
+                }
+                None => {
+                    log::info!("No tabs_session setting found");
+                    Ok(None)
+                }
+            }
+        }
         _ => Ok(None)
     }
 }
@@ -193,6 +210,23 @@ pub async fn save_setting(key: String, value: String) -> Result<(), String> {
         }
         "theme_custom_colors" => {
             settings.theme.custom_colors = Some(value);
+        }
+        "tabs_session" => {
+            // Handle empty string as None to clear the setting
+            settings.tabs_session = if value.is_empty() {
+                None
+            } else {
+                // Parse the JSON string into a proper array
+                match serde_json::from_str::<Vec<serde_json::Value>>(&value) {
+                    Ok(tabs_array) => {
+                        log::info!("Updated tabs_session setting: {} tabs", tabs_array.len());
+                        Some(tabs_array)
+                    }
+                    Err(e) => {
+                        return Err(format!("Failed to parse tabs_session JSON: {}", e));
+                    }
+                }
+            };
         }
         _ => {
             return Err(format!("Unknown setting key: {}", key));

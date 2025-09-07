@@ -98,7 +98,7 @@ export const useTabState = (): UseTabStateReturn => {
       sessionId: sessionId, // Use provided sessionId, or undefined for legacy behavior
       initialProjectPath, // Set the project path for new sessions
       status: 'idle',
-      hasUnsavedChanges: false
+      hasUnsavedChanges: false,
     });
     
     logger.log('✨ Created new tab with ID:', newTabId);
@@ -119,7 +119,7 @@ export const useTabState = (): UseTabStateReturn => {
       agentRunId,
       status: 'running',
       hasUnsavedChanges: false,
-      icon: 'bot'
+      icon: 'bot',
     });
   }, [addTab, tabs, setActiveTab]);
 
@@ -129,7 +129,7 @@ export const useTabState = (): UseTabStateReturn => {
       type: 'projects',
       title: 'Projects',
       status: 'idle',
-      hasUnsavedChanges: false
+      hasUnsavedChanges: false,
     });
   }, [addTab]);
 
@@ -146,7 +146,7 @@ export const useTabState = (): UseTabStateReturn => {
       title: 'Dashboard',
       status: 'idle',
       hasUnsavedChanges: false,
-      icon: 'bar-chart'
+      icon: 'bar-chart',
     });
   }, [addTab, tabs, setActiveTab]);
 
@@ -163,7 +163,7 @@ export const useTabState = (): UseTabStateReturn => {
       title: 'MCP Servers',
       status: 'idle',
       hasUnsavedChanges: false,
-      icon: 'server'
+      icon: 'server',
     });
   }, [addTab, tabs, setActiveTab]);
 
@@ -180,7 +180,7 @@ export const useTabState = (): UseTabStateReturn => {
       title: 'Settings',
       status: 'idle',
       hasUnsavedChanges: false,
-      icon: 'settings'
+      icon: 'settings',
     });
   }, [addTab, tabs, setActiveTab]);
 
@@ -197,7 +197,7 @@ export const useTabState = (): UseTabStateReturn => {
       title: 'CLAUDE.md',
       status: 'idle',
       hasUnsavedChanges: false,
-      icon: 'file-text'
+      icon: 'file-text',
     });
   }, [addTab, tabs, setActiveTab]);
 
@@ -214,7 +214,7 @@ export const useTabState = (): UseTabStateReturn => {
       title: 'Personal Agents',
       status: 'idle',
       hasUnsavedChanges: false,
-      icon: 'robot'
+      icon: 'robot',
     });
   }, [addTab, tabs, setActiveTab]);
 
@@ -232,7 +232,7 @@ export const useTabState = (): UseTabStateReturn => {
       claudeFileId: filePath,
       status: 'idle',
       hasUnsavedChanges: false,
-      icon: 'file-text'
+      icon: 'file-text',
     });
   }, [addTab, tabs, setActiveTab]);
 
@@ -249,7 +249,7 @@ export const useTabState = (): UseTabStateReturn => {
       title: 'Create Agent',
       status: 'idle',
       hasUnsavedChanges: false,
-      icon: 'plus'
+      icon: 'plus',
     });
   }, [addTab, tabs, setActiveTab]);
 
@@ -266,25 +266,9 @@ export const useTabState = (): UseTabStateReturn => {
       title: 'Import Agent',
       status: 'idle',
       hasUnsavedChanges: false,
-      icon: 'import'
+      icon: 'import',
     });
   }, [addTab, tabs, setActiveTab]);
-
-  const createProjectTab = useCallback((project: any, projectName: string): string => {
-    return addTab({
-      type: 'project',
-      title: projectName,
-      status: 'idle',
-      hasUnsavedChanges: false,
-      restoreProjectState: {
-        selectedProject: project,
-        sessions: [],
-        activeTab: 'sessions'
-      }
-    });
-  }, [addTab]);
-
-
 
   const closeTab = useCallback(async (id: string, force: boolean = false): Promise<boolean> => {
     const tab = getTabById(id);
@@ -348,6 +332,20 @@ export const useTabState = (): UseTabStateReturn => {
   const canAddTab = useCallback((): boolean => {
     return tabs.length < 20; // MAX_TABS from context
   }, [tabs.length]);
+
+  const createProjectTab = useCallback((project: any, projectName: string): string => {
+    return addTab({
+      type: 'project',
+      title: projectName,
+      status: 'idle',
+      hasUnsavedChanges: false,
+      restoreProjectState: {
+        selectedProject: project,
+        sessions: [],
+        activeTab: 'sessions'
+      }
+    });
+  }, [addTab]);
 
   return {
     // State

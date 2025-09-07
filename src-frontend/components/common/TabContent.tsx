@@ -39,9 +39,8 @@ interface TabPanelProps {
 const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
   const { updateTab, tabs } = useTabState();
 
-  // Panel visibility - hide when not active
+  // Panel visibility - hide when not active  
   const panelVisibilityClass = isActive ? "" : "hidden";
-
 
   const renderContent = () => {
     switch (tab.type) {
@@ -53,7 +52,6 @@ const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
             <ProjectsTab tab={tab} isActive={isActive} />
           </NavigationProvider>
         );
-
 
       case "agents":
         return (
@@ -89,7 +87,6 @@ const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
             <ClaudeMdTab tab={tab} isActive={isActive} />
           </NavigationProvider>
         );
-
 
       case "chat":
         // LEGACY: Chat tab no longer needed - users can create sessions via Projects tab "Start New Session" button
@@ -134,7 +131,6 @@ const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
           </NavigationProvider>
         );
 
-
       default:
         return <div className="p-4">Unknown tab type: {tab.type}</div>;
     }
@@ -160,6 +156,7 @@ const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
     </motion.div>
   );
 };
+
 
 export const TabContent: React.FC = () => {
   const {

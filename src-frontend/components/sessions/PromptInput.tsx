@@ -102,6 +102,7 @@ const PromptInputInner = (
   const [selectedModel, setSelectedModel] = useState<"sonnet" | "opus">(defaultModel);
   const [selectedThinkingMode, setSelectedThinkingMode] = useState<ThinkingMode>("auto");
   const [isExpanded, setIsExpanded] = useState(false);
+  
 
   // Textarea refs
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -222,6 +223,7 @@ const PromptInputInner = (
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
     const newCursorPosition = e.target.selectionStart || 0;
+
 
     // Check for slash commands and @ mentions
     detectSlashCommand(newValue, newCursorPosition, prompt);

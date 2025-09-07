@@ -90,12 +90,16 @@ pub async fn get_project_sessions(project_id: String) -> Result<Vec<DecoratedSes
                 let home_dir = dirs::home_dir().ok_or("Cannot find home directory")?;
                 let native_file = home_dir.join(".claudio").join("projects").join(&project_id).join(format!("claude-{}.json", session_id));
                 
-                let live_session_type = if claudio_metadata.is_some() {
-                    Some(SESSION_TYPE_CLAUDIO.to_string())
+                // Determine session ID and type based on Claudio metadata
+                let (actual_session_id, live_session_type) = if let Some(ref claudio_session) = claudio_metadata {
+                    // For Claudio sessions, use the claudio_id as the session ID
+                    (claudio_session.claudio_id.clone(), Some(SESSION_TYPE_CLAUDIO.to_string()))
                 } else if native_file.exists() {
-                    Some(SESSION_TYPE_NATIVE.to_string())
+                    // For native sessions, use the native session_id
+                    (session_id.to_string(), Some(SESSION_TYPE_NATIVE.to_string()))
                 } else {
-                    None
+                    // Unknown session type
+                    (session_id.to_string(), None)
                 };
 
                 // Aggregate todo counts from agent executions
@@ -103,7 +107,7 @@ pub async fn get_project_sessions(project_id: String) -> Result<Vec<DecoratedSes
                 let todo_counts = aggregate_session_todos(&claude_dir, &session_id);
 
                 sessions.push(DecoratedSession {
-                    id: session_id.to_string(),
+                    id: actual_session_id,
                     project_id: project_id.clone(),
                     project_path: project_path.clone(),
                     created_at,
@@ -134,7 +138,7 @@ pub async fn get_project_sessions(project_id: String) -> Result<Vec<DecoratedSes
 /// Gets all todo files for a specific session
 #[command]
 pub async fn get_session_todos(session_id: String) -> Result<serde_json::Value, String> {
-    log::info!("🔍 Getting todos for session: {}", session_id);
+    // log::info!("🔍 Getting todos for session: {}", session_id);
     
     let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
     let todos_dir = claude_dir.join("todos");
@@ -211,8 +215,8 @@ pub async fn get_session_todos(session_id: String) -> Result<serde_json::Value, 
         "agent_count": agent_todos.len(),
     });
     
-    log::info!("📝 Returning todo data for session {}: agent_count={}, total_open={}, total_completed={}, total_todos={}", 
-               session_id, agent_todos.len(), total_counts.open, total_counts.completed, total_counts.total);
+    // log::info!("📝 Returning todo data for session {}: agent_count={}, total_open={}, total_completed={}, total_todos={}", 
+    //            session_id, agent_todos.len(), total_counts.open, total_counts.completed, total_counts.total);
     
     Ok(result)
 }

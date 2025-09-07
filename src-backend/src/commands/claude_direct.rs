@@ -242,8 +242,8 @@ pub async fn start_claude_direct_session(
 
     log::debug!("Executing: claude {}", claude_args.join(" "));
 
-    // Use Claudio's existing claude binary detection
-    let claude_binary_path = crate::claude_binary::find_claude_binary(&app)
+    // Use Claudio's existing claude binary detection (async version to avoid runtime conflict)
+    let claude_binary_path = crate::claude_binary::find_claude_binary_async(&app).await
         .map_err(|e| format!("Failed to find Claude binary: {}", e))?;
     
 
@@ -506,7 +506,6 @@ async fn update_session_claude_id(
     session.session_id = Some(new_session_id.clone());
     
     // Save updated metadata (now updates memory immediately!)
-    let first_history = session.session_history.first().cloned();
     update_claudio_session(claudio_id.clone(), project_path.clone(), session).await?;
     log::info!("✅ Updated Claudio session {} to track Claude session {}", claudio_id, new_session_id);
     

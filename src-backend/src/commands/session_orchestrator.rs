@@ -16,7 +16,7 @@ use tokio::sync::broadcast;
 // Session type constants - single source of truth
 pub const SESSION_TYPE_CLAUDIO: &str = "CLAUDIO";
 pub const SESSION_TYPE_NATIVE: &str = "NATIVE";
-pub const SESSION_TYPE_READONLY: &str = "READONLY";
+// pub const SESSION_TYPE_READONLY: &str = "READONLY"; // Currently unused
 
 /// Types of sessions that can be managed
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -663,6 +663,7 @@ impl SessionOrchestrator {
         {
             let mut handles_guard = self.handles.write().await;
             handles_guard.insert(handle_id.clone(), handle.clone());
+            log::info!("✅ Stored session handle in orchestrator: handle_id={}, total_handles={}", handle_id, handles_guard.len());
         }
 
         // Set up message streaming for this handle
@@ -744,11 +745,33 @@ impl SessionOrchestrator {
 
     /// Send prompt to a session handle
     pub async fn send_prompt_to_handle(&self, handle_id: String, prompt: String) -> Result<(), String> {
+        log::info!("🔍 Orchestrator: Looking for handle_id={}", handle_id);
+        
         let handles_guard = self.handles.read().await;
+        log::info!("🔍 Orchestrator: Got handles lock, total handles: {}", handles_guard.len());
+        
+        // Log all existing handle IDs for debugging
+        let existing_handles: Vec<String> = handles_guard.keys().cloned().collect();
+        log::info!("🔍 Existing handle IDs: {:?}", existing_handles);
+        
         let handle = handles_guard.get(&handle_id)
-            .ok_or_else(|| "Session handle not found".to_string())?;
+            .ok_or_else(|| {
+                log::error!("❌ Session handle not found: {} (wanted: {}, available: {:?})", 
+                           handle_id, handle_id, existing_handles);
+                "Session handle not found".to_string()
+            })?;
 
-        handle.send_prompt(prompt).await
+        log::info!("✅ Found handle, calling handle.send_prompt...");
+        match handle.send_prompt(prompt).await {
+            Ok(()) => {
+                log::info!("✅ handle.send_prompt succeeded");
+                Ok(())
+            },
+            Err(e) => {
+                log::error!("❌ handle.send_prompt failed: {}", e);
+                Err(e)
+            }
+        }
     }
 
     /// Get messages for a session handle
@@ -810,8 +833,30 @@ pub async fn get_session_handle(session_id: Option<String>, project_path: String
 /// Tauri command: Send prompt to session
 #[command]
 pub async fn send_session_prompt(handle_id: String, prompt: String) -> Result<(), String> {
-    let orchestrator = get_orchestrator()?;
-    orchestrator.send_prompt_to_handle(handle_id, prompt).await
+    log::info!("🚀 send_session_prompt called with handle_id={}, prompt_preview={}", handle_id, prompt.chars().take(50).collect::<String>());
+    
+    let orchestrator = match get_orchestrator() {
+        Ok(orch) => {
+            log::info!("✅ Got orchestrator successfully");
+            orch
+        },
+        Err(e) => {
+            log::error!("❌ Failed to get orchestrator: {}", e);
+            return Err(e);
+        }
+    };
+    
+    log::info!("📞 Calling orchestrator.send_prompt_to_handle...");
+    match orchestrator.send_prompt_to_handle(handle_id.clone(), prompt).await {
+        Ok(()) => {
+            log::info!("✅ Successfully sent prompt to handle: {}", handle_id);
+            Ok(())
+        },
+        Err(e) => {
+            log::error!("❌ Failed to send prompt to handle {}: {}", handle_id, e);
+            Err(e)
+        }
+    }
 }
 
 /// Tauri command: Get session messages
