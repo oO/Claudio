@@ -170,7 +170,6 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
           }
           totalTokens={totalTokens}
           hasMessages={displayableMessages.length > 0}
-          copyPopoverOpen={false}
           onBack={onBack}
           onExportAsJson={() =>
             logger.info("Export as JSON (not implemented yet)")
@@ -179,7 +178,6 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
             logger.info("Export as Markdown (not implemented yet)")
           }
           isReadOnly={isReadOnly}
-          setCopyPopoverOpen={() => {}}
           displayableMessageCount={displayableMessages.length}
           collapsedMessageUuids={collapsedMessageUuids}
           onNavigateToMessage={navigation.navigateToMessage}

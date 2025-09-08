@@ -8,6 +8,8 @@ interface TodoContextValue {
   todosBySession: Map<string, SessionTodoData>;
   /** Get todo data for a specific session */
   getTodoData: (sessionId: string) => SessionTodoData | null;
+  /** Load fresh todo data for a specific session */
+  loadSessionTodos: (sessionId: string) => Promise<void>;
   /** Check if a session has any todos */
   hasTodos: (sessionId: string) => boolean;
   /** Check if a session has active (open) todos */
@@ -43,10 +45,15 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
 
     const setupListener = async () => {
       try {
-        logger.info('🔍 Setting up todo event listener');
+        logger.info('🔍 Setting up todo event listener...');
         unlisten = await listen<any>('todo-changed', (event) => {
           const eventData = event.payload;
-          logger.info('📝 Received todo event:', eventData);
+          logger.info('📝 RECEIVED TODO EVENT:', {
+            eventType: eventData?.type,
+            sessionId: eventData?.data?.session_id,
+            agentId: eventData?.data?.agent_id,
+            fullEvent: eventData
+          });
 
           // Handle todo-specific events
           if (eventData.type === 'TodoCreated' || eventData.type === 'TodoModified') {
@@ -163,8 +170,29 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
         // Also start the todo watcher on the backend
         try {
           const { invoke } = await import('@tauri-apps/api/core');
+          logger.info('🚀 Starting todo watcher on backend...');
           await invoke('start_todo_watching');
-          logger.info('✅ Todo watcher started on backend');
+          logger.info('✅ Todo watcher started successfully on backend');
+          
+          // Check watcher status to verify it's running
+          const isWatching = await invoke('get_todo_watching_status');
+          logger.info('📊 Todo watcher status:', { isWatching });
+          
+          // Test: Wait a bit then trigger a test todo event
+          setTimeout(async () => {
+            logger.info('🧪 Testing TodoWrite event trigger...');
+            // This should trigger the file watcher if it's working
+            try {
+              const { invoke } = await import('@tauri-apps/api/core');
+              await invoke('claude_task_tool', {
+                prompt: 'Test todo for debugging event system',
+                todos: [{ content: 'Debug event system test', status: 'pending' }]
+              });
+              logger.info('🧪 Test TodoWrite executed');
+            } catch (e) {
+              logger.warn('🧪 Test TodoWrite failed (expected if not implemented):', e);
+            }
+          }, 2000);
         } catch (error) {
           logger.error('❌ Failed to start todo watcher:', error);
         }
@@ -220,9 +248,23 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
     });
   };
 
+  const loadSessionTodos = async (sessionId: string): Promise<void> => {
+    try {
+      logger.info(`🔄 Loading fresh todos for session: ${sessionId}`);
+      const { invoke } = await import('@tauri-apps/api/core');
+      const todoData = await invoke<SessionTodoData>('get_session_todos', { sessionId });
+      
+      logger.info(`✅ Loaded ${todoData.total_counts.total} todos for session ${sessionId}`);
+      setSessionTodos(sessionId, todoData);
+    } catch (error) {
+      logger.error(`❌ Failed to load todos for session ${sessionId}:`, error);
+    }
+  };
+
   const value: TodoContextValue = {
     todosBySession,
     getTodoData,
+    loadSessionTodos,
     hasTodos,
     hasActiveTodos,
     hasInProgressTodos,

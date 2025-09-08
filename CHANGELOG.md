@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.4.29] - 2025-09-08
+- Implemented sophisticated 3-state cycling todo button in InProgressTodoWidget with progressive disclosure UI pattern
+- Added TodoContext.loadSessionTodos() function to fetch fresh todo data on component mount, fixing stale cache issues
+- Enhanced TodoContext with initial data loading instead of relying solely on events for better reliability
+- Implemented 3-state button cycle: compact (TodoList icon + "Todo" text + count badge), overview (scrolling todo with progress bar), overview-list (overview + dropdown)
+- Fixed React hooks order violation by moving all hooks before conditional returns for proper component lifecycle
+- Added comprehensive event handling for click cycling and ESC key navigation
+- Improved tab persistence system with streamlined hook architecture and better state management
+- Enhanced component mount behavior to ensure fresh todo data display on initial render
+
 ## [0.4.28] - 2025-09-07
 - Enhanced InProgressTodoWidget with improved two-flex layout structure for better visual hierarchy
 - Added ListTodo icon and "Todo" label for clear component identification

@@ -199,9 +199,9 @@ export const WelcomeScreen: React.FC = () => {
       try {
         console.log('🔍 ATTEMPTING TAB RESTORE...');
         const savedTabs = await loadTabs();
-        console.log('📂 LOADED SAVED TABS:', savedTabs.length, savedTabs);
+        console.log('📂 LOADED SAVED TABS:', savedTabs.tabs.length, savedTabs);
         
-        if (savedTabs.length > 0 && !restoreBlocked) {
+        if (savedTabs.tabs.length > 0 && !restoreBlocked) {
           console.log("🔄 RESTORING TABS SILENTLY:", savedTabs);
           await restoreTabs(savedTabs);
           console.log("✅ TABS RESTORED SUCCESSFULLY");
@@ -209,7 +209,7 @@ export const WelcomeScreen: React.FC = () => {
           await clearSavedTabs();
           console.log("🗑️ CLEARED SAVED TABS");
         } else {
-          console.log("❌ NO TABS TO RESTORE OR RESTORE BLOCKED:", { savedTabsCount: savedTabs.length, restoreBlocked });
+          console.log("❌ NO TABS TO RESTORE OR RESTORE BLOCKED:", { savedTabsCount: savedTabs.tabs.length, restoreBlocked });
         }
       } catch (error) {
         console.error("💥 FAILED TO AUTO-RESTORE TABS:", error);

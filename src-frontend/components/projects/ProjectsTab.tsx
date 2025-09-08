@@ -158,17 +158,33 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
           if (project) {
             setSessionsLoading(true);
             try {
+              logger.info('🔄 ATTEMPTING TO LOAD SESSIONS FOR RESTORED PROJECT:', {
+                projectId: project.id,
+                projectPath: project.path,
+                projectName: project.name,
+                fullProject: project
+              });
+              
               const sessions = await api.getProjectSessions(project.id);
               setSessions(sessions);
+              
+              logger.info('✅ SESSIONS LOADED FOR RESTORED PROJECT:', {
+                projectId: project.id,
+                sessionCount: sessions.length,
+                sessions: sessions.map(s => ({ id: s.id, project_path: s.project_path }))
+              });
             } catch (error) {
-              logger.error("Failed to load sessions for restored project:", error);
+              logger.error("❌ FAILED TO LOAD SESSIONS FOR RESTORED PROJECT:", {
+                projectId: project.id,
+                error,
+                errorMessage: error instanceof Error ? error.message : String(error)
+              });
             } finally {
               setSessionsLoading(false);
             }
           }
           
-          // Clear the restore state after using it
-          updateTab(tab.id, { restoreProjectState: undefined });
+          // Keep the restore state for future tab persistence - don't clear it!
         } else if (tab.type === "projects") {
           // Only load project list if we're in projects mode (not single project mode)
           loadProjects();
@@ -178,6 +194,72 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
     
     loadTabContent();
   }, [isActive, tab.type, tab.restoreProjectState]);
+
+  // Handle restoration of project-session tabs (when rehydrated from persistence)
+  useEffect(() => {
+    const restoreSessionTab = async () => {
+      // Only handle project-session tabs that have a sessionId but no viewingSession set yet
+      if (isActive && tab.type === 'project-session' && tab.sessionId && !viewingSession) {
+        logger.info('🔄 RESTORING PROJECT-SESSION TAB:', { 
+          sessionId: tab.sessionId, 
+          initialProjectPath: tab.initialProjectPath 
+        });
+        
+        try {
+          // Extract project info from initialProjectPath
+          if (tab.initialProjectPath) {
+            // Find the project by path to get the full project object
+            const projectList = await api.listProjects();
+            const project = projectList.find(p => p.path === tab.initialProjectPath);
+            
+            logger.info('🔍 PROJECT SEARCH RESULT:', { 
+              searchPath: tab.initialProjectPath,
+              foundProject: project,
+              availableProjects: projectList.map(p => ({ id: p.id, path: p.path }))
+            });
+            
+            if (project && project.id) {
+              // Get session data using the sessionId
+              const sessions = await api.getProjectSessions(project.id);
+              const session = sessions.find(s => s.id === tab.sessionId);
+              
+              if (session) {
+                logger.info('✅ SESSION TAB RESTORATION SUCCESS:', { 
+                  sessionId: tab.sessionId, 
+                  projectId: project.id 
+                });
+                
+                // Set viewingSession to render the SessionDetail
+                setViewingSession({
+                  session: session,
+                  projectPath: tab.initialProjectPath,
+                  backState: {
+                    selectedProject: project,   // Set the project for back navigation
+                    sessions: sessions,         // Set all sessions for back navigation
+                    activeTab: "sessions"       // Return to sessions tab when going back
+                  }
+                });
+              } else {
+                logger.warn('❌ SESSION NOT FOUND during restoration:', { 
+                  sessionId: tab.sessionId, 
+                  availableSessions: sessions.map(s => s.id) 
+                });
+              }
+            } else {
+              logger.warn('❌ PROJECT NOT FOUND during restoration:', { 
+                initialProjectPath: tab.initialProjectPath,
+                availableProjects: projectList.map(p => p.path)
+              });
+            }
+          }
+        } catch (error) {
+          logger.error('❌ FAILED TO RESTORE SESSION TAB:', error);
+        }
+      }
+    };
+    
+    restoreSessionTab();
+  }, [isActive, tab.type, tab.sessionId, tab.initialProjectPath, viewingSession]);
 
   const loadProjects = async () => {
     try {

@@ -30,6 +30,11 @@ export function cn(...inputs: ClassValue[]) {
  * prettifyProjectName("myAwesomeProject") // "My Awesome Project"
  */
 export function prettifyProjectName(path: string): string {
+  // Handle null/undefined paths gracefully
+  if (!path || typeof path !== 'string') {
+    return 'Unknown Project';
+  }
+  
   // Extract the last part of the path (directory name)
   const projectName = path.split("/").filter(Boolean).pop() || path;
   
@@ -74,5 +79,6 @@ export function prettifyProjectName(path: string): string {
     })
     .join(" ");
 }
+
 
  

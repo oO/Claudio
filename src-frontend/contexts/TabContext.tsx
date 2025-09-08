@@ -1,7 +1,6 @@
 import React, { createContext, useState, useContext, useCallback, useEffect } from 'react';
 import type { NavigationStack } from './NavigationContext';
 import { useTabPersistence, type PersistedTabSession } from '@/hooks/useTabPersistence';
-import { useTabDehydration } from '@/hooks/useTabDehydration';
 import { useSettingsState } from '@/hooks/useSettingsState';
 import { logger } from '@/lib/logger';
 
@@ -84,7 +83,6 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activePanelIndex, setActivePanelIndex] = useState<number>(0);
   const [windowWidth, setWindowWidth] = useState<number>(window.innerWidth);
   const { saveTabs, loadTabs } = useTabPersistence();
-  const { rehydrateTabs } = useTabDehydration();
   const { settings } = useSettingsState();
 
   // Track window width changes for panel calculations
@@ -113,23 +111,41 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const sessionData = await loadTabs();
         
         if (sessionData.tabs.length > 0) {
-          logger.info('🔄 RESTORING TABS ON STARTUP:', sessionData);
+          logger.info('🔄 RESTORING TABS (KISS approach):', sessionData);
           
-          try {
-            const restoredTabs = rehydrateTabs(sessionData.tabs);
-            logger.info('🔄 REHYDRATION RESULT:', { restoredTabsLength: restoredTabs.length, restoredTabs });
+          // Simple restoration - just recreate tabs from saved data
+          const restoredTabs: Tab[] = sessionData.tabs.map((savedTab, index) => ({
+            // Generate new runtime fields
+            id: `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            order: index,
+            status: 'idle' as const,
+            hasUnsavedChanges: false,
+            createdAt: new Date(),
+            updatedAt: new Date(),
             
-            if (restoredTabs.length > 0) {
-              setTabs(restoredTabs);
-              setPanelBreaks(sessionData.panelBreaks || []);
-              setActivePanelIndex(sessionData.activePanelIndex || 0);
-              setActiveTabId(restoredTabs[0].id);
-              logger.info('✅ STARTUP RESTORATION COMPLETE:', { tabCount: restoredTabs.length });
-            } else {
-              logger.error('❌ REHYDRATION RETURNED NO TABS');
-            }
-          } catch (rehydrationError) {
-            logger.error('❌ REHYDRATION FAILED:', rehydrationError);
+            // Restore all the saved fields directly (complete creation payload)
+            type: savedTab.type!,
+            title: savedTab.title!,
+            sessionId: savedTab.sessionId,
+            displayId: savedTab.displayId,
+            agentRunId: savedTab.agentRunId,
+            claudeFileId: savedTab.claudeFileId,
+            initialProjectPath: savedTab.initialProjectPath,
+            restoreProjectState: savedTab.restoreProjectState,
+            sessionData: savedTab.sessionData,       // ← RESTORE SESSION DATA
+            agentData: savedTab.agentData,           // ← RESTORE AGENT DATA  
+            previousState: savedTab.previousState,   // ← RESTORE PREVIOUS STATE
+          }));
+          
+          if (restoredTabs.length > 0) {
+            setTabs(restoredTabs);
+            setPanelBreaks(sessionData.panelBreaks || []);
+            setActivePanelIndex(sessionData.activePanelIndex || 0);
+            setActiveTabId(restoredTabs[0].id);
+            logger.info('✅ SIMPLE RESTORATION COMPLETE:', { 
+              tabCount: restoredTabs.length,
+              types: restoredTabs.map(t => t.type)
+            });
           }
         } else {
           logger.info('📭 NO SAVED TABS TO RESTORE ON STARTUP');
@@ -164,40 +180,59 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   //   return () => clearTimeout(timer);
   // }, []);
 
-  // Auto-save tabs and panel state to backend storage when they change (immediate + aggressive)
-  useEffect(() => {
-    const saveTabsImmediately = async () => {
-      if (tabs.length > 0) {
-        logger.debug('🔥 SAVING TABS:', tabs.length, tabs.map(t => ({ type: t.type, title: t.title })));
-        logger.debug('🔥 SAVING PANEL STATE:', { panelBreaks, activePanelIndex });
-        await saveTabs(tabs, panelBreaks, activePanelIndex);
-        logger.debug('✅ TABS AND PANEL STATE SAVED SUCCESSFULLY');
-      } else {
-        logger.debug('📭 NO TABS TO SAVE');
-      }
-    };
-
-    // Save immediately on every change
-    saveTabsImmediately().catch(err => {
-      logger.error('❌ FAILED TO SAVE TABS:', err);
-    });
-  }, [tabs, panelBreaks, activePanelIndex, saveTabs]);
+  // KISS: No immediate saves - only save on shutdown!
 
   // Save tabs and panel state on component unmount (app closing) and window unload
   useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (tabs.length > 0) {
-        saveTabs(tabs, panelBreaks, activePanelIndex);
-      }
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      logger.info('🛑 APP RECEIVED BEFOREUNLOAD EVENT - saving tabs...', {
+        tabCount: tabs.length,
+        reason: 'beforeunload'
+      });
+      // Always save, even if tabs.length is 0 (empty state is valid)
+      saveTabs(tabs, panelBreaks, activePanelIndex);
     };
 
+    logger.info('🎧 Setting up quit/shutdown listeners...');
     window.addEventListener('beforeunload', handleBeforeUnload);
     
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      if (tabs.length > 0) {
-        saveTabs(tabs, panelBreaks, activePanelIndex);
+    // Also listen for Tauri app close events (more reliable for Tauri apps)
+    const setupTauriListeners = async () => {
+      try {
+        // Import Tauri event system
+        const { listen } = await import('@tauri-apps/api/event');
+        
+        // Listen for Tauri app close event  
+        const unlisten = await listen('tauri://close-requested', () => {
+          logger.info('🛑 APP RECEIVED TAURI CLOSE EVENT - saving tabs...', {
+            tabCount: tabs.length,
+            reason: 'tauri-close'
+          });
+          saveTabs(tabs, panelBreaks, activePanelIndex);
+        });
+        
+        logger.info('🎧 Tauri close listener set up successfully');
+        return unlisten;
+      } catch (error) {
+        logger.warn('⚠️ Failed to set up Tauri listeners (might be in dev mode):', error);
+        return () => {}; // noop
       }
+    };
+    
+    let tauriUnlisten: (() => void) | null = null;
+    setupTauriListeners().then(unlisten => {
+      tauriUnlisten = unlisten;
+    });
+    
+    return () => {
+      logger.info('🛑 APP COMPONENT UNMOUNTING - saving tabs...', {
+        tabCount: tabs.length,
+        reason: 'component-unmount'
+      });
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      if (tauriUnlisten) tauriUnlisten();
+      // Always save on unmount, even if tabs.length is 0
+      saveTabs(tabs, panelBreaks, activePanelIndex);
     };
   }, [tabs, panelBreaks, activePanelIndex, saveTabs]);
 
@@ -479,28 +514,45 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const restoreTabs = useCallback(async (sessionData: PersistedTabSession): Promise<void> => {
     if (sessionData.tabs.length === 0) return;
 
-    // Use rehydration system to convert persisted data back to live tabs
-    const restoredTabs: Tab[] = rehydrateTabs(sessionData.tabs);
-
-    // Limit to MAX_TABS
-    const tabsToRestore = restoredTabs.slice(0, MAX_TABS);
+    // Simple restoration - same as startup restoration
+    const restoredTabs: Tab[] = sessionData.tabs.slice(0, MAX_TABS).map((savedTab, index) => ({
+      // Generate new runtime fields
+      id: `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      order: index,
+      status: 'idle' as const,
+      hasUnsavedChanges: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      
+      // Restore all the saved fields directly (complete creation payload)
+      type: savedTab.type!,
+      title: savedTab.title!,
+      sessionId: savedTab.sessionId,
+      displayId: savedTab.displayId,
+      agentRunId: savedTab.agentRunId,
+      claudeFileId: savedTab.claudeFileId,
+      initialProjectPath: savedTab.initialProjectPath,
+      restoreProjectState: savedTab.restoreProjectState,
+      sessionData: savedTab.sessionData,       // ← RESTORE SESSION DATA
+      agentData: savedTab.agentData,           // ← RESTORE AGENT DATA  
+      previousState: savedTab.previousState,   // ← RESTORE PREVIOUS STATE
+    }));
 
     // Restore tabs and panel state
-    setTabs(tabsToRestore);
+    setTabs(restoredTabs);
     setPanelBreaks(sessionData.panelBreaks || []);
     setActivePanelIndex(sessionData.activePanelIndex || 0);
     
     // Set the first restored tab as active
-    if (tabsToRestore.length > 0) {
-      setActiveTabId(tabsToRestore[0].id);
+    if (restoredTabs.length > 0) {
+      setActiveTabId(restoredTabs[0].id);
     }
 
-    logger.info('✨ Restored tab session:', { 
-      tabCount: tabsToRestore.length,
-      panelCount: (sessionData.panelBreaks?.length || 0) + 1,
-      activePanelIndex: sessionData.activePanelIndex || 0
+    logger.info('✨ Simple tab restoration complete:', { 
+      tabCount: restoredTabs.length,
+      types: restoredTabs.map(t => t.type)
     });
-  }, [rehydrateTabs]);
+  }, []);
 
   const value: TabContextType = {
     tabs,
