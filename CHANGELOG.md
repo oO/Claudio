@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.31] - 2025-01-08
+
+### Fixed
+- Fixed navigation components (UserMessageNavigation and InProgressTodoWidget) to always show but disable when empty instead of disappearing
+- Improved UI consistency by maintaining consistent layout and clear state indication
+- Removed redundant cursor styling on disabled buttons
+
 ## [0.4.30] - 2025-09-08
 - Removed debug log statement from SessionDetail.tsx that was spamming console with mount messages
 - Fixed ESLint exhaustive-deps warning in SessionHeader.tsx with proper dependency management

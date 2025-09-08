@@ -73,15 +73,9 @@ export const InProgressTodoWidget: React.FC<InProgressTodoWidgetProps> = ({
     return () => document.removeEventListener("keydown", handleEscape);
   }, []);
 
-  // Don't render if there are no todos
-  if (todos.length === 0) {
-    return null;
-  }
-
-  const currentTodo = todos[currentView];
-  if (!currentTodo) return null;
-
-  const displayText = currentTodo.activeForm || currentTodo.content;
+  const hasTodos = todos.length > 0;
+  const currentTodo = hasTodos ? todos[currentView] : null;
+  const displayText = currentTodo ? (currentTodo.activeForm || currentTodo.content) : "";
 
   // Calculate todo counts
   const completedCount = todos.filter(t => t.status === "completed").length;
@@ -89,6 +83,8 @@ export const InProgressTodoWidget: React.FC<InProgressTodoWidgetProps> = ({
 
   // Handle cycling through display modes
   const handleClick = () => {
+    if (!hasTodos) return; // Don't cycle if no todos
+    
     switch (displayMode) {
       case "compact":
         setDisplayMode("overview");
@@ -107,8 +103,12 @@ export const InProgressTodoWidget: React.FC<InProgressTodoWidgetProps> = ({
       <button
         ref={triggerRef}
         onClick={handleClick}
+        disabled={!hasTodos}
         className={cn(
-          "flex items-center gap-2 p-1.5 rounded-md bg-card hover:bg-accent cursor-pointer transition-colors text-xs",
+          "flex items-center gap-2 p-1.5 rounded-md bg-card transition-colors text-xs",
+          hasTodos 
+            ? "hover:bg-accent" 
+            : "opacity-60",
           className,
         )}
       >
@@ -116,6 +116,26 @@ export const InProgressTodoWidget: React.FC<InProgressTodoWidgetProps> = ({
         <span className="text-xs font-medium text-secondary-foreground">Todo</span>
         <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0.5">
           {completedCount}/{totalCount}
+        </Badge>
+      </button>
+    );
+  }
+
+  // If no todos, fallback to compact mode (shouldn't happen due to early guard, but just in case)
+  if (!hasTodos) {
+    return (
+      <button
+        ref={triggerRef}
+        disabled
+        className={cn(
+          "flex items-center gap-2 p-1.5 rounded-md bg-card transition-colors text-xs opacity-60",
+          className,
+        )}
+      >
+        <ListTodo className="h-4 w-4 text-secondary-foreground" />
+        <span className="text-xs font-medium text-secondary-foreground">Todo</span>
+        <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0.5">
+          0/0
         </Badge>
       </button>
     );
@@ -145,13 +165,13 @@ export const InProgressTodoWidget: React.FC<InProgressTodoWidgetProps> = ({
             {/* Current todo with status */}
             <div className="flex items-center gap-1.5">
               {/* Status icon */}
-              {currentTodo.status === "completed" && (
+              {currentTodo?.status === "completed" && (
                 <CheckCircle2 className="h-4 w-4 text-success" />
               )}
-              {currentTodo.status === "in_progress" && (
+              {currentTodo?.status === "in_progress" && (
                 <Clock className="h-4 w-4 text-info" />
               )}
-              {currentTodo.status === "pending" && (
+              {currentTodo?.status === "pending" && (
                 <Circle className="h-4 w-4 text-muted-foreground" />
               )}
 

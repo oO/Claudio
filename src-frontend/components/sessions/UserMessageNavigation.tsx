@@ -30,17 +30,14 @@ export const UserMessageNavigation: React.FC<UserMessageNavigationProps> = ({
     onNavigate(messageIndex);
   };
 
-  // Don't show if there are no user messages
-  if (userMessages.length === 0) {
-    return null;
-  }
+  const hasMessages = userMessages.length > 0;
 
   return (
     <div className="relative">
       <DebugLabel label="UserMessageNavigation" />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="secondary" size="sm">
+          <Button variant="secondary" size="sm" disabled={!hasMessages}>
             <MessageSquare className="h-3 w-3" />
             <span>User</span>
             <div className="flex items-center justify-center w-7 h-5 bg-card-hover text-muted-foreground rounded-full text-xs font-medium">
@@ -48,20 +45,22 @@ export const UserMessageNavigation: React.FC<UserMessageNavigationProps> = ({
             </div>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="start"
-          className="w-100 max-h-96 overflow-y-auto backdrop-blur-sm"
-        >
-          {userMessages.map((userMsg) => (
-            <DropdownMenuItem
-              key={userMsg.index}
-              onClick={() => handleNavigate(userMsg.index)}
-              className="p-1 px-3 text-sm"
-            >
-              <div className="w-full truncate">{userMsg.content}</div>
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
+        {hasMessages && (
+          <DropdownMenuContent
+            align="start"
+            className="w-100 max-h-96 overflow-y-auto backdrop-blur-sm"
+          >
+            {userMessages.map((userMsg) => (
+              <DropdownMenuItem
+                key={userMsg.index}
+                onClick={() => handleNavigate(userMsg.index)}
+                className="p-1 px-3 text-sm"
+              >
+                <div className="w-full truncate">{userMsg.content}</div>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        )}
       </DropdownMenu>
     </div>
   );

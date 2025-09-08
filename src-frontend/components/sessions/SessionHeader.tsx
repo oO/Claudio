@@ -295,15 +295,13 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
       </div>
 
       {/* Control bar with navigation, todos, and actions */}
-      <div className="flex relative items-center justify-between mt-3 pt-2 border-t border-border/50">
+      <div className="flex relative items-center justify-between mt-3 pt-2">
         <DebugLabel label="ControlBar" />
         {/* Left section: User navigation */}
         <div className="flex items-center gap-2">
-          {hasMessages && (
-            <UserMessageNavigation
-              onNavigate={onNavigateToMessage || (() => {})}
-            />
-          )}
+          <UserMessageNavigation
+            onNavigate={onNavigateToMessage || (() => {})}
+          />
           <InProgressTodoWidget
             todos={todoData?.agent_todos.flatMap((agent) => agent.todos) || []}
           />
