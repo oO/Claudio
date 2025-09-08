@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.4.30] - 2025-09-08
+- Removed debug log statement from SessionDetail.tsx that was spamming console with mount messages
+- Fixed ESLint exhaustive-deps warning in SessionHeader.tsx with proper dependency management
+- Enhanced TodoContext to trigger fresh todo loads after events instead of just count updates
+
 ## [0.4.29] - 2025-09-08
 - Implemented sophisticated 3-state cycling todo button in InProgressTodoWidget with progressive disclosure UI pattern
 - Added TodoContext.loadSessionTodos() function to fetch fresh todo data on component mount, fixing stale cache issues

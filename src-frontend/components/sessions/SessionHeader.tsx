@@ -132,34 +132,13 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
   }, [isStreaming, liveSessionType, sessionId, hasMessages]);
 
   // Debug: Log TodoContext data instead of sessionData
-  React.useEffect(() => {
-    if (sessionId) {
-      const widgetTodos = todoData?.agent_todos.flatMap((agent) => agent.todos) || [];
-      logger.log("🎯 SessionHeader TodoContext debug:", {
-        sessionId: sessionId?.substring(0, 8),
-        hasTodoData: !!todoData,
-        todoData: todoData,
-        totalCounts: todoData?.total_counts,
-        agentCount: todoData?.agent_todos?.length || 0,
-        widgetTodosLength: widgetTodos.length,
-        widgetTodos: widgetTodos,
-        inProgressTodos:
-          todoData?.agent_todos?.flatMap(
-            (agent) =>
-              agent.todos?.filter((todo) => todo.status === "in_progress") ||
-              [],
-          ).length || 0,
-      });
-    }
-  }, [sessionId, todoData]);
 
   // Load fresh todo data when sessionId changes
   React.useEffect(() => {
     if (sessionId) {
-      logger.info(`🔄 SessionHeader: Loading todos for session ${sessionId}`);
       loadSessionTodos(sessionId);
     }
-  }, [sessionId, loadSessionTodos]);
+  }, [sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCopySessionInfo = async () => {
     // Copy session metadata JSON structure

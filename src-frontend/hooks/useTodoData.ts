@@ -19,10 +19,8 @@ export function useTodoData(sessionId: string | null) {
     setError(null);
     
     try {
-      logger.debug('Fetching todo data for session:', id);
       const data = await api.getSessionTodos(id);
       setTodoData(data);
-      logger.debug('Todo data fetched successfully:', data);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch todo data';
       logger.error('Failed to fetch todo data:', err);

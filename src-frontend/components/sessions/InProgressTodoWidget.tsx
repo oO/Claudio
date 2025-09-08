@@ -30,14 +30,6 @@ export const InProgressTodoWidget: React.FC<InProgressTodoWidgetProps> = ({
   const popoverRef = React.useRef<HTMLDivElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
 
-  // Debug logging
-  React.useEffect(() => {
-    logger.log("📝 InProgressTodoWidget received todos:", {
-      todosCount: todos.length,
-      todos: todos,
-      hasInProgress: todos.some(t => t.status === "in_progress"),
-    });
-  }, [todos]);
 
   // Cycle through todos every 3 seconds (only in overview modes)
   React.useEffect(() => {

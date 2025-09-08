@@ -44,15 +44,6 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
   isActive = true,
   onSetTabActivity,
 }) => {
-  // DEBUG: Test if logging works at all
-  logger.info(
-    "🚀 SessionDetail mounting with session:",
-    session?.id,
-    "projectPath:",
-    projectPath,
-    "session object structure:",
-    session
-  );
 
   // Native Claude session thinking state hook
   const { isSessionThinking, queryInitialSessionState } = useNativeClaudeSessions();

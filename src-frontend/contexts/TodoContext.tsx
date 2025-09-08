@@ -34,10 +34,6 @@ interface TodoProviderProps {
 export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
   const [todosBySession, setTodosBySession] = useState<Map<string, SessionTodoData>>(new Map());
 
-  // Debug: Log todo map size changes
-  React.useEffect(() => {
-    logger.debug(`📊 Todo map now has ${todosBySession.size} sessions with todos:`, Array.from(todosBySession.keys()));
-  }, [todosBySession]);
 
   // Set up event listener for todo changes
   useEffect(() => {
@@ -45,21 +41,16 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
 
     const setupListener = async () => {
       try {
-        logger.info('🔍 Setting up todo event listener...');
         unlisten = await listen<any>('todo-changed', (event) => {
           const eventData = event.payload;
-          logger.info('📝 RECEIVED TODO EVENT:', {
-            eventType: eventData?.type,
-            sessionId: eventData?.data?.session_id,
-            agentId: eventData?.data?.agent_id,
-            fullEvent: eventData
-          });
 
           // Handle todo-specific events
           if (eventData.type === 'TodoCreated' || eventData.type === 'TodoModified') {
             const { session_id, agent_id, todo_counts } = eventData.data;
             
-            logger.debug(`Todo ${eventData.type.toLowerCase()} for session ${session_id}, agent ${agent_id}`);
+            // Trigger fresh load to get complete todo data instead of just updating counts
+            loadSessionTodos(session_id);
+            return; // Skip the count-only update below
             
             // Update local todo state
             setTodosBySession(prev => {
@@ -124,7 +115,6 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
           } else if (eventData.type === 'TodoRemoved') {
             const { session_id, agent_id } = eventData.data;
             
-            logger.debug(`Todo removed for session ${session_id}, agent ${agent_id}`);
             
             setTodosBySession(prev => {
               const newMap = new Map(prev);
@@ -165,22 +155,17 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
           }
         });
         
-        logger.info('✅ Todo event listener set up successfully');
         
         // Also start the todo watcher on the backend
         try {
           const { invoke } = await import('@tauri-apps/api/core');
-          logger.info('🚀 Starting todo watcher on backend...');
           await invoke('start_todo_watching');
-          logger.info('✅ Todo watcher started successfully on backend');
           
           // Check watcher status to verify it's running
-          const isWatching = await invoke('get_todo_watching_status');
-          logger.info('📊 Todo watcher status:', { isWatching });
+          await invoke('get_todo_watching_status');
           
           // Test: Wait a bit then trigger a test todo event
           setTimeout(async () => {
-            logger.info('🧪 Testing TodoWrite event trigger...');
             // This should trigger the file watcher if it's working
             try {
               const { invoke } = await import('@tauri-apps/api/core');
@@ -188,7 +173,6 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
                 prompt: 'Test todo for debugging event system',
                 todos: [{ content: 'Debug event system test', status: 'pending' }]
               });
-              logger.info('🧪 Test TodoWrite executed');
             } catch (e) {
               logger.warn('🧪 Test TodoWrite failed (expected if not implemented):', e);
             }
@@ -206,7 +190,6 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
     return () => {
       if (unlisten) {
         unlisten();
-        logger.debug('Todo event listener cleaned up');
       }
     };
   }, []);
@@ -214,7 +197,6 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
   const getTodoData = (sessionId: string): SessionTodoData | null => {
     const data = todosBySession.get(sessionId) || null;
     if (data) {
-      logger.debug(`📋 Getting todo data for session ${sessionId}:`, data);
     }
     return data;
   };
@@ -250,11 +232,9 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
 
   const loadSessionTodos = async (sessionId: string): Promise<void> => {
     try {
-      logger.info(`🔄 Loading fresh todos for session: ${sessionId}`);
       const { invoke } = await import('@tauri-apps/api/core');
       const todoData = await invoke<SessionTodoData>('get_session_todos', { sessionId });
       
-      logger.info(`✅ Loaded ${todoData.total_counts.total} todos for session ${sessionId}`);
       setSessionTodos(sessionId, todoData);
     } catch (error) {
       logger.error(`❌ Failed to load todos for session ${sessionId}:`, error);

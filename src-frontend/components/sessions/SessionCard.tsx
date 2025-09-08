@@ -53,21 +53,16 @@ export const SessionCard: React.FC<SessionCardProps> = ({
       }
       
       try {
-        logger.debug(`🔍 Fetching todos for session ${session.id}`);
         const { invoke } = await import('@tauri-apps/api/core');
         const data = await invoke<SessionTodoData>('get_session_todos', { sessionId: session.id });
         
-        logger.debug(`📝 Backend returned todo data for ${session.id}:`, data);
         
         if (data && data.total_counts && data.total_counts.total > 0) {
-          logger.debug(`📋 Found todos for session ${session.id}: ${data.total_counts.completed}/${data.total_counts.total}`);
           setTodoData(data);
           setSessionTodos(session.id, data);
         } else {
-          logger.debug(`📭 Session ${session.id} has no todos (total: ${data?.total_counts?.total || 0})`);
         }
       } catch (error) {
-        logger.debug(`❌ Error fetching todos for session ${session.id}:`, error);
       }
     };
     
@@ -96,11 +91,9 @@ export const SessionCard: React.FC<SessionCardProps> = ({
           className,
         )}
         onClick={(event) => {
-          logger.log('🎯 SessionCard clicked for session:', session.id, 'metaKey:', event.metaKey);
           
           // Handle Cmd+click (Mac) or Ctrl+click (Windows/Linux) directly
           if (event.metaKey || event.ctrlKey) {
-            logger.log('🆕 Opening session in new tab due to modifier key:', session.id);
             createSessionTab(session.project_path, undefined, session.id);
             return; // Don't call onSessionClick for modifier clicks
           }
