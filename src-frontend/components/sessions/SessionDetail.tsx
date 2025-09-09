@@ -58,6 +58,26 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
     setIsToolsVisible(!isToolsVisible);
   };
 
+  // Assistant filter state management
+  const [isAssistantFilterLast, setIsAssistantFilterLast] = useState(false);
+  const [toolsVisibilityBeforeAssistant, setToolsVisibilityBeforeAssistant] = useState(true);
+  
+  const toggleAssistantFilter = () => {
+    const newMode = !isAssistantFilterLast;
+    logger.log("🤖 Toggling assistant filter mode:", newMode);
+    
+    if (newMode) {
+      // Switching to "last" mode - save current tool visibility and hide tools
+      setToolsVisibilityBeforeAssistant(isToolsVisible);
+      setIsToolsVisible(false);
+    } else {
+      // Switching to "all" mode - restore previous tool visibility
+      setIsToolsVisible(toolsVisibilityBeforeAssistant);
+    }
+    
+    setIsAssistantFilterLast(newMode);
+  };
+
   // Session handle and core state management
   const sessionData = useSessionHandle(session, projectPath, navigation.setIsStreaming);
 
@@ -100,7 +120,7 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
 
   // Get computed values from hooks (must be before early returns for hook order)
   const { isReadOnly } = sessionData;
-  const { displayableMessages, collapsedMessageUuids, totalTokens, userMessages, toolMessages } = messageData;
+  const { displayableMessages, collapsedMessageUuids, totalTokens, userMessages, toolMessages, assistantMessages, lastInTurnCount } = messageData;
   const { effectiveIsStreaming, thinkingContent } = streamingData;
 
   // Sync scroll position when thinking state changes (must be before early returns)
@@ -146,13 +166,14 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
       sessionData={session}
       liveSessionType={sessionData.sessionState?.session_type.type}
       isStreaming={effectiveIsStreaming}
-      isCompactMode={navigation.isCompactMode}
-      setIsCompactMode={navigation.setIsCompactMode}
-      toggleCompactMode={navigation.toggleCompactMode}
       userMessages={userMessages}
       toolMessages={toolMessages}
+      assistantMessages={assistantMessages}
+      lastInTurnCount={lastInTurnCount}
       isToolsVisible={isToolsVisible}
+      isAssistantFilterLast={isAssistantFilterLast}
       toggleToolsVisibility={toggleToolsVisibility}
+      toggleAssistantFilter={toggleAssistantFilter}
     >
       <motion.div
         initial={{ opacity: 0 }}

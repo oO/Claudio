@@ -15,13 +15,19 @@ export const ToolFilter: React.FC = () => {
   const {
     toolMessages = [],
     isToolsVisible = true,
+    isAssistantFilterLast = false,
     toggleToolsVisibility,
   } = useSessionContext();
 
   const toolMessageCount = toolMessages.length;
   const hasTools = toolMessageCount > 0;
+  const isDisabled = !hasTools || isAssistantFilterLast;
 
   const handleToggle = () => {
+    if (isAssistantFilterLast) {
+      logger.log("🔧 Tool filter disabled due to assistant filter being in Last mode");
+      return;
+    }
     logger.log("🔧 Toggling tool messages visibility:", !isToolsVisible);
     toggleToolsVisibility?.();
   };
@@ -32,16 +38,21 @@ export const ToolFilter: React.FC = () => {
       <Button
         variant="secondary"
         size="sm"
-        disabled={!hasTools}
+        disabled={isDisabled}
         onClick={handleToggle}
         className={cn(
           hasTools &&
             isToolsVisible &&
+            !isAssistantFilterLast &&
             "bg-secondary text-foreground hover:bg-accent",
           hasTools &&
             !isToolsVisible &&
+            !isAssistantFilterLast &&
             "text-muted-foreground bg-transparent hover:bg-accent",
+          isAssistantFilterLast &&
+            "opacity-50 cursor-not-allowed",
         )}
+        title={isAssistantFilterLast ? "Tools hidden by assistant filter" : undefined}
       >
         <Drill className="h-3 w-3" />
         <span>Tools</span>

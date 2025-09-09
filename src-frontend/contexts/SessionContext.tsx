@@ -14,6 +14,15 @@ export interface ToolMessageItem {
   messageNumber: number;
 }
 
+export interface AssistantMessageItem {
+  index: number;
+  messageId: string;
+  messageNumber: number;
+  isLastInTurn: boolean;
+  isSubAgentTask: boolean;
+  isSubAgentResponse: boolean;
+}
+
 interface SessionContextValue {
   projectId?: string;
   sessionId?: string;
@@ -22,13 +31,14 @@ interface SessionContextValue {
   sessionData?: Session;
   liveSessionType?: SessionTypeValue | null;
   isStreaming?: boolean;
-  isCompactMode?: boolean;
-  setIsCompactMode?: (mode: boolean) => void;
-  toggleCompactMode?: () => void;
   userMessages?: UserMessageItem[];
   toolMessages?: ToolMessageItem[];
+  assistantMessages?: AssistantMessageItem[];
+  lastInTurnCount?: number;
   isToolsVisible?: boolean;
+  isAssistantFilterLast?: boolean;
   toggleToolsVisibility?: () => void;
+  toggleAssistantFilter?: () => void;
 }
 
 interface SessionProviderProps {
@@ -40,13 +50,14 @@ interface SessionProviderProps {
   sessionData?: Session;
   liveSessionType?: SessionTypeValue | null;
   isStreaming?: boolean;
-  isCompactMode?: boolean;
-  setIsCompactMode?: (mode: boolean) => void;
-  toggleCompactMode?: () => void;
   userMessages?: UserMessageItem[];
   toolMessages?: ToolMessageItem[];
+  assistantMessages?: AssistantMessageItem[];
+  lastInTurnCount?: number;
   isToolsVisible?: boolean;
+  isAssistantFilterLast?: boolean;
   toggleToolsVisibility?: () => void;
+  toggleAssistantFilter?: () => void;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -64,13 +75,14 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
   sessionData,
   liveSessionType,
   isStreaming = false,
-  isCompactMode = false,
-  setIsCompactMode,
-  toggleCompactMode,
   userMessages = [],
   toolMessages = [],
+  assistantMessages = [],
+  lastInTurnCount = 0,
   isToolsVisible = true,
+  isAssistantFilterLast = false,
   toggleToolsVisibility,
+  toggleAssistantFilter,
 }) => {
   const value: SessionContextValue = {
     projectId,
@@ -80,13 +92,14 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
     sessionData,
     liveSessionType,
     isStreaming,
-    isCompactMode,
-    setIsCompactMode: setIsCompactMode || (() => {}),
-    toggleCompactMode: toggleCompactMode || (() => {}),
     userMessages,
     toolMessages,
+    assistantMessages,
+    lastInTurnCount,
     isToolsVisible,
+    isAssistantFilterLast,
     toggleToolsVisibility: toggleToolsVisibility || (() => {}),
+    toggleAssistantFilter: toggleAssistantFilter || (() => {}),
   };
 
   return (

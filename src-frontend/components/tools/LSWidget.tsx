@@ -21,7 +21,6 @@ export const LSWidget: React.FC<{
   content?: string; // For direct result rendering
 }> = ({ path, result, content }) => {
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
-  const { isCompactMode } = useSessionContext();
 
   // Extract content from various sources
   const extractContent = (): string => {
@@ -291,9 +290,8 @@ export const LSWidget: React.FC<{
           )}
         </ToolWidgetTemplate.Header>
         
-        {/* Only show content if not in compact mode */}
-        {!isCompactMode && (
-          <div className="rounded-lg border bg-card overflow-hidden">
+        {/* Content */}
+        <div className="rounded-lg border bg-card overflow-hidden">
           <div className="px-4 py-2 border-b bg-muted/30 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">
@@ -323,7 +321,6 @@ export const LSWidget: React.FC<{
             </div>
           </div>
         </div>
-        )}
       </ToolWidgetTemplate>
     );
   }

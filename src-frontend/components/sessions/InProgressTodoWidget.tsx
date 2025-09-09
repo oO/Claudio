@@ -27,7 +27,7 @@ export const InProgressTodoWidget: React.FC<InProgressTodoWidgetProps> = ({
 }) => {
   const [displayMode, setDisplayMode] = React.useState<DisplayMode>("compact");
   const [currentView, setCurrentView] = React.useState(0);
-  const popoverRef = React.useRef<HTMLDivElement>(null);
+  const popoverRef = React.useRef<HTMLOListElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
 
 

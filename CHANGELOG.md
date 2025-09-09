@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.4.34] - 2025-09-09
+
+### Added
+- AssistantMessageFilter component with Bot icon and "Agent (all|last)" toggle functionality
+- Message processing logic to detect and differentiate subagent tasks vs responses
+- Filtering in SessionMessages that hides subagent responses when in "last" mode
+- Navigation system updated to work with stable message numbers instead of array indices
+- scrollToMessage method that handles filtering conversion automatically
+- Context support for assistant filter state in SessionContext
+- Intelligent tool filter integration that auto-hides when assistant filter is in "last" mode
+
+### Enhanced
+- Increased Virtuoso overscan from 20 to 40 for better performance with message filtering
+- Users can now toggle between seeing all assistant messages vs only the last assistant message per turn
+- Subagent chatter automatically hidden since main assistant summarizes their work
+
 ## [0.4.33] - 2025-09-09
 
 ### Changed

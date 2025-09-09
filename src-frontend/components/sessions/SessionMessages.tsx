@@ -31,6 +31,7 @@ export interface SessionMessagesHandle {
   forceScrollToBottom: () => void;
   scrollToPreviousUserMessage: () => void;
   scrollToNextUserMessage: () => void;
+  scrollToMessage: (messageNumber: number) => void;
 }
 
 interface SessionMessagesProps {
@@ -61,28 +62,57 @@ export const SessionMessages = forwardRef<
   ) => {
     const virtuosoRef = useRef<VirtuosoHandle>(null);
 
-    // Get tool visibility state from context
-    const { toolMessages = [], isToolsVisible = true } = useSessionContext();
+    // Get filter states from context
+    const { 
+      toolMessages = [], 
+      isToolsVisible = true,
+      assistantMessages = [],
+      isAssistantFilterLast = false
+    } = useSessionContext();
 
-    // Filter displayable messages based on tool visibility
+    // Filter displayable messages based on tool and assistant visibility
     const filteredMessages = useMemo(() => {
-      if (isToolsVisible) {
-        return displayableMessages; // Show all messages including tools
+      let filtered = displayableMessages;
+
+      // Apply tool filtering
+      if (!isToolsVisible) {
+        // Hide tool messages - filter out messages that contain tools
+        const toolMessageIndices = new Set(toolMessages.map(tool => tool.index));
+        filtered = filtered.filter((_, index) => !toolMessageIndices.has(index));
       }
 
-      // Hide tool messages - filter out messages that contain tools
-      const toolMessageIndices = new Set(toolMessages.map(tool => tool.index));
-      const filtered = displayableMessages.filter((_, index) => !toolMessageIndices.has(index));
-      
-      logger.debug("🔧 Filtered messages:", {
-        original: displayableMessages.length,
-        filtered: filtered.length,
-        hidden: displayableMessages.length - filtered.length,
-        isToolsVisible
-      });
-      
+      // Apply assistant filtering
+      if (isAssistantFilterLast) {
+        const lastAssistantMessages = assistantMessages
+          .filter(a => a.isLastInTurn || a.isSubAgentTask)
+          .filter(a => !a.isSubAgentResponse); // Hide ALL subagent responses
+        
+        filtered = filtered.filter((message, filteredIndex) => {
+          if (message.type !== "assistant") {
+            return true;
+          }
+          
+          // Find this message in the original displayableMessages array
+          const originalIndex = displayableMessages.findIndex(msg => msg === message);
+          const shouldKeep = lastAssistantMessages.some(a => a.index === originalIndex);
+          
+          return shouldKeep;
+        });
+      }
+
       return filtered;
-    }, [displayableMessages, toolMessages, isToolsVisible]);
+    }, [displayableMessages, toolMessages, isToolsVisible, assistantMessages, isAssistantFilterLast]);
+
+    // Log filtering results for debugging
+    useMemo(() => {
+      logger.debug("🔧 Message filtering:", {
+        original: displayableMessages.length,
+        filtered: filteredMessages.length,
+        hidden: displayableMessages.length - filteredMessages.length,
+        isToolsVisible,
+        isAssistantFilterLast
+      });
+    }, [displayableMessages, filteredMessages, isToolsVisible, isAssistantFilterLast]);
 
     // Navigation state
     const [isPinnedToBottom, setIsPinnedToBottom] = useState(true);
@@ -196,6 +226,26 @@ export const SessionMessages = forwardRef<
         );
         logger.log("🔽 Scrolled to next user message:", newIndex, messageIndex);
       },
+      scrollToMessage: (messageNumber: number) => {
+        // Find the message with this messageNumber in the filtered array
+        const filteredIndex = filteredMessages.findIndex(msg => {
+          // Get original index from displayableMessages
+          const originalIndex = displayableMessages.findIndex(original => original === msg);
+          return originalIndex + 1 === messageNumber; // messageNumber is 1-based
+        });
+        
+        if (filteredIndex === -1) {
+          logger.warn(`Message ${messageNumber} not found in filtered messages`);
+          return;
+        }
+        
+        logger.log(`🎯 Scrolling to message ${messageNumber} at filtered index ${filteredIndex}`);
+        virtuosoRef.current?.scrollToIndex({
+          index: filteredIndex,
+          align: "center",
+        });
+        setIsPinnedToBottom(false);
+      },
     }));
 
     // Log for debugging
@@ -275,9 +325,11 @@ export const SessionMessages = forwardRef<
               alignToBottom
               itemContent={(index, message) => {
                 // Number the message based on its actual UI position (index + 1)
+                // Use original displayable message index for stable numbering
+                const originalIndex = displayableMessages.findIndex(msg => msg === message);
                 const numberedMessage = {
                   ...message,
-                  messageNumber: index + 1,
+                  messageNumber: originalIndex + 1,
                 };
 
                 return (
@@ -301,7 +353,7 @@ export const SessionMessages = forwardRef<
               atTopStateChange={(atTop) => {
                 setIsAtTop(atTop);
               }}
-              overscan={20}
+              overscan={40}
             />
 
             {/* Error indicator */}

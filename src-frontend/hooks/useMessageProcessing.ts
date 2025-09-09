@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { logger } from "@/lib/logger";
 import type { ClaudeStreamMessage } from "@/lib/outputCache";
-import type { UserMessageItem, ToolMessageItem } from "@/contexts/SessionContext";
+import type { UserMessageItem, ToolMessageItem, AssistantMessageItem } from "@/contexts/SessionContext";
 
 /**
  * Hook for processing raw messages into displayable format
@@ -10,94 +10,109 @@ import type { UserMessageItem, ToolMessageItem } from "@/contexts/SessionContext
 export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
   const [collapsedMessageUuids, setCollapsedMessageUuids] = useState<string[]>([]);
 
-  // Helper function: Extract user messages for navigation
-  const extractUserMessages = (messages: ClaudeStreamMessage[]): UserMessageItem[] => {
+
+  // Helper function: Extract all message types using corrected turn logic
+  const extractAllMessageTypes = (messages: ClaudeStreamMessage[]) => {
     const userMessages: UserMessageItem[] = [];
-
+    const toolMessages: ToolMessageItem[] = [];
+    const assistantMessages: AssistantMessageItem[] = [];
+    let lastInTurnCount = 0;
+    
     messages.forEach((message, index) => {
-      // Check if this is a user message
-      if (
-        message.role === "user" ||
-        message.type === "user" ||
-        message.sender === "user"
-      ) {
-        // Skip meta messages or messages without content
-        if (message.isMeta || !message.message?.content) {
-          return;
+      // Extract user messages
+      if (message.type === "user" && message.message) {
+        const msg = message.message;
+        if (msg.content) {
+          // Extract user message content
+          let content = "";
+          const msgContent = msg.content;
+          
+          if (typeof msgContent === "string") {
+            content = msgContent;
+          } else if (Array.isArray(msgContent)) {
+            const textContent = msgContent
+              .filter((c: any) => c.type === "text" || typeof c === "string")
+              .map((c: any) => (typeof c === "string" ? c : c.text || ""))
+              .join(" ");
+            content = textContent;
+          }
+          
+          const truncatedContent = content.trim().substring(0, 100);
+          if (truncatedContent.length > 0) {
+            // Filter out system-generated user message artifacts
+            const isSystemArtifact = 
+              truncatedContent.includes("[Request interrupted by user") ||
+              truncatedContent.includes("<command-name>/hooks") ||
+              truncatedContent.includes("<command-message>hooks</command-message>") ||
+              truncatedContent.startsWith("<command-");
+            
+            if (!isSystemArtifact) {
+              userMessages.push({
+                index,
+                content: truncatedContent,
+                messageNumber: (message as any).messageNumber || index + 1,
+              });
+            }
+          }
         }
-
-        // Extract text content and truncate to 100 chars
-        let content = "";
-        const msgContent = message.message.content;
-
-        if (typeof msgContent === "string") {
-          content = msgContent;
-        } else if (Array.isArray(msgContent)) {
-          // Find text content in array, skip tool_result entries
-          const textContent = msgContent
-            .filter((c: any) => c.type === "text" || typeof c === "string")
-            .map((c: any) => (typeof c === "string" ? c : c.text || ""))
-            .join(" ");
-          content = textContent;
+      }
+      
+      // Extract assistant messages
+      else if (message.type === "assistant" && message.message?.content) {
+        const isSubAgentTask = Boolean(message.isSidechain === true || 
+                             (message.message?.content && Array.isArray(message.message.content) &&
+                              message.message.content.some((c: any) => 
+                                c.type === "tool_use" && c.name === "Task"
+                              )));
+        
+        const isSubAgentResponse = Boolean(message.isSidechain === true && !isSubAgentTask);
+        
+        assistantMessages.push({
+          index,
+          messageId: (message.message as any)?.id || message.uuid || `assistant-${index}`,
+          messageNumber: (message as any).messageNumber || index + 1,
+          isLastInTurn: false, // Will be calculated in second pass
+          isSubAgentTask,
+          isSubAgentResponse,
+        });
+        
+        // Extract tool usage
+        if (message.message?.content && Array.isArray(message.message.content)) {
+          let toolNames: string[] = [];
+          message.message.content.forEach((contentItem: any) => {
+            if (contentItem.type === "tool_use" && contentItem.name) {
+              toolNames.push(contentItem.name);
+            }
+          });
+          
+          if (toolNames.length > 0) {
+            toolMessages.push({
+              index,
+              toolName: toolNames.join(', '),
+              messageNumber: (message as any).messageNumber || index + 1,
+            });
+          }
         }
-
-        // Truncate to 100 chars (data level truncation)
-        const truncatedContent = content.trim().substring(0, 100);
-
-        if (truncatedContent.length > 0) {
-          userMessages.push({
+      }
+      
+      // Handle bundled tool results
+      else if ((message as any).bundledToolResults && Array.isArray((message as any).bundledToolResults)) {
+        const bundledResults = (message as any).bundledToolResults;
+        const toolNames = bundledResults
+          .map((result: any) => result.toolName)
+          .filter(Boolean);
+        
+        if (toolNames.length > 0) {
+          toolMessages.push({
             index,
-            content: truncatedContent,
+            toolName: toolNames.join(', ') || 'tool',
             messageNumber: (message as any).messageNumber || index + 1,
           });
         }
       }
     });
-
-    return userMessages;
-  };
-
-  // Helper function: Extract tool messages for filtering
-  const extractToolMessages = (messages: ClaudeStreamMessage[]): ToolMessageItem[] => {
-    const toolMessages: ToolMessageItem[] = [];
-
-    messages.forEach((message, index) => {
-      // Check if this displayable message contains tool usage
-      let hasToolUse = false;
-      let toolNames: string[] = [];
-
-      // Check for tool usage in message content
-      if (message.message?.content && Array.isArray(message.message.content)) {
-        message.message.content.forEach((contentItem: any) => {
-          if (contentItem.type === "tool_use" && contentItem.name) {
-            hasToolUse = true;
-            toolNames.push(contentItem.name);
-          }
-        });
-      }
-
-      // Check for bundled tool results (merged messages)
-      if (message.bundledToolResults && Array.isArray(message.bundledToolResults)) {
-        hasToolUse = true;
-        // Extract tool names from bundled results if available
-        message.bundledToolResults.forEach((result: any) => {
-          if (result.toolName) {
-            toolNames.push(result.toolName);
-          }
-        });
-      }
-
-      // If this message contains any tool usage, add it to our list
-      if (hasToolUse) {
-        toolMessages.push({
-          index,
-          toolName: toolNames.join(', ') || 'tool', // Use first tool name or generic 'tool'
-          messageNumber: (message as any).messageNumber || index + 1,
-        });
-      }
-    });
-
-    return toolMessages;
+    
+    return { userMessages, toolMessages, assistantMessages };
   };
 
   // Helper function: Filter unwanted messages
@@ -377,30 +392,137 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
 
     const totalTime = performance.now() - startTime;
     logger.info(
-      `🔄 Processed ${messages.length} raw messages into ${messagesWithUuids.length} displayable (${totalTime.toFixed(2)}ms)`,
+      `🔄 Processed ${messages.length} raw → ${filteredMessages.length} filtered → ${bundledMessages.length} bundled → ${messagesWithUuids.length} displayable (${totalTime.toFixed(2)}ms)`,
     );
 
     return messagesWithUuids;
   }, [messages]);
 
-  // Extract user messages for navigation
-  const userMessages = useMemo(() => {
-    return extractUserMessages(displayableMessages);
-  }, [displayableMessages]);
-
-  // Extract tool messages for filtering
-  const toolMessages = useMemo(() => {
-    // Debug: Log message roles/types to understand structure
-    const roleCounts = displayableMessages.reduce((acc, msg) => {
-      const role = msg.role || msg.type || 'unknown';
-      acc[role] = (acc[role] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    logger.debug("🔧 Message role distribution:", roleCounts);
+  // Extract all message types with simple turn detection
+  const { userMessages, toolMessages, assistantMessages, lastInTurnCount } = useMemo(() => {
+    // Create fresh assistant messages with array positions and mark last in turn
+    const userMessages: UserMessageItem[] = [];
+    const toolMessages: ToolMessageItem[] = [];
+    const assistantMessages: AssistantMessageItem[] = [];
     
-    const tools = extractToolMessages(displayableMessages);
-    logger.debug("🔧 Extracted tool messages:", tools.length, tools);
-    return tools;
+    displayableMessages.forEach((message, arrayIndex) => {
+      // Extract user messages
+      if (message.type === "user" && message.message) {
+        const msg = message.message;
+        if (msg.content) {
+          let content = "";
+          const msgContent = msg.content;
+          
+          if (typeof msgContent === "string") {
+            content = msgContent;
+          } else if (Array.isArray(msgContent)) {
+            const textContent = msgContent
+              .filter((c: any) => c.type === "text" || typeof c === "string")
+              .map((c: any) => (typeof c === "string" ? c : c.text || ""))
+              .join(" ");
+            content = textContent;
+          }
+          
+          const truncatedContent = content.trim().substring(0, 100);
+          if (truncatedContent.length > 0) {
+            const isSystemArtifact = 
+              truncatedContent.includes("[Request interrupted by user") ||
+              truncatedContent.includes("<command-name>/hooks") ||
+              truncatedContent.includes("<command-message>hooks</command-message>") ||
+              truncatedContent.startsWith("<command-");
+            
+            if (!isSystemArtifact) {
+              userMessages.push({
+                index: arrayIndex,
+                content: truncatedContent,
+                messageNumber: arrayIndex + 1,
+              });
+            }
+          }
+        }
+      }
+      
+      // Extract assistant messages and mark last in turn
+      else if (message.type === "assistant" && message.message?.content) {
+        const hasTaskTool = message.message?.content && Array.isArray(message.message.content) &&
+                           message.message.content.some((c: any) => 
+                             c.type === "tool_use" && c.name?.toLowerCase() === "task"
+                           );
+        
+        const isSubAgentTask = Boolean(hasTaskTool);
+        const isSubAgentResponse = Boolean((message as any).isSidechain === true && !hasTaskTool);
+        
+        // Your simple algorithm: mark as last in turn initially as false, will be set later
+        let isLastInTurn = false;
+        
+        assistantMessages.push({
+          index: arrayIndex,
+          messageId: (message.message as any)?.id || (message as any).uuid || `assistant-${arrayIndex}`,
+          messageNumber: arrayIndex + 1,
+          isLastInTurn,
+          isSubAgentTask,
+          isSubAgentResponse,
+        });
+        
+        // Extract tool usage (but exclude Task tools - those are subagent delegations, not regular tools)
+        if (message.message?.content && Array.isArray(message.message.content)) {
+          let toolNames: string[] = [];
+          message.message.content.forEach((contentItem: any) => {
+            if (contentItem.type === "tool_use" && contentItem.name && contentItem.name.toLowerCase() !== "task") {
+              toolNames.push(contentItem.name);
+            }
+          });
+          
+          if (toolNames.length > 0) {
+            toolMessages.push({
+              index: arrayIndex,
+              toolName: toolNames.join(', '),
+              messageNumber: arrayIndex + 1,
+            });
+          }
+        }
+      }
+    });
+    
+    // Find the last MAIN assistant before each user message (not subagents)
+    userMessages.forEach(userMsg => {
+      // Find main assistant with highest index that's still less than user index
+      const mainAssistantBeforeUser = assistantMessages
+        .filter(a => a.index < userMsg.index && !a.isSubAgentResponse)
+        .sort((a, b) => b.index - a.index)[0];
+      
+      if (mainAssistantBeforeUser) {
+        mainAssistantBeforeUser.isLastInTurn = true;
+      }
+    });
+    
+    // Mark the last subagent before each main assistant message as last in turn
+    const mainAssistants = assistantMessages.filter(a => !a.isSubAgentResponse && !a.isSubAgentTask);
+    mainAssistants.forEach(mainAssistant => {
+      // Find the subagent with highest index that's still less than this main assistant's index
+      const subagentBeforeMain = assistantMessages
+        .filter(a => a.isSubAgentResponse && a.index < mainAssistant.index)
+        .sort((a, b) => b.index - a.index)[0];
+      
+      if (subagentBeforeMain) {
+        subagentBeforeMain.isLastInTurn = true;
+      }
+    });
+    
+    // Mark the very last assistant message as last in turn
+    if (assistantMessages.length > 0) {
+      const lastAssistant = assistantMessages[assistantMessages.length - 1];
+      if (!lastAssistant.isLastInTurn) {
+        lastAssistant.isLastInTurn = true;
+      }
+    }
+    
+    const lastInTurnCount = assistantMessages.filter(a => a.isLastInTurn).length;
+    const subagentTaskCount = assistantMessages.filter(a => a.isSubAgentTask).length;
+    const subagentResponseCount = assistantMessages.filter(a => a.isSubAgentResponse).length;
+    
+    
+    return { userMessages, toolMessages, assistantMessages, lastInTurnCount };
   }, [displayableMessages]);
 
   // Calculate total tokens from displayable messages
@@ -419,5 +541,7 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
     totalTokens,
     userMessages,
     toolMessages,
+    assistantMessages,
+    lastInTurnCount,
   };
 };

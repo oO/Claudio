@@ -14,7 +14,6 @@ import {
   ArrowDownToLine,
   Download as LucideDownload,
   MoreVertical,
-  UnfoldVertical,
   Brain,
   ListTodo,
 } from "lucide-react";
@@ -42,6 +41,7 @@ import { SESSION_TYPES } from "@/lib/sessionHandleApi";
 import { UserMessageNavigation } from "./UserMessageNavigation";
 import { InProgressTodoWidget } from "./InProgressTodoWidget";
 import { ToolFilter } from "./ToolFilter";
+import { AssistantMessageFilter } from "./AssistantMessageFilter";
 
 interface SessionHeaderProps {
   claudeSessionId: string | null;
@@ -86,8 +86,6 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
     sessionId,
     sessionData,
     sessionFilePath,
-    isCompactMode,
-    toggleCompactMode,
   } = useSessionContext();
 
   const { getTodoData, loadSessionTodos } = useTodoContext();
@@ -303,6 +301,7 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
           <UserMessageNavigation
             onNavigate={onNavigateToMessage || (() => {})}
           />
+          <AssistantMessageFilter />
           <ToolFilter />
           <InProgressTodoWidget
             todos={todoData?.agent_todos.flatMap((agent) => agent.todos) || []}
@@ -314,25 +313,6 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
 
         {/* Right section: View controls and actions */}
         <div className="flex items-center gap-1">
-          {/* Compact mode toggle */}
-          {toggleCompactMode && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleCompactMode}
-              className={cn(
-                "h-8 w-8 transition-colors",
-                isCompactMode
-                  ? "bg-primary text-primary-foreground"
-                  : "hover:bg-muted",
-              )}
-              title={
-                isCompactMode ? "Show content excerpts" : "Header-only mode"
-              }
-            >
-              <UnfoldVertical className="h-4 w-4" />
-            </Button>
-          )}
 
           {/* Export menu - only show if we have messages and not streaming */}
           {hasMessages && !isStreaming && claudeSessionId && (

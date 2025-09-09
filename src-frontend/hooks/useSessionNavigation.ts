@@ -9,7 +9,6 @@ import type { SessionMessagesHandle } from "@/components/sessions/SessionMessage
 export const useSessionNavigation = () => {
   const messagesRef = useRef<SessionMessagesHandle>(null);
   const [isPinnedToBottom, setIsPinnedToBottom] = useState(true);
-  const [isCompactMode, setIsCompactMode] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
 
   // Navigation handlers
@@ -25,24 +24,19 @@ export const useSessionNavigation = () => {
     }
   }, []);
 
-  const toggleCompactMode = useCallback(() => {
-    setIsCompactMode((prev) => !prev);
-  }, []);
 
-  // Shared navigation function for consistent behavior across all navigation methods
-  // Uses the same logic as the prev/next user message buttons for consistent UX
-  const navigateToMessage = useCallback((messageIndex: number) => {
+  // Navigation function that takes the stable message number (001, 022, etc.) that users see
+  // This handles filtering by finding the message in the filtered array
+  const navigateToMessage = useCallback((messageNumber: number) => {
     if (!messagesRef.current) {
       logger.warn("Cannot navigate: messagesRef not available");
       return;
     }
 
-    logger.log("🧭 Navigating to message at index:", messageIndex);
+    logger.log("🧭 Navigating to message number:", messageNumber);
     
-    // Use the same navigation method as SessionMessages user navigation buttons
-    // This calls virtuosoRef.current?.scrollToIndex({ index: messageIndex, align: "center" })
-    // which is consistent with scrollToPreviousUserMessage/scrollToNextUserMessage
-    messagesRef.current.scrollToIndex(messageIndex);
+    // Use the new scrollToMessage method that handles filtering
+    messagesRef.current.scrollToMessage(messageNumber);
     
     // Update pinned state - if we're navigating manually, we're not pinned to bottom
     setIsPinnedToBottom(false);
@@ -52,9 +46,6 @@ export const useSessionNavigation = () => {
     messagesRef,
     isPinnedToBottom,
     setIsPinnedToBottom,
-    isCompactMode,
-    setIsCompactMode,
-    toggleCompactMode,
     handleScrollToTop,
     handleScrollToBottom,
     isStreaming,
