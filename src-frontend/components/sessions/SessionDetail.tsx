@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { logger } from "@/lib/logger";
 import { DebugLabel } from "@/components/ui/atoms";
@@ -51,6 +51,13 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
   // Navigation and UI state management
   const navigation = useSessionNavigation();
 
+  // Tool visibility state management
+  const [isToolsVisible, setIsToolsVisible] = useState(true);
+  const toggleToolsVisibility = () => {
+    logger.log("🔧 Toggling tools visibility:", !isToolsVisible);
+    setIsToolsVisible(!isToolsVisible);
+  };
+
   // Session handle and core state management
   const sessionData = useSessionHandle(session, projectPath, navigation.setIsStreaming);
 
@@ -93,7 +100,7 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
 
   // Get computed values from hooks (must be before early returns for hook order)
   const { isReadOnly } = sessionData;
-  const { displayableMessages, collapsedMessageUuids, totalTokens, userMessages } = messageData;
+  const { displayableMessages, collapsedMessageUuids, totalTokens, userMessages, toolMessages } = messageData;
   const { effectiveIsStreaming, thinkingContent } = streamingData;
 
   // Sync scroll position when thinking state changes (must be before early returns)
@@ -143,6 +150,9 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
       setIsCompactMode={navigation.setIsCompactMode}
       toggleCompactMode={navigation.toggleCompactMode}
       userMessages={userMessages}
+      toolMessages={toolMessages}
+      isToolsVisible={isToolsVisible}
+      toggleToolsVisibility={toggleToolsVisibility}
     >
       <motion.div
         initial={{ opacity: 0 }}

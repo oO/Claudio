@@ -41,6 +41,7 @@ import { useTodoContext } from "@/contexts/TodoContext";
 import { SESSION_TYPES } from "@/lib/sessionHandleApi";
 import { UserMessageNavigation } from "./UserMessageNavigation";
 import { InProgressTodoWidget } from "./InProgressTodoWidget";
+import { ToolFilter } from "./ToolFilter";
 
 interface SessionHeaderProps {
   claudeSessionId: string | null;
@@ -302,6 +303,7 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
           <UserMessageNavigation
             onNavigate={onNavigateToMessage || (() => {})}
           />
+          <ToolFilter />
           <InProgressTodoWidget
             todos={todoData?.agent_todos.flatMap((agent) => agent.todos) || []}
           />

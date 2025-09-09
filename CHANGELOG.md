@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.32] - 2025-01-09
+
+### Added
+- Implemented ToolFilter component in SessionHeader for controlling tool message visibility
+- Added tool message extraction and filtering logic to useMessageProcessing hook
+- Enhanced SessionContext with tool visibility state management
+- Added intelligent filtering that always keeps TodoWrite/Task tools visible for workflow continuity
+- Integrated ToolFilter with SessionMessages component for real-time message filtering
+
 ## [0.4.31] - 2025-01-08
 
 ### Fixed

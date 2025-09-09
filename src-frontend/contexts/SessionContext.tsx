@@ -8,6 +8,12 @@ export interface UserMessageItem {
   messageNumber: number;
 }
 
+export interface ToolMessageItem {
+  index: number;
+  toolName: string;
+  messageNumber: number;
+}
+
 interface SessionContextValue {
   projectId?: string;
   sessionId?: string;
@@ -20,6 +26,9 @@ interface SessionContextValue {
   setIsCompactMode?: (mode: boolean) => void;
   toggleCompactMode?: () => void;
   userMessages?: UserMessageItem[];
+  toolMessages?: ToolMessageItem[];
+  isToolsVisible?: boolean;
+  toggleToolsVisibility?: () => void;
 }
 
 interface SessionProviderProps {
@@ -35,6 +44,9 @@ interface SessionProviderProps {
   setIsCompactMode?: (mode: boolean) => void;
   toggleCompactMode?: () => void;
   userMessages?: UserMessageItem[];
+  toolMessages?: ToolMessageItem[];
+  isToolsVisible?: boolean;
+  toggleToolsVisibility?: () => void;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -56,6 +68,9 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
   setIsCompactMode,
   toggleCompactMode,
   userMessages = [],
+  toolMessages = [],
+  isToolsVisible = true,
+  toggleToolsVisibility,
 }) => {
   const value: SessionContextValue = {
     projectId,
@@ -69,6 +84,9 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
     setIsCompactMode: setIsCompactMode || (() => {}),
     toggleCompactMode: toggleCompactMode || (() => {}),
     userMessages,
+    toolMessages,
+    isToolsVisible,
+    toggleToolsVisibility: toggleToolsVisibility || (() => {}),
   };
 
   return (

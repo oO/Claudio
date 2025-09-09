@@ -19,6 +19,7 @@ import { DebugLabel } from "@/components/ui/atoms";
 import { Button } from "@/components/ui/button";
 import { StreamDataProvider } from "@/contexts/StreamDataContext";
 import { LinkNotificationProvider } from "@/contexts/LinkNotificationContext";
+import { useSessionContext } from "@/contexts/SessionContext";
 import { logger } from "@/lib/logger";
 import { cn } from "@/lib/utils";
 import type { ClaudeStreamMessage } from "@/lib/outputCache";
@@ -60,6 +61,29 @@ export const SessionMessages = forwardRef<
   ) => {
     const virtuosoRef = useRef<VirtuosoHandle>(null);
 
+    // Get tool visibility state from context
+    const { toolMessages = [], isToolsVisible = true } = useSessionContext();
+
+    // Filter displayable messages based on tool visibility
+    const filteredMessages = useMemo(() => {
+      if (isToolsVisible) {
+        return displayableMessages; // Show all messages including tools
+      }
+
+      // Hide tool messages - filter out messages that contain tools
+      const toolMessageIndices = new Set(toolMessages.map(tool => tool.index));
+      const filtered = displayableMessages.filter((_, index) => !toolMessageIndices.has(index));
+      
+      logger.debug("🔧 Filtered messages:", {
+        original: displayableMessages.length,
+        filtered: filtered.length,
+        hidden: displayableMessages.length - filtered.length,
+        isToolsVisible
+      });
+      
+      return filtered;
+    }, [displayableMessages, toolMessages, isToolsVisible]);
+
     // Navigation state
     const [isPinnedToBottom, setIsPinnedToBottom] = useState(true);
     const [showScrollControls, setShowScrollControls] = useState(false);
@@ -68,8 +92,8 @@ export const SessionMessages = forwardRef<
 
     // Memoize the initial index to prevent React reconciliation issues
     const initialTopMostItemIndex = useMemo(() => {
-      return Math.max(0, displayableMessages.length - 1);
-    }, [displayableMessages.length]);
+      return Math.max(0, filteredMessages.length - 1);
+    }, [filteredMessages.length]);
 
     // Memoize user message indices for navigation
     const userMessageIndices = useMemo(() => {
@@ -245,12 +269,9 @@ export const SessionMessages = forwardRef<
             <Virtuoso
               ref={virtuosoRef}
               style={{ height: "100%" }}
-              totalCount={displayableMessages.length}
-              data={displayableMessages}
-              initialTopMostItemIndex={Math.max(
-                0,
-                displayableMessages.length - 1,
-              )}
+              totalCount={filteredMessages.length}
+              data={filteredMessages}
+              initialTopMostItemIndex={initialTopMostItemIndex}
               alignToBottom
               itemContent={(index, message) => {
                 // Number the message based on its actual UI position (index + 1)

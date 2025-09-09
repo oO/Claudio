@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { logger } from "@/lib/logger";
 import type { ClaudeStreamMessage } from "@/lib/outputCache";
-import type { UserMessageItem } from "@/contexts/SessionContext";
+import type { UserMessageItem, ToolMessageItem } from "@/contexts/SessionContext";
 
 /**
  * Hook for processing raw messages into displayable format
@@ -55,6 +55,53 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
     });
 
     return userMessages;
+  };
+
+  // Helper function: Extract tool messages for filtering
+  const extractToolMessages = (messages: ClaudeStreamMessage[]): ToolMessageItem[] => {
+    const toolMessages: ToolMessageItem[] = [];
+
+    messages.forEach((message, index) => {
+      // Check if this displayable message contains tool usage
+      let hasToolUse = false;
+      let toolNames: string[] = [];
+
+      // Check for tool usage in message content
+      if (message.message?.content && Array.isArray(message.message.content)) {
+        message.message.content.forEach((contentItem: any) => {
+          if (contentItem.type === "tool_use" && contentItem.name) {
+            hasToolUse = true;
+            toolNames.push(contentItem.name);
+          }
+        });
+      }
+
+      // Check for bundled tool results (merged messages)
+      if (message.bundledToolResults && Array.isArray(message.bundledToolResults)) {
+        hasToolUse = true;
+        // Extract tool names from bundled results if available
+        message.bundledToolResults.forEach((result: any) => {
+          if (result.toolName) {
+            toolNames.push(result.toolName);
+          }
+        });
+      }
+
+      // If this message contains any tool usage, add it to our list
+      // Exception: Don't hide TodoWrite/Task tools - they show current work progress
+      if (hasToolUse) {
+        const isTaskTool = toolNames.some(name => name === 'TodoWrite' || name === 'Task');
+        if (!isTaskTool) {
+          toolMessages.push({
+            index,
+            toolName: toolNames.join(', ') || 'tool', // Use first tool name or generic 'tool'
+            messageNumber: (message as any).messageNumber || index + 1,
+          });
+        }
+      }
+    });
+
+    return toolMessages;
   };
 
   // Helper function: Filter unwanted messages
@@ -345,6 +392,21 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
     return extractUserMessages(displayableMessages);
   }, [displayableMessages]);
 
+  // Extract tool messages for filtering
+  const toolMessages = useMemo(() => {
+    // Debug: Log message roles/types to understand structure
+    const roleCounts = displayableMessages.reduce((acc, msg) => {
+      const role = msg.role || msg.type || 'unknown';
+      acc[role] = (acc[role] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    logger.debug("🔧 Message role distribution:", roleCounts);
+    
+    const tools = extractToolMessages(displayableMessages);
+    logger.debug("🔧 Extracted tool messages:", tools.length, tools);
+    return tools;
+  }, [displayableMessages]);
+
   // Calculate total tokens from displayable messages
   const totalTokens = useMemo(() => {
     return displayableMessages.reduce((sum, msg) => {
@@ -360,5 +422,6 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
     collapsedMessageUuids,
     totalTokens,
     userMessages,
+    toolMessages,
   };
 };
