@@ -88,16 +88,12 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
       }
 
       // If this message contains any tool usage, add it to our list
-      // Exception: Don't hide TodoWrite/Task tools - they show current work progress
       if (hasToolUse) {
-        const isTaskTool = toolNames.some(name => name === 'TodoWrite' || name === 'Task');
-        if (!isTaskTool) {
-          toolMessages.push({
-            index,
-            toolName: toolNames.join(', ') || 'tool', // Use first tool name or generic 'tool'
-            messageNumber: (message as any).messageNumber || index + 1,
-          });
-        }
+        toolMessages.push({
+          index,
+          toolName: toolNames.join(', ') || 'tool', // Use first tool name or generic 'tool'
+          messageNumber: (message as any).messageNumber || index + 1,
+        });
       }
     });
 

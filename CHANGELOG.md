@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.33] - 2025-09-09
+
+### Changed
+- Remove TodoWrite/Task tool exception from tool filtering in useMessageProcessing
+- TodoWrite/Task tools now hide consistently with other tools when tool visibility is toggled off
+- Cleaner tool filtering behavior since Todo UI widget already shows current work progress
+
 ## [0.4.32] - 2025-01-09
 
 ### Added
