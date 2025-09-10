@@ -1,15 +1,11 @@
-import React, { useState } from "react";
-import { Info, ChevronRight, Loader2 } from "lucide-react";
+import React from "react";
+import { Info } from "lucide-react";
 import { DebugLabel } from "@/components/ui/atoms";
 import { MarkdownRenderer } from "@/components/ui/molecules";
 import { MessageTemplate } from "./MessageTemplate";
-import { cn } from "@/lib/utils";
 import type { ClaudeStreamMessage } from "@/lib/outputCache";
 import { MessageEnhancementProvider } from "@/contexts/MessageEnhancementContext";
-
-// Constants
-const PREVIEW_LINES = 8; // Number of lines to show when collapsed
-const LARGE_SUMMARY_THRESHOLD = 15; // Summaries with more lines are considered "large"
+import { ToolWidgetTemplate } from "@/components/tools/ToolWidgetTemplate";
 
 interface SummaryMessageProps {
   message: ClaudeStreamMessage;
@@ -17,12 +13,9 @@ interface SummaryMessageProps {
 
 /**
  * Self-contained component for rendering AI-generated summary messages
- * Handles expand/collapse functionality and message location copying
+ * Uses ToolWidgetTemplate for consistent expand/collapse functionality
  */
 export const SummaryMessage: React.FC<SummaryMessageProps> = ({ message }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isExpanding, setIsExpanding] = useState(false);
-
   // Check if this is a bundled summary (array of summaries)
   const isBundle = Array.isArray(message.summary);
   const summaries = isBundle ? (message.summary as string[]) : [];
@@ -31,34 +24,18 @@ export const SummaryMessage: React.FC<SummaryMessageProps> = ({ message }) => {
   const lineCount = isBundle
     ? summaries.length
     : summary.split("\n").filter((line: string) => line.trim()).length;
-  const isLargeSummary = lineCount > LARGE_SUMMARY_THRESHOLD;
 
-  // When collapsed, only show first N lines (or items for bundles)
-  const displaySummary = isBundle
-    ? summaries
-    : !isLargeSummary || isExpanded
-      ? summary
-      : summary.split("\n").slice(0, PREVIEW_LINES).join("\n");
+  // For raw content analysis by ToolWidgetTemplate
+  const rawContent = isBundle ? summaries.join("\n") : summary;
 
-  const handleExpandToggle = async () => {
-    if (!isExpanded) {
-      setIsExpanding(true);
-      // Small delay to allow UI to update before heavy rendering
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      setIsExpanded(true);
-      setIsExpanding(false);
-    } else {
-      setIsExpanded(false);
-    }
-  };
-
-  const summaryContent = (
-    <>
-      {/* Summary content with expand/collapse */}
-      <div>
+  const renderSummaryContent = (excerptedContent: string, isShowingExcerpt: boolean, isExpanded: boolean) => {
+    const contentToRender = isShowingExcerpt ? excerptedContent : rawContent;
+    
+    return (
+      <ToolWidgetTemplate.PlainOutput isExpanded={isExpanded}>
         {isBundle ? (
           <ul className="text-sm space-y-1">
-            {(displaySummary as string[]).map((summaryItem, index) => (
+            {(isShowingExcerpt ? excerptedContent.split("\n") : summaries).map((summaryItem, index) => (
               <li key={index} className="list-disc list-inside">
                 {summaryItem}
               </li>
@@ -66,50 +43,14 @@ export const SummaryMessage: React.FC<SummaryMessageProps> = ({ message }) => {
           </ul>
         ) : (
           <MarkdownRenderer
-            content={displaySummary as string}
+            content={contentToRender}
             compact={true}
             className="text-sm"
           />
         )}
-
-        {isLargeSummary && !isExpanded && (
-          <div className="mt-3 pt-3 text-xs text-muted-foreground text-center border-t">
-            ... {lineCount - PREVIEW_LINES} more {isBundle ? "items" : "lines"}{" "}
-            ...
-          </div>
-        )}
-      </div>
-    </>
-  );
-
-  const titleContent = (
-    <div className="flex items-center justify-between w-full">
-      {isLargeSummary && (
-        <button
-          onClick={handleExpandToggle}
-          disabled={isExpanding}
-          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 ml-4"
-        >
-          {isExpanding ? (
-            <>
-              <Loader2 className="h-3 w-3 animate-spin" />
-              Loading...
-            </>
-          ) : (
-            <>
-              <ChevronRight
-                className={cn(
-                  "h-3 w-3 transition-transform",
-                  isExpanded && "rotate-90",
-                )}
-              />
-              {isExpanded ? "Collapse" : "Expand"}
-            </>
-          )}
-        </button>
-      )}
-    </div>
-  );
+      </ToolWidgetTemplate.PlainOutput>
+    );
+  };
 
   return (
     <MessageEnhancementProvider message={message}>
@@ -117,13 +58,32 @@ export const SummaryMessage: React.FC<SummaryMessageProps> = ({ message }) => {
         <DebugLabel label="SummaryMessage" />
         <MessageTemplate.Header
           IconComponent={Info}
-          iconClassName="bg-info"
+          iconClassName="bg-background text-info"
           title="Context Summary"
           titleClassName="w-full text-info"
         >
-          {titleContent}
-          {/* Custom title layout for summary with expand/collapse button */}
-          <MessageTemplate.Content>{summaryContent}</MessageTemplate.Content>
+          <MessageTemplate.Content>
+            <ToolWidgetTemplate>
+              <ToolWidgetTemplate.Debug label="SummaryMessageWidget" />
+              <ToolWidgetTemplate.Header
+                icon={Info}
+                title="AI Context Summary"
+              />
+              <ToolWidgetTemplate.ExpandableResult
+                rawContent={rawContent}
+                lineCount={lineCount}
+                initiallyExpanded={false}
+                largeContentThreshold={15}
+                headerContent={
+                  <span className="text-xs text-muted-foreground">
+                    {isBundle ? `${summaries.length} items` : "Summary"}
+                  </span>
+                }
+              >
+                {renderSummaryContent}
+              </ToolWidgetTemplate.ExpandableResult>
+            </ToolWidgetTemplate>
+          </MessageTemplate.Content>
         </MessageTemplate.Header>
         <MessageTemplate.Footer message={message} />
       </MessageTemplate.Container>

@@ -39,7 +39,6 @@ export const UserMessageNavigation: React.FC<UserMessageNavigationProps> = ({
         <DropdownMenuTrigger asChild>
           <Button variant="secondary" size="sm" disabled={!hasMessages}>
             <MessageSquare className="h-3 w-3" />
-            <span>User</span>
             <div className="flex items-center justify-center w-7 h-5 bg-card-hover text-muted-foreground rounded-full text-xs font-medium">
               {userMessages.length}
             </div>

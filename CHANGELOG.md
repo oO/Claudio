@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.4.35] - 2025-09-10
+
+### Added
+- SystemFilter component with toggle functionality for controlling system message visibility
+- SystemMessage component for displaying system messages with dynamic icons and ANSI stripping
+- System message routing in MessageRouter component
+- System message extraction and filtering logic in useMessageProcessing hook
+- System message state management in SessionContext
+- Dynamic log level icons (info, debug, warning, error, trace) for system messages
+- ToolWidgetTemplate integration for consistent expand/collapse behavior
+
+### Enhanced
+- System messages are hidden by default but can be toggled via UI filter button in SessionHeader
+- ANSI code stripping for clean system message content display
+- Integration across SessionDetail, SessionMessages, and SessionHeader components
+- Provides users control over system message visibility while maintaining clean default interface
+
 ## [0.4.34] - 2025-09-09
 
 ### Added

@@ -23,7 +23,10 @@ export const AssistantMessageFilter: React.FC = () => {
   const hasAssistants = assistantMessageCount > 0;
 
   const handleToggle = () => {
-    logger.log("🤖 Toggling assistant messages filter:", !isAssistantFilterLast);
+    logger.log(
+      "🤖 Toggling assistant messages filter:",
+      !isAssistantFilterLast,
+    );
     toggleAssistantFilter?.();
   };
 
@@ -45,7 +48,6 @@ export const AssistantMessageFilter: React.FC = () => {
         )}
       >
         <Bot className="h-3 w-3" />
-        <span>Agent</span>
         <div className="flex items-center justify-center text-muted-foreground w-7 h-5 bg-card-hover rounded-full text-xs font-medium">
           {isAssistantFilterLast ? "last" : "all"}
         </div>

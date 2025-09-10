@@ -27,9 +27,9 @@ export const InProgressTodoWidget: React.FC<InProgressTodoWidgetProps> = ({
 }) => {
   const [displayMode, setDisplayMode] = React.useState<DisplayMode>("compact");
   const [currentView, setCurrentView] = React.useState(0);
-  const popoverRef = React.useRef<HTMLOListElement>(null);
+  const overviewPopoverRef = React.useRef<HTMLDivElement>(null);
+  const listPopoverRef = React.useRef<HTMLOListElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
-
 
   // Cycle through todos every 3 seconds (only in overview modes)
   React.useEffect(() => {
@@ -42,18 +42,23 @@ export const InProgressTodoWidget: React.FC<InProgressTodoWidgetProps> = ({
     return () => clearInterval(interval);
   }, [todos.length, displayMode]);
 
-  // Handle click outside to close list (only when in overview-list mode)
+  // Handle click outside to close popover (for overview and overview-list modes)
   React.useEffect(() => {
-    if (displayMode !== "overview-list") return;
+    if (displayMode === "compact") return;
 
     const handleClickOutside = (event: MouseEvent) => {
+      const currentPopover =
+        displayMode === "overview"
+          ? overviewPopoverRef.current
+          : listPopoverRef.current;
+
       if (
         triggerRef.current &&
-        popoverRef.current &&
+        currentPopover &&
         !triggerRef.current.contains(event.target as Node) &&
-        !popoverRef.current.contains(event.target as Node)
+        !currentPopover.contains(event.target as Node)
       ) {
-        setDisplayMode("overview");
+        setDisplayMode("compact");
       }
     };
 
@@ -75,16 +80,18 @@ export const InProgressTodoWidget: React.FC<InProgressTodoWidgetProps> = ({
 
   const hasTodos = todos.length > 0;
   const currentTodo = hasTodos ? todos[currentView] : null;
-  const displayText = currentTodo ? (currentTodo.activeForm || currentTodo.content) : "";
+  const displayText = currentTodo
+    ? currentTodo.activeForm || currentTodo.content
+    : "";
 
   // Calculate todo counts
-  const completedCount = todos.filter(t => t.status === "completed").length;
+  const completedCount = todos.filter((t) => t.status === "completed").length;
   const totalCount = todos.length;
 
   // Handle cycling through display modes
   const handleClick = () => {
     if (!hasTodos) return; // Don't cycle if no todos
-    
+
     switch (displayMode) {
       case "compact":
         setDisplayMode("overview");
@@ -105,15 +112,12 @@ export const InProgressTodoWidget: React.FC<InProgressTodoWidgetProps> = ({
         onClick={handleClick}
         disabled={!hasTodos}
         className={cn(
-          "flex items-center gap-2 p-1.5 rounded-md bg-card transition-colors text-xs",
-          hasTodos 
-            ? "hover:bg-accent" 
-            : "opacity-60",
+          "flex items-center p-1.5 rounded-md bg-card transition-colors text-xs",
+          hasTodos ? "hover:bg-accent" : "opacity-60",
           className,
         )}
       >
         <ListTodo className="h-4 w-4 text-secondary-foreground" />
-        <span className="text-xs font-medium text-secondary-foreground">Todo</span>
         <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0.5">
           {completedCount}/{totalCount}
         </Badge>
@@ -133,7 +137,6 @@ export const InProgressTodoWidget: React.FC<InProgressTodoWidgetProps> = ({
         )}
       >
         <ListTodo className="h-4 w-4 text-secondary-foreground" />
-        <span className="text-xs font-medium text-secondary-foreground">Todo</span>
         <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0.5">
           0/0
         </Badge>
@@ -147,69 +150,71 @@ export const InProgressTodoWidget: React.FC<InProgressTodoWidgetProps> = ({
         ref={triggerRef}
         onClick={handleClick}
         className={cn(
-          "w-100 p-1 rounded-md bg-card overflow-hidden hover:bg-accent cursor-pointer transition-colors",
+          "flex items-center gap-2 p-1.5 rounded-md bg-card hover:bg-accent transition-colors text-xs",
           className,
         )}
       >
-        <div className="flex items-center gap-2 text-xs">
-          {/* Todo prefix - horizontal flex */}
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            <ListTodo className="h-4 w-4 text-secondary-foreground" />
-            <span className="text-xs font-medium text-secondary-foreground">
-              Todo
-            </span>
-          </div>
+        <ListTodo className="h-4 w-4 text-secondary-foreground" />
+        <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0.5">
+          {completedCount}/{totalCount}
+        </Badge>
+      </button>
 
-          {/* Todo content - vertical flex */}
-          <div className="flex-1 min-w-0">
+      {/* Overview popover - shows current todo with cycling */}
+      {displayMode === "overview" && (
+        <div
+          ref={overviewPopoverRef}
+          className="absolute z-50 top-full mt-2 left-1/2 -translate-x-1/2 w-120 rounded-md border border-border bg-popover p-3 shadow-md"
+        >
+          <div className="flex items-center gap-2 text-xs">
             {/* Current todo with status */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-1 min-w-0">
               {/* Status icon */}
               {currentTodo?.status === "completed" && (
-                <CheckCircle2 className="h-4 w-4 text-success" />
+                <CheckCircle2 className="h-4 w-4 text-success flex-shrink-0" />
               )}
               {currentTodo?.status === "in_progress" && (
-                <Clock className="h-4 w-4 text-info" />
+                <Clock className="h-4 w-4 text-info flex-shrink-0" />
               )}
               {currentTodo?.status === "pending" && (
-                <Circle className="h-4 w-4 text-muted-foreground" />
+                <Circle className="h-4 w-4 text-muted-foreground flex-shrink-0" />
               )}
 
               {/* Todo text with fade transition */}
               <span
                 key={currentView} // Force re-render for animation
                 className={cn(
-                  "truncate text-muted-foreground font-medium animate-in fade-in-50 duration-500 flex-1",
+                  "text-muted-foreground font-medium animate-in fade-in-50 duration-500 flex-1 min-w-0",
                 )}
               >
                 {displayText}
               </span>
             </div>
+          </div>
 
-            {/* Progress bar below */}
-            <div className="flex items-end h-2 w-full">
-              {todos.map((todo, index) => (
-                <div
-                  key={index}
-                  className={cn("flex-1 transition-all duration-300", {
-                    "bg-success": todo.status === "completed",
-                    "bg-info": todo.status === "in_progress",
-                    "bg-background": todo.status === "pending",
-                    "h-1.5": index === currentView,
-                    "h-1": index !== currentView,
-                  })}
-                />
-              ))}
-            </div>
+          {/* Progress bar below */}
+          <div className="flex items-end h-2 w-full mt-2">
+            {todos.map((todo, index) => (
+              <div
+                key={index}
+                className={cn("flex-1 transition-all duration-300", {
+                  "bg-success": todo.status === "completed",
+                  "bg-info": todo.status === "in_progress",
+                  "bg-background": todo.status === "pending",
+                  "h-1.5": index === currentView,
+                  "h-1": index !== currentView,
+                })}
+              />
+            ))}
           </div>
         </div>
-      </button>
+      )}
 
       {/* Todo list - only shown in overview-list mode */}
       {displayMode === "overview-list" && (
         <ol
-          ref={popoverRef}
-          className="absolute z-50 top-full mt-2 left-1/2 -translate-x-1/2 w-100 rounded-md border border-border bg-popover p-3 py-1 shadow-md list-none"
+          ref={listPopoverRef}
+          className="absolute z-50 top-full mt-2 left-1/2 -translate-x-1/2 w-120 rounded-md border border-border bg-popover p-3 py-1 shadow-md list-none"
         >
           {todos.map((todo, index) => (
             <li

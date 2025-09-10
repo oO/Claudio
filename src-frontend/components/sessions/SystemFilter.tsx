@@ -1,5 +1,5 @@
 import React from "react";
-import { Drill } from "lucide-react";
+import { Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DebugLabel } from "@/components/ui/atoms";
 import { cn } from "@/lib/utils";
@@ -7,59 +7,61 @@ import { logger } from "@/lib/logger";
 import { useSessionContext } from "@/contexts/SessionContext";
 
 /**
- * Simple toggle button to show/hide tool messages from conversation
- * Shows count of tool messages in the badge - matches ProjectSessionTab filter style
+ * Simple toggle button to show/hide system messages from conversation
+ * Shows count of system messages in the badge - matches ProjectSessionTab filter style
  */
-export const ToolFilter: React.FC = () => {
-  // Get tool messages from context (processed by useMessageProcessing)
+export const SystemFilter: React.FC = () => {
+  // Get system messages from context (processed by useMessageProcessing)
   const {
-    toolMessages = [],
-    isToolsVisible = true,
+    systemMessages = [],
+    isSystemVisible = false,
     isAssistantFilterLast = false,
-    toggleToolsVisibility,
+    toggleSystemVisibility,
   } = useSessionContext();
 
-  const toolMessageCount = toolMessages.length;
-  const hasTools = toolMessageCount > 0;
-  const isDisabled = !hasTools || isAssistantFilterLast;
+  const systemMessageCount = systemMessages.length;
+  const hasSystemMessages = systemMessageCount > 0;
+  const isDisabled = !hasSystemMessages || isAssistantFilterLast;
 
   const handleToggle = () => {
     if (isAssistantFilterLast) {
       logger.log(
-        "🔧 Tool filter disabled due to assistant filter being in Last mode",
+        "⚙️ System filter disabled due to assistant filter being in Last mode",
       );
       return;
     }
-    logger.log("🔧 Toggling tool messages visibility:", !isToolsVisible);
-    toggleToolsVisibility?.();
+    logger.log("⚙️ Toggling system messages visibility:", !isSystemVisible);
+    toggleSystemVisibility?.();
   };
 
   return (
     <div className="relative">
-      <DebugLabel label="ToolFilter" />
+      <DebugLabel label="SystemFilter" />
       <Button
         variant="secondary"
         size="sm"
         disabled={isDisabled}
         onClick={handleToggle}
         className={cn(
-          hasTools &&
-            isToolsVisible &&
+          hasSystemMessages &&
+            isSystemVisible &&
             !isAssistantFilterLast &&
             "bg-secondary text-foreground hover:bg-accent",
-          hasTools &&
-            !isToolsVisible &&
+          hasSystemMessages &&
+            !isSystemVisible &&
             !isAssistantFilterLast &&
             "text-muted-foreground bg-transparent hover:bg-accent",
           isAssistantFilterLast && "opacity-50 cursor-not-allowed",
         )}
         title={
-          isAssistantFilterLast ? "Tools hidden by assistant filter" : undefined
+          isAssistantFilterLast
+            ? "System messages hidden by assistant filter"
+            : undefined
         }
       >
-        <Drill className="h-3 w-3" />
+        <Settings className="h-3 w-3" />
         <div className="flex items-center justify-center text-muted-foreground w-7 h-5 bg-card-hover rounded-full text-xs font-medium">
-          {toolMessageCount}
+          {systemMessageCount}
         </div>
       </Button>
     </div>

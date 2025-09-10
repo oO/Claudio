@@ -23,6 +23,13 @@ export interface AssistantMessageItem {
   isSubAgentResponse: boolean;
 }
 
+export interface SystemMessageItem {
+  index: number;
+  content: string;
+  messageNumber: number;
+  subtype?: string;
+}
+
 interface SessionContextValue {
   projectId?: string;
   sessionId?: string;
@@ -34,10 +41,13 @@ interface SessionContextValue {
   userMessages?: UserMessageItem[];
   toolMessages?: ToolMessageItem[];
   assistantMessages?: AssistantMessageItem[];
+  systemMessages?: SystemMessageItem[];
   lastInTurnCount?: number;
   isToolsVisible?: boolean;
+  isSystemVisible?: boolean;
   isAssistantFilterLast?: boolean;
   toggleToolsVisibility?: () => void;
+  toggleSystemVisibility?: () => void;
   toggleAssistantFilter?: () => void;
 }
 
@@ -53,10 +63,13 @@ interface SessionProviderProps {
   userMessages?: UserMessageItem[];
   toolMessages?: ToolMessageItem[];
   assistantMessages?: AssistantMessageItem[];
+  systemMessages?: SystemMessageItem[];
   lastInTurnCount?: number;
   isToolsVisible?: boolean;
+  isSystemVisible?: boolean;
   isAssistantFilterLast?: boolean;
   toggleToolsVisibility?: () => void;
+  toggleSystemVisibility?: () => void;
   toggleAssistantFilter?: () => void;
 }
 
@@ -78,10 +91,13 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
   userMessages = [],
   toolMessages = [],
   assistantMessages = [],
+  systemMessages = [],
   lastInTurnCount = 0,
   isToolsVisible = true,
+  isSystemVisible = false,
   isAssistantFilterLast = false,
   toggleToolsVisibility,
+  toggleSystemVisibility,
   toggleAssistantFilter,
 }) => {
   const value: SessionContextValue = {
@@ -95,10 +111,13 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
     userMessages,
     toolMessages,
     assistantMessages,
+    systemMessages,
     lastInTurnCount,
     isToolsVisible,
+    isSystemVisible,
     isAssistantFilterLast,
     toggleToolsVisibility: toggleToolsVisibility || (() => {}),
+    toggleSystemVisibility: toggleSystemVisibility || (() => {}),
     toggleAssistantFilter: toggleAssistantFilter || (() => {}),
   };
 

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { logger } from "@/lib/logger";
 import type { ClaudeStreamMessage } from "@/lib/outputCache";
-import type { UserMessageItem, ToolMessageItem, AssistantMessageItem } from "@/contexts/SessionContext";
+import type { UserMessageItem, ToolMessageItem, AssistantMessageItem, SystemMessageItem } from "@/contexts/SessionContext";
 
 /**
  * Hook for processing raw messages into displayable format
@@ -16,6 +16,7 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
     const userMessages: UserMessageItem[] = [];
     const toolMessages: ToolMessageItem[] = [];
     const assistantMessages: AssistantMessageItem[] = [];
+    const systemMessages: SystemMessageItem[] = [];
     let lastInTurnCount = 0;
     
     messages.forEach((message, index) => {
@@ -95,6 +96,35 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
         }
       }
       
+      // Extract system messages
+      else if (message.type === "system" && message.message) {
+        const msg = message.message;
+        if (msg.content) {
+          let content = "";
+          const msgContent = msg.content;
+          
+          if (typeof msgContent === "string") {
+            content = msgContent;
+          } else if (Array.isArray(msgContent)) {
+            const textContent = msgContent
+              .filter((c: any) => c.type === "text" || typeof c === "string")
+              .map((c: any) => (typeof c === "string" ? c : c.text || ""))
+              .join(" ");
+            content = textContent;
+          }
+          
+          const truncatedContent = content.trim().substring(0, 100);
+          if (truncatedContent.length > 0) {
+            systemMessages.push({
+              index,
+              content: truncatedContent,
+              messageNumber: (message as any).messageNumber || index + 1,
+              subtype: (message as any).subtype,
+            });
+          }
+        }
+      }
+      
       // Handle bundled tool results
       else if ((message as any).bundledToolResults && Array.isArray((message as any).bundledToolResults)) {
         const bundledResults = (message as any).bundledToolResults;
@@ -112,7 +142,7 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
       }
     });
     
-    return { userMessages, toolMessages, assistantMessages };
+    return { userMessages, toolMessages, assistantMessages, systemMessages };
   };
 
   // Helper function: Filter unwanted messages
@@ -215,11 +245,8 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
         }
       }
 
-      // Filter out system messages that MessageRouter won't handle
-      if (message.type === "system" && !(message as any).subtype) {
-        if (message.uuid) filteredUuids.push(message.uuid);
-        return false;
-      }
+      // Keep system messages instead of filtering them out
+      // (They will be extracted separately but should remain in displayable messages)
 
       return true; // Keep message
     });
@@ -399,11 +426,12 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
   }, [messages]);
 
   // Extract all message types with simple turn detection
-  const { userMessages, toolMessages, assistantMessages, lastInTurnCount } = useMemo(() => {
+  const { userMessages, toolMessages, assistantMessages, systemMessages, lastInTurnCount } = useMemo(() => {
     // Create fresh assistant messages with array positions and mark last in turn
     const userMessages: UserMessageItem[] = [];
     const toolMessages: ToolMessageItem[] = [];
     const assistantMessages: AssistantMessageItem[] = [];
+    const systemMessages: SystemMessageItem[] = [];
     
     displayableMessages.forEach((message, arrayIndex) => {
       // Extract user messages
@@ -482,6 +510,21 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
           }
         }
       }
+      
+      // Extract system messages
+      else if (message.type === "system" && (message as any).content) {
+        const content = (message as any).content;
+        
+        if (typeof content === "string" && content.trim().length > 0) {
+          const truncatedContent = content.trim().substring(0, 100);
+          systemMessages.push({
+            index: arrayIndex,
+            content: truncatedContent,
+            messageNumber: arrayIndex + 1,
+            subtype: (message as any).subtype,
+          });
+        }
+      }
     });
     
     // Find the last MAIN assistant before each user message (not subagents)
@@ -522,7 +565,7 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
     const subagentResponseCount = assistantMessages.filter(a => a.isSubAgentResponse).length;
     
     
-    return { userMessages, toolMessages, assistantMessages, lastInTurnCount };
+    return { userMessages, toolMessages, assistantMessages, systemMessages, lastInTurnCount };
   }, [displayableMessages]);
 
   // Calculate total tokens from displayable messages
@@ -542,6 +585,7 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
     userMessages,
     toolMessages,
     assistantMessages,
+    systemMessages,
     lastInTurnCount,
   };
 };

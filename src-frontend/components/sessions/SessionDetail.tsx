@@ -58,6 +58,13 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
     setIsToolsVisible(!isToolsVisible);
   };
 
+  // System message visibility state management
+  const [isSystemVisible, setIsSystemVisible] = useState(false);
+  const toggleSystemVisibility = () => {
+    logger.log("⚙️ Toggling system messages visibility:", !isSystemVisible);
+    setIsSystemVisible(!isSystemVisible);
+  };
+
   // Assistant filter state management
   const [isAssistantFilterLast, setIsAssistantFilterLast] = useState(false);
   const [toolsVisibilityBeforeAssistant, setToolsVisibilityBeforeAssistant] = useState(true);
@@ -67,12 +74,14 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
     logger.log("🤖 Toggling assistant filter mode:", newMode);
     
     if (newMode) {
-      // Switching to "last" mode - save current tool visibility and hide tools
+      // Switching to "last" mode - save current tool visibility and hide tools + system messages
       setToolsVisibilityBeforeAssistant(isToolsVisible);
       setIsToolsVisible(false);
+      setIsSystemVisible(false);
     } else {
       // Switching to "all" mode - restore previous tool visibility
       setIsToolsVisible(toolsVisibilityBeforeAssistant);
+      setIsSystemVisible(true);
     }
     
     setIsAssistantFilterLast(newMode);
@@ -120,7 +129,7 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
 
   // Get computed values from hooks (must be before early returns for hook order)
   const { isReadOnly } = sessionData;
-  const { displayableMessages, collapsedMessageUuids, totalTokens, userMessages, toolMessages, assistantMessages, lastInTurnCount } = messageData;
+  const { displayableMessages, collapsedMessageUuids, totalTokens, userMessages, toolMessages, assistantMessages, systemMessages, lastInTurnCount } = messageData;
   const { effectiveIsStreaming, thinkingContent } = streamingData;
 
   // Sync scroll position when thinking state changes (must be before early returns)
@@ -169,10 +178,13 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
       userMessages={userMessages}
       toolMessages={toolMessages}
       assistantMessages={assistantMessages}
+      systemMessages={systemMessages}
       lastInTurnCount={lastInTurnCount}
       isToolsVisible={isToolsVisible}
+      isSystemVisible={isSystemVisible}
       isAssistantFilterLast={isAssistantFilterLast}
       toggleToolsVisibility={toggleToolsVisibility}
+      toggleSystemVisibility={toggleSystemVisibility}
       toggleAssistantFilter={toggleAssistantFilter}
     >
       <motion.div

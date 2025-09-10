@@ -7,6 +7,7 @@ import { SubAgentMessage } from "./SubAgentMessage";
 import { ResultMessage } from "./ResultMessage";
 import { ErrorMessage } from "./ErrorMessage";
 import { SummaryMessage } from "./SummaryMessage";
+import { SystemMessage } from "./SystemMessage";
 import { ThinkingMessage } from "./ThinkingMessage";
 import { logger } from '@/lib/logger';
 
@@ -156,6 +157,14 @@ const MessageRouterComponent: React.FC<MessageRouterProps> = ({
 
       case "status":
         return <ThinkingMessage message={message} />;
+
+      case "system":
+        // Handle general system messages (non-init)
+        if (message.subtype !== "init") {
+          return <SystemMessage message={message} />;
+        }
+        // Skip init messages as they're handled above
+        return null;
 
       default:
         // Skip rendering if no meaningful content

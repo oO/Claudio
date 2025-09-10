@@ -41,6 +41,7 @@ import { SESSION_TYPES } from "@/lib/sessionHandleApi";
 import { UserMessageNavigation } from "./UserMessageNavigation";
 import { InProgressTodoWidget } from "./InProgressTodoWidget";
 import { ToolFilter } from "./ToolFilter";
+import { SystemFilter } from "./SystemFilter";
 import { AssistantMessageFilter } from "./AssistantMessageFilter";
 
 interface SessionHeaderProps {
@@ -297,15 +298,16 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
       <div className="flex relative items-center justify-between mt-3 pt-2">
         <DebugLabel label="ControlBar" />
         {/* Left section: User navigation */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <UserMessageNavigation
             onNavigate={onNavigateToMessage || (() => {})}
           />
-          <AssistantMessageFilter />
-          <ToolFilter />
           <InProgressTodoWidget
             todos={todoData?.agent_todos.flatMap((agent) => agent.todos) || []}
           />
+          <AssistantMessageFilter />
+          <ToolFilter />
+          <SystemFilter />
         </div>
 
         {/* Center section: In-progress todo */}
@@ -313,7 +315,6 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
 
         {/* Right section: View controls and actions */}
         <div className="flex items-center gap-1">
-
           {/* Export menu - only show if we have messages and not streaming */}
           {hasMessages && !isStreaming && claudeSessionId && (
             <DropdownMenu>

@@ -66,11 +66,13 @@ export const SessionMessages = forwardRef<
     const { 
       toolMessages = [], 
       isToolsVisible = true,
+      systemMessages = [],
+      isSystemVisible = false,
       assistantMessages = [],
       isAssistantFilterLast = false
     } = useSessionContext();
 
-    // Filter displayable messages based on tool and assistant visibility
+    // Filter displayable messages based on tool, system, and assistant visibility
     const filteredMessages = useMemo(() => {
       let filtered = displayableMessages;
 
@@ -79,6 +81,12 @@ export const SessionMessages = forwardRef<
         // Hide tool messages - filter out messages that contain tools
         const toolMessageIndices = new Set(toolMessages.map(tool => tool.index));
         filtered = filtered.filter((_, index) => !toolMessageIndices.has(index));
+      }
+
+      // Apply system message filtering
+      if (!isSystemVisible) {
+        // Hide system messages - filter out messages that are system type
+        filtered = filtered.filter(message => message.type !== "system");
       }
 
       // Apply assistant filtering
@@ -101,7 +109,7 @@ export const SessionMessages = forwardRef<
       }
 
       return filtered;
-    }, [displayableMessages, toolMessages, isToolsVisible, assistantMessages, isAssistantFilterLast]);
+    }, [displayableMessages, toolMessages, isToolsVisible, systemMessages, isSystemVisible, assistantMessages, isAssistantFilterLast]);
 
     // Log filtering results for debugging
     useMemo(() => {
@@ -110,9 +118,10 @@ export const SessionMessages = forwardRef<
         filtered: filteredMessages.length,
         hidden: displayableMessages.length - filteredMessages.length,
         isToolsVisible,
+        isSystemVisible,
         isAssistantFilterLast
       });
-    }, [displayableMessages, filteredMessages, isToolsVisible, isAssistantFilterLast]);
+    }, [displayableMessages, filteredMessages, isToolsVisible, isSystemVisible, isAssistantFilterLast]);
 
     // Navigation state
     const [isPinnedToBottom, setIsPinnedToBottom] = useState(true);
