@@ -41,6 +41,8 @@ pub enum SessionStatus {
     Active,
     Idle,
     Completed,
+    Notification,
+    Compact,
 }
 
 /// Claude CLI controllable settings per session
@@ -379,8 +381,8 @@ pub async fn resume_claudio_session(
         project_path: project_path.clone(),
         status: SessionStatus::Idle, // Start as Idle, not Active
         settings: ClaudeSettings::default(),
-        last_message_uuid,
-        message_uuid: None,
+        last_message_uuid: None, // Will be set when next turn starts
+        message_uuid: last_message_uuid, // Current turn's last message UUID
         session_history: Vec::new(), // Fresh wrapper, empty history
     };
 

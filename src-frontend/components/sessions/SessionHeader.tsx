@@ -18,6 +18,8 @@ import {
   ListTodo,
   LogOut,
   LogIn,
+  Bell,
+  Archive,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -101,46 +103,115 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
   // Get todo data from TodoContext instead of sessionData
   const todoData = sessionId ? getTodoData(sessionId) : null;
 
-  // State for random thinking content
-  const [thinkingTitle, setThinkingTitle] = React.useState(
-    "Claude is thinking...",
-  );
+  // Helper function to determine session status based on available data
+  const getSessionStatus = React.useCallback(() => {
+    // TODO: Replace with actual status detection from backend hooks
+    // For now, we'll use the default thinking status for all streaming states
 
-  // Fetch random thinking content when streaming starts
+    // In the future, this could check:
+    // - Hook-based status from session file parsing
+    // - Specific streaming events (notification, compact, etc.)
+    // - Tool execution states
+
+    return {
+      type: 'thinking' as const,
+      message: 'thinking',
+      icon: Brain
+    };
+  }, []);
+
+  // Helper function to get status-specific display info
+  const getStatusDisplay = React.useCallback((statusType: string, message: string) => {
+    switch (statusType.toLowerCase()) {
+      case 'notification':
+        return {
+          type: 'notification' as const,
+          message: 'handling notifications',
+          icon: Bell
+        };
+      case 'compact':
+        return {
+          type: 'compact' as const,
+          message: 'compacting session',
+          icon: Archive
+        };
+      case 'active':
+        return {
+          type: 'thinking' as const,
+          message: message || 'thinking',
+          icon: Brain
+        };
+      default:
+        return {
+          type: 'thinking' as const,
+          message: message || 'thinking',
+          icon: Brain
+        };
+    }
+  }, []);
+
+  // State for session status display
+  const [sessionStatus, setSessionStatus] = React.useState<{
+    type: 'thinking' | 'notification' | 'compact';
+    message: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }>({
+    type: 'thinking',
+    message: 'thinking',
+    icon: Brain
+  });
+
+  // Fetch session status content when streaming starts
   React.useEffect(() => {
     if (
       isStreaming &&
       (liveSessionType === SESSION_TYPES.NATIVE ||
         liveSessionType === SESSION_TYPES.CLAUDIO)
     ) {
-      const fetchThinkingContent = async () => {
+      const fetchStatusContent = async () => {
         try {
-          const [title, _message] = await invoke<[string, string]>(
-            "get_random_thinking_content",
-          );
-          setThinkingTitle(title);
-          logger.debug("🧠 Fetched random thinking title:", title);
+          // Get current session status info
+          const currentStatus = getSessionStatus();
+
+          // For thinking status, fetch random thinking content
+          if (currentStatus.type === 'thinking') {
+            const [title, _message] = await invoke<[string, string]>(
+              "get_random_thinking_content",
+            );
+            setSessionStatus(getStatusDisplay('active', title));
+            logger.debug("🧠 Fetched thinking content:", title);
+          } else {
+            // For other statuses, use the predefined messages
+            setSessionStatus(currentStatus);
+            logger.debug("📊 Using session status:", currentStatus);
+          }
         } catch (error) {
-          logger.error("Failed to fetch thinking content:", error);
-          // Keep default title on error
+          logger.error("Failed to fetch session status:", error);
+          // Keep default status on error
+          setSessionStatus(getStatusDisplay('active', 'thinking'));
         }
       };
 
-      fetchThinkingContent();
+      fetchStatusContent();
+    } else if (!isStreaming) {
+      // Reset to idle state when not streaming
+      setSessionStatus(getStatusDisplay('idle', 'idle'));
     }
-  }, [isStreaming, liveSessionType]);
+  }, [isStreaming, liveSessionType, getSessionStatus, getStatusDisplay]);
 
   // Debug: Log the streaming state
   React.useEffect(() => {
     if (liveSessionType === SESSION_TYPES.NATIVE) {
-      logger.log("🧠 Native session brain debug:", {
+      logger.log("🧠 Native session status debug:", {
         liveSessionType,
         isStreaming,
         sessionId: sessionId?.substring(0, 8),
         hasMessages,
+        sessionStatus: sessionStatus.type,
+        message: sessionStatus.message
       });
     }
-  }, [isStreaming, liveSessionType, sessionId, hasMessages]);
+  }, [isStreaming, liveSessionType, sessionId, hasMessages, sessionStatus]);
 
   // Debug: Log TodoContext data instead of sessionData
 
@@ -325,9 +396,9 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
                   )}
                   {isStreaming && (
                     <div className="flex items-center gap-1 text-accent animate-pulse">
-                      <Brain className="h-3 w-3 " />
+                      <sessionStatus.icon className="h-3 w-3" />
                       <span className="text-s">
-                        Claude is {thinkingTitle}...
+                        Claude is {sessionStatus.message}...
                       </span>
                     </div>
                   )}

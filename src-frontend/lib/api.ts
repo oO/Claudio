@@ -96,7 +96,7 @@ export interface ClaudeSettings {
 /**
  * Session status for Claudio-managed sessions
  */
-export type ClaudioSessionStatus = 'Active' | 'Completed';
+export type ClaudioSessionStatus = 'Active' | 'Idle' | 'Completed' | 'Notification' | 'Compact';
 
 /**
  * Claude CLI controllable settings per session

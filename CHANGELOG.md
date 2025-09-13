@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.40] - 2025-09-14
+
+### Fixed
+- Critical streaming bug in resume_claudio_session function where UUID was assigned to wrong field
+- Fixed two-phase UUID tracking system for streaming sessions to properly handle resumed sessions
+- Message UUID now flows correctly through message_uuid field before promotion to last_message_uuid
+
 ## [0.4.39] - 2025-09-13
 
 ### Added
