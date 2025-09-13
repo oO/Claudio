@@ -31,6 +31,7 @@ export interface SessionState {
   project_id: string;        // Encoded folder name: -Users-olivier-Projects-claudio
   project_path: string;      // Actual file path: /Users/olivier/Projects/claudio
   current_claude_session_id: string | null;
+  claudio_id?: string;       // For Claudio sessions: claudio-1234567890
   message_count: number;
   is_streaming: boolean;
   last_updated: number;
@@ -127,21 +128,35 @@ export class SessionHandle {
    */
   async sendPrompt(prompt: string): Promise<void> {
     try {
+      logger.info('🚀 SessionHandle.sendPrompt called:', { handleId: this.handleId, promptPreview: prompt.substring(0, 50) });
+      
+      // Ensure process event listener is set up to handle completion
+      if (!this.isProcessEventSetup) {
+        logger.info('🔧 Setting up process event listener for execution tracking');
+        await this.setupProcessEventListener();
+      }
+      
+      // Add execution lock to prevent handle destruction during Claude CLI execution
+      SessionHandleManager.addExecutionLock(this.handleId, this.projectPath);
       
       // Add timeout wrapper to detect hanging calls
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error('Tauri invoke timed out after 10 seconds')), 10000);
       });
       
+      logger.info('📡 Calling Tauri invoke send_session_prompt...');
       const invokePromise = invoke('send_session_prompt', {
         handleId: this.handleId,
         prompt,
       });
       
       await Promise.race([invokePromise, timeoutPromise]);
+      logger.info('✅ send_session_prompt completed successfully');
       
     } catch (error) {
-      logger.error('Failed to send prompt:', error);
+      logger.error('❌ Failed to send prompt:', error);
+      // Remove execution lock on error
+      SessionHandleManager.removeExecutionLock(this.handleId, this.projectPath);
       throw error;
     }
   }
@@ -463,6 +478,12 @@ export class SessionHandle {
             listenersCount: this.processEventListeners.size
           });
           
+          // Check if this indicates completion (Claude CLI finished)
+          if (processEvent.status.type === 'Completed' || processEvent.status.type === 'Failed') {
+            logger.info('🔓 Process completed, removing execution lock for handle:', this.handleId);
+            SessionHandleManager.removeExecutionLock(this.handleId, this.projectPath);
+          }
+          
           // Notify all process event listeners
           this.processEventListeners.forEach((listener) => {
             try {
@@ -542,6 +563,7 @@ export class SessionHandle {
 export class SessionHandleManager {
   private static handles: Map<string, SessionHandle> = new Map();
   private static refCounts: Map<string, number> = new Map();
+  private static executionLocks: Map<string, number> = new Map(); // Track execution locks per handle
 
   /**
    * Get or create a session handle for the given session ID and project
@@ -605,15 +627,24 @@ export class SessionHandleManager {
     const newRefCount = Math.max(0, currentRefCount - 1);
     
     if (newRefCount === 0) {
-      // Reference count reached zero - actually destroy the handle
-      logger.info('🗑️ Reference count reached zero, destroying handle:', { handleKey, sessionId, projectPath });
-      const handle = this.handles.get(handleKey);
-      if (handle) {
-        handle.destroy();
-        this.handles.delete(handleKey);
+      // Reference count reached zero - check execution locks before destroying
+      const executionLocks = this.executionLocks.get(handleKey) || 0;
+      if (executionLocks > 0) {
+        logger.info('🔒 Reference count zero but execution locks present, preserving handle:', { 
+          handleKey, sessionId, projectPath, executionLocks 
+        });
+        this.refCounts.set(handleKey, newRefCount); // Keep ref count at 0 for later cleanup
+      } else {
+        // No references and no execution locks - actually destroy the handle
+        logger.info('🗑️ Reference count reached zero with no execution locks, destroying handle:', { handleKey, sessionId, projectPath });
+        const handle = this.handles.get(handleKey);
+        if (handle) {
+          handle.destroy();
+          this.handles.delete(handleKey);
+        }
+        this.refCounts.delete(handleKey);
+        logger.info('✅ Session handle destroyed:', { sessionId, projectPath });
       }
-      this.refCounts.delete(handleKey);
-      logger.info('✅ Session handle destroyed:', { sessionId, projectPath });
     } else {
       // Still has references - just decrement counter
       this.refCounts.set(handleKey, newRefCount);
@@ -633,6 +664,46 @@ export class SessionHandleManager {
     this.handles.forEach((handle) => handle.destroy());
     this.handles.clear();
     this.refCounts.clear();
+    this.executionLocks.clear();
     logger.info('🧹 Destroyed all session handles');
+  }
+
+  /**
+   * Add execution lock to prevent handle destruction during Claude CLI execution
+   */
+  static addExecutionLock(sessionId: string, projectPath: string): void {
+    const handleKey = `${projectPath}:${sessionId}`;
+    const currentLocks = this.executionLocks.get(handleKey) || 0;
+    this.executionLocks.set(handleKey, currentLocks + 1);
+    logger.info('🔒 Execution lock added:', { handleKey, lockCount: currentLocks + 1 });
+  }
+
+  /**
+   * Remove execution lock, allowing handle destruction if ref count is zero
+   */
+  static removeExecutionLock(sessionId: string, projectPath: string): void {
+    const handleKey = `${projectPath}:${sessionId}`;
+    const currentLocks = this.executionLocks.get(handleKey) || 0;
+    const newLockCount = Math.max(0, currentLocks - 1);
+    
+    if (newLockCount === 0) {
+      this.executionLocks.delete(handleKey);
+      logger.info('🔓 Execution lock removed, checking for cleanup:', { handleKey });
+      
+      // Check if handle can be destroyed (no references and no execution locks)
+      const refCount = this.refCounts.get(handleKey) || 0;
+      if (refCount === 0) {
+        logger.info('🗑️ No references or execution locks, destroying handle:', handleKey);
+        const handle = this.handles.get(handleKey);
+        if (handle) {
+          handle.destroy();
+          this.handles.delete(handleKey);
+        }
+        this.refCounts.delete(handleKey);
+      }
+    } else {
+      this.executionLocks.set(handleKey, newLockCount);
+      logger.info('🔒 Execution lock decremented:', { handleKey, lockCount: newLockCount });
+    }
   }
 }

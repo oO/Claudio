@@ -38,7 +38,7 @@ pub enum ClaudeProcessStatus {
 }
 
 /// Get a random thinking title and message (haiku) pair
-fn get_thinking_content() -> (String, String) {
+pub fn get_thinking_content() -> (String, String) {
     let title = get_random_thinking_title();
     let message = get_random_thinking_message();
     (title, message)
@@ -115,7 +115,7 @@ fn emit_process_event(
     app_handle.emit("claude-process-event", &event)
         .map_err(|e| format!("Failed to emit process event: {}", e))?;
     
-    log::info!("🚀 Process event emitted successfully");
+    log::debug!("Process event emitted successfully");
     Ok(())
 }
 
@@ -128,23 +128,23 @@ pub async fn start_claude_direct_session(
     prompt: String,
     options: ClaudeDirectOptions,
 ) -> Result<(), String> {
-    log::debug!("Starting Claude CLI direct session at {}", project_path);
-    log::info!("📋 DIRECT SESSION DEBUG:");
-    log::info!("   claudio_id: {:?}", options.claudio_id);
-    log::info!("   session_id: {:?}", options.session_id);
-    log::info!("   working_directory: {:?}", options.working_directory);
-    log::info!("   prompt: {}", prompt.chars().take(50).collect::<String>());
+    log::debug!("Starting Claude CLI session: claudio_id={:?}, session_id={:?}", 
+               options.claudio_id, options.session_id);
+               
+    // Emit ACTIVE status for Claudio sessions (equivalent to UserPromptSubmit hook)
+    if let Some(claudio_id) = &options.claudio_id {
+        emit_claudio_session_status(&app, claudio_id, &project_path, "active").await;
+    }
     
     let session_id = options.session_id.as_ref();
     let claudio_id = options.claudio_id.as_ref();
     
 
     // Simple 2-case logic based on what IDs we have
-    log::info!("🔍 SESSION MATCHING: claudio_id={:?}, session_id={:?}", claudio_id, session_id);
     let (claudio_session_id, use_resume) = match (claudio_id, session_id) {
         (None, None) => {
             // Case 1: Fresh start - create new Claudio session
-            log::debug!("Case 1: Fresh start");
+            // Fresh start
             let new_claudio_id = format!("claudio-{}", chrono::Utc::now().timestamp_millis());
             
             let claude_settings = ClaudeSettings {
@@ -163,6 +163,7 @@ pub async fn start_claude_direct_session(
                 status: SessionStatus::Active,
                 settings: claude_settings,
                 last_message_uuid: None,
+                message_uuid: None,
                 session_history: Vec::new(),
             };
             
@@ -172,9 +173,9 @@ pub async fn start_claude_direct_session(
             (new_claudio_id, false) // No --resume
         },
         
-        (None, Some(session_id)) => {
+        (None, Some(_session_id)) => {
             // Bonus Case: Fork existing Claude session - create new Claudio session but use --resume
-            log::debug!("Bonus Case: Forking session {}", session_id);
+            // Forking existing session
             let new_claudio_id = format!("claudio-{}", chrono::Utc::now().timestamp_millis());
             
             let claude_settings = ClaudeSettings {
@@ -193,6 +194,7 @@ pub async fn start_claude_direct_session(
                 status: SessionStatus::Active,
                 settings: claude_settings,
                 last_message_uuid: None,
+                message_uuid: None,
                 session_history: Vec::new(),
             };
             
@@ -204,13 +206,13 @@ pub async fn start_claude_direct_session(
         
         (Some(claudio_id), Some(_session_id)) => {
             // Case 2: Continue conversation - update existing Claudio session
-            log::debug!("Case 2: Continue conversation");
+            // Continue conversation
             (claudio_id.clone(), true) // Use --resume
         },
         
         (Some(claudio_id), None) => {
             // Case 1: Fresh start with existing Claudio session
-            log::info!("✨ CASE 1: Fresh start with existing Claudio session");
+            // Fresh start with existing Claudio session
             (claudio_id.clone(), false) // No --resume
         }
     };
@@ -415,6 +417,17 @@ pub async fn start_claude_direct_session(
                         log::error!("Failed to store last message UUID: {}", e);
                     }
                     
+                    // Update session status to Idle
+                    if let Err(e) = update_session_status_to_idle(
+                        claudio_session_id_wait.clone(), 
+                        project_path_for_completion.clone()
+                    ).await {
+                        log::error!("Failed to update session status to Idle: {}", e);
+                    }
+                    
+                    // Emit IDLE status for Claudio sessions (equivalent to Stop hook)
+                    emit_claudio_session_status(&app_wait, &claudio_session_id_wait, &project_path_for_completion, "idle").await;
+                    
                     // Emit process completion event
                     let _ = emit_process_event(
                         &app_wait,
@@ -502,12 +515,21 @@ async fn update_session_claude_id(
         session.session_history.insert(0, old_session_id); // Insert at front (newest first)
     }
     
+    // Two-phase UUID tracking: Move current turn's UUID to last_message_uuid for next turn's deduplication
+    if let Some(current_message_uuid) = session.message_uuid.take() {
+        session.last_message_uuid = Some(current_message_uuid);
+        log::debug!("Promoted message_uuid to last_message_uuid for deduplication: {}", session.last_message_uuid.as_ref().unwrap());
+    }
+    
+    // Clear message_uuid for the new turn
+    session.message_uuid = None;
+    
     // Update with the new Claude session info
     session.session_id = Some(new_session_id.clone());
     
     // Save updated metadata (now updates memory immediately!)
     update_claudio_session(claudio_id.clone(), project_path.clone(), session).await?;
-    log::info!("✅ Updated Claudio session {} to track Claude session {}", claudio_id, new_session_id);
+    log::debug!("Updated Claudio session {} to track Claude session {}", claudio_id, new_session_id);
     
     // Emit event to notify frontend that session state has changed (no delay needed!)
     // Memory is immediately consistent, so frontend will get fresh data
@@ -527,7 +549,7 @@ async fn update_session_claude_id(
     if let Err(e) = app_handle.emit("session-state-changed", &state_change_event) {
         log::warn!("Failed to emit session state change event: {}", e);
     } else {
-        log::info!("🔄 Emitted session state change event for Claudio session {}", claudio_id);
+        log::debug!("Emitted session state change event for Claudio session {}", claudio_id);
     }
     
     Ok(())
@@ -584,11 +606,12 @@ async fn extract_and_store_last_message_uuid_from_claudio_session(
     if !last_line.is_empty() {
         if let Ok(last_message) = serde_json::from_str::<serde_json::Value>(last_line) {
             if let Some(last_uuid) = last_message["uuid"].as_str() {
-                // Update claudio session with the real last message UUID
-                claudio_session.last_message_uuid = Some(last_uuid.to_string());
+                // Update claudio session with the current turn's message UUID
+                // This will be promoted to last_message_uuid when the next turn starts
+                claudio_session.message_uuid = Some(last_uuid.to_string());
                 
                 update_claudio_session(claudio_id.clone(), project_path, claudio_session).await?;
-                log::info!("🔗 Stored last message UUID for cleanup detection: {} -> {} (session: {})", 
+                log::debug!("Stored current turn message UUID: {} -> {} (session: {})", 
                           claudio_id, last_uuid, claude_session_id);
             } else {
                 log::warn!("No UUID field found in last message of session {}", claude_session_id);
@@ -599,6 +622,63 @@ async fn extract_and_store_last_message_uuid_from_claudio_session(
     } else {
         log::info!("Session file {} is empty - no messages to extract UUID from", claude_session_id);
     }
+    
+    Ok(())
+}
+
+/// Emit Active/Idle status events for Claudio sessions (equivalent to hook scripts for native sessions)
+async fn emit_claudio_session_status(
+    app: &tauri::AppHandle,
+    claudio_id: &str,
+    project_path: &str,
+    status: &str, // "active" or "idle"
+) {
+    use crate::commands::claude_session_tracking::ClaudeThinkingEvent;
+    
+    // Emit the same event format that native sessions use
+    let event_data = ClaudeThinkingEvent {
+        session_id: claudio_id.to_string(), // Use claudio_id as session identifier
+        project_path: project_path.to_string(),
+        status: status.to_string(),
+        title: if status == "active" {
+            // Get thinking content for active status
+            let (title, _message) = get_thinking_content();
+            Some(title)
+        } else {
+            None
+        },
+        message: if status == "active" {
+            let (_title, message) = get_thinking_content();
+            Some(message)
+        } else {
+            None
+        },
+    };
+    
+    // Emit the same event that native sessions emit
+    if let Err(e) = app.emit("claude-session-thinking", &event_data) {
+        log::error!("Failed to emit Claudio session status event: {}", e);
+    } else {
+        log::debug!("Emitted Claudio session status: {} -> {}", claudio_id, status);
+    }
+}
+
+/// Update Claudio session status to Idle when Claude CLI execution completes
+async fn update_session_status_to_idle(
+    claudio_id: String,
+    project_path: String,
+) -> Result<(), String> {
+    use crate::commands::claudio_storage::{get_claudio_session, update_claudio_session};
+    
+    // Get current session
+    let mut session = get_claudio_session(claudio_id.clone(), project_path.clone()).await?;
+    
+    // Update status to Idle
+    session.status = SessionStatus::Idle;
+    
+    // Save updated session
+    update_claudio_session(claudio_id.clone(), project_path, session).await?;
+    log::debug!("Updated Claudio session {} status to Idle", claudio_id);
     
     Ok(())
 }

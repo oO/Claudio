@@ -6,7 +6,7 @@ use tokio::fs;
 /// Install Claude Code hooks for native session tracking
 #[command]
 pub async fn install_claude_session_hooks() -> Result<String, String> {
-    log::info!("🔧 Installing Claude Code session tracking hooks");
+    log::info!("Installing Claude Code session tracking hooks");
     
     let home_dir = dirs::home_dir().ok_or("Cannot find home directory")?;
     let claude_dir = home_dir.join(".claude");
@@ -28,7 +28,7 @@ pub async fn install_claude_session_hooks() -> Result<String, String> {
     // Update settings.json with hook configuration
     update_claude_settings(&settings_file).await?;
     
-    log::info!("✅ Claude Code session tracking hooks installed successfully");
+    log::info!("Claude Code session tracking hooks installed successfully");
     Ok("Hooks installed successfully".to_string())
 }
 
@@ -75,7 +75,7 @@ pub async fn check_hooks_installed() -> Result<bool, String> {
 /// Uninstall Claude Code hooks
 #[command]
 pub async fn uninstall_claude_session_hooks() -> Result<String, String> {
-    log::info!("🗑️ Uninstalling Claude Code session tracking hooks");
+    log::info!("Uninstalling Claude Code session tracking hooks");
     
     let home_dir = dirs::home_dir().ok_or("Cannot find home directory")?;
     let claude_dir = home_dir.join(".claude");
@@ -120,7 +120,7 @@ pub async fn uninstall_claude_session_hooks() -> Result<String, String> {
             .map_err(|e| format!("Failed to write settings: {}", e))?;
     }
     
-    log::info!("✅ Claude Code session tracking hooks uninstalled successfully");
+    log::info!("Claude Code session tracking hooks uninstalled successfully");
     Ok("Hooks uninstalled successfully".to_string())
 }
 

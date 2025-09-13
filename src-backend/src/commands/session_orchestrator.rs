@@ -80,12 +80,6 @@ impl SessionHandle {
 
     /// Internal method to handle Claudio session prompts
     async fn send_claudio_prompt(&self, claudio_id: Option<&str>, prompt: String) -> Result<(), String> {
-        // Get current Claude session ID for --resume (if any)
-        let current_claude_session = {
-            let guard = self.current_claude_session.read().await;
-            guard.clone()
-        };
-
         // Generate real claudio_id if this is a new session
         let actual_claudio_id = match claudio_id {
             Some(id) => id.to_string(),
@@ -93,6 +87,23 @@ impl SessionHandle {
                 // First prompt for new session - generate real claudio_id
                 format!("claudio-{}", chrono::Utc::now().timestamp_millis())
             }
+        };
+        
+        // Get current Claude session ID for --resume by reading fresh from storage
+        // (don't rely on stale session handle state)
+        let current_claude_session = if actual_claudio_id.starts_with("claudio-") {
+            match crate::commands::claudio_storage::get_claudio_session(actual_claudio_id.clone(), self.project_path.clone()).await {
+                Ok(claudio_session) => {
+                    log::debug!("Found Claudio session with Claude session ID: {:?}", claudio_session.session_id);
+                    claudio_session.session_id
+                },
+                Err(_) => {
+                    log::debug!("No existing Claudio session found, starting fresh");
+                    None
+                }
+            }
+        } else {
+            None
         };
 
         // Prepare options for Claude CLI
@@ -143,13 +154,27 @@ impl SessionHandle {
                     }
                 });
             },
-            SessionType::Claudio { claudio_id: Some(claudio_id) } => {
-                // For Claudio sessions, keep the session ID from the Claudio metadata file
-                log::info!("🔒 Claudio session {} maintains dedicated Claude session ID - not auto-switching", claudio_id);
+            SessionType::Claudio { claudio_id: Some(claudio_id_str) } => {
+                // For Claudio sessions, update the handle's current session after execution
+                let current_claude_session = self.current_claude_session.clone();
+                let project_path = self.project_path.clone();
+                let claudio_id_for_update = claudio_id_str.clone();
+                
+                tokio::spawn(async move {
+                    // Give Claude a moment to finish and update_session_claude_id to run
+                    tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
+                    
+                    // Re-read the Claudio session to get the updated Claude session ID
+                    if let Ok(claudio_session) = crate::commands::claudio_storage::get_claudio_session(claudio_id_for_update, project_path).await {
+                        let mut guard = current_claude_session.write().await;
+                        *guard = claudio_session.session_id;
+                        log::debug!("Updated session handle's current Claude session ID: {:?}", guard);
+                    }
+                });
             },
             SessionType::Claudio { claudio_id: None } => {
                 // Should not happen after prompt execution
-                log::warn!("⚠️ Claudio session with no ID after prompt execution");
+                log::warn!("Claudio session with no ID after prompt execution");
             }
         }
 
@@ -242,8 +267,6 @@ impl SessionHandle {
             let mut file_event_receiver_guard = self.file_event_receiver.write().await;
             *file_event_receiver_guard = Some(receiver);
         }
-                
-        log::info!("Started message streaming for session handle: {}", self.handle_id);
         
         // Spawn task to process file events for this handle
         let handle_id = self.handle_id.clone();
@@ -276,6 +299,7 @@ impl SessionHandle {
         last_processed_count: Arc<RwLock<usize>>,
         file_event_receiver: Arc<RwLock<Option<broadcast::Receiver<SessionFileEvent>>>>,
     ) {
+        log::debug!("Starting process_file_events loop for handle_id={}, project_id={}", handle_id, project_id);
         loop {
             // Get the receiver
             let mut receiver = {
@@ -300,6 +324,8 @@ impl SessionHandle {
                     
                     // Only process events for sessions we're tracking
                     if let SessionFileEvent::Modified { session_id, project_id: event_project_id, .. } = &event {
+                        log::debug!("File event received in process_file_events: session_id={}, event_project_id={}, our_project_id={}, handle_id={}", 
+                                   session_id, event_project_id, project_id, handle_id);
                         if event_project_id == &project_id {
                             // Check if this file change is relevant to our session handle
                             // For Claudio sessions, always read fresh Claude session ID from memory cache
@@ -308,8 +334,14 @@ impl SessionHandle {
                                 // Claudio session - read fresh Claude session ID from memory cache
                                 let project_path = project_id.replace("-", "/");
                                 match crate::commands::claudio_storage::get_claudio_session(handle_id.clone(), project_path).await {
-                                    Ok(claudio_session) => claudio_session.session_id,
-                                    Err(_) => None // Session might not exist yet
+                                    Ok(claudio_session) => {
+                                        log::debug!("Found Claudio session in cache: claudio_id={}, claude_session_id={:?}", handle_id, claudio_session.session_id);
+                                        claudio_session.session_id
+                                    },
+                                    Err(e) => {
+                                        log::debug!("❌ Failed to get Claudio session from cache: claudio_id={}, error={}", handle_id, e);
+                                        None // Session might not exist yet
+                                    }
                                 }
                             } else {
                                 // Native session - use the session handle's stored value
@@ -317,10 +349,12 @@ impl SessionHandle {
                                 guard.clone()
                             };
                             
+                            log::debug!("Session ID matching: file_event_session_id={}, current_session_id={:?}, handle_id={}", session_id, current_session, handle_id);
+                            
                             if let Some(current_session_id) = current_session {
                                 if session_id == &current_session_id {
+                                    log::debug!("Session ID matches, processing new messages for handle={}, session={}", handle_id, session_id);
                                     // This is our tracked session - process new messages
-                                    log::info!("📥 Processing file change for tracked session: {}", session_id);
                                     if let Err(e) = Self::process_new_messages(
                                         &handle_id,
                                         session_id,
@@ -330,11 +364,7 @@ impl SessionHandle {
                                     ).await {
                                         log::error!("Failed to process new messages for handle {}: {}", handle_id, e);
                                     }
-                                } else {
-                                    log::debug!("🔇 Ignoring file change for session {} (tracking {})", session_id, current_session_id);
                                 }
-                            } else {
-                                log::debug!("🔇 Ignoring file change for session {} (no current session tracked)", session_id);
                             }
                         }
                     }
@@ -404,17 +434,12 @@ impl SessionHandle {
             match crate::commands::claudio_storage::get_claudio_session(handle_id.to_string(), project_path).await {
                 Ok(claudio_session) => {
                     if let Some(last_uuid) = &claudio_session.last_message_uuid {
-                        log::info!("🔍 Looking for last message UUID {} in session {} to find starting point", 
-                                  last_uuid, session_id);
-                        
                         // Find the index of the last processed message
                         let mut start_index = 0;
                         for (i, message) in all_messages.iter().enumerate() {
                             if let Some(msg_uuid) = message.get("uuid").and_then(|v| v.as_str()) {
                                 if msg_uuid == last_uuid {
                                     start_index = i + 1; // Start AFTER the last processed message
-                                    log::info!("✅ Found last message UUID at index {}, will emit from index {}", 
-                                              i, start_index);
                                     break;
                                 }
                             }
@@ -423,17 +448,14 @@ impl SessionHandle {
                         if start_index < all_messages.len() {
                             all_messages[start_index..].iter().collect()
                         } else {
-                            log::info!("🔇 No new messages to emit - already at end of session");
                             Vec::new()
                         }
                     } else {
-                        log::info!("🆕 No last_message_uuid found - treating as first turn, emitting all messages");
                         // No last UUID means this is the first turn - emit all messages
                         all_messages.iter().collect()
                     }
                 },
                 Err(_) => {
-                    log::warn!("❌ Failed to get Claudio session metadata, falling back to count-based approach");
                     // Fall back to count-based approach
                     let last_count = {
                         let guard = last_processed_count.read().await;
@@ -453,8 +475,7 @@ impl SessionHandle {
                 *guard
             };
             
-            log::info!("🔢 Native session count comparison for {}: total_messages={}, last_processed_count={}", 
-                      session_id, all_messages.len(), last_count);
+            log::debug!("Native session count: {} messages ({} processed)", all_messages.len(), last_count);
             
             if all_messages.len() > last_count {
                 all_messages[last_count..].iter().collect()
@@ -463,9 +484,12 @@ impl SessionHandle {
             }
         };
         
+        log::debug!("process_new_messages: handle_id={}, session_id={}, total_messages={}, new_messages={}, last_uuid_search={}", 
+                   handle_id, session_id, all_messages.len(), new_messages.len(), 
+                   if handle_id.starts_with("claudio-") { "claudio_mode" } else { "count_mode" });
+
         if !new_messages.is_empty() {
-            log::info!("Found {} new messages in session {} for handle {}", 
-                      new_messages.len(), session_id, handle_id);
+            log::debug!("Streaming {} new messages for handle {} (session: {})", new_messages.len(), handle_id, session_id);
             
             // Emit each new message
             for message in new_messages {
@@ -484,11 +508,8 @@ impl SessionHandle {
                 };
                 
                 // Emit to frontend
-                log::debug!("🚀 Emitting streamed message to frontend: type={}", streamed_message.message_type);
                 if let Err(e) = app_handle.emit("session_message_stream", &streamed_message) {
-                    log::error!("❌ Failed to emit message stream event: {}", e);
-                } else {
-                    log::debug!("✅ Successfully emitted message stream event");
+                    log::error!("Failed to emit message stream event: {}", e);
                 }
             }
             
@@ -550,12 +571,7 @@ impl SessionHandle {
         // Update the current session if we found one
         if let Some((session_id, _)) = latest_session_file {
             let mut guard = current_claude_session.write().await;
-            let old_session = guard.clone();
             *guard = Some(session_id.clone());
-            
-            if old_session != Some(session_id.clone()) {
-                log::info!("Updated current Claude session from {:?} to {}", old_session, session_id);
-            }
         }
         
         Ok(())
@@ -580,6 +596,7 @@ impl SessionOrchestrator {
 
     /// Get or create a session handle
     pub async fn get_session_handle(&self, session_identifier: Option<String>, project_path: String) -> Result<SessionState, String> {
+        log::debug!("SessionOrchestrator: get_session_handle called with session_id={:?}, project_path={}", session_identifier, project_path);
         // Determine session type and handle ID based on identifier
         let (session_type, handle_id) = match session_identifier {
             Some(id) => {
@@ -592,18 +609,15 @@ impl SessionOrchestrator {
             },
             None => {
                 // New Claudio session - create immediately instead of lazy initialization
-                log::info!("🆕 Creating new Claudio session for project: {}", project_path);
+                log::debug!("Creating new Claudio session for project: {}", project_path);
                 
                 // Create the actual claudio session file and get the claudio_id
                 // Use default Claude CLI settings for now - they can be configured later
                 let claude_settings = crate::commands::claudio_storage::ClaudeSettings::default();
                 let claudio_id = match create_claudio_session(project_path.clone(), claude_settings).await {
-                    Ok(id) => {
-                        log::info!("✅ Created new Claudio session: {}", id);
-                        id
-                    },
+                    Ok(id) => id,
                     Err(e) => {
-                        log::error!("❌ Failed to create new Claudio session: {}", e);
+                        log::error!("Failed to create new Claudio session: {}", e);
                         return Err(format!("Failed to create new Claudio session: {}", e));
                     }
                 };
@@ -645,7 +659,7 @@ impl SessionOrchestrator {
                 // Native session - the session ID IS the Claude session ID
                 let mut guard = current_claude_session.write().await;
                 *guard = Some(session_id.clone());
-                log::info!("Set current Claude session for native session: {}", session_id);
+                log::debug!("Set current Claude session for native session: {}", session_id);
             }
         }
 
@@ -663,12 +677,14 @@ impl SessionOrchestrator {
         {
             let mut handles_guard = self.handles.write().await;
             handles_guard.insert(handle_id.clone(), handle.clone());
-            log::info!("✅ Stored session handle in orchestrator: handle_id={}, total_handles={}", handle_id, handles_guard.len());
+            log::debug!("Stored session handle: {} (total: {})", handle_id, handles_guard.len());
         }
 
         // Set up message streaming for this handle
         if let Err(e) = handle.start_message_streaming(&self.session_watcher_state).await {
             log::error!("Failed to start message streaming for handle {}: {}", handle_id, e);
+        } else {
+            log::debug!("Started message streaming for handle: {}", handle_id);
         }
 
         self.get_session_state(&handle_id, &session_type, &project_path).await
@@ -745,33 +761,19 @@ impl SessionOrchestrator {
 
     /// Send prompt to a session handle
     pub async fn send_prompt_to_handle(&self, handle_id: String, prompt: String) -> Result<(), String> {
-        log::info!("🔍 Orchestrator: Looking for handle_id={}", handle_id);
+        log::debug!("send_prompt_to_handle called with handle_id={}, prompt_preview={}", handle_id, prompt.chars().take(50).collect::<String>());
         
         let handles_guard = self.handles.read().await;
-        log::info!("🔍 Orchestrator: Got handles lock, total handles: {}", handles_guard.len());
-        
-        // Log all existing handle IDs for debugging
-        let existing_handles: Vec<String> = handles_guard.keys().cloned().collect();
-        log::info!("🔍 Existing handle IDs: {:?}", existing_handles);
         
         let handle = handles_guard.get(&handle_id)
             .ok_or_else(|| {
-                log::error!("❌ Session handle not found: {} (wanted: {}, available: {:?})", 
-                           handle_id, handle_id, existing_handles);
+                let existing_handles: Vec<String> = handles_guard.keys().cloned().collect();
+                log::error!("SESSION HANDLE NOT FOUND: {} (available: {:?})", handle_id, existing_handles);
                 "Session handle not found".to_string()
             })?;
 
-        log::info!("✅ Found handle, calling handle.send_prompt...");
-        match handle.send_prompt(prompt).await {
-            Ok(()) => {
-                log::info!("✅ handle.send_prompt succeeded");
-                Ok(())
-            },
-            Err(e) => {
-                log::error!("❌ handle.send_prompt failed: {}", e);
-                Err(e)
-            }
-        }
+        log::debug!("Found handle, calling handle.send_prompt...");
+        handle.send_prompt(prompt).await
     }
 
     /// Get messages for a session handle
@@ -781,6 +783,15 @@ impl SessionOrchestrator {
             .ok_or_else(|| "Session handle not found".to_string())?;
 
         handle.get_message_history().await
+    }
+
+    /// Get project path for a session handle
+    pub async fn get_handle_project_path(&self, handle_id: &str) -> Result<String, String> {
+        let handles_guard = self.handles.read().await;
+        let handle = handles_guard.get(handle_id)
+            .ok_or_else(|| format!("Session handle not found: {}", handle_id))?;
+
+        Ok(handle.project_path.clone())
     }
 }
 
@@ -805,84 +816,73 @@ pub fn get_orchestrator() -> Result<Arc<SessionOrchestrator>, String> {
 /// Tauri command: Get session handle
 #[command]
 pub async fn get_session_handle(session_id: Option<String>, project_path: String) -> Result<SessionState, String> {
-    log::info!("🎯 SessionOrchestrator: get_session_handle called with session_id={:?}, project_path={}", session_id, project_path);
-    
-    let orchestrator = match get_orchestrator() {
-        Ok(orch) => {
-            log::info!("✅ SessionOrchestrator: Retrieved orchestrator successfully");
-            orch
-        },
-        Err(e) => {
-            log::error!("❌ SessionOrchestrator: Failed to get orchestrator: {}", e);
-            return Err(e);
-        }
-    };
-    
-    match orchestrator.get_session_handle(session_id.clone(), project_path.clone()).await {
-        Ok(state) => {
-            log::info!("✅ SessionOrchestrator: Created session handle successfully: {:?}", session_id);
-            Ok(state)
-        },
-        Err(e) => {
-            log::error!("❌ SessionOrchestrator: Failed to create session handle: {} (session_id={:?}, project_path={})", e, session_id, project_path);
-            Err(e)
-        }
-    }
+    let orchestrator = get_orchestrator()?;
+    orchestrator.get_session_handle(session_id, project_path).await
 }
 
 /// Tauri command: Send prompt to session
 #[command]
-pub async fn send_session_prompt(handle_id: String, prompt: String) -> Result<(), String> {
-    log::info!("🚀 send_session_prompt called with handle_id={}, prompt_preview={}", handle_id, prompt.chars().take(50).collect::<String>());
-    
-    let orchestrator = match get_orchestrator() {
-        Ok(orch) => {
-            log::info!("✅ Got orchestrator successfully");
-            orch
-        },
-        Err(e) => {
-            log::error!("❌ Failed to get orchestrator: {}", e);
-            return Err(e);
-        }
-    };
-    
-    log::info!("📞 Calling orchestrator.send_prompt_to_handle...");
-    match orchestrator.send_prompt_to_handle(handle_id.clone(), prompt).await {
-        Ok(()) => {
-            log::info!("✅ Successfully sent prompt to handle: {}", handle_id);
-            Ok(())
-        },
-        Err(e) => {
-            log::error!("❌ Failed to send prompt to handle {}: {}", handle_id, e);
-            Err(e)
-        }
+pub async fn send_session_prompt(
+    app: tauri::AppHandle,
+    handle_id: String, 
+    prompt: String
+) -> Result<(), String> {
+    // For Claudio sessions, emit active thinking event IMMEDIATELY when prompt is received
+    if handle_id.starts_with("claudio-") {
+        let orchestrator = get_orchestrator()?;
+        
+        // Get project path from the session handle
+        let project_path = orchestrator.get_handle_project_path(&handle_id).await?;
+        
+        // Emit active status immediately
+        emit_claudio_thinking_event(&app, &handle_id, &project_path, "active").await;
     }
+    
+    let orchestrator = get_orchestrator()?;
+    orchestrator.send_prompt_to_handle(handle_id, prompt).await
 }
 
 /// Tauri command: Get session messages
 #[command]
 pub async fn get_session_messages(handle_id: String) -> Result<Vec<serde_json::Value>, String> {
-    log::info!("🔍 SessionOrchestrator: get_session_messages called with handle_id={}", handle_id);
+    let orchestrator = get_orchestrator()?;
+    orchestrator.get_handle_messages(handle_id).await
+}
+
+/// Emit thinking events for Claudio sessions (equivalent to hook scripts for native sessions)
+async fn emit_claudio_thinking_event(
+    app: &tauri::AppHandle,
+    claudio_id: &str,
+    project_path: &str,
+    status: &str, // "active" or "idle"
+) {
+    use crate::commands::claude_session_tracking::ClaudeThinkingEvent;
+    use crate::commands::claude_direct::get_thinking_content;
     
-    let orchestrator = match get_orchestrator() {
-        Ok(orch) => {
-            log::info!("✅ SessionOrchestrator: Retrieved orchestrator for get_session_messages");
-            orch
+    // Emit the same event format that native sessions use
+    let event_data = ClaudeThinkingEvent {
+        session_id: claudio_id.to_string(), // Use claudio_id as session identifier
+        project_path: project_path.to_string(),
+        status: status.to_string(),
+        title: if status == "active" {
+            // Get thinking content for active status
+            let (title, _message) = get_thinking_content();
+            Some(title)
+        } else {
+            None
         },
-        Err(e) => {
-            log::error!("❌ SessionOrchestrator: Failed to get orchestrator for get_session_messages: {}", e);
-            return Err(e);
-        }
+        message: if status == "active" {
+            let (_title, message) = get_thinking_content();
+            Some(message)
+        } else {
+            None
+        },
     };
     
-    match orchestrator.get_handle_messages(handle_id.clone()).await {
-        Ok(messages) => {
-            log::info!("✅ SessionOrchestrator: Retrieved {} messages for handle {}", messages.len(), handle_id);
-            Ok(messages)
-        },
-        Err(e) => {
-            log::error!("❌ SessionOrchestrator: Failed to get messages for handle {}: {}", handle_id, e);
-            Err(e)
-        }
+    // Emit the same event that native sessions emit
+    if let Err(e) = app.emit("claude-session-thinking", &event_data) {
+        log::error!("Failed to emit Claudio thinking event: {}", e);
+    } else {
+        log::debug!("Emitted Claudio thinking event: {} -> {}", claudio_id, status);
     }
 }

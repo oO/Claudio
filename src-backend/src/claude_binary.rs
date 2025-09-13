@@ -67,12 +67,12 @@ pub async fn find_claude_binary_async(_app_handle: &tauri::AppHandle) -> Result<
 
     // Log all found installations
     for installation in &installations {
-        info!("Found Claude installation: {:?}", installation);
+        debug!("Found Claude installation: {:?}", installation);
     }
 
     // Select the best installation (highest version)
     if let Some(best) = select_best_installation(installations) {
-        info!(
+        debug!(
             "Selected Claude installation: path={}, version={:?}, source={}",
             best.path, best.version, best.source
         );
@@ -213,7 +213,6 @@ fn find_nvm_installations() -> Vec<ClaudeInstallation> {
             .join("versions")
             .join("node");
 
-        debug!("Checking NVM directory: {:?}", nvm_dir);
 
         if let Ok(entries) = std::fs::read_dir(&nvm_dir) {
             for entry in entries.flatten() {
@@ -224,7 +223,6 @@ fn find_nvm_installations() -> Vec<ClaudeInstallation> {
                         let path_str = claude_path.to_string_lossy().to_string();
                         let node_version = entry.file_name().to_string_lossy().to_string();
 
-                        debug!("Found Claude in NVM node {}: {}", node_version, path_str);
 
                         // Get Claude version
                         let version = get_claude_version(&path_str).ok().flatten();
@@ -333,7 +331,6 @@ fn extract_version_from_output(stdout: &[u8]) -> Option<String> {
     let output_str = String::from_utf8_lossy(stdout);
     
     // Debug log the raw output
-    debug!("Raw version output: {:?}", output_str);
     
     // Use regex to directly extract version pattern (e.g., "1.0.41")
     // This pattern matches:
@@ -348,7 +345,6 @@ fn extract_version_from_output(stdout: &[u8]) -> Option<String> {
     if let Some(captures) = version_regex.captures(&output_str) {
         if let Some(version_match) = captures.get(1) {
             let version = version_match.as_str().to_string();
-            debug!("Extracted version: {:?}", version);
             return Some(version);
         }
     }

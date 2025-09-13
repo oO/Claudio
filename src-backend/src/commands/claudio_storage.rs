@@ -9,7 +9,7 @@ use once_cell::sync::Lazy;
 
 /// Global in-memory store for Claudio session metadata
 /// Key: claudio_id, Value: ClaudioSession
-static CLAUDIO_SESSIONS: Lazy<Arc<RwLock<HashMap<String, ClaudioSession>>>> = 
+pub static CLAUDIO_SESSIONS: Lazy<Arc<RwLock<HashMap<String, ClaudioSession>>>> = 
     Lazy::new(|| Arc::new(RwLock::new(HashMap::new())));
 
 /// Session metadata stored in ~/.claudio/projects/<project_id>/<session_id>.json
@@ -28,6 +28,9 @@ pub struct ClaudioSession {
     /// UUID of the last message in the session (for resume detection)
     #[serde(default)]
     pub last_message_uuid: Option<String>,
+    /// UUID of the last message in the CURRENT turn (before promotion to last_message_uuid)
+    #[serde(default)]
+    pub message_uuid: Option<String>,
     /// History of previous session IDs that need cleanup (newest first)
     #[serde(default)]
     pub session_history: Vec<String>,
@@ -36,6 +39,7 @@ pub struct ClaudioSession {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SessionStatus {
     Active,
+    Idle,
     Completed,
 }
 
@@ -92,20 +96,14 @@ pub fn get_claudio_settings_file() -> Result<PathBuf, String> {
 
 /// Ensure the claudio directory structure exists
 pub async fn ensure_claudio_dirs() -> Result<(), String> {
-    log::info!("📁 ensure_claudio_dirs: Getting claudio dir path...");
     let claudio_dir = get_claudio_dir()?;
-    log::info!("📁 ensure_claudio_dirs: claudio_dir = {:?}", claudio_dir);
     
-    // Create main directories
-    log::info!("📁 Creating main claudio directory...");
+    // Create main directories (only log if there are actual errors)
     fs::create_dir_all(&claudio_dir).await
         .map_err(|e| format!("Failed to create ~/.claudio: {}", e))?;
-    log::info!("✅ Main claudio directory created");
     
-    log::info!("📁 Creating projects directory...");
     fs::create_dir_all(claudio_dir.join("projects")).await
         .map_err(|e| format!("Failed to create ~/.claudio/projects: {}", e))?;
-    log::info!("✅ Projects directory created");
     
     // Create settings.json if it doesn't exist
     let settings_path = claudio_dir.join("settings.json");
@@ -129,14 +127,10 @@ pub async fn create_claudio_session(
     project_path: String,
     settings: ClaudeSettings,
 ) -> Result<String, String> {
-    log::error!("🔥🔥🔥 CLAUDIO_STORAGE: create_claudio_session CALLED for project: {}", project_path);
-    
-    log::info!("📁 Ensuring claudio directories...");
     ensure_claudio_dirs().await?;
-    log::info!("✅ Claudio directories ensured");
     
     let claudio_id = format!("claudio-{}", chrono::Utc::now().timestamp_millis());
-    log::info!("🆔 Generated claudio_id: {}", claudio_id);
+    log::debug!("Creating new Claudio session: {} for project: {}", claudio_id, project_path);
     
     let new_session = ClaudioSession {
         claudio_id: claudio_id.clone(),
@@ -145,23 +139,17 @@ pub async fn create_claudio_session(
         status: SessionStatus::Active,
         settings,
         last_message_uuid: None,
+        message_uuid: None,
         session_history: Vec::new(),
     };
     
-    log::info!("🔒 Acquiring write lock on CLAUDIO_SESSIONS...");
     // Put the session in memory immediately during creation
     {
         let mut sessions = CLAUDIO_SESSIONS.write().await;
         sessions.insert(claudio_id.clone(), new_session.clone());
-        log::info!("💾 Cached new Claudio session in memory: {}", claudio_id);
     }
-    log::info!("🔓 Released write lock on CLAUDIO_SESSIONS");
     
-    log::info!("💾 Calling update_claudio_session for persistence...");
     update_claudio_session(claudio_id.clone(), project_path, new_session).await?;
-    log::info!("✅ update_claudio_session completed");
-    
-    log::info!("✨ Created new Claudio session: {}", claudio_id);
     Ok(claudio_id)
 }
 
@@ -176,7 +164,7 @@ pub async fn update_claudio_session(
     {
         let mut sessions = CLAUDIO_SESSIONS.write().await;
         sessions.insert(claudio_session_id.clone(), updates.clone());
-        log::info!("⚡ Updated Claudio session in memory: {}", claudio_session_id);
+        log::debug!("⚡ Updated Claudio session in memory: {}", claudio_session_id);
     }
     
     // 2. Persist to disk asynchronously (doesn't block)
@@ -185,8 +173,6 @@ pub async fn update_claudio_session(
     tokio::spawn(async move {
         if let Err(e) = persist_session_to_disk(&claudio_session_id, &project_path_clone, &updates_clone).await {
             log::error!("Failed to persist Claudio session to disk: {}", e);
-        } else {
-            log::info!("💾 Successfully persisted Claudio session to disk: {}", claudio_session_id);
         }
     });
     
@@ -252,7 +238,6 @@ pub async fn get_claudio_session(
     {
         let mut sessions = CLAUDIO_SESSIONS.write().await;
         sessions.insert(claudio_session_id.clone(), session.clone());
-        log::debug!("💾 Cached Claudio session in memory: {}", claudio_session_id);
     }
     
     Ok(session)
@@ -318,7 +303,7 @@ pub async fn delete_claudio_session(
     fs::remove_file(&session_file).await
         .map_err(|e| format!("Failed to delete session metadata: {}", e))?;
     
-    log::info!("🗑️ Deleted session metadata: {}", session_file.display());
+    log::debug!("Deleted session metadata: {}", session_file.display());
     Ok(())
 }
 
@@ -343,7 +328,7 @@ pub async fn cleanup_session_files(
         std::fs::remove_file(&claude_session_file)
             .map_err(|e| format!("Failed to delete Claude session file: {}", e))?;
         claude_files_deleted += 1;
-        log::info!("🗑️ Deleted Claude session: {}", claude_session_file.display());
+        log::debug!("Deleted Claude session: {}", claude_session_file.display());
     }
 
     // 2. Find and delete any Claudio sessions that reference this Claude session
@@ -364,7 +349,7 @@ pub async fn cleanup_session_files(
                                 if session_id == claude_session_id {
                                     if std::fs::remove_file(&path).is_ok() {
                                         claudio_files_deleted += 1;
-                                        log::info!("🗑️ Deleted Claudio session: {}", path.display());
+                                        log::debug!("Deleted Claudio session: {}", path.display());
                                     }
                                 }
                             }
@@ -382,7 +367,7 @@ pub async fn cleanup_session_files(
 /// This should be called on app startup to ensure data integrity
 #[command]
 pub async fn cleanup_orphaned_files() -> Result<serde_json::Value, String> {
-    log::info!("🧹 Starting orphaned files cleanup...");
+    log::info!("Starting orphaned files cleanup...");
     
     let mut stats = OrphanCleanupStats::default();
     
@@ -431,7 +416,7 @@ pub async fn cleanup_orphaned_files() -> Result<serde_json::Value, String> {
         }
     }
     
-    log::info!("🧹 Orphan cleanup complete: {}", stats.summary());
+    log::info!("Orphan cleanup complete: {}", stats.summary());
     Ok(stats.to_json())
 }
 
@@ -494,7 +479,7 @@ fn cleanup_global_orphaned_todos(
                             // Orphaned todo - delete it
                             if std::fs::remove_file(&path).is_ok() {
                                 todos_deleted += 1;
-                                log::info!("🗑️ Deleted orphaned todo: {}", path.display());
+                                log::debug!("Deleted orphaned todo: {}", path.display());
                             }
                         }
                     }
@@ -532,14 +517,14 @@ async fn cleanup_project_orphans(
                                         // Orphaned claudio session - delete it
                                         if std::fs::remove_file(&path).is_ok() {
                                             stats.orphaned_claudio_sessions += 1;
-                                            log::info!("🗑️ Deleted orphaned Claudio session: {}", path.display());
+                                            log::debug!("Deleted orphaned Claudio session: {}", path.display());
                                         }
                                     }
                                 } else {
                                     // Claudio session with no Claude session reference - also orphaned
                                     if std::fs::remove_file(&path).is_ok() {
                                         stats.orphaned_claudio_sessions += 1;
-                                        log::info!("🗑️ Deleted empty Claudio session: {}", path.display());
+                                        log::debug!("Deleted empty Claudio session: {}", path.display());
                                     }
                                 }
                             }
@@ -570,7 +555,7 @@ async fn cleanup_project_orphans(
                             // Orphaned todo - delete it
                             if std::fs::remove_file(&path).is_ok() {
                                 stats.orphaned_todos += 1;
-                                log::info!("🗑️ Deleted orphaned todo: {}", path.display());
+                                log::debug!("Deleted orphaned todo: {}", path.display());
                             }
                         }
                     }
@@ -591,7 +576,7 @@ async fn cleanup_project_orphans(
                             // Orphaned timeline - delete it
                             if std::fs::remove_file(&path).is_ok() {
                                 stats.orphaned_timelines += 1;
-                                log::info!("🗑️ Deleted orphaned timeline: {}", path.display());
+                                log::debug!("Deleted orphaned timeline: {}", path.display());
                             }
                         }
                     }

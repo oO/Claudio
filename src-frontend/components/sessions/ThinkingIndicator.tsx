@@ -21,8 +21,8 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
 }) => {
   const { isStreaming, liveSessionType } = useSessionContext();
 
-  // Only show for native sessions that are currently streaming
-  if (!isStreaming || liveSessionType !== SESSION_TYPES.NATIVE) {
+  // Only show for native or Claudio sessions that are currently streaming
+  if (!isStreaming || (liveSessionType !== SESSION_TYPES.NATIVE && liveSessionType !== SESSION_TYPES.CLAUDIO)) {
     return null;
   }
 

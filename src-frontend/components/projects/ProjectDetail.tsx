@@ -180,7 +180,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
       setSessionToDelete(null);
     } catch (error) {
       logger.error("Failed to delete session:", error);
-      // Could add toast notification here
+      onToast?.(`Failed to delete session: ${error}`, "error");
     } finally {
       setIsDeleting(false);
     }

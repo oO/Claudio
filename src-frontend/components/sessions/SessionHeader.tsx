@@ -101,7 +101,7 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
 
   // Fetch random thinking content when streaming starts
   React.useEffect(() => {
-    if (isStreaming && liveSessionType === SESSION_TYPES.NATIVE) {
+    if (isStreaming && (liveSessionType === SESSION_TYPES.NATIVE || liveSessionType === SESSION_TYPES.CLAUDIO)) {
       const fetchThinkingContent = async () => {
         try {
           const [title, _message] = await invoke<[string, string]>(
@@ -140,7 +140,7 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
     }
   }, [sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleCopySessionInfo = async () => {
+  const handleCopySessionInfo = React.useCallback(async () => {
     // Copy session metadata JSON structure
     if (sessionData && sessionFilePath) {
       try {
@@ -168,7 +168,7 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
         logger.error("Failed to copy UUID list:", error);
       }
     }
-  };
+  }, [sessionData, sessionFilePath, projectPath, collapsedMessageUuids]);
 
   return (
     <motion.div

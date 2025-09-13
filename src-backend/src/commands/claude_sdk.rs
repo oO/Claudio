@@ -11,6 +11,7 @@ pub struct ClaudeSDKOptions {
     pub custom_system_prompt: Option<String>,
     pub allowed_tools: Option<Vec<String>>,
     pub working_directory: Option<String>,
+    pub claudio_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -39,6 +40,8 @@ pub async fn start_claude_sdk_session(
         custom_system_prompt: options.custom_system_prompt,
         allowed_tools: options.allowed_tools,
         working_directory: options.working_directory,
+        session_id: None, // Let claude_direct handle session creation
+        claudio_id: options.claudio_id.clone(), // Pass Claudio ID for thinking indicators
     };
     
     // Call the direct CLI function instead
@@ -88,7 +91,7 @@ pub async fn start_claude_sdk_session(
                 // Handle debug messages specifically
                 if message.get("type") == Some(&serde_json::Value::String("claude_sdk_debug".to_string())) {
                     if let Some(debug_msg) = message.get("message") {
-                        log::info!("🔍 Claude SDK Debug: {}", debug_msg.as_str().unwrap_or(""));
+                        log::debug!("Claude SDK Debug: {}", debug_msg.as_str().unwrap_or(""));
                     }
                 }
                 
@@ -277,7 +280,7 @@ try {{
                 // Handle debug messages specifically
                 if message.get("type") == Some(&serde_json::Value::String("claude_sdk_debug".to_string())) {
                     if let Some(debug_msg) = message.get("message") {
-                        log::info!("🔍 Claude SDK Debug: {}", debug_msg.as_str().unwrap_or(""));
+                        log::debug!("Claude SDK Debug: {}", debug_msg.as_str().unwrap_or(""));
                     }
                 }
                 
@@ -468,7 +471,7 @@ try {{
                 // Handle debug messages specifically
                 if message.get("type") == Some(&serde_json::Value::String("claude_sdk_debug".to_string())) {
                     if let Some(debug_msg) = message.get("message") {
-                        log::info!("🔍 Claude SDK Debug: {}", debug_msg.as_str().unwrap_or(""));
+                        log::debug!("Claude SDK Debug: {}", debug_msg.as_str().unwrap_or(""));
                     }
                 }
                 

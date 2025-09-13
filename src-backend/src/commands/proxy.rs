@@ -138,38 +138,16 @@ pub async fn save_proxy_settings(settings: ProxySettings) -> Result<(), String> 
 pub async fn save_claudio_settings(settings: ClaudioSettings) -> Result<(), String> {
     use crate::commands::claudio_storage::{get_claudio_settings_file, ensure_claudio_dirs};
     
-    log::info!("Ensuring claudio directories exist...");
     ensure_claudio_dirs().await?;
     
-    log::info!("Getting claudio settings file path...");
     let claudio_file = get_claudio_settings_file()?;
-    log::info!("Target file path: {:?}", claudio_file);
     
-    // Pretty print the JSON with 2-space indentation
-    log::info!("Serializing settings to JSON...");
-    let json_string = match serde_json::to_string_pretty(&settings) {
-        Ok(json) => {
-            log::info!("JSON serialized successfully, length: {}", json.len());
-            json
-        }
-        Err(e) => {
-            log::error!("Failed to serialize settings: {}", e);
-            return Err(format!("Failed to serialize Claudio settings: {}", e));
-        }
-    };
+    let json_string = serde_json::to_string_pretty(&settings)
+        .map_err(|e| format!("Failed to serialize Claudio settings: {}", e))?;
     
-    log::info!("Writing file to disk...");
-    match fs::write(&claudio_file, &json_string) {
-        Ok(_) => {
-            log::info!("File written successfully");
-        }
-        Err(e) => {
-            log::error!("Failed to write file: {}", e);
-            return Err(format!("Failed to write Claudio settings file: {}", e));
-        }
-    }
+    fs::write(&claudio_file, &json_string)
+        .map_err(|e| format!("Failed to write Claudio settings file: {}", e))?;
     
-    log::info!("Claudio settings saved to {:?}", claudio_file);
     Ok(())
 }
 
@@ -186,11 +164,11 @@ pub async fn get_setting(key: String) -> Result<Option<String>, String> {
                 Some(tabs_data) => {
                     let json_string = serde_json::to_string(tabs_data)
                         .map_err(|e| format!("Failed to serialize tabs_session: {}", e))?;
-                    log::info!("Retrieved tabs_session setting: {} chars", json_string.len());
+                    log::debug!("Retrieved tabs_session setting: {} chars", json_string.len());
                     Ok(Some(json_string))
                 }
                 None => {
-                    log::info!("No tabs_session setting found");
+                    log::debug!("No tabs_session setting found");
                     Ok(None)
                 }
             }
@@ -221,7 +199,7 @@ pub async fn save_setting(key: String, value: String) -> Result<(), String> {
                     Ok(parsed_data) => {
                         match &parsed_data {
                             serde_json::Value::Array(tabs_array) => {
-                                log::info!("Updated tabs_session setting (legacy format): {} tabs", tabs_array.len());
+                                log::debug!("Updated tabs_session setting (legacy): {} tabs", tabs_array.len());
                             }
                             serde_json::Value::Object(session_obj) => {
                                 let tabs_count = session_obj.get("tabs")
@@ -232,7 +210,7 @@ pub async fn save_setting(key: String, value: String) -> Result<(), String> {
                                     .and_then(|p| p.as_array())
                                     .map(|arr| arr.len() + 1)
                                     .unwrap_or(1);
-                                log::info!("Updated tabs_session setting (new format): {} tabs, {} panels", tabs_count, panel_count);
+                                log::debug!("Updated tabs_session setting: {} tabs, {} panels", tabs_count, panel_count);
                             }
                             _ => {
                                 log::warn!("Unexpected tabs_session format, treating as generic data");

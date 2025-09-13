@@ -76,7 +76,7 @@ impl ProjectWatcherManager {
             .map_err(|e| format!("Failed to start watching projects directory: {}", e))?;
 
         *watcher_opt = Some(watcher);
-        log::info!("✅ Started watching projects directory: {:?}", projects_dir);
+        log::debug!("Started watching projects directory: {:?}", projects_dir);
 
         // Clone necessary values for the async task
         let event_sender = self.event_sender.clone();
@@ -198,7 +198,7 @@ pub async fn start_project_watching(
     state: State<'_, ProjectWatcherState>,
     app_handle: AppHandle,
 ) -> Result<(), String> {
-    log::info!("🚀 Starting project watcher");
+    log::debug!("Starting project watcher");
     
     let mut manager_opt = state.lock().map_err(|e| format!("Lock error: {}", e))?;
     
@@ -209,7 +209,7 @@ pub async fn start_project_watching(
     
     if let Some(manager) = manager_opt.as_ref() {
         manager.start_watching()?;
-        log::info!("✅ Project watcher started successfully");
+        log::debug!("Project watcher started successfully");
     }
     
     Ok(())
@@ -226,7 +226,7 @@ pub async fn stop_project_watching(
     
     if let Some(manager) = manager_opt.as_ref() {
         manager.stop_watching()?;
-        log::info!("✅ Project watcher stopped successfully");
+        log::debug!("Project watcher stopped successfully");
     }
     
     Ok(())

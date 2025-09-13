@@ -217,7 +217,7 @@ impl SessionWatcherManager {
                         
                         // After debounce period, check for session cleanup opportunities
                         if let SessionFileEvent::Modified { session_id, project_id, .. } = &session_event {
-                            log::info!("🔍 Checking session {} in project {} for cleanup opportunities", session_id, project_id);
+                            log::debug!("Checking session {} in project {} for cleanup opportunities", session_id, project_id);
                             if let Err(e) = Self::check_and_cleanup_previous_sessions(session_id, project_id).await {
                                 log::error!("Failed to cleanup previous sessions: {}", e);
                             }
@@ -349,7 +349,7 @@ impl SessionWatcherManager {
     async fn handle_native_session_status_change(app_handle: &AppHandle, session_id: &str, file_path: &str) {
         use crate::commands::claude_session_tracking::ClaudeThinkingEvent;
         
-        log::debug!("🔍 Handling native session status change for {}", session_id);
+        log::debug!("Handling native session status change for {}", session_id);
         
         // Read the JSON status file
         match tokio::fs::read_to_string(file_path).await {
@@ -362,7 +362,7 @@ impl SessionWatcherManager {
                                 .unwrap_or("")
                                 .to_string();
                             
-                            log::info!("📊 Native session {} status: {} at path {}", session_id, status, project_path);
+                            log::debug!("Native session {} status: {} at path {}", session_id, status, project_path);
                             
                             // Emit thinking event based on status
                             let event_data = match status {
@@ -372,7 +372,7 @@ impl SessionWatcherManager {
                                     Some(ClaudeThinkingEvent {
                                         session_id: session_id.to_string(),
                                         project_path,
-                                        status: "thinking".to_string(),
+                                        status: "active".to_string(),
                                         title: Some(thinking_title),
                                         message: Some(thinking_message),
                                     })
@@ -397,7 +397,7 @@ impl SessionWatcherManager {
                                 if let Err(e) = app_handle.emit("claude-session-thinking", &event) {
                                     log::error!("Failed to emit claude-session-thinking event: {}", e);
                                 } else {
-                                    log::info!("✅ Emitted claude-session-thinking event: {} → {}", session_id, event.status);
+                                    log::debug!("Emitted claude-session-thinking event: {} -> {}", session_id, event.status);
                                 }
                             }
                         }
@@ -476,7 +476,7 @@ impl SessionWatcherManager {
             // Check if this claudio session's last_message_uuid appears in the current session
             if let Some(last_msg_uuid) = &claudio_session.last_message_uuid {
                 if current_session_uuids.contains(last_msg_uuid) {
-                    log::info!("🧹 Detected UUID {} from previous session appearing in current session {} for claudio session: {}", 
+                    log::debug!("Detected UUID {} from previous session appearing in current session {} for claudio session: {}", 
                               last_msg_uuid, session_id, claudio_session.claudio_id);
                     
                     // Clean up sessions from history that are not the current session
@@ -485,7 +485,7 @@ impl SessionWatcherManager {
                         if historical_session_id != session_id {
                             match cleanup_session_files(&project_path, historical_session_id).await {
                                 Ok((claude_files, claudio_files)) => {
-                                    log::info!("🗑️  Cleaned up historical session {}: {} claude files, {} claudio files", 
+                                    log::debug!("Cleaned up historical session {}: {} claude files, {} claudio files", 
                                               historical_session_id, claude_files, claudio_files);
                                     cleaned_sessions.push(historical_session_id.clone());
                                 },
@@ -499,7 +499,7 @@ impl SessionWatcherManager {
                     // Keep session history as a record - don't remove cleaned sessions
                     
                     // Keep the last_message_uuid and session_history as permanent records
-                    log::info!("✅ Cleaned up historical sessions for claudio session: {}", claudio_session.claudio_id);
+                    log::debug!("Cleaned up historical sessions for claudio session: {}", claudio_session.claudio_id);
                     
                     break; // Found the matching claudio session, no need to continue
                 }

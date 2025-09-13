@@ -19,7 +19,7 @@ export interface LiveClaudeSession {
 export interface ClaudeThinkingEvent {
   session_id: string;
   project_path: string;
-  status: string; // "thinking" or "idle"
+  status: string; // "active" or "idle"
   title?: string;    // Still sent by backend but we ignore it
   message?: string;  // Still sent by backend but we ignore it
 }
@@ -81,9 +81,9 @@ export const useNativeClaudeSessions = () => {
         unsubscribe = await eventManager.subscribe<ClaudeThinkingEvent>('claude-session-thinking', (thinkingEvent) => {
           const { session_id, status } = thinkingEvent;
           
-          logger.debug(`Claude thinking event received:`, { session_id, status });
+          logger.info(`🧠 Claude thinking event received:`, { session_id, status });
           
-          if (status === 'thinking') {
+          if (status === 'active') {
             // Set thinking state to true
             logger.debug(`Setting thinking state for session ${session_id}`);
             setThinkingSessions(prev => ({

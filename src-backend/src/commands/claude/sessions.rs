@@ -151,7 +151,7 @@ pub async fn get_session_todos(session_id: String) -> Result<serde_json::Value, 
     
     // Find all agent todo files for this session
     if todos_dir.exists() {
-        log::debug!("✅ Todos directory exists, reading entries");
+        log::debug!("Todos directory exists, reading entries");
         if let Ok(entries) = fs::read_dir(&todos_dir) {
             let mut found_files = Vec::new();
             let mut matching_files = Vec::new();
@@ -163,7 +163,7 @@ pub async fn get_session_todos(session_id: String) -> Result<serde_json::Value, 
                 // Check if this is an agent todo file for our session
                 if file_name.starts_with(&pattern) && file_name.ends_with(".json") {
                     matching_files.push(file_name.clone());
-                    log::debug!("🎯 Found matching todo file: {}", file_name);
+                    log::debug!("Found matching todo file: {}", file_name);
                     
                     // Extract agent ID from filename: {session_id}-agent-{agent_id}.json
                     let agent_id = file_name
@@ -178,7 +178,7 @@ pub async fn get_session_todos(session_id: String) -> Result<serde_json::Value, 
                         Ok(todos) => {
                             log::debug!("📋 Found {} todos in file {}", todos.len(), file_name);
                             let counts = super::types::count_todos_by_status(&todos);
-                            log::debug!("📊 Todo counts for {}: open={}, completed={}, total={}", 
+                            log::debug!("Todo counts for {}: open={}, completed={}, total={}", 
                                        agent_id, counts.open, counts.completed, counts.total);
                             
                             // Add to totals
@@ -200,12 +200,12 @@ pub async fn get_session_todos(session_id: String) -> Result<serde_json::Value, 
                 }
             }
             
-            log::debug!("📁 Found {} total files in todos dir, {} matching for session {}", found_files.len(), matching_files.len(), session_id);
+            log::debug!("Found {} total files in todos dir, {} matching for session {}", found_files.len(), matching_files.len(), session_id);
         } else {
-            log::warn!("❌ Failed to read todos directory: {:?}", todos_dir);
+            log::warn!("Failed to read todos directory: {:?}", todos_dir);
         }
     } else {
-        log::warn!("❌ Todos directory does not exist: {:?}", todos_dir);
+        log::warn!("Todos directory does not exist: {:?}", todos_dir);
     }
     
     let result = serde_json::json!({
@@ -246,7 +246,7 @@ async fn get_project_path_from_claudio_session(session_id: &str, project_id: &st
                                 // Check if this Claudio session tracks the Claude session we're looking for
                                 if let Some(ref claude_session_id) = claudio_session.session_id {
                                     if claude_session_id == session_id {
-                                        log::info!("🎯 Found project path from Claudio session: {}", claudio_session.project_path);
+                                        log::debug!("Found project path from Claudio session: {}", claudio_session.project_path);
                                         return Ok(claudio_session.project_path);
                                     }
                                 }
@@ -376,10 +376,33 @@ pub async fn delete_session(project_id: String, session_id: String) -> Result<se
     
     let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
     let project_dir = claude_dir.join("projects").join(&project_id);
-    let session_file = project_dir.join(format!("{}.jsonl", session_id));
+    
+    // Handle Claudio sessions: resolve claudio_id to actual Claude session_id
+    let actual_session_id = if session_id.starts_with("claudio-") {
+        log::info!("Resolving Claudio session ID: {}", session_id);
+        let decoded_project_path = crate::commands::claude::decode_project_path(&project_id);
+        
+        match crate::commands::claudio_storage::get_claudio_session(session_id.clone(), decoded_project_path).await {
+            Ok(claudio_session) => {
+                if let Some(claude_session_id) = claudio_session.session_id {
+                    log::info!("Resolved {} to Claude session: {}", session_id, claude_session_id);
+                    claude_session_id
+                } else {
+                    return Err(format!("Claudio session '{}' has no associated Claude session", session_id));
+                }
+            },
+            Err(e) => {
+                return Err(format!("Failed to resolve Claudio session '{}': {}", session_id, e));
+            }
+        }
+    } else {
+        session_id.clone()
+    };
+    
+    let session_file = project_dir.join(format!("{}.jsonl", actual_session_id));
     
     if !session_file.exists() {
-        return Err(format!("Session '{}' not found in project '{}'", session_id, project_id));
+        return Err(format!("Session '{}' not found in project '{}'", actual_session_id, project_id));
     }
     
     // Get file size before deletion
@@ -391,11 +414,11 @@ pub async fn delete_session(project_id: String, session_id: String) -> Result<se
     let decoded_project_path = crate::commands::claude::decode_project_path(&project_id);
     
     // Use unified DRY cleanup function (this handles both Claude and Claudio files)
-    let (_claude_files_deleted, claudio_files_deleted) = crate::commands::claudio_storage::cleanup_session_files(&decoded_project_path, &session_id).await
+    let (_claude_files_deleted, claudio_files_deleted) = crate::commands::claudio_storage::cleanup_session_files(&decoded_project_path, &actual_session_id).await
         .unwrap_or((0, 0));
     
     // Clean up associated todos and timelines (not covered by cleanup_session_files)
-    let (todos_deleted, timelines_deleted) = super::projects::delete_session_dependencies(&claude_dir, &project_dir, &session_id);
+    let (todos_deleted, timelines_deleted) = super::projects::delete_session_dependencies(&claude_dir, &project_dir, &actual_session_id);
     
     // Note: Statsig files don't appear to be session-specific based on file structure analysis
     // They seem to be global cache files, so we don't delete them

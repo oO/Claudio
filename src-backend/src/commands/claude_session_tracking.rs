@@ -16,7 +16,7 @@ pub struct LiveClaudeSession {
 pub struct ClaudeThinkingEvent {
     pub session_id: String,
     pub project_path: String,
-    pub status: String, // "thinking" or "idle"
+    pub status: String, // "active" or "idle"
     pub title: Option<String>,
     pub message: Option<String>,
 }
@@ -37,7 +37,7 @@ pub async fn start_claude_thinking(
     let event_data = ClaudeThinkingEvent {
         session_id: session_id.clone(),
         project_path,
-        status: "thinking".to_string(),
+        status: "active".to_string(),
         title: Some(thinking_title),
         message: Some(thinking_message),
     };
@@ -45,7 +45,7 @@ pub async fn start_claude_thinking(
     app.emit("claude-session-thinking", &event_data)
         .map_err(|e| format!("Failed to emit thinking event: {}", e))?;
     
-    log::info!("🚀 Claude thinking event emitted for session: {}", session_id);
+    log::debug!("Claude thinking event emitted for session: {}", session_id);
     Ok(())
 }
 
@@ -55,7 +55,7 @@ pub async fn end_claude_thinking(
     app: AppHandle,
     session_id: String,
 ) -> Result<(), String> {
-    log::debug!("✅ Ending thinking status for Claude session: {}", session_id);
+    log::debug!("Ending thinking status for Claude session: {}", session_id);
     
     // Emit event to frontend
     let event_data = ClaudeThinkingEvent {
@@ -76,7 +76,7 @@ pub async fn end_claude_thinking(
 /// Get all live Claude sessions by scanning claude-*.json files
 #[command]
 pub async fn get_live_claude_sessions() -> Result<Vec<LiveClaudeSession>, String> {
-    log::debug!("📊 Scanning for live Claude sessions");
+    log::debug!("Scanning for live Claude sessions");
     
     let home_dir = dirs::home_dir().ok_or("Cannot find home directory")?;
     let claudio_projects_dir = home_dir.join(".claudio").join("projects");
@@ -126,7 +126,7 @@ pub async fn get_live_claude_sessions() -> Result<Vec<LiveClaudeSession>, String
 /// Get thinking status for a specific Claude session
 #[command] 
 pub async fn get_claude_session_status(session_id: String) -> Result<Option<LiveClaudeSession>, String> {
-    log::debug!("🔍 Getting status for Claude session: {}", session_id);
+    log::debug!("Getting status for Claude session: {}", session_id);
     
     let sessions = get_live_claude_sessions().await?;
     let session = sessions.into_iter().find(|s| s.session_id == session_id);

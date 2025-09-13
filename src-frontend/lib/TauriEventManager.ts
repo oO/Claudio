@@ -154,7 +154,7 @@ class TauriEventManager {
       logger.log(`🚀 Setting up Tauri listener for '${eventName}'`);
       
       const unlisten = await listen(eventName, (event) => {
-        // logger.log(`🎯 Tauri listener received '${eventName}' event:`, event.payload);
+        logger.info(`🎯 Tauri listener received '${eventName}' event:`, event.payload);
         this.routeEvent(eventName, event.payload);
       });
       
@@ -202,6 +202,11 @@ class TauriEventManager {
     // Debugger breakpoint for event routing
     if (eventName === 'session-file-changed') {
       debugger;
+    }
+    
+    // Special logging for thinking events
+    if (eventName === 'claude-session-thinking') {
+      logger.info(`🧠 THINKING EVENT ROUTING: payload=`, payload);
     }
     
     logger.log(`📨 Routing event '${eventName}' to ${subscriptionSet.size} subscription(s)`);

@@ -7,11 +7,18 @@ import { SESSION_TYPES, type SessionState } from "@/lib/sessionHandleApi";
  * Hook for managing streaming state and thinking content
  * Handles native session thinking state and random thinking content
  */
+interface UseStreamingStateReturn {
+  effectiveIsStreaming: boolean;
+  thinkingContent: { title: string; message: string };
+  isStreaming: boolean;
+  setIsStreaming: (value: boolean) => void;
+}
+
 export const useStreamingState = (
   sessionState: SessionState | null,
   isSessionThinking: (sessionId: string) => boolean,
   queryInitialSessionState?: (sessionId: string) => Promise<void>
-) => {
+): UseStreamingStateReturn => {
   const [isStreaming, setIsStreaming] = useState(false);
   
   // State for random thinking content
@@ -20,40 +27,59 @@ export const useStreamingState = (
     message: "Code flows like water — Through circuits of thought and dream — Beauty takes its form",
   });
 
-  // Compute effective streaming state - for native sessions, use thinking state
-  const effectiveIsStreaming = useMemo(() => {
+  // Compute effective streaming state - for native and Claudio sessions, use thinking state
+  const effectiveIsStreaming = useMemo((): boolean => {
     if (sessionState?.session_type.type === SESSION_TYPES.NATIVE) {
       const claudeSessionId = sessionState.current_claude_session_id;
       const isThinking = claudeSessionId ? isSessionThinking(claudeSessionId) : false;
       
-      return isThinking;
+      return Boolean(isThinking);
+    } else if (sessionState?.session_type.type === SESSION_TYPES.CLAUDIO) {
+      // For Claudio sessions, use the claudio_id to check thinking state
+      const claudeSessionId = sessionState.current_claude_session_id;
+      const claudiaId = (sessionState.session_type.data as any)?.claudio_id;
+      // Check both the current Claude session and the Claudio wrapper ID
+      const isThinkingClaude = claudeSessionId ? isSessionThinking(claudeSessionId) : false;
+      const isThinkingClaudio = claudiaId ? isSessionThinking(claudiaId) : false;
+      
+      return Boolean(isThinkingClaude || isThinkingClaudio);
     }
-    return isStreaming;
+    return Boolean(isStreaming);
   }, [
     sessionState?.session_type.type,
     sessionState?.current_claude_session_id,
+    sessionState?.claudio_id,
     isSessionThinking,
     isStreaming,
   ]);
 
-  // Query initial session state when a native session first loads
+  // Query initial session state when a native or Claudio session first loads
   useEffect(() => {
-    if (
-      sessionState?.session_type.type === SESSION_TYPES.NATIVE &&
-      sessionState.current_claude_session_id &&
-      queryInitialSessionState
-    ) {
-      const claudeSessionId = sessionState.current_claude_session_id;
-      logger.info(`🔍 Querying initial state for native session: ${claudeSessionId?.substring(0, 8)}`);
-      queryInitialSessionState(claudeSessionId);
+    if (queryInitialSessionState) {
+      if (
+        sessionState?.session_type.type === SESSION_TYPES.NATIVE &&
+        sessionState.current_claude_session_id
+      ) {
+        const claudeSessionId = sessionState.current_claude_session_id;
+        logger.info(`🔍 Querying initial state for native session: ${claudeSessionId?.substring(0, 8)}`);
+        queryInitialSessionState(claudeSessionId);
+      } else if (
+        sessionState?.session_type.type === SESSION_TYPES.CLAUDIO &&
+        (sessionState.session_type.data as any)?.claudio_id
+      ) {
+        const claudiaId = (sessionState.session_type.data as any)?.claudio_id;
+        logger.info(`🔍 Querying initial state for Claudio session: ${claudiaId?.substring(0, 8)}`);
+        queryInitialSessionState(claudiaId);
+      }
     }
-  }, [sessionState?.session_type.type, sessionState?.current_claude_session_id, queryInitialSessionState]);
+  }, [sessionState?.session_type.type, sessionState?.current_claude_session_id, sessionState?.claudio_id, queryInitialSessionState]);
   
   // Fetch random thinking content when streaming starts
   useEffect(() => {
     if (
       effectiveIsStreaming &&
-      sessionState?.session_type.type === SESSION_TYPES.NATIVE
+      (sessionState?.session_type.type === SESSION_TYPES.NATIVE || 
+       sessionState?.session_type.type === SESSION_TYPES.CLAUDIO)
     ) {
       const fetchThinkingContent = async () => {
         try {

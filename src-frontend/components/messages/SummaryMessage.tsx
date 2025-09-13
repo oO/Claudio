@@ -28,18 +28,24 @@ export const SummaryMessage: React.FC<SummaryMessageProps> = ({ message }) => {
   // For raw content analysis by ToolWidgetTemplate
   const rawContent = isBundle ? summaries.join("\n") : summary;
 
-  const renderSummaryContent = (excerptedContent: string, isShowingExcerpt: boolean, isExpanded: boolean) => {
+  const renderSummaryContent = (
+    excerptedContent: string,
+    isShowingExcerpt: boolean,
+    isExpanded: boolean,
+  ) => {
     const contentToRender = isShowingExcerpt ? excerptedContent : rawContent;
-    
+
     return (
       <ToolWidgetTemplate.PlainOutput isExpanded={isExpanded}>
         {isBundle ? (
           <ul className="text-sm space-y-1">
-            {(isShowingExcerpt ? excerptedContent.split("\n") : summaries).map((summaryItem, index) => (
-              <li key={index} className="list-disc list-inside">
-                {summaryItem}
-              </li>
-            ))}
+            {(isShowingExcerpt ? excerptedContent.split("\n") : summaries).map(
+              (summaryItem, index) => (
+                <li key={index} className="list-disc list-inside">
+                  {summaryItem}
+                </li>
+              ),
+            )}
           </ul>
         ) : (
           <MarkdownRenderer
@@ -64,11 +70,6 @@ export const SummaryMessage: React.FC<SummaryMessageProps> = ({ message }) => {
         >
           <MessageTemplate.Content>
             <ToolWidgetTemplate>
-              <ToolWidgetTemplate.Debug label="SummaryMessageWidget" />
-              <ToolWidgetTemplate.Header
-                icon={Info}
-                title="AI Context Summary"
-              />
               <ToolWidgetTemplate.ExpandableResult
                 rawContent={rawContent}
                 lineCount={lineCount}

@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.4.36] - 2025-09-13
+
+### Fixed
+- Claudio session thinking indicators now appear immediately when prompts are sent
+- Session ID extraction for Claudio sessions (fixed claudiaId access from session_type.data.claudio_id)
+- Thinking indicator support for both NATIVE and CLAUDIO session types
+- Session status terminology consistency (active/idle vs thinking)
+
+### Cleaned
+- Extensive debugging log cleanup across all backend commands
+- Removed emoji-decorated logs and excessive debug noise from binary detection
+- Replaced info-level logs with debug-level for cleaner production output
+- Cleaned up dead code paths in execution flow
+
+### Removed
+- ClaudeCodeSDKSession.tsx - unused SDK-based session component
+- claudeCodeSdk.ts - unused SDK abstraction layer
+- Dead thinking event code paths in execution.rs
+- Unused SDK calls in sessionUtils.ts
+
+### Enhanced
+- Clean execution path from UI → backend → Claude CLI
+- Proper session ID mapping between Claudio and Claude sessions
+- Significantly reduced log noise for production readiness
+- Added comprehensive execution flow documentation
+
+### Added
+- CLAUDIO_SESSION_EXECUTION_FLOW_ANALYSIS.md - detailed execution flow analysis
+- docs/claude-code-hooks-research.md - Claude Code hook integration research
+
 ## [0.4.35] - 2025-09-10
 
 ### Added

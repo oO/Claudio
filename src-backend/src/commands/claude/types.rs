@@ -327,10 +327,10 @@ pub fn get_project_path_from_sessions(project_dir: &PathBuf) -> Result<String, S
                                 // log::info!("🎯 Found cwd in session file: {}", cwd);
                                 return Ok(cwd.to_string());
                             } else {
-                                log::warn!("⚠️ No 'cwd' field found in session file JSON");
+                                log::warn!("No 'cwd' field found in session file JSON");
                             }
                         } else {
-                            log::error!("❌ Failed to parse JSON from session file first line");
+                            log::error!("Failed to parse JSON from session file first line");
                         }
                     } else {
                         log::warn!("📝 Session file exists but has no content or failed to read first line: {:?}", path);

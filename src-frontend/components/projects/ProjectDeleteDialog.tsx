@@ -40,7 +40,7 @@ export const ProjectDeleteDialog: React.FC<ProjectDeleteDialogProps> = ({
             Are you sure you want to delete this session? This action cannot be undone.
             {session && (
               <div className="mt-2 p-3 bg-muted rounded-md">
-                <p className="text-sm font-medium">{session.first_message || "Untitled Session"}</p>
+                <p className="text-sm font-medium truncate">{session.first_message || "Untitled Session"}</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   {session.message_count || 0} messages • {((session.size_bytes || 0) / 1024).toFixed(1)} KB
                 </p>

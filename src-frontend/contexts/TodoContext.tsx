@@ -163,20 +163,6 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
           
           // Check watcher status to verify it's running
           await invoke('get_todo_watching_status');
-          
-          // Test: Wait a bit then trigger a test todo event
-          setTimeout(async () => {
-            // This should trigger the file watcher if it's working
-            try {
-              const { invoke } = await import('@tauri-apps/api/core');
-              await invoke('claude_task_tool', {
-                prompt: 'Test todo for debugging event system',
-                todos: [{ content: 'Debug event system test', status: 'pending' }]
-              });
-            } catch (e) {
-              logger.warn('🧪 Test TodoWrite failed (expected if not implemented):', e);
-            }
-          }, 2000);
         } catch (error) {
           logger.error('❌ Failed to start todo watcher:', error);
         }

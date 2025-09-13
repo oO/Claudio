@@ -1,12 +1,14 @@
-import { claudeCodeSDK } from './claudeCodeSdk';
 import type { Session } from './api';
 
 /**
  * Check if a session is currently in editor mode (interactive/streamable)
  * Editor sessions are ones that Claudio is actively managing and can send messages to
+ * 
+ * For now, all Claudio sessions (those starting with "claudio-") are considered editor sessions
+ * Native sessions are read-only (viewer mode)
  */
 export function isEditorSession(session: Session | { id: string }): boolean {
-  return claudeCodeSDK.isSessionActive(session.id);
+  return session.id.startsWith('claudio-');
 }
 
 /**
