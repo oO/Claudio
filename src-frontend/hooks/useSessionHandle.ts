@@ -106,33 +106,27 @@ export const useSessionHandle = (
         try {
           const unsubscribe = handle.onMessagesUpdate((allMessages: any[]) => {
 
-            // Simple message replacement - just use the real messages from backend
+            // Simple fake message cleanup: remove all fake messages when real ones arrive
             setMessages((prev) => {
-              // Remove fake user messages that have been replaced by real ones
-              const realUserMessages = allMessages.filter((msg) => msg.type === "user");
-              const onlyFakeUserMessages = prev.filter((msg) => {
-                const isFake = (msg as any).isFake;
-                if (!isFake) return false; // Remove all non-fake messages - they'll be replaced by allMessages
+              const fakeMessages = prev.filter((msg) => (msg as any).isFake);
 
-                // For fake user messages, remove if we now have a real user message with same content
-                if (msg.type === "user") {
-                  const fakeText = msg.message?.content?.[0]?.text;
-                  const hasRealMatch = realUserMessages.some(
-                    (realMsg) => realMsg.message?.content?.[0]?.text === fakeText,
-                  );
-                  return !hasRealMatch; // Remove if we have a real match
-                }
-
-                return false; // Don't keep other fake messages - status messages handled by render-time component
+              logger.info("🔄 Processing message update:", {
+                totalReal: allMessages.length,
+                totalFake: fakeMessages.length,
+                action: allMessages.length > 0 ? "removing all fake messages" : "keeping fake messages"
               });
 
-              // Simple combine - fake user messages that don't have real replacements + all real messages
-              const combined = [...onlyFakeUserMessages, ...allMessages].sort(
-                (a, b) =>
-                  new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
-              );
+              // If we have real messages coming in, remove ALL fake messages
+              if (allMessages.length > 0 && fakeMessages.length > 0) {
+                logger.info("🧹 Removing all fake messages - real messages arrived:", {
+                  removedFakeCount: fakeMessages.length,
+                  fakeUuids: fakeMessages.map(msg => (msg as any).uuid)
+                });
+                return allMessages; // Just use real messages, discard all fake ones
+              }
 
-              return combined;
+              // No real messages yet, keep existing messages (including fakes)
+              return prev;
             });
 
             // Check if the last message is an assistant message to stop streaming
@@ -286,8 +280,13 @@ export const useSessionHandle = (
             content: [{ type: "text", text: prompt }],
           },
           timestamp: new Date().toISOString(),
-          isFake: true, // Mark as fake so we can remove it later
+          isFake: true, // Mark as fake - will be removed when real messages arrive
         } as ClaudeStreamMessage & { isFake: boolean };
+
+        logger.info("🎭 Creating fake user message for optimistic UI:", {
+          uuid: fakeUserMessage.uuid,
+          promptLength: prompt.length
+        });
 
         setMessages((prev) => [...prev, fakeUserMessage as any]);
 

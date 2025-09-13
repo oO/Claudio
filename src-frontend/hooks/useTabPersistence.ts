@@ -43,8 +43,6 @@ export const useTabPersistence = () => {
             return { ...baseTab, initialProjectPath: tab.initialProjectPath };
           case 'project-session':
             return { ...baseTab, sessionId: tab.sessionId, displayId: tab.displayId, initialProjectPath: tab.initialProjectPath };
-          case 'agent':
-            return { ...baseTab, agentRunId: tab.agentRunId };
           case 'claude-file':
             return { ...baseTab, claudeFileId: tab.claudeFileId };
           default:

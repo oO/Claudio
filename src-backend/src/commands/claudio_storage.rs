@@ -295,16 +295,148 @@ pub async fn delete_claudio_session(
 ) -> Result<(), String> {
     let project_dir = get_project_claudio_dir(&project_path)?;
     let session_file = project_dir.join(format!("{}.json", claudio_session_id));
-    
+
     if !session_file.exists() {
         return Err("Session metadata file not found".to_string());
     }
-    
+
     fs::remove_file(&session_file).await
         .map_err(|e| format!("Failed to delete session metadata: {}", e))?;
-    
+
     log::debug!("Deleted session metadata: {}", session_file.display());
     Ok(())
+}
+
+/// Exit a Claudio session (equivalent of /exit for native sessions)
+/// This removes the Claudio wrapper metadata, effectively archiving the session
+/// while preserving the underlying Claude session JSONL file for history
+#[command]
+pub async fn exit_claudio_session(
+    claudio_session_id: String,
+    project_path: String,
+) -> Result<serde_json::Value, String> {
+    log::info!("🚪 Exiting Claudio session: {}", claudio_session_id);
+
+    // 1. Remove from in-memory cache first
+    {
+        let mut sessions = CLAUDIO_SESSIONS.write().await;
+        if sessions.remove(&claudio_session_id).is_some() {
+            log::debug!("⚡ Removed Claudio session from memory cache: {}", claudio_session_id);
+        }
+    }
+
+    // 2. Remove the Claudio metadata file from disk
+    let project_dir = get_project_claudio_dir(&project_path)?;
+    let session_file = project_dir.join(format!("{}.json", claudio_session_id));
+
+    if !session_file.exists() {
+        return Err("Claudio session metadata file not found".to_string());
+    }
+
+    // Get file size for reporting
+    let file_size = fs::metadata(&session_file).await
+        .map_err(|e| format!("Failed to get session file metadata: {}", e))?
+        .len();
+
+    fs::remove_file(&session_file).await
+        .map_err(|e| format!("Failed to exit Claudio session: {}", e))?;
+
+    log::info!("✅ Successfully exited Claudio session: {} ({:.2} KB freed)",
+               claudio_session_id, file_size as f64 / 1024.0);
+
+    Ok(serde_json::json!({
+        "success": true,
+        "claudio_session_id": claudio_session_id,
+        "project_path": project_path,
+        "size_freed_kb": file_size as f64 / 1024.0,
+        "message": format!("Exited Claudio session {}", claudio_session_id)
+    }))
+}
+
+/// Resume an archived session by creating a Claudio wrapper
+/// This converts an archived session back into an active Claudio session
+#[command]
+pub async fn resume_claudio_session(
+    archived_session_id: String,
+    project_path: String,
+) -> Result<serde_json::Value, String> {
+    log::info!("🔄 Resuming archived session: {} for project: {}", archived_session_id, project_path);
+
+    // Ensure directories exist
+    ensure_claudio_dirs().await?;
+
+    // Generate new claudio_id
+    let claudio_id = format!("claudio-{}", chrono::Utc::now().timestamp_millis());
+
+    // Get the last message UUID from the session JSONL file for proper resume tracking
+    let last_message_uuid = get_last_message_uuid_from_session(&archived_session_id, &project_path).await
+        .unwrap_or(None); // It's OK if we can't get it, resume will still work
+
+    // Create the new Claudio session
+    let new_session = ClaudioSession {
+        claudio_id: claudio_id.clone(),
+        session_id: Some(archived_session_id.clone()), // Point to existing Claude session
+        project_path: project_path.clone(),
+        status: SessionStatus::Idle, // Start as Idle, not Active
+        settings: ClaudeSettings::default(),
+        last_message_uuid,
+        message_uuid: None,
+        session_history: Vec::new(), // Fresh wrapper, empty history
+    };
+
+    // Put the session in memory immediately
+    {
+        let mut sessions = CLAUDIO_SESSIONS.write().await;
+        sessions.insert(claudio_id.clone(), new_session.clone());
+        log::debug!("⚡ Added resumed session to memory cache: {}", claudio_id);
+    }
+
+    // Persist to disk
+    update_claudio_session(claudio_id.clone(), project_path.clone(), new_session).await?;
+
+    log::info!("✅ Successfully resumed session {} as Claudio session: {}",
+               archived_session_id, claudio_id);
+
+    Ok(serde_json::json!({
+        "success": true,
+        "claudio_id": claudio_id,
+        "archived_session_id": archived_session_id,
+        "project_path": project_path,
+        "message": format!("Resumed archived session {} as {}", archived_session_id, claudio_id)
+    }))
+}
+
+/// Helper function to extract the last message UUID from a session JSONL file
+/// This is used for proper resume tracking when converting archived sessions
+async fn get_last_message_uuid_from_session(session_id: &str, project_path: &str) -> Result<Option<String>, String> {
+    let claude_dir = crate::commands::claude::get_claude_dir().map_err(|e| e.to_string())?;
+    let project_id = project_path.replace("/", "-");
+    let session_file = claude_dir
+        .join("projects")
+        .join(&project_id)
+        .join(format!("{}.jsonl", session_id));
+
+    if !session_file.exists() {
+        return Ok(None);
+    }
+
+    // Read the file and find the last message with a UUID
+    let content = fs::read_to_string(&session_file).await
+        .map_err(|e| format!("Failed to read session file: {}", e))?;
+
+    // Parse each line as JSON and look for the last message with a uuid field
+    let mut last_uuid = None;
+    for line in content.lines().rev() { // Process in reverse to find last UUID faster
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {
+            if let Some(uuid) = json.get("uuid").and_then(|u| u.as_str()) {
+                last_uuid = Some(uuid.to_string());
+                break; // Found the most recent UUID
+            }
+        }
+    }
+
+    log::debug!("Extracted last message UUID from {}: {:?}", session_id, last_uuid);
+    Ok(last_uuid)
 }
 
 /// Unified cleanup function for both Claude and Claudio session files

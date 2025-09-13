@@ -58,8 +58,6 @@ const TabItem: React.FC<TabItemProps> = ({
     switch (tab.type) {
       case "chat": // Legacy support
         return MessageSquare;
-      case "agent":
-        return Bot;
       case "agents":
         return Bot;
       case "projects":
@@ -488,7 +486,7 @@ export const TabManager: React.FC<TabManagerProps> = ({ className }) => {
                       "flex h-full",
                       panelTabs.length > 0 ? "flex-1" : "w-0"
                     )}
-                    onClick={(e) => {
+                    onClick={(e: React.MouseEvent) => {
                       // Handle panel activation when clicking empty space in Reorder.Group
                       if (e.target === e.currentTarget && panelTabs.length > 0) {
                         const currentActiveTab = getActiveTabForPanel(panelIndex) || panelTabs[0].id;

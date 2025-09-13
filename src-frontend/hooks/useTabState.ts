@@ -11,11 +11,9 @@ interface UseTabStateReturn {
   activeTabId: string | null;
   tabCount: number;
   sessionTabCount: number;
-  agentTabCount: number;
   
   // Operations
   createSessionTab: (initialProjectPath?: string, title?: string, sessionId?: string) => string;
-  createAgentTab: (agentRunId: string, agentName: string) => string;
   createProjectTab: (project: any, projectName: string) => string;
   createProjectsTab: () => string | null;
   createUsageTab: () => string | null;
@@ -37,7 +35,6 @@ interface UseTabStateReturn {
   updateTabStatus: (id: string, status: Tab['status']) => void;
   markTabAsChanged: (id: string, hasChanges: boolean) => void;
   findTabBySessionId: (sessionId: string) => Tab | undefined;
-  findTabByAgentRunId: (agentRunId: string) => Tab | undefined;
   findTabByType: (type: Tab['type']) => Tab | undefined;
   getTabById: (id: string) => Tab | undefined;
   canAddTab: () => boolean;
@@ -62,7 +59,6 @@ export const useTabState = (): UseTabStateReturn => {
 
   const tabCount = tabs.length;
   const sessionTabCount = useMemo(() => getTabsByType('project-session').length, [getTabsByType]);
-  const agentTabCount = useMemo(() => getTabsByType('agent').length, [getTabsByType]);
 
   const createSessionTab = useCallback((initialProjectPath?: string, title?: string, sessionId?: string): string => {
     logger.log('🔥 createSessionTab called with:', { initialProjectPath, title, sessionId });
@@ -105,23 +101,6 @@ export const useTabState = (): UseTabStateReturn => {
     return newTabId;
   }, [addTab, sessionTabCount, getTabsByType, setActiveTab]);
 
-  const createAgentTab = useCallback((agentRunId: string, agentName: string): string => {
-    // Check if tab already exists
-    const existingTab = tabs.find(tab => tab.agentRunId === agentRunId);
-    if (existingTab) {
-      setActiveTab(existingTab.id);
-      return existingTab.id;
-    }
-
-    return addTab({
-      type: 'agent',
-      title: agentName,
-      agentRunId,
-      status: 'running',
-      hasUnsavedChanges: false,
-      icon: 'bot',
-    });
-  }, [addTab, tabs, setActiveTab]);
 
   const createProjectsTab = useCallback((): string | null => {
     // Always create a new projects tab (no singleton behavior)
@@ -321,9 +300,6 @@ export const useTabState = (): UseTabStateReturn => {
     return tabs.find(tab => (tab.type === 'project-session' || tab.type === 'chat') && tab.sessionId === sessionId);
   }, [tabs]);
 
-  const findTabByAgentRunId = useCallback((agentRunId: string): Tab | undefined => {
-    return tabs.find(tab => tab.type === 'agent' && tab.agentRunId === agentRunId);
-  }, [tabs]);
 
   const findTabByType = useCallback((type: Tab['type']): Tab | undefined => {
     return tabs.find(tab => tab.type === type);
@@ -355,11 +331,9 @@ export const useTabState = (): UseTabStateReturn => {
     activeTabId,
     tabCount,
     sessionTabCount,
-    agentTabCount,
     
     // Operations
     createSessionTab,
-    createAgentTab,
     createProjectTab,
     createProjectsTab,
     createUsageTab,
@@ -381,7 +355,6 @@ export const useTabState = (): UseTabStateReturn => {
     updateTabStatus,
     markTabAsChanged,
     findTabBySessionId,
-    findTabByAgentRunId,
     findTabByType,
     getTabById,
     canAddTab

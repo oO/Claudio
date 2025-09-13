@@ -21,3 +21,6 @@ if [ -n "$PROJECT_ID" ]; then
     SESSION_FILE="$HOME/.claudio/projects/$PROJECT_ID/claude-$SESSION_ID.json"
     rm -f "$SESSION_FILE"
 fi
+
+# Output space to make hook appear in .jsonl
+echo " "

@@ -10,7 +10,6 @@ import {
   type ClaudeMdFile,
   type Agent,
 } from "@/lib/api";
-import { OutputCacheProvider } from "@/lib/outputCache";
 import { TabProvider } from "@/contexts/TabContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { TodoProvider } from "@/contexts/TodoContext";
@@ -684,13 +683,11 @@ function AppContent() {
 function App() {
   return (
     <ThemeProvider>
-      <OutputCacheProvider>
         <TabProvider>
           <TodoProvider>
             <AppContent />
           </TodoProvider>
         </TabProvider>
-      </OutputCacheProvider>
     </ThemeProvider>
   );
 }

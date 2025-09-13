@@ -6,13 +6,12 @@ import { logger } from '@/lib/logger';
 
 export interface Tab {
   id: string;
-  type: 'chat' | 'agent' | 'agents' | 'projects' | 'project' | 'project-session' | 'usage' | 'mcp' | 'settings' | 'claude-md' | 'claude-file' | 'create-agent' | 'import-agent';
+  type: 'chat' | 'agents' | 'projects' | 'project' | 'project-session' | 'usage' | 'mcp' | 'settings' | 'claude-md' | 'claude-file' | 'create-agent' | 'import-agent';
   title: string;
   displayId?: string; // For session tabs - shows session ID that never truncates
   sessionId?: string;  // for chat tabs
   sessionData?: any; // for chat tabs - stores full session object
   claudeSession?: any; // legacy field - stores claudio session metadata
-  agentRunId?: string; // for agent tabs
   agentData?: any; // for agent-execution tabs
   claudeFileId?: string; // for claude-file tabs
   sourceContext?: string; // context about where the file was opened from (e.g., "memories", "agents")
@@ -252,8 +251,7 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             title: savedTab.title!,
             sessionId: savedTab.sessionId,
             displayId: savedTab.displayId,
-            agentRunId: savedTab.agentRunId,
-            claudeFileId: savedTab.claudeFileId,
+                  claudeFileId: savedTab.claudeFileId,
             initialProjectPath: savedTab.initialProjectPath,
             restoreProjectState: savedTab.restoreProjectState,
             sessionData: savedTab.sessionData,       // ← RESTORE SESSION DATA
@@ -685,7 +683,6 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       title: savedTab.title!,
       sessionId: savedTab.sessionId,
       displayId: savedTab.displayId,
-      agentRunId: savedTab.agentRunId,
       claudeFileId: savedTab.claudeFileId,
       initialProjectPath: savedTab.initialProjectPath,
       restoreProjectState: savedTab.restoreProjectState,

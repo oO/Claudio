@@ -7,13 +7,12 @@ mod process;
 
 use std::sync::{Arc, Mutex};
 use commands::agents::{
-    cleanup_finished_processes, create_agent, delete_agent, execute_agent, export_agent,
+    create_agent, delete_agent, export_agent,
     export_agent_to_file, fetch_github_agent_content, fetch_github_agents, get_agent,
-    get_agent_run, get_agent_run_with_real_time_metrics, get_claude_binary_path,
-    get_live_session_output, get_session_output, get_session_status, import_agent,
-    import_agent_from_file, import_agent_from_github, init_database, kill_agent_session,
-    list_agent_runs, list_agent_runs_with_metrics, list_agents, list_claude_installations,
-    list_running_sessions, load_agent_session_history, set_claude_binary_path, stream_session_output, update_agent, AgentDb,
+    get_claude_binary_path, import_agent,
+    import_agent_from_file, import_agent_from_github, init_database,
+    list_agents, list_claude_installations,
+    load_agent_session_history, set_claude_binary_path, update_agent, AgentDb,
 };
 use commands::claude::{
     cancel_claude_execution, check_claude_version, continue_claude_code, execute_claude_code,
@@ -56,8 +55,8 @@ use commands::claude_sdk_simple::{start_claude_sdk_session, continue_claude_sdk_
 use commands::claude_direct::{start_claude_direct_session};
 use commands::claudio_storage::{
     create_claudio_session, update_claudio_session, get_claudio_session,
-    list_claudio_sessions, delete_claudio_session,
-    cleanup_orphaned_files,
+    list_claudio_sessions, delete_claudio_session, exit_claudio_session,
+    resume_claudio_session, cleanup_orphaned_files,
 };
 use commands::claude_session_tracking::{
     start_claude_thinking, end_claude_thinking, get_live_claude_sessions,
@@ -276,18 +275,6 @@ fn main() {
             update_agent,
             delete_agent,
             get_agent,
-            execute_agent,
-            list_agent_runs,
-            get_agent_run,
-            list_agent_runs_with_metrics,
-            get_agent_run_with_real_time_metrics,
-            list_running_sessions,
-            kill_agent_session,
-            get_session_status,
-            cleanup_finished_processes,
-            get_session_output,
-            get_live_session_output,
-            stream_session_output,
             load_agent_session_history,
             get_claude_binary_path,
             set_claude_binary_path,
@@ -365,6 +352,8 @@ fn main() {
             get_claudio_session,
             list_claudio_sessions,
             delete_claudio_session,
+            exit_claudio_session,
+            resume_claudio_session,
             cleanup_orphaned_files,
             
             // Session File Watching

@@ -4,6 +4,9 @@ import type { ClaudeStreamMessage } from "@/lib/outputCache";
 // Global tracking of which messages have already triggered resets to prevent spam
 const globalProcessedResets = new Set<string>();
 
+// Global tracking of which messages have already had their agent info logged to prevent spam
+const globalLoggedAgentInfo = new Set<string>();
+
 /**
  * Detect if a user message is actually a fake tool result message from Claude Code
  * These should be bundled with their corresponding tool use messages
@@ -121,7 +124,12 @@ export function processMessagesWithAgentInfo(messages: any[]): ClaudeStreamMessa
       // Use the stored subagent type for all sidechain messages
       agentName = currentSubagentType;
       subagentType = currentSubagentType;
-      logger.debug('🔗 Set sidechain message agent info:', { agentName, subagentType, uuid: entry.uuid });
+      
+      // Only log agent info if we haven't logged it for this sidechain message before
+      if (entry.uuid && !globalLoggedAgentInfo.has(entry.uuid)) {
+        logger.debug('🔗 Set sidechain message agent info:', { agentName, subagentType, uuid: entry.uuid });
+        globalLoggedAgentInfo.add(entry.uuid);
+      }
     } else if (!isSidechain) {
       // Reset when back to main chain
       if (entry.type === "user" && entry.message?.content) {

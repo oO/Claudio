@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.39] - 2025-09-13
+
+### Added
+- Exit Session functionality: Convert active CLAUDIO sessions to ARCHIVED state by removing wrapper files
+- Resume Session functionality: Convert ARCHIVED sessions back to active CLAUDIO sessions with new wrapper
+- Bidirectional session lifecycle management with LogOut/LogIn UI icons
+- Clean session state management without page reloads using proper React state updates
+- Session handle automatic updates with new claudio_id after resume operations
+
 ## [0.4.38] - 2025-09-13
 
 ### Enhanced

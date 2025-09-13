@@ -23,3 +23,6 @@ if [ -n "$PROJECT_ID" ]; then
         sed -i '' 's/"status": "[^"]*"/"status": "active"/' "$SESSION_FILE"
     fi
 fi
+
+# Output space to make hook appear in .jsonl
+echo " "

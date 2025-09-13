@@ -21,11 +21,6 @@ import { formatSessionIdCompact } from "@/lib/sessionUtils";
 
 // Import SessionDetail directly instead of lazy loading to prevent mount/unmount cycles
 import { SessionDetail } from "@/components/sessions/SessionDetail";
-const AgentRunOutputViewer = lazy(() =>
-  import("@/components/agents").then((m) => ({
-    default: m.AgentRunOutputViewer,
-  })),
-);
 const CreateAgent = lazy(() =>
   import("@/components/agents").then((m) => ({ default: m.CreateAgent })),
 );
@@ -99,15 +94,6 @@ const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
           </div>
         );
 
-      case "agent":
-        if (!tab.agentRunId) {
-          return <div className="p-4">No agent run ID specified</div>;
-        }
-        return (
-          <NavigationProvider tabId={tab.id}>
-            <AgentRunOutputViewer agentRunId={tab.agentRunId} tabId={tab.id} />
-          </NavigationProvider>
-        );
 
       case "claude-file":
         return (

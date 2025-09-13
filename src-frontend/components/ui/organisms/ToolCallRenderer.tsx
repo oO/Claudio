@@ -18,6 +18,7 @@ import {
   ExitPlanModeWidget,
   ToolWithResultWidget
 } from "@/components/tools/ToolWidgets";
+import { logger } from '@/lib/logger';
 
 interface ToolCallRendererProps {
   toolCall: {
@@ -144,6 +145,7 @@ export const ToolCallRenderer: React.FC<ToolCallRendererProps> = ({
     
     // ExitPlanMode tool
     if (toolName === "exitplanmode" && input?.plan) {
+      logger.debug("ToolCallRenderer: ExitPlanMode match", { toolName, input });
       // Use the original message instead of creating a fake one
       // This preserves UUID information for clipboard functionality
       const message = originalMessage || {

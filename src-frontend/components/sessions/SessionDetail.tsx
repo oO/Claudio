@@ -28,6 +28,7 @@ interface SessionDetailProps {
   tabId?: string; // Tab ID for activity notifications
   isActive?: boolean; // Whether the tab is currently active
   onSetTabActivity?: () => void; // Callback to trigger tab activity flash
+  onSessionResumed?: (claudioId: string) => void; // Callback when session is resumed with new claudio ID
 }
 
 /**
@@ -43,6 +44,7 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
   tabId,
   isActive = true,
   onSetTabActivity,
+  onSessionResumed,
 }) => {
 
   // Native Claude session thinking state hook
@@ -215,6 +217,7 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
           displayableMessageCount={displayableMessages.length}
           collapsedMessageUuids={collapsedMessageUuids}
           onNavigateToMessage={navigation.navigateToMessage}
+          onSessionResumed={onSessionResumed}
         />
 
         <div className="flex-1 flex flex-col min-h-0">

@@ -46,41 +46,8 @@ struct AgentFrontmatter {
     pub icon: Option<String>,
 }
 
-/// Represents an agent execution run
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct AgentRun {
-    pub id: Option<i64>,
-    pub agent_id: i64,
-    pub agent_name: String,
-    pub agent_icon: String,
-    pub task: String,
-    pub model: String,
-    pub project_path: String,
-    pub session_id: String, // UUID session ID from Claude Code
-    pub status: String,     // 'pending', 'running', 'completed', 'failed', 'cancelled'
-    pub pid: Option<u32>,
-    pub process_started_at: Option<String>,
-    pub created_at: String,
-    pub completed_at: Option<String>,
-}
 
-/// Represents runtime metrics calculated from JSONL
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct AgentRunMetrics {
-    pub duration_ms: Option<i64>,
-    pub total_tokens: Option<i64>,
-    pub cost_usd: Option<f64>,
-    pub message_count: Option<i64>,
-}
 
-/// Combined agent run with real-time metrics
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct AgentRunWithMetrics {
-    #[serde(flatten)]
-    pub run: AgentRun,
-    pub metrics: Option<AgentRunMetrics>,
-    pub output: Option<String>, // Real-time JSONL content
-}
 
 /// Agent export format
 #[derive(Debug, Serialize, Deserialize)]
@@ -279,126 +246,8 @@ impl AgentParser {
     }
 }
 
-/// Real-time JSONL reading and processing functions
-impl AgentRunMetrics {
-    /// Calculate metrics from JSONL content
-    #[allow(dead_code)]
-    pub fn from_jsonl(jsonl_content: &str) -> Self {
-        let mut total_tokens = 0i64;
-        let mut cost_usd = 0.0f64;
-        let mut message_count = 0i64;
-        let mut start_time: Option<chrono::DateTime<chrono::Utc>> = None;
-        let mut end_time: Option<chrono::DateTime<chrono::Utc>> = None;
 
-        for line in jsonl_content.lines() {
-            if let Ok(json) = serde_json::from_str::<JsonValue>(line) {
-                message_count += 1;
 
-                // Track timestamps
-                if let Some(timestamp_str) = json.get("timestamp").and_then(|t| t.as_str()) {
-                    if let Ok(timestamp) = chrono::DateTime::parse_from_rfc3339(timestamp_str) {
-                        let utc_time = timestamp.with_timezone(&chrono::Utc);
-                        if start_time.is_none() || utc_time < start_time.unwrap() {
-                            start_time = Some(utc_time);
-                        }
-                        if end_time.is_none() || utc_time > end_time.unwrap() {
-                            end_time = Some(utc_time);
-                        }
-                    }
-                }
-
-                // Extract token usage - check both top-level and nested message.usage
-                let usage = json
-                    .get("usage")
-                    .or_else(|| json.get("message").and_then(|m| m.get("usage")));
-
-                if let Some(usage) = usage {
-                    if let Some(input_tokens) = usage.get("input_tokens").and_then(|t| t.as_i64()) {
-                        total_tokens += input_tokens;
-                    }
-                    if let Some(output_tokens) = usage.get("output_tokens").and_then(|t| t.as_i64())
-                    {
-                        total_tokens += output_tokens;
-                    }
-                }
-
-                // Extract cost information
-                if let Some(cost) = json.get("cost").and_then(|c| c.as_f64()) {
-                    cost_usd += cost;
-                }
-            }
-        }
-
-        let duration_ms = match (start_time, end_time) {
-            (Some(start), Some(end)) => Some((end - start).num_milliseconds()),
-            _ => None,
-        };
-
-        Self {
-            duration_ms,
-            total_tokens: if total_tokens > 0 {
-                Some(total_tokens)
-            } else {
-                None
-            },
-            cost_usd: if cost_usd > 0.0 { Some(cost_usd) } else { None },
-            message_count: if message_count > 0 {
-                Some(message_count)
-            } else {
-                None
-            },
-        }
-    }
-}
-
-/// Read JSONL content from a session file
-#[allow(dead_code)]
-pub async fn read_session_jsonl(session_id: &str, project_path: &str) -> Result<String, String> {
-    let claude_dir = dirs::home_dir()
-        .ok_or("Failed to get home directory")?
-        .join(".claude")
-        .join("projects");
-
-    // Encode project path to match Claude Code's directory naming
-    let encoded_project = project_path.replace('/', "-");
-    let project_dir = claude_dir.join(&encoded_project);
-    let session_file = project_dir.join(format!("{}.jsonl", session_id));
-
-    if !session_file.exists() {
-        return Err(format!(
-            "Session file not found: {}",
-            session_file.display()
-        ));
-    }
-
-    match tokio::fs::read_to_string(&session_file).await {
-        Ok(content) => Ok(content),
-        Err(e) => Err(format!("Failed to read session file: {}", e)),
-    }
-}
-
-/// Get agent run with real-time metrics
-#[allow(dead_code)]
-pub async fn get_agent_run_with_metrics(run: AgentRun) -> AgentRunWithMetrics {
-    match read_session_jsonl(&run.session_id, &run.project_path).await {
-        Ok(jsonl_content) => {
-            let metrics = AgentRunMetrics::from_jsonl(&jsonl_content);
-            AgentRunWithMetrics {
-                run,
-                metrics: Some(metrics),
-                output: Some(jsonl_content),
-            }
-        }
-        Err(e) => {
-            log::warn!("Failed to read JSONL for session {}: {}", run.session_id, e);
-            AgentRunWithMetrics {
-                run,
-                metrics: None,
-                output: None,
-            }
-        }
-    }
-}
 
 /// Database connection state - kept for compatibility with existing run management
 /// Agents now use file-based storage, but other features still use SQLite
@@ -659,96 +508,17 @@ pub async fn get_agent(project_path: Option<String>, name: String) -> Result<Age
     Ok(agent)
 }
 
-// TODO: The following functions need to be adapted for the new file-based system
-// For now, they return placeholder implementations to maintain API compatibility
 
-/// List agent runs (placeholder - needs implementation for file-based runs)
-#[tauri::command]
-pub async fn list_agent_runs(
-    _agent_name: Option<String>,
-) -> Result<Vec<AgentRun>, String> {
-    // TODO: Implement file-based agent run tracking
-    warn!("list_agent_runs not yet implemented for file-based system");
-    Ok(Vec::new())
-}
 
-/// Get a single agent run by ID (placeholder)
-#[tauri::command]
-pub async fn get_agent_run(_run_id: i64) -> Result<AgentRun, String> {
-    // TODO: Implement file-based agent run tracking
-    Err("get_agent_run not yet implemented for file-based system".to_string())
-}
 
-/// Get agent run with real-time metrics (placeholder)
-#[tauri::command]
-pub async fn get_agent_run_with_real_time_metrics(
-    _run_id: i64,
-) -> Result<AgentRunWithMetrics, String> {
-    // TODO: Implement file-based agent run tracking
-    Err("get_agent_run_with_real_time_metrics not yet implemented for file-based system".to_string())
-}
 
-/// List agent runs with real-time metrics (placeholder)
-#[tauri::command]
-pub async fn list_agent_runs_with_metrics(
-    _agent_name: Option<String>,
-) -> Result<Vec<AgentRunWithMetrics>, String> {
-    // TODO: Implement file-based agent run tracking
-    warn!("list_agent_runs_with_metrics not yet implemented for file-based system");
-    Ok(Vec::new())
-}
 
-/// Execute a CC agent with streaming output (placeholder - needs Task tool integration)
-#[tauri::command]
-pub async fn execute_agent(
-    _app: AppHandle,
-    _agent_name: String,
-    _project_path: String,
-    _task: String,
-    _model: Option<String>,
-) -> Result<i64, String> {
-    // TODO: Replace with Claude Code Task tool integration
-    warn!("execute_agent not yet implemented for file-based system with Task tool");
-    Err("Agent execution will be implemented with Claude Code Task tool integration".to_string())
-}
 
-// Placeholder implementations for other functions to maintain API compatibility
-// These will need to be implemented or removed based on the new file-based architecture
 
-#[tauri::command]
-pub async fn list_running_sessions() -> Result<Vec<AgentRun>, String> {
-    Ok(Vec::new())
-}
 
-#[tauri::command]
-pub async fn kill_agent_session(_app: AppHandle, _run_id: i64) -> Result<bool, String> {
-    Err("kill_agent_session not implemented in file-based system".to_string())
-}
 
-#[tauri::command]
-pub async fn get_session_status(_run_id: i64) -> Result<Option<String>, String> {
-    Err("get_session_status not implemented in file-based system".to_string())
-}
 
-#[tauri::command]
-pub async fn cleanup_finished_processes() -> Result<Vec<i64>, String> {
-    Ok(Vec::new())
-}
 
-#[tauri::command]
-pub async fn get_live_session_output(_run_id: i64) -> Result<String, String> {
-    Err("get_live_session_output not implemented in file-based system".to_string())
-}
-
-#[tauri::command]
-pub async fn get_session_output(_run_id: i64) -> Result<String, String> {
-    Err("get_session_output not implemented in file-based system".to_string())
-}
-
-#[tauri::command]
-pub async fn stream_session_output(_app: AppHandle, _run_id: i64) -> Result<(), String> {
-    Err("stream_session_output not implemented in file-based system".to_string())
-}
 
 #[tauri::command]
 pub async fn export_agent(project_path: Option<String>, name: String) -> Result<String, String> {

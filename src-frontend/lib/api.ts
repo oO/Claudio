@@ -5,7 +5,6 @@ import { logger } from '@/lib/logger';
 
 /** Process type for tracking in ProcessRegistry */
 export type ProcessType = 
-  | { AgentRun: { agent_id: number; agent_name: string } }
   | { ClaudeSession: { session_id: string } };
 
 /** Information about a running process */
@@ -272,46 +271,8 @@ export interface GitHubAgentFile {
   sha: string;
 }
 
-export interface AgentRun {
-  id?: number;
-  agent_id: number;
-  agent_name: string;
-  agent_icon: string;
-  task: string;
-  model: string;
-  project_path: string;
-  session_id: string;
-  status: string; // 'pending', 'running', 'completed', 'failed', 'cancelled'
-  pid?: number;
-  process_started_at?: string;
-  created_at: string;
-  completed_at?: string;
-}
 
-export interface AgentRunMetrics {
-  duration_ms?: number;
-  total_tokens?: number;
-  cost_usd?: number;
-  message_count?: number;
-}
 
-export interface AgentRunWithMetrics {
-  id?: number;
-  agent_id: number;
-  agent_name: string;
-  agent_icon: string;
-  task: string;
-  model: string;
-  project_path: string;
-  session_id: string;
-  status: string; // 'pending', 'running', 'completed', 'failed', 'cancelled'
-  pid?: number;
-  process_started_at?: string;
-  created_at: string;
-  completed_at?: string;
-  metrics?: AgentRunMetrics;
-  output?: string; // Real-time JSONL content
-}
 
 // Usage Dashboard types
 export interface UsageEntry {
@@ -941,75 +902,10 @@ export const api = {
   },
 
 
-  /**
-   * Lists agent runs with metrics
-   * @param agentId - Optional agent ID to filter runs
-   * @returns Promise resolving to an array of agent runs with metrics
-   */
-  async listAgentRuns(agentId?: number): Promise<AgentRunWithMetrics[]> {
-    try {
-      return await invoke<AgentRunWithMetrics[]>('list_agent_runs', { agentId });
-    } catch (error) {
-      logger.error("Failed to list agent runs:", error);
-      // Return empty array instead of throwing to prevent UI crashes
-      return [];
-    }
-  },
 
-  /**
-   * Gets a single agent run by ID with metrics
-   * @param id - The run ID
-   * @returns Promise resolving to the agent run with metrics
-   */
-  async getAgentRun(id: number): Promise<AgentRunWithMetrics> {
-    try {
-      return await invoke<AgentRunWithMetrics>('get_agent_run', { id });
-    } catch (error) {
-      logger.error("Failed to get agent run:", error);
-      throw new Error(`Failed to get agent run: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  },
 
-  /**
-   * Gets a single agent run by ID with real-time metrics from JSONL
-   * @param id - The run ID
-   * @returns Promise resolving to the agent run with metrics
-   */
-  async getAgentRunWithRealTimeMetrics(id: number): Promise<AgentRunWithMetrics> {
-    try {
-      return await invoke<AgentRunWithMetrics>('get_agent_run_with_real_time_metrics', { id });
-    } catch (error) {
-      logger.error("Failed to get agent run with real-time metrics:", error);
-      throw new Error(`Failed to get agent run with real-time metrics: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  },
 
-  /**
-   * Lists all currently running agent sessions
-   * @returns Promise resolving to list of running agent sessions
-   */
-  async listRunningAgentSessions(): Promise<AgentRun[]> {
-    try {
-      return await invoke<AgentRun[]>('list_running_sessions');
-    } catch (error) {
-      logger.error("Failed to list running agent sessions:", error);
-      throw new Error(`Failed to list running agent sessions: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  },
 
-  /**
-   * Kills a running agent session
-   * @param runId - The run ID to kill
-   * @returns Promise resolving to whether the session was successfully killed
-   */
-  async killAgentSession(runId: number): Promise<boolean> {
-    try {
-      return await invoke<boolean>('kill_agent_session', { runId });
-    } catch (error) {
-      logger.error("Failed to kill agent session:", error);
-      throw new Error(`Failed to kill agent session: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  },
 
   /**
    * Gets the status of a specific agent session
@@ -2091,11 +1987,68 @@ export const api = {
   ): Promise<void> {
     try {
       await invoke<void>("delete_claudio_session", {
-        claudoSessionId: sessionId,
+        claudioSessionId: sessionId,
         projectPath
       });
     } catch (error) {
       logger.error("Failed to delete session metadata:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Exit a Claudio session (equivalent of /exit for native sessions)
+   * This removes the Claudio wrapper metadata, effectively archiving the session
+   * while preserving the underlying Claude session JSONL file for history
+   * @param claudioSessionId The Claudio session ID to exit
+   * @param projectPath The project path
+   * @returns Promise resolving with exit result details
+   */
+  async exitClaudioSession(
+    claudioSessionId: string,
+    projectPath: string
+  ): Promise<{
+    success: boolean;
+    claudio_session_id: string;
+    project_path: string;
+    size_freed_kb: number;
+    message: string;
+  }> {
+    try {
+      return await invoke("exit_claudio_session", {
+        claudioSessionId: claudioSessionId,
+        projectPath: projectPath
+      });
+    } catch (error) {
+      logger.error("Failed to exit Claudio session:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Resume an archived session by creating a Claudio wrapper
+   * This converts an archived session back into an active Claudio session
+   * @param archivedSessionId The UUID of the archived session to resume
+   * @param projectPath The project path
+   * @returns Promise resolving with resume result details
+   */
+  async resumeClaudioSession(
+    archivedSessionId: string,
+    projectPath: string
+  ): Promise<{
+    success: boolean;
+    claudio_id: string;
+    archived_session_id: string;
+    project_path: string;
+    message: string;
+  }> {
+    try {
+      return await invoke("resume_claudio_session", {
+        archivedSessionId: archivedSessionId,
+        projectPath: projectPath
+      });
+    } catch (error) {
+      logger.error("Failed to resume Claudio session:", error);
       throw error;
     }
   },

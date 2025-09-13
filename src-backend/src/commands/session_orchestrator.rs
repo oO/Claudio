@@ -16,6 +16,7 @@ use tokio::sync::broadcast;
 // Session type constants - single source of truth
 pub const SESSION_TYPE_CLAUDIO: &str = "CLAUDIO";
 pub const SESSION_TYPE_NATIVE: &str = "NATIVE";
+pub const SESSION_TYPE_ARCHIVED: &str = "ARCHIVED";
 // pub const SESSION_TYPE_READONLY: &str = "READONLY"; // Currently unused
 
 /// Types of sessions that can be managed
@@ -28,6 +29,9 @@ pub enum SessionType {
     /// Read-only native Claude Code session
     #[serde(rename = "NATIVE")] // Must match SESSION_TYPE_NATIVE
     Native { session_id: String },
+    /// Archived session with no wrapper file (just raw JSONL)
+    #[serde(rename = "ARCHIVED")] // Must match SESSION_TYPE_ARCHIVED
+    Archived { session_id: String },
 }
 
 /// Current state of a session handle
@@ -74,6 +78,9 @@ impl SessionHandle {
             },
             SessionType::Native { .. } => {
                 Err("Cannot send prompts to read-only native sessions".to_string())
+            },
+            SessionType::Archived { .. } => {
+                Err("Cannot send prompts to archived sessions - resume them first".to_string())
             }
         }
     }
@@ -175,6 +182,10 @@ impl SessionHandle {
             SessionType::Claudio { claudio_id: None } => {
                 // Should not happen after prompt execution
                 log::warn!("Claudio session with no ID after prompt execution");
+            },
+            SessionType::Archived { .. } => {
+                // Archived sessions don't get prompt updates since they can't accept prompts
+                log::debug!("Prompt execution completed for archived session (no action needed)");
             }
         }
 
@@ -188,6 +199,10 @@ impl SessionHandle {
                 self.get_claudio_message_history(claudio_id.as_deref()).await
             },
             SessionType::Native { session_id } => {
+                self.get_native_message_history(session_id).await
+            },
+            SessionType::Archived { session_id } => {
+                // Archived sessions are read-only, same as native
                 self.get_native_message_history(session_id).await
             }
         }
@@ -594,6 +609,22 @@ impl SessionOrchestrator {
         }
     }
 
+    /// Determine if a session ID has wrapper files (Native) or is archived
+    async fn determine_session_type_for_id(&self, session_id: &str, project_path: &str) -> SessionType {
+        // Check if there's a claude-{session_id}.json file in ~/.claudio
+        if let Ok(claudio_dir) = crate::commands::claudio_storage::get_project_claudio_dir(project_path) {
+            let native_wrapper = claudio_dir.join(format!("claude-{}.json", session_id));
+            if native_wrapper.exists() {
+                log::debug!("Found native wrapper for session {}", session_id);
+                return SessionType::Native { session_id: session_id.to_string() };
+            }
+        }
+
+        // No wrapper file found - it's archived
+        log::debug!("No wrapper found for session {}, treating as archived", session_id);
+        SessionType::Archived { session_id: session_id.to_string() }
+    }
+
     /// Get or create a session handle
     pub async fn get_session_handle(&self, session_identifier: Option<String>, project_path: String) -> Result<SessionState, String> {
         log::debug!("SessionOrchestrator: get_session_handle called with session_id={:?}, project_path={}", session_identifier, project_path);
@@ -603,7 +634,8 @@ impl SessionOrchestrator {
                 let session_type = if id.starts_with("claudio-") {
                     SessionType::Claudio { claudio_id: Some(id.clone()) }
                 } else {
-                    SessionType::Native { session_id: id.clone() }
+                    // Check if this session has any wrapper file to determine if it's Native or Archived
+                    self.determine_session_type_for_id(&id, &project_path).await
                 };
                 (session_type, id)
             },
@@ -660,6 +692,12 @@ impl SessionOrchestrator {
                 let mut guard = current_claude_session.write().await;
                 *guard = Some(session_id.clone());
                 log::debug!("Set current Claude session for native session: {}", session_id);
+            },
+            SessionType::Archived { session_id } => {
+                // Archived session - the session ID IS the Claude session ID (same as native)
+                let mut guard = current_claude_session.write().await;
+                *guard = Some(session_id.clone());
+                log::debug!("Set current Claude session for archived session: {}", session_id);
             }
         }
 
@@ -711,6 +749,10 @@ impl SessionOrchestrator {
             },
             SessionType::Native { session_id } => {
                 // Native sessions use the session ID directly as Claude session ID
+                Some(session_id.clone())
+            },
+            SessionType::Archived { session_id } => {
+                // Archived sessions use the session ID directly as Claude session ID (same as native)
                 Some(session_id.clone())
             }
         };

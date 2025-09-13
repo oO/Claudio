@@ -572,7 +572,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
       setSessions(viewingSession.backState.sessions);
       setActiveProjectTab(viewingSession.backState.activeTab);
       setViewingSession(null);
-      
+
       // Restore tab type to 'project' since we're going back to single project view
       if (viewingSession.backState.selectedProject) {
         const projectName = getProjectName(viewingSession.backState.selectedProject.path);
@@ -582,19 +582,65 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
     }
   };
 
+  // Handle session resume - fetch updated session data and refresh the view
+  const handleSessionResumed = async (claudioId: string) => {
+    logger.log("🔄 Session resumed with new claudio_id:", claudioId);
+
+    try {
+      if (!viewingSession?.backState?.selectedProject?.id) {
+        logger.error("Cannot refresh session: missing project info");
+        return;
+      }
+
+      // Fetch updated sessions list to get the new session data
+      const updatedSessions = await api.getProjectSessions(viewingSession.backState.selectedProject.id);
+      const updatedSession = updatedSessions.find(s => s.id === claudioId);
+
+      if (!updatedSession) {
+        logger.error("Could not find resumed session with claudio_id:", claudioId);
+        return;
+      }
+
+      // Update the viewing session with the new session data
+      setViewingSession({
+        session: updatedSession,
+        projectPath: viewingSession.projectPath,
+        backState: {
+          ...viewingSession.backState,
+          sessions: updatedSessions, // Update the sessions list too
+        }
+      });
+
+      // Update tab with new session info
+      const projectName = getProjectName(viewingSession.projectPath);
+      const sessionShort = formatSessionIdCompact(claudioId.replace('claudio-', ''));
+      updateTab(tab.id, {
+        title: projectName,
+        displayId: sessionShort || undefined,
+        type: 'project-session',
+        sessionId: claudioId,
+      });
+
+      logger.log("✅ Successfully refreshed session view after resume");
+    } catch (error) {
+      logger.error("Failed to refresh session after resume:", error);
+    }
+  };
+
 
   // Render SessionDetail if viewing a session (with valid session object) - legacy inline view
   if (viewingSession && viewingSession.session) {
     return (
       <>
         <DebugLabel label="ProjectsTab" />
-        <SessionDetail 
+        <SessionDetail
           session={viewingSession.session}
           projectPath={viewingSession.projectPath}
           onBack={handleBackFromSession}
           tabId={tab.id}
           isActive={isActive}
           onSetTabActivity={() => updateTab(tab.id, { lastActivityAt: Date.now() })}
+          onSessionResumed={handleSessionResumed}
         />
       </>
     );

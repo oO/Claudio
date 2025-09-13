@@ -10,6 +10,7 @@ import { ToolWidgetTemplate } from "./ToolWidgetTemplate";
 import { MarkdownRenderer } from "@/components/ui/molecules/MarkdownRenderer";
 import { useToolStatus } from "@/contexts/MessageEnhancementContext";
 import type { ClaudeStreamMessage } from "@/lib/outputCache";
+import { logger } from '@/lib/logger';
 
 interface ExitPlanModeWidgetProps {
   /** The assistant message containing the ExitPlanMode tool call */
@@ -35,9 +36,12 @@ export const ExitPlanModeWidget: React.FC<ExitPlanModeWidgetProps> = ({
   message,
   toolResult,
 }) => {
+  logger.debug("ExitPlanModeWidget render", { message, toolResult });
+  
   // Find the ExitPlanMode tool call in the message content
   const toolCall = React.useMemo(() => {
     if (!message.message?.content || !Array.isArray(message.message.content)) {
+      logger.debug("ExitPlanModeWidget: no content", { message });
       return null;
     }
 
@@ -51,8 +55,11 @@ export const ExitPlanModeWidget: React.FC<ExitPlanModeWidgetProps> = ({
   const toolStatus = useToolStatus(toolCall?.id);
 
   if (!toolCall || !toolCall.input.plan) {
+    logger.debug("ExitPlanModeWidget: no toolCall or plan", { toolCall });
     return null;
   }
+  
+  logger.debug("ExitPlanModeWidget: rendering plan", { planLength: toolCall.input.plan.length });
 
   const planContent = toolCall.input.plan;
   const lineCount = planContent.split("\n").length;
@@ -108,7 +115,7 @@ export const ExitPlanModeWidget: React.FC<ExitPlanModeWidgetProps> = ({
 
       <ToolWidgetTemplate.ExpandableResult
         rawContent={planContent}
-        initiallyExpanded={false}
+        initiallyExpanded={true}
         headerContent={
           <span className="text-xs font-medium text-muted-foreground">
             Implementation Plan

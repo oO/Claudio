@@ -16,12 +16,15 @@ import {
   MoreVertical,
   Brain,
   ListTodo,
+  LogOut,
+  LogIn,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +37,7 @@ import {
 } from "@/lib/date-utils";
 import { getSessionTitle, formatSessionIdCompact } from "@/lib/sessionUtils";
 import type { Session } from "@/lib/api";
+import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { useSessionContext } from "@/contexts/SessionContext";
 import { useTodoContext } from "@/contexts/TodoContext";
@@ -63,6 +67,8 @@ interface SessionHeaderProps {
   isRefreshing?: boolean;
   // Navigation
   onNavigateToMessage?: (messageIndex: number) => void;
+  // Session updates
+  onSessionResumed?: (claudioId: string) => void;
 }
 
 export const SessionHeader: React.FC<SessionHeaderProps> = ({
@@ -79,6 +85,7 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
   collapsedMessageUuids,
   isRefreshing,
   onNavigateToMessage,
+  onSessionResumed,
 }) => {
   const {
     liveSessionType,
@@ -101,7 +108,11 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
 
   // Fetch random thinking content when streaming starts
   React.useEffect(() => {
-    if (isStreaming && (liveSessionType === SESSION_TYPES.NATIVE || liveSessionType === SESSION_TYPES.CLAUDIO)) {
+    if (
+      isStreaming &&
+      (liveSessionType === SESSION_TYPES.NATIVE ||
+        liveSessionType === SESSION_TYPES.CLAUDIO)
+    ) {
       const fetchThinkingContent = async () => {
         try {
           const [title, _message] = await invoke<[string, string]>(
@@ -170,6 +181,45 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
     }
   }, [sessionData, sessionFilePath, projectPath, collapsedMessageUuids]);
 
+  const handleExitClaudioSession = React.useCallback(async () => {
+    if (!sessionId || !projectPath) {
+      logger.error("Cannot exit session: missing sessionId or projectPath");
+      return;
+    }
+
+    try {
+      const result = await api.exitClaudioSession(sessionId, projectPath);
+      logger.log("Successfully exited Claudio session:", result);
+
+      // Navigate back to project view since session is now archived
+      onBack();
+    } catch (error) {
+      logger.error("Failed to exit Claudio session:", error);
+    }
+  }, [sessionId, projectPath, onBack]);
+
+  const handleResumeClaudioSession = React.useCallback(async () => {
+    if (!sessionId || !projectPath) {
+      logger.error("Cannot resume session: missing sessionId or projectPath");
+      return;
+    }
+
+    try {
+      const result = await api.resumeClaudioSession(sessionId, projectPath);
+      logger.log("Successfully resumed archived session:", result);
+
+      // Call the parent callback with the new claudio_id to update the session
+      if (onSessionResumed && result.claudio_id) {
+        onSessionResumed(result.claudio_id);
+      } else {
+        // Fallback to page reload if no callback provided
+        window.location.reload();
+      }
+    } catch (error) {
+      logger.error("Failed to resume archived session:", error);
+    }
+  }, [sessionId, projectPath, onSessionResumed]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: -20 }}
@@ -207,7 +257,7 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
             {/* Session metadata */}
             {(sessionData || claudioId) && (
               <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 flex-wrap">
                   {claudeSessionId !== undefined && (
                     <div
                       className="flex items-center gap-1 bg-accent px-2 py-1 rounded-full font-mono cursor-pointer hover:bg-accent/80 transition-colors"
@@ -282,12 +332,6 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
                     </div>
                   )}
                 </div>
-                {claudioId && (
-                  <div className="flex items-center gap-1">
-                    <Hash className="h-3 w-3" />
-                    <span className="font-mono text-xs">{claudioId}</span>
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -332,6 +376,26 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
                   <LucideDownload className="h-4 w-4 mr-2" />
                   Export as Markdown
                 </DropdownMenuItem>
+                {/* Exit Session - only show for CLAUDIO sessions */}
+                {liveSessionType === SESSION_TYPES.CLAUDIO && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleExitClaudioSession}>
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Exit Session
+                    </DropdownMenuItem>
+                  </>
+                )}
+                {/* Resume Session - only show for ARCHIVED sessions */}
+                {liveSessionType === SESSION_TYPES.ARCHIVED && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleResumeClaudioSession}>
+                      <LogIn className="h-4 w-4 mr-2" />
+                      Resume Session
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
