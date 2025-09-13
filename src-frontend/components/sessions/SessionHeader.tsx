@@ -178,7 +178,11 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
             const [title, _message] = await invoke<[string, string]>(
               "get_random_thinking_content",
             );
-            setSessionStatus(getStatusDisplay('active', title));
+            setSessionStatus({
+              type: 'thinking',
+              message: title, // Use the actual random message!
+              icon: Brain
+            });
             logger.debug("🧠 Fetched thinking content:", title);
           } else {
             // For other statuses, use the predefined messages
