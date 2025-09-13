@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.37] - 2025-09-13
+
+### Enhanced
+- Completed comprehensive haiku repair project ensuring perfect 5-7-5 syllable compliance
+- Fixed all 165 broken haikus using parallel ULTRATHINK repair agents
+- Added 16 new tech haikus to complete the 500-haiku collection
+- All haikus now maintain perfect syllable structure for poetic feature compliance
+
 ## [0.4.36] - 2025-09-13
 
 ### Fixed
