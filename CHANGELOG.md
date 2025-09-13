@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.38] - 2025-09-13
+
+### Enhanced
+- Fixed multi-view tab section alignment with content panels using proper width classes (w-1/2, w-1/3)
+- Implemented perfect visual alignment between tab sections and content grid layout
+- Fixed tab selection functionality that was broken during alignment work
+- Enabled panel selection by clicking empty space in sections with full clickable areas
+- Added proper spacer handling for empty panels and removed redundant visual separators
+- Simplified to within-section reordering only for improved reliability
+- Made empty sections show welcome screen in content area with clean bg-card styling
+- Fixed button positioning to be inside last panel section for consistent UI layout
+
 ## [0.4.37] - 2025-09-13
 
 ### Enhanced

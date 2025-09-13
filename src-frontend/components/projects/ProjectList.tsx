@@ -1,11 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import {
-  Folder,
-  MessagesSquare,
-  HardDrive,
-  Clock,
-} from "lucide-react";
+import { Folder, MessagesSquare, HardDrive, Clock } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { Project } from "@/lib/api";
@@ -34,7 +29,6 @@ interface ProjectListProps {
 }
 
 const ITEMS_PER_PAGE = 12;
-
 
 /**
  * ProjectList component - Displays a paginated list of projects with hover animations
@@ -74,7 +68,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
   return (
     <div className={cn("space-y-4 relative", className)}>
       <DebugLabel label="ProjectList" />
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {currentProjects.map((project, index) => (
           <motion.div
             key={project.id}
@@ -110,7 +104,10 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                     </Badge>
                   </div>
 
-                  <p className="text-sm text-muted-foreground mb-3 font-mono truncate" title={project.path}>
+                  <p
+                    className="text-sm text-muted-foreground mb-3 font-mono truncate"
+                    title={project.path}
+                  >
                     {project.path}
                   </p>
                 </div>

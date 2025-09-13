@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Play, Loader2, Terminal, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { listen } from '@tauri-apps/api/event';
 import { api, type ProcessInfo, type Session } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { formatISOTimestamp } from "@/lib/date-utils";
@@ -30,13 +31,41 @@ export const RunningClaudeSessions: React.FC<RunningClaudeSessionsProps> = ({
   const [runningSessions, setRunningSessions] = useState<ProcessInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
+  // Load initial data
   useEffect(() => {
     loadRunningSessions();
-    
-    // Poll for updates every 5 seconds
-    const interval = setInterval(loadRunningSessions, 5000);
-    return () => clearInterval(interval);
+  }, []);
+
+  // Event-driven updates: listen for session file watcher events  
+  useEffect(() => {
+    let unlistenFileWatcher: () => void;
+
+    const setupEventListeners = async () => {
+      try {
+        // Listen for session file changes (created/modified/removed)
+        // This is emitted by the session_watcher.rs file watcher system
+        unlistenFileWatcher = await listen('session-file-changed', (event: any) => {
+          logger.debug('Session file changed event received:', event.payload);
+          // Refresh the running sessions list when session files change
+          loadRunningSessions();
+        });
+
+        logger.debug('Session file watcher listener set up successfully');
+      } catch (error) {
+        logger.error('Failed to set up session file watcher listener:', error);
+        // No fallback polling - if file watcher fails, there's a bigger problem
+        // Just load once and rely on user refresh if needed
+        loadRunningSessions();
+      }
+    };
+
+    setupEventListeners();
+
+    return () => {
+      if (unlistenFileWatcher) unlistenFileWatcher();
+    };
   }, []);
 
   const loadRunningSessions = async () => {
@@ -101,7 +130,7 @@ export const RunningClaudeSessions: React.FC<RunningClaudeSessionsProps> = ({
   return (
     <>
       <DebugLabel label="RunningClaudeSessions" />
-      <div className={cn("relative space-y-3", className)}>
+      <div ref={containerRef} className={cn("relative space-y-3", className)}>
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-1">
           <div className="w-2 h-2 bg-green-500 dark:bg-green-400 rounded-full animate-pulse" />

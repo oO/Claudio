@@ -50,6 +50,7 @@ interface TabContextType {
   activeTabId: string | null;
   panelBreaks: number[]; // Panel break points: [3, 6] means panel 0: tabs 0-2, panel 1: tabs 3-5, panel 2: tabs 6+
   activePanelIndex: number; // Which panel is currently active
+  activeTabs: Record<number, string>; // Active tab per panel: { 0: "tab-1", 1: "tab-5" }
   addTab: (tab: Omit<Tab, 'id' | 'order' | 'createdAt' | 'updatedAt'>, panelIndex?: number) => string;
   removeTab: (id: string, force?: boolean) => boolean;
   updateTab: (id: string, updates: Partial<Tab>) => void;
@@ -68,6 +69,12 @@ interface TabContextType {
   getPanelCount: () => number;
   getPanelCounts: () => number[]; // For backwards compatibility
   canAddPanel: () => boolean; // Check if window width allows another panel
+  
+  // Multi-view panel support
+  setActiveTabForPanel: (panelIndex: number, tabId: string) => void;
+  getActiveTabForPanel: (panelIndex: number) => string | null;
+  getPanelIndexForTab: (tabId: string) => number;
+  ensureActiveTabs: () => Record<number, string>;
 }
 
 const TabContext = createContext<TabContextType | undefined>(undefined);
@@ -81,6 +88,7 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [panelBreaks, setPanelBreaks] = useState<number[]>([]); // Empty array = single panel with all tabs
   const [activePanelIndex, setActivePanelIndex] = useState<number>(0);
+  const [activeTabs, setActiveTabs] = useState<Record<number, string>>({}); // Active tab per panel
   const [windowWidth, setWindowWidth] = useState<number>(window.innerWidth);
   const { saveTabs, loadTabs } = useTabPersistence();
   const { settings } = useSettingsState();
@@ -94,6 +102,122 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Helper to ensure each panel has exactly one active tab
+  const ensureActiveTabs = useCallback(() => {
+    // Calculate panel count directly from panelBreaks
+    const panelCount = panelBreaks.length + 1;
+    const newActiveTabs: Record<number, string> = {};
+    
+    for (let panelIndex = 0; panelIndex < panelCount; panelIndex++) {
+      // Calculate panel tabs directly without calling getTabsForPanel
+      let panelTabs: Tab[];
+      if (panelCount === 1) {
+        panelTabs = tabs;
+      } else {
+        const startIndex = panelIndex === 0 ? 0 : panelBreaks[panelIndex - 1];
+        const endIndex = panelIndex < panelBreaks.length ? panelBreaks[panelIndex] : tabs.length;
+        panelTabs = tabs.slice(startIndex, endIndex);
+      }
+      
+      if (panelTabs.length === 0) continue;
+      
+      // Check if this panel already has an active tab
+      const currentActive = activeTabs[panelIndex];
+      const hasValidActiveTab = currentActive && panelTabs.some(tab => tab.id === currentActive);
+      
+      if (hasValidActiveTab) {
+        // Keep existing active tab
+        newActiveTabs[panelIndex] = currentActive;
+      } else {
+        // Set first tab in panel as active
+        newActiveTabs[panelIndex] = panelTabs[0].id;
+        logger.debug(`🎯 Set panel ${panelIndex} active tab to: ${panelTabs[0].id}`);
+      }
+    }
+    
+    // Only update state if something actually changed
+    const hasChanges = Object.keys(newActiveTabs).some(
+      panelIndex => newActiveTabs[Number(panelIndex)] !== activeTabs[Number(panelIndex)]
+    );
+    
+    if (hasChanges) {
+      setActiveTabs(newActiveTabs);
+      logger.debug('🎯 Updated active tabs:', newActiveTabs);
+    }
+    
+    // Update global activeTabId to match the active panel's active tab
+    const activePanelTab = newActiveTabs[activePanelIndex];
+    if (activePanelTab && activePanelTab !== activeTabId) {
+      setActiveTabId(activePanelTab);
+    }
+    
+    return newActiveTabs;
+  }, [tabs, panelBreaks, activeTabs, activePanelIndex, activeTabId]);
+
+  // Ensure each panel has an active tab whenever panels or tabs change
+  useEffect(() => {
+    // Skip if no tabs
+    if (tabs.length === 0) return;
+    
+    // Inline logic to avoid circular dependency
+    const panelCount = panelBreaks.length + 1;
+    const newActiveTabs: Record<number, string> = {};
+    let hasChanges = false;
+    
+    for (let panelIndex = 0; panelIndex < panelCount; panelIndex++) {
+      // Calculate panel tabs directly
+      let panelTabs: Tab[];
+      if (panelCount === 1) {
+        panelTabs = tabs;
+      } else {
+        const startIndex = panelIndex === 0 ? 0 : panelBreaks[panelIndex - 1];
+        const endIndex = panelIndex < panelBreaks.length ? panelBreaks[panelIndex] : tabs.length;
+        panelTabs = tabs.slice(startIndex, endIndex);
+      }
+      
+      if (panelTabs.length === 0) continue;
+      
+      // Check if this panel already has an active tab
+      const currentActive = activeTabs[panelIndex];
+      const hasValidActiveTab = currentActive && panelTabs.some(tab => tab.id === currentActive);
+      
+      if (hasValidActiveTab) {
+        // Keep existing active tab
+        newActiveTabs[panelIndex] = currentActive;
+      } else {
+        // Set first tab in panel as active
+        newActiveTabs[panelIndex] = panelTabs[0].id;
+        hasChanges = true;
+        logger.debug(`🎯 Set panel ${panelIndex} active tab to: ${panelTabs[0].id}`);
+      }
+      
+      // Check if this panel's active tab changed
+      if (newActiveTabs[panelIndex] !== activeTabs[panelIndex]) {
+        hasChanges = true;
+      }
+    }
+    
+    // Ensure single panel mode always has panel 0 as active
+    if (panelCount === 1 && activePanelIndex !== 0) {
+      setActivePanelIndex(0);
+      hasChanges = true;
+      logger.debug('🎯 Set single panel mode - panel 0 active');
+    }
+    
+    // Only update state if something actually changed
+    if (hasChanges) {
+      setActiveTabs(newActiveTabs);
+      logger.debug('🎯 Updated active tabs:', newActiveTabs);
+      
+      // Update global activeTabId to match the active panel's active tab
+      const targetPanelIndex = panelCount === 1 ? 0 : activePanelIndex;
+      const activePanelTab = newActiveTabs[targetPanelIndex];
+      if (activePanelTab && activePanelTab !== activeTabId) {
+        setActiveTabId(activePanelTab);
+      }
+    }
+  }, [tabs, panelBreaks]); // REMOVED activeTabs, activePanelIndex, activeTabId to break circular dependency
 
   // Auto-restore tabs on app startup (independent of Welcome screen)
   useEffect(() => {
@@ -142,6 +266,8 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setPanelBreaks(sessionData.panelBreaks || []);
             setActivePanelIndex(sessionData.activePanelIndex || 0);
             setActiveTabId(restoredTabs[0].id);
+            
+            
             logger.info('✅ SIMPLE RESTORATION COMPLETE:', { 
               tabCount: restoredTabs.length,
               types: restoredTabs.map(t => t.type)
@@ -156,7 +282,7 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     attemptInitialRestore();
-  }, []); // Run once on mount
+  }, []); // Run once on mount ONLY
 
   // Start with welcome message, then open default Projects tab after delay
   // Removed automatic project tab creation - users should manually open tabs
@@ -240,25 +366,81 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   };
 
+  // Helper method to find which panel a tab belongs to
+  const getPanelIndexForTab = useCallback((tabId: string): number => {
+    // Find which panel this tab belongs to based on panelBreaks
+    if (panelBreaks.length === 0) return 0; // Single panel
+    
+    const tabIndex = tabs.findIndex(tab => tab.id === tabId);
+    if (tabIndex === -1) return 0;
+    
+    // Find which panel this tab index falls into
+    for (let i = 0; i < panelBreaks.length; i++) {
+      if (tabIndex < panelBreaks[i]) {
+        return i;
+      }
+    }
+    
+    // Last panel
+    return panelBreaks.length;
+  }, [tabs, panelBreaks]);
+
   const addTab = useCallback((tabData: Omit<Tab, 'id' | 'order' | 'createdAt' | 'updatedAt'>, panelIndex?: number): string => {
     if (tabs.length >= MAX_TABS) {
       throw new Error(`Maximum number of tabs (${MAX_TABS}) reached`);
     }
 
+    // Default to active panel if not specified
+    const targetPanelIndex = panelIndex ?? activePanelIndex;
+    const panelCount = panelBreaks.length + 1;
+    
+    // Calculate insertion index for the target panel
+    let insertionIndex: number;
+    if (panelCount === 1 || targetPanelIndex === panelCount - 1) {
+      // Single panel or last panel: append to end
+      insertionIndex = tabs.length;
+    } else {
+      // Insert at the end of the target panel (before next panel break)
+      insertionIndex = panelBreaks[targetPanelIndex];
+    }
+
     const newTab: Tab = {
       ...tabData,
       id: generateTabId(),
-      order: tabs.length,
+      order: insertionIndex,
       lastActivityAt: tabData.lastActivityAt ?? undefined,
       createdAt: new Date(),
       updatedAt: new Date()
     };
 
-    setTabs(prevTabs => [...prevTabs, newTab]);
+    // Insert tab at the correct position and update orders
+    setTabs(prevTabs => {
+      const newTabs = [...prevTabs];
+      newTabs.splice(insertionIndex, 0, newTab);
+      
+      // Update orders for all tabs after insertion point
+      for (let i = insertionIndex + 1; i < newTabs.length; i++) {
+        newTabs[i] = { ...newTabs[i], order: i };
+      }
+      
+      return newTabs;
+    });
+
+    // Update panel breaks if we inserted in a non-last panel
+    if (targetPanelIndex < panelCount - 1) {
+      setPanelBreaks(prevBreaks => 
+        prevBreaks.map((breakPoint, index) => 
+          index >= targetPanelIndex ? breakPoint + 1 : breakPoint
+        )
+      );
+    }
+
     setActiveTabId(newTab.id);
+    setActiveTabs(prev => ({ ...prev, [targetPanelIndex]: newTab.id }));
+    setActivePanelIndex(targetPanelIndex);
 
     return newTab.id;
-  }, [tabs.length]);
+  }, [tabs.length, activePanelIndex, panelBreaks]);
 
   const removeTab = useCallback((id: string, force: boolean = false) => {
     // Check if tab has unsaved changes and we're not forcing removal
@@ -300,33 +482,7 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return reorderedTabs;
     });
     
-    // Auto-cleanup: If removing a tab leaves a panel empty, remove that panel
-    const newTabCount = tabs.length - 1; // tabs.length after removal
-    if (newTabCount > 0) {
-      setPanelBreaks(prevBreaks => {
-        // Filter out any breaks that would create empty panels
-        const validBreaks = prevBreaks.filter(breakPoint => breakPoint < newTabCount);
-        
-        // If breaks changed, adjust active panel and log the cleanup
-        if (validBreaks.length !== prevBreaks.length) {
-          const newPanelCount = validBreaks.length + 1;
-          setActivePanelIndex(prev => Math.min(prev, newPanelCount - 1));
-          
-          logger.debug('🧹 Auto-cleaned empty panels:', {
-            oldBreaks: prevBreaks,
-            newBreaks: validBreaks,
-            removedEmptyPanels: prevBreaks.length - validBreaks.length,
-            adjustedActivePanelIndex: Math.min(activePanelIndex, newPanelCount - 1)
-          });
-        }
-        
-        return validBreaks;
-      });
-    } else {
-      // No tabs left, reset to single empty panel
-      setPanelBreaks([]);
-      setActivePanelIndex(0);
-    }
+    // No auto-cleanup - panels remain even if empty
     
     return true;
   }, [activeTabId, tabs, activePanelIndex]);
@@ -344,8 +500,13 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const setActiveTab = useCallback((id: string) => {
     if (tabs.find(tab => tab.id === id)) {
       setActiveTabId(id);
+      
+      // Also update per-panel active tab tracking
+      const panelIndex = getPanelIndexForTab(id);
+      setActiveTabs(prev => ({ ...prev, [panelIndex]: id }));
+      setActivePanelIndex(panelIndex);
     }
-  }, [tabs]);
+  }, [tabs, getPanelIndexForTab]);
 
   const reorderTabs = useCallback((startIndex: number, endIndex: number) => {
     setTabs(prevTabs => {
@@ -416,13 +577,9 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Panel management methods  
   const addPanel = useCallback(() => {
-    if (tabs.length < 2) {
-      logger.warn('➕ Cannot split with less than 2 tabs');
-      return;
-    }
-    
-    // Split before the last tab (move last tab to new panel)
-    const newPanelBreaks = [...panelBreaks, tabs.length - 1];
+    // Create empty panel - no tab count restriction
+    const splitPoint = tabs.length; // Split after all existing tabs (empty panel)
+    const newPanelBreaks = [...panelBreaks, splitPoint];
     setPanelBreaks(newPanelBreaks);
     setActivePanelIndex(newPanelBreaks.length); // Focus the new panel (last index)
     
@@ -431,7 +588,8 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       activePanelIndex: newPanelBreaks.length,
       lastTabMovedToNewPanel: true
     });
-  }, [panelBreaks, tabs.length]);
+    
+  }, [panelBreaks, tabs.length, ensureActiveTabs]);
 
   const closePanel = useCallback((panelIndex: number, keepTabs: boolean = true) => {
     const panelCount = getPanelCount();
@@ -502,14 +660,12 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [activePanelIndex]);
 
   const canAddPanel = useCallback((): boolean => {
-    // Need at least 2 tabs to split
-    if (tabs.length < 2) return false;
-    
+    // Only restricted by window width, not tab count
     const currentPanelCount = getPanelCount();
     const panelMinWidth = settings?.panelMinWidth || PANEL_MIN_WIDTH;
     const requiredWidth = (currentPanelCount + 1) * panelMinWidth;
     return windowWidth >= requiredWidth;
-  }, [tabs.length, getPanelCount, settings?.panelMinWidth, windowWidth]);
+  }, [getPanelCount, settings?.panelMinWidth, windowWidth]);
 
   const restoreTabs = useCallback(async (sessionData: PersistedTabSession): Promise<void> => {
     if (sessionData.tabs.length === 0) return;
@@ -548,17 +704,31 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setActiveTabId(restoredTabs[0].id);
     }
 
+
     logger.info('✨ Simple tab restoration complete:', { 
       tabCount: restoredTabs.length,
       types: restoredTabs.map(t => t.type)
     });
+  }, [ensureActiveTabs]);
+
+  // Multi-view panel support methods
+  const setActiveTabForPanel = useCallback((panelIndex: number, tabId: string) => {
+    setActiveTabs(prev => ({ ...prev, [panelIndex]: tabId }));
+    setActivePanelIndex(panelIndex);
+    // Also update global activeTabId for backward compatibility
+    setActiveTabId(tabId);
   }, []);
+
+  const getActiveTabForPanel = useCallback((panelIndex: number): string | null => {
+    return activeTabs[panelIndex] || null;
+  }, [activeTabs]);
 
   const value: TabContextType = {
     tabs,
     activeTabId,
     panelBreaks,
     activePanelIndex,
+    activeTabs,
     addTab,
     removeTab,
     updateTab,
@@ -574,7 +744,11 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getActivePanelIndex,
     getPanelCount,
     getPanelCounts,
-    canAddPanel
+    canAddPanel,
+    setActiveTabForPanel,
+    getActiveTabForPanel,
+    getPanelIndexForTab,
+    ensureActiveTabs
   };
 
   return (

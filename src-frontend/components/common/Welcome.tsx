@@ -169,7 +169,7 @@ export const WelcomeScreen: React.FC = () => {
           "get_random_thinking_content",
         );
         setHaiku(message);
-        logger.debug("🌸 Fetched random haiku:", message);
+        //logger.debug("🌸 Fetched random haiku:", message);
       } catch (error) {
         logger.error("Failed to fetch thinking haiku:", error);
         // Keep default message on error
@@ -181,35 +181,41 @@ export const WelcomeScreen: React.FC = () => {
 
   // Silent auto-restore logic
   useEffect(() => {
-    console.log('🎯 AUTO-RESTORE EFFECT TRIGGERED:', { 
-      tabsLength: tabs.length, 
-      restoreBlocked, 
-      hasTimer: !!autoRestoreTimerRef.current 
+    console.log("🎯 AUTO-RESTORE EFFECT TRIGGERED:", {
+      tabsLength: tabs.length,
+      restoreBlocked,
+      hasTimer: !!autoRestoreTimerRef.current,
     });
-    
+
     // Only attempt auto-restore if there are no tabs and restore hasn't been blocked
     if (tabs.length > 0 || restoreBlocked) {
-      console.log('❌ AUTO-RESTORE BLOCKED:', { tabsLength: tabs.length, restoreBlocked });
+      console.log("❌ AUTO-RESTORE BLOCKED:", {
+        tabsLength: tabs.length,
+        restoreBlocked,
+      });
       return;
     }
-    
-    console.log('✅ SETTING UP 15-SECOND AUTO-RESTORE TIMER...');
+
+    console.log("✅ SETTING UP 15-SECOND AUTO-RESTORE TIMER...");
 
     const attemptRestore = async () => {
       try {
-        console.log('🔍 ATTEMPTING TAB RESTORE...');
+        //console.log("🔍 ATTEMPTING TAB RESTORE...");
         const savedTabs = await loadTabs();
-        console.log('📂 LOADED SAVED TABS:', savedTabs.tabs.length, savedTabs);
-        
+        console.log("📂 LOADED SAVED TABS:", savedTabs.tabs.length, savedTabs);
+
         if (savedTabs.tabs.length > 0 && !restoreBlocked) {
-          console.log("🔄 RESTORING TABS SILENTLY:", savedTabs);
+          //console.log("🔄 RESTORING TABS SILENTLY:", savedTabs);
           await restoreTabs(savedTabs);
           console.log("✅ TABS RESTORED SUCCESSFULLY");
           // Clear saved tabs after successful restore to avoid duplicate restores
           await clearSavedTabs();
           console.log("🗑️ CLEARED SAVED TABS");
         } else {
-          console.log("❌ NO TABS TO RESTORE OR RESTORE BLOCKED:", { savedTabsCount: savedTabs.tabs.length, restoreBlocked });
+          console.log("❌ NO TABS TO RESTORE OR RESTORE BLOCKED:", {
+            savedTabsCount: savedTabs.tabs.length,
+            restoreBlocked,
+          });
         }
       } catch (error) {
         console.error("💥 FAILED TO AUTO-RESTORE TABS:", error);
@@ -268,7 +274,7 @@ export const WelcomeScreen: React.FC = () => {
           </h1>
 
           {/* Random thinking haiku */}
-          <div className="text-center m-4 relative -top-8">
+          <div className="text-center m-4 relative">
             <span className="text-2xl px-4 py-1 bg-card text-accent italic font-serif leading-relaxed animate-pulse haiku-lowercase">
               <style>
                 {`

@@ -117,7 +117,6 @@ pub async fn cancel_claude_execution(
 pub async fn list_running_claude_sessions(
     registry: tauri::State<'_, crate::process::ProcessRegistryState>,
 ) -> Result<Vec<crate::process::ProcessInfo>, String> {
-    log::debug!("Listing running Claude sessions");
     registry.inner().0.get_running_claude_sessions()
 }
 

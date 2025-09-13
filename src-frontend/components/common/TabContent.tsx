@@ -1,7 +1,7 @@
 import React, { Suspense, lazy, useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTabState } from "@/hooks/useTabState";
-import { Tab } from "@/contexts/TabContext";
+import { Tab, useTabContext } from "@/contexts/TabContext";
 import { LoadingSpinner } from "@/components/ui/atoms/LoadingSpinner";
 import { NavigationProvider } from "@/contexts/NavigationContext";
 // import { ChatTabWrapper } from "./ChatTabWrapper"; // REMOVED: Chat tab no longer needed
@@ -157,6 +157,32 @@ const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
   );
 };
 
+interface PanelContentProps {
+  panelIndex: number;
+  isActive: boolean;
+}
+
+const PanelContent: React.FC<PanelContentProps> = ({ panelIndex, isActive }) => {
+  const { getTabsForPanel, getActiveTabForPanel } = useTabContext();
+  const tabs = getTabsForPanel(panelIndex);
+  const activeTabId = getActiveTabForPanel(panelIndex);
+  
+  return (
+    <div className={`h-full overflow-hidden border-r border-border/20 last:border-r-0 
+                     ${isActive ? 'ring-1 ring-primary/20' : ''}`}>
+      {tabs.map((tab) => (
+        <TabPanel 
+          key={tab.id} 
+          tab={tab} 
+          isActive={tab.id === activeTabId} 
+        />
+      ))}
+      
+      {/* Show welcome screen if this panel has no tabs */}
+      {tabs.length === 0 && <WelcomeScreen />}
+    </div>
+  );
+};
 
 export const TabContent: React.FC = () => {
   const {
@@ -170,6 +196,13 @@ export const TabContent: React.FC = () => {
     closeTab,
     updateTab,
   } = useTabState();
+  
+  const {
+    getPanelCount,
+    getTabsForPanel,
+    getActiveTabForPanel,
+    activePanelIndex,
+  } = useTabContext();
 
   // Track when welcome screen becomes visible to trigger new quote
   const [welcomeKey, setWelcomeKey] = useState(0);
@@ -340,13 +373,35 @@ export const TabContent: React.FC = () => {
     updateTab,
   ]);
 
-  return (
-    <div className="flex-1 h-full relative">
-      {tabs.map((tab) => (
-        <TabPanel key={tab.id} tab={tab} isActive={tab.id === activeTabId} />
-      ))}
+  // Determine panel count and grid class
+  const panelCount = getPanelCount();
+  const gridClass = panelCount === 2 ? 'grid-cols-2' : 
+                    panelCount === 3 ? 'grid-cols-3' : 
+                    '';
 
-      {tabs.length === 0 && <WelcomeScreen key={welcomeKey} />}
+  // Single panel mode - use existing behavior for backward compatibility
+  if (panelCount === 1) {
+    return (
+      <div className="flex-1 h-full relative">
+        {tabs.map((tab) => (
+          <TabPanel key={tab.id} tab={tab} isActive={tab.id === activeTabId} />
+        ))}
+
+        {tabs.length === 0 && <WelcomeScreen key={welcomeKey} />}
+      </div>
+    );
+  }
+
+  // Multi-panel mode - use CSS Grid
+  return (
+    <div className={`flex-1 h-full grid ${gridClass}`}>
+      {Array.from({ length: panelCount }).map((_, panelIndex) => (
+        <PanelContent 
+          key={panelIndex} 
+          panelIndex={panelIndex}
+          isActive={activePanelIndex === panelIndex}
+        />
+      ))}
     </div>
   );
 };
