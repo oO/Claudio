@@ -199,9 +199,9 @@ class TauriEventManager {
       return;
     }
     
-    // Debugger breakpoint for event routing
+    // Debug logging for session file events
     if (eventName === 'session-file-changed') {
-      debugger;
+      logger.debug(`🔍 Routing session-file-changed event:`, payload);
     }
     
     // Special logging for thinking events
@@ -217,8 +217,7 @@ class TauriEventManager {
     for (const subscription of subscriptionSet) {      
       if (this.matchesFilter(subscription.filter, payload)) {
         try {
-          // Debugger breakpoint before callback execution
-          debugger;
+          // Execute callback for subscription
           subscription.callback(payload);
           routedCount++;
         } catch (error) {

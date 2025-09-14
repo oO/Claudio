@@ -58,19 +58,25 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
 
   // Get current tab ID for scoped filter persistence
   const { activeTabId } = useTabState();
-  const tabId = activeTabId || 'unknown-tab';
+  const tabId = activeTabId || "unknown-tab";
 
   // Session type filters state with tab-scoped localStorage persistence
   const [showRegularSessions, setShowRegularSessions] = useState(() => {
-    const saved = localStorage.getItem(`claudio-session-filters-regular-${tabId}`);
-    return saved !== null ? JSON.parse(saved) : true;
+    const saved = localStorage.getItem(
+      `claudio-session-filters-regular-${tabId}`,
+    );
+    return saved !== null ? JSON.parse(saved) : false;
   });
   const [showNativeSessions, setShowNativeSessions] = useState(() => {
-    const saved = localStorage.getItem(`claudio-session-filters-native-${tabId}`);
+    const saved = localStorage.getItem(
+      `claudio-session-filters-native-${tabId}`,
+    );
     return saved !== null ? JSON.parse(saved) : true;
   });
   const [showClaudioSessions, setShowClaudioSessions] = useState(() => {
-    const saved = localStorage.getItem(`claudio-session-filters-claudio-${tabId}`);
+    const saved = localStorage.getItem(
+      `claudio-session-filters-claudio-${tabId}`,
+    );
     return saved !== null ? JSON.parse(saved) : true;
   });
 
@@ -120,15 +126,24 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
 
   // Persist filter state to localStorage with tab-scoped keys
   useEffect(() => {
-    localStorage.setItem(`claudio-session-filters-regular-${tabId}`, JSON.stringify(showRegularSessions));
+    localStorage.setItem(
+      `claudio-session-filters-regular-${tabId}`,
+      JSON.stringify(showRegularSessions),
+    );
   }, [showRegularSessions, tabId]);
 
   useEffect(() => {
-    localStorage.setItem(`claudio-session-filters-native-${tabId}`, JSON.stringify(showNativeSessions));
+    localStorage.setItem(
+      `claudio-session-filters-native-${tabId}`,
+      JSON.stringify(showNativeSessions),
+    );
   }, [showNativeSessions, tabId]);
 
   useEffect(() => {
-    localStorage.setItem(`claudio-session-filters-claudio-${tabId}`, JSON.stringify(showClaudioSessions));
+    localStorage.setItem(
+      `claudio-session-filters-claudio-${tabId}`,
+      JSON.stringify(showClaudioSessions),
+    );
   }, [showClaudioSessions, tabId]);
 
   // Filter sessions based on type toggles
@@ -299,7 +314,7 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
                   </div>
                 </button>
               )}
-              
+
               {/* Native Sessions Filter - only show if count > 0 */}
               {sessions.filter(
                 (s) => s.live_session_type === SESSION_TYPES.NATIVE,
@@ -323,7 +338,7 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
                   </div>
                 </button>
               )}
-              
+
               {/* Regular Sessions Filter - only show if count > 0 */}
               {sessions.filter((s) => !s.live_session_type).length > 0 && (
                 <button
@@ -335,7 +350,7 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
                   )}
                   onClick={() => setShowRegularSessions(!showRegularSessions)}
                 >
-                  <span className="text-xs px-2">Other</span>
+                  <span className="text-xs px-2">Archived</span>
                   <div className="flex items-center justify-center w-6 h-6 bg-card rounded-full text-xs font-medium">
                     {sessions.filter((s) => !s.live_session_type).length}
                   </div>

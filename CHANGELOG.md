@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.42] - 2025-09-14
+
+### Fixed
+- Tab creation bug in multi-view mode where tabs created via Topbar buttons (Projects, Agents, etc.) always went to Panel 0 instead of the currently active panel
+- Fixed stale closure issue in TabContext.tsx by adding useRef for activePanelIndex to avoid stale dependencies
+- Regression from v0.4.38 when useEffect dependencies were removed to break circular dependencies
+
 ## [0.4.40] - 2025-09-14
 
 ### Fixed

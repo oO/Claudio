@@ -67,11 +67,11 @@ export function useGlobalEvent<T = any>(
         const unsubscribe = await eventManager.subscribe(
           eventName,
           (payload: T) => {
-            // Debugger breakpoint for React callback
+            // Debug logging for React callback
             if (eventName === 'session-file-changed') {
-              debugger;
+              logger.debug(`🔍 React callback for ${eventName}:`, payload);
             }
-            
+
             try {
               // Use ref to get latest callback
               callbackRef.current(payload);

@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useCallback, useEffect } from 'react';
+import React, { createContext, useState, useContext, useCallback, useEffect, useRef } from 'react';
 import type { NavigationStack } from './NavigationContext';
 import { useTabPersistence, type PersistedTabSession } from '@/hooks/useTabPersistence';
 import { useSettingsState } from '@/hooks/useSettingsState';
@@ -87,10 +87,16 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [panelBreaks, setPanelBreaks] = useState<number[]>([]); // Empty array = single panel with all tabs
   const [activePanelIndex, setActivePanelIndex] = useState<number>(0);
+  const activePanelIndexRef = useRef<number>(0); // Ref to avoid stale closure in useEffect
   const [activeTabs, setActiveTabs] = useState<Record<number, string>>({}); // Active tab per panel
   const [windowWidth, setWindowWidth] = useState<number>(window.innerWidth);
   const { saveTabs, loadTabs } = useTabPersistence();
   const { settings } = useSettingsState();
+
+  // Keep activePanelIndexRef in sync with activePanelIndex
+  useEffect(() => {
+    activePanelIndexRef.current = activePanelIndex;
+  }, [activePanelIndex]);
 
   // Track window width changes for panel calculations
   useEffect(() => {
@@ -198,7 +204,7 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     
     // Ensure single panel mode always has panel 0 as active
-    if (panelCount === 1 && activePanelIndex !== 0) {
+    if (panelCount === 1 && activePanelIndexRef.current !== 0) {
       setActivePanelIndex(0);
       hasChanges = true;
       logger.debug('🎯 Set single panel mode - panel 0 active');
@@ -210,7 +216,7 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       logger.debug('🎯 Updated active tabs:', newActiveTabs);
       
       // Update global activeTabId to match the active panel's active tab
-      const targetPanelIndex = panelCount === 1 ? 0 : activePanelIndex;
+      const targetPanelIndex = panelCount === 1 ? 0 : activePanelIndexRef.current;
       const activePanelTab = newActiveTabs[targetPanelIndex];
       if (activePanelTab && activePanelTab !== activeTabId) {
         setActiveTabId(activePanelTab);
