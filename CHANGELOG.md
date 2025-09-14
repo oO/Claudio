@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.4.45] - 2025-09-14
+
+### Fixed
+- Two critical regression fixes for multi-view tab creation and subagent message routing
+- Fixed multi-view tab creation bug where tabs only created in first panel instead of active panel
+- Fixed stale closure bug in TabContext by adding activePanelIndexRef to track current active panel
+- Fixed subagent messages incorrectly rendering as AssistantMessage instead of SubAgentMessage
+- Fixed dual message processing pipelines where only sessionHandleApi called processMessagesWithAgentInfo()
+- Made useMessageProcessing call processMessagesWithAgentInfo() so MessageRouter gets messages with agentType properties
+- Fixed global subagent type persistence between streaming calls within same turn
+- Removed problematic reset logic that was clearing subagent context prematurely
+- Cleaned up debug logging to prevent log spam
+
+## [0.4.44] - 2025-09-14
+
+### Fixed
+- Critical subagent message routing bug where dual message processing pipelines were inconsistent
+- Fixed useMessageProcessing hook not calling processMessagesWithAgentInfo() causing messages to lack agentType properties
+- Fixed messageProcessor global state persistence by making currentSubagentType persist between streaming calls
+- Removed premature reset logic that cleared subagent context before sidechain messages could use it
+- Restored proper SubAgentMessage component routing for messages with isSidechain: true
+- Subagent messages now display correctly with Bot icon, colored badges, and proper visual distinction
+
+## [0.4.43] - 2025-09-14
+
+### Fixed
+- Subagent message assignment regression from v0.4.39 session resume optimization
+- Session resume now preserves Task tool context by searching backwards for last Task tool before resume point
+- Fixed stateful currentSubagentType tracking in processMessagesWithAgentInfo to ensure subagent messages render as SubAgentMessage instead of regular AssistantMessage in UI
+
 ## [0.4.42] - 2025-09-14
 
 ### Fixed

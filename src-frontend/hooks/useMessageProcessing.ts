@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { logger } from "@/lib/logger";
+import { processMessagesWithAgentInfo } from "@/lib/messageProcessor";
 import type { ClaudeStreamMessage } from "@/lib/outputCache";
 import type { UserMessageItem, ToolMessageItem, AssistantMessageItem, SystemMessageItem } from "@/contexts/SessionContext";
 
@@ -10,6 +11,12 @@ import type { UserMessageItem, ToolMessageItem, AssistantMessageItem, SystemMess
 export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
   const [collapsedMessageUuids, setCollapsedMessageUuids] = useState<string[]>([]);
 
+  // CRITICAL FIX: Process messages with agent info first!
+  // This was the missing piece - useMessageProcessing needs to call processMessagesWithAgentInfo
+  // to ensure messages have agentType, subagentType, agentName properties for MessageRouter
+  const processedMessages = useMemo(() => {
+    return processMessagesWithAgentInfo(messages);
+  }, [messages]);
 
   // Helper function: Extract all message types using corrected turn logic
   const extractAllMessageTypes = (messages: ClaudeStreamMessage[]) => {
@@ -405,7 +412,8 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
     const startTime = performance.now();
 
     // Step 1: Filter out unwanted messages (meta, sidechain, etc.)
-    const filteredMessages = filterMessages(messages);
+    // CRITICAL FIX: Use processedMessages instead of raw messages!
+    const filteredMessages = filterMessages(processedMessages);
 
     // Step 2: Bundle related messages (summaries, commands + stdout, etc.)
     const bundledMessages = bundleMessages(filteredMessages);
@@ -423,7 +431,7 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
     );
 
     return messagesWithUuids;
-  }, [messages]);
+  }, [processedMessages]);
 
   // Extract all message types with simple turn detection
   const { userMessages, toolMessages, assistantMessages, systemMessages, lastInTurnCount } = useMemo(() => {

@@ -1,11 +1,10 @@
 import { logger } from '@/lib/logger';
 import type { ClaudeStreamMessage } from "@/lib/outputCache";
 
-// Global tracking of which messages have already triggered resets to prevent spam
-const globalProcessedResets = new Set<string>();
 
-// Global tracking of which messages have already had their agent info logged to prevent spam
-const globalLoggedAgentInfo = new Set<string>();
+
+// Global tracking of current subagent type for streaming sessions
+let globalCurrentSubagentType: string | undefined;
 
 /**
  * Detect if a user message is actually a fake tool result message from Claude Code
@@ -98,14 +97,15 @@ function bundleToolResults(messages: ClaudeStreamMessage[]): ClaudeStreamMessage
  * Based on the existing logic from useSessionState.ts loadSessionHistory()
  */
 export function processMessagesWithAgentInfo(messages: any[]): ClaudeStreamMessage[] {
-  let currentSubagentType: string | undefined;
-  // logger.debug('🔍 Processing messages with agent info, count:', messages.length);
+  // Use global subagent type tracking instead of local variable
+  // This ensures subagent context persists between streaming calls
   
   const processedMessages = messages.map((entry, index) => {
     const isSidechain = entry.isSidechain === true;
     let agentType: "main" | "subagent" = isSidechain ? "subagent" : "main";
     let agentName: string | undefined;
     let subagentType: string | undefined;
+
     
     // Check for Task tool usage to identify subagent type
     if (!isSidechain && entry.message?.content && Array.isArray(entry.message.content)) {
@@ -113,40 +113,19 @@ export function processMessagesWithAgentInfo(messages: any[]): ClaudeStreamMessa
         (c: any) => c.type === "tool_use" && c.name === "Task"
       );
       if (taskTool?.input?.subagent_type) {
-        // Store the subagent type for upcoming sidechain messages
-        currentSubagentType = taskTool.input.subagent_type;
-        logger.debug('🤖 Found Task tool call with subagent_type:', currentSubagentType);
+        // Reset previous subagent context and set new one
+        globalCurrentSubagentType = taskTool.input.subagent_type;
       }
     }
     
     // Set agent name and type based on context
-    if (isSidechain && currentSubagentType) {
+    if (isSidechain && globalCurrentSubagentType) {
       // Use the stored subagent type for all sidechain messages
-      agentName = currentSubagentType;
-      subagentType = currentSubagentType;
-      
-      // Only log agent info if we haven't logged it for this sidechain message before
-      if (entry.uuid && !globalLoggedAgentInfo.has(entry.uuid)) {
-        logger.debug('🔗 Set sidechain message agent info:', { agentName, subagentType, uuid: entry.uuid });
-        globalLoggedAgentInfo.add(entry.uuid);
-      }
+      agentName = globalCurrentSubagentType;
+      subagentType = globalCurrentSubagentType;
+
+    } else if (isSidechain) {
     } else if (!isSidechain) {
-      // Reset when back to main chain
-      if (entry.type === "user" && entry.message?.content) {
-        // Check if this is a tool result returning from sidechain
-        const hasToolResult = Array.isArray(entry.message.content) && 
-          entry.message.content.some((c: any) => c.type === "tool_result");
-        if (hasToolResult && entry.uuid && !globalProcessedResets.has(entry.uuid)) {
-          // logger.debug('🔄 Resetting subagent context - returning to main conversation', { 
-          //   messageIndex: index, 
-          //   uuid: entry.uuid,
-          //   totalMessages: messages.length
-          // });
-          globalProcessedResets.add(entry.uuid); // Mark this message as processed globally
-          currentSubagentType = undefined;
-        }
-      }
-      
       // Main conversation messages
       agentName = agentName || "CloCo";
     }

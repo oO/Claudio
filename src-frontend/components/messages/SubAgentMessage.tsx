@@ -7,6 +7,7 @@ import { useMessageContent } from "@/hooks/useMessageContent";
 import { useAgentStyling } from "@/hooks/useAgentStyling";
 import type { ClaudeStreamMessage } from "@/lib/outputCache";
 import { MessageEnhancementProvider } from "@/contexts/MessageEnhancementContext";
+import { logger } from '@/lib/logger';
 
 interface SubAgentMessageProps {
   message: ClaudeStreamMessage;
@@ -21,6 +22,7 @@ export const SubAgentMessage: React.FC<SubAgentMessageProps> = ({
 }) => {
   const contentItems = useMessageContent(message);
   const { agentName, agentBackgroundClass } = useAgentStyling(message);
+
 
   return (
     <MessageEnhancementProvider message={message}>

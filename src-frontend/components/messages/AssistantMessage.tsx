@@ -5,6 +5,7 @@ import { MessageTemplate } from "./MessageTemplate";
 import { useMessageContent } from "@/hooks/useMessageContent";
 import type { ClaudeStreamMessage } from "@/lib/outputCache";
 import { MessageEnhancementProvider } from "@/contexts/MessageEnhancementContext";
+import { logger } from '@/lib/logger';
 
 interface AssistantMessageProps {
   message: ClaudeStreamMessage;
@@ -18,6 +19,7 @@ export const AssistantMessage: React.FC<AssistantMessageProps> = ({
   message,
 }) => {
   const contentItems = useMessageContent(message);
+
 
   return (
     <MessageEnhancementProvider message={message}>
