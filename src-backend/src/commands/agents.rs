@@ -4,7 +4,7 @@ use dirs;
 use log::{info, warn};
 // use reqwest; // TODO: Re-enable when GitHub agent fetching is implemented
 use serde::{Deserialize, Serialize};
-use serde_json::Value as JsonValue;
+// use serde_json::Value as JsonValue; // Unused
 use std::collections::HashMap;
 use std::fs;
 use std::io::{BufRead, BufReader};
@@ -214,14 +214,14 @@ impl AgentParser {
             // Use project-specific agents directory
             let project_dir = PathBuf::from(project_path);
             let agents_dir = project_dir.join(".claude").join("agents");
-            info!("Using project agents directory: {:?}", agents_dir);
+            // info!("Using project agents directory: {:?}", agents_dir);
             agents_dir
         } else {
             // Use global agents directory
             let home_dir = dirs::home_dir()
                 .ok_or_else(|| "Failed to get home directory".to_string())?;
             let agents_dir = home_dir.join(".claude").join("agents");
-            info!("Using global agents directory: {:?}", agents_dir);
+            // info!("Using global agents directory: {:?}", agents_dir);
             agents_dir
         };
 
@@ -272,27 +272,27 @@ pub fn init_database(app: &tauri::AppHandle) -> SqliteResult<Connection> {
 /// List all agents from .claude/agents/*.md files
 #[tauri::command]
 pub async fn list_agents(project_path: String) -> Result<Vec<Agent>, String> {
-    info!("list_agents called with project_path: {:?}", project_path);
+    // info!("list_agents called with project_path: {:?}", project_path);
     
     // Convert empty string to None for get_agents_directory
     let project_path_opt = if project_path.is_empty() { None } else { Some(project_path.as_str()) };
     let agents_dir = AgentParser::get_agents_directory(project_path_opt)?;
-    info!("Looking for agents in directory: {:?}", agents_dir);
+    // info!("Looking for agents in directory: {:?}", agents_dir);
     
     let mut agents = Vec::new();
     
     if agents_dir.exists() {
-        info!("Agents directory exists, reading entries...");
+        // info!("Agents directory exists, reading entries...");
         let entries = fs::read_dir(&agents_dir)
             .map_err(|e| format!("Failed to read agents directory: {}", e))?;
 
         for entry in entries {
             let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
             let path = entry.path();
-            info!("Found file: {:?}", path);
+            // info!("Found file: {:?}", path);
             
             if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("md") {
-                info!("Processing markdown file: {:?}", path);
+                // info!("Processing markdown file: {:?}", path);
                 match fs::read_to_string(&path) {
                     Ok(content) => {
                         match AgentParser::parse_file(&content) {
@@ -322,7 +322,7 @@ pub async fn list_agents(project_path: String) -> Result<Vec<Agent>, String> {
             }
         }
     } else {
-        info!("Agents directory does not exist: {:?}", agents_dir);
+        // info!("Agents directory does not exist: {:?}", agents_dir);
     }
 
     // Sort by name
@@ -333,10 +333,10 @@ pub async fn list_agents(project_path: String) -> Result<Vec<Agent>, String> {
         agent.id = Some((index + 1) as i64);
     }
     
-    info!("Returning {} agents", agents.len());
-    for agent in &agents {
-        info!("Agent: {} (id: {:?})", agent.name, agent.id);
-    }
+    // info!("Returning {} agents", agents.len());
+    // for agent in &agents {
+    //     info!("Agent: {} (id: {:?})", agent.name, agent.id);
+    // }
     
     Ok(agents)
 }
@@ -392,7 +392,7 @@ pub async fn create_agent(
     fs::write(&file_path, markdown_content)
         .map_err(|e| format!("Failed to write agent file: {}", e))?;
 
-    info!("Created agent '{}' at {}", name, file_path.display());
+    // info!("Created agent '{}' at {}", name, file_path.display());
     Ok(agent)
 }
 
@@ -455,7 +455,7 @@ pub async fn update_agent(
     fs::write(&file_path, markdown_content)
         .map_err(|e| format!("Failed to update agent file: {}", e))?;
 
-    info!("Updated agent '{}' at {}", name, file_path.display());
+    // info!("Updated agent '{}' at {}", name, file_path.display());
     Ok(agent)
 }
 
@@ -473,7 +473,7 @@ pub async fn delete_agent(project_path: Option<String>, name: String) -> Result<
     fs::remove_file(&file_path)
         .map_err(|e| format!("Failed to delete agent file: {}", e))?;
 
-    info!("Deleted agent '{}' from {}", name, file_path.display());
+    // info!("Deleted agent '{}' from {}", name, file_path.display());
     Ok(())
 }
 
@@ -563,7 +563,7 @@ pub async fn export_agent_to_file(
     fs::copy(&source_path, &file_path)
         .map_err(|e| format!("Failed to copy agent file: {}", e))?;
     
-    info!("Exported agent '{}' to {}", name, file_path);
+    // info!("Exported agent '{}' to {}", name, file_path);
     Ok(())
 }
 
@@ -637,7 +637,7 @@ pub async fn set_claude_binary_path(path: String) -> Result<(), String> {
     settings.claude_binary_path = Some(path.clone());
     
     save_claudio_settings(settings).await?;
-    log::info!("Claude binary path set to: {}", path);
+    // log::info!("Claude binary path set to: {}", path);
     Ok(())
 }
 

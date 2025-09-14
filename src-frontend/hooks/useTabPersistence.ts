@@ -23,11 +23,11 @@ export const useTabPersistence = () => {
    */
   const saveTabs = useCallback(async (tabs: Tab[], panelBreaks: number[] = [], activePanelIndex: number = 0) => {
     try {
-      logger.info('💾 SAVE TABS CALLED:', { 
-        tabCount: tabs.length, 
-        tabTypes: tabs.map(t => t.type),
-        tabTitles: tabs.map(t => t.title)
-      });
+      // logger.info('💾 SAVE TABS CALLED:', {
+      //   tabCount: tabs.length,
+      //   tabTypes: tabs.map(t => t.type),
+      //   tabTitles: tabs.map(t => t.title)
+      // });
       
       // KISS: Only save minimal creation inputs, not fetched data
       const tabsToSave: Partial<Tab>[] = tabs.map(tab => {
@@ -83,11 +83,11 @@ export const useTabPersistence = () => {
    */
   const loadTabs = useCallback(async (): Promise<PersistedTabSession> => {
     try {
-      logger.info('📂 Loading tab session (KISS approach)...');
+      // logger.info('📂 Loading tab session (KISS approach)...');
       const serialized = await api.getSetting(STORAGE_KEY);
       
       if (!serialized) {
-        logger.info('📂 No saved tabs found');
+        // logger.info('📂 No saved tabs found');
         return { tabs: [], panelBreaks: [], activePanelIndex: 0 };
       }
 

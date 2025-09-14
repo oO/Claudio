@@ -29,7 +29,7 @@ pub enum SessionType {
     #[serde(rename = "NATIVE")] // Must match SESSION_TYPE_NATIVE
     Native { session_id: String },
     /// Archived session with no wrapper file (just raw JSONL)
-    #[serde(rename = "ARCHIVED")] // Must match SESSION_TYPE_ARCHIVED
+    #[serde(rename = "ARCHIVED")] // Must match SESSION_TYPE_ARCHIVED constant
     Archived { session_id: String },
 }
 

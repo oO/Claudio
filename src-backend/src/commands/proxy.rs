@@ -168,7 +168,7 @@ pub async fn get_setting(key: String) -> Result<Option<String>, String> {
                     Ok(Some(json_string))
                 }
                 None => {
-                    log::debug!("No tabs_session setting found");
+                    // log::debug!("No tabs_session setting found");
                     Ok(None)
                 }
             }

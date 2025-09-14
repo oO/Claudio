@@ -8,7 +8,7 @@ use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher, EventKin
 /// Reads the Claude settings file
 #[command]
 pub async fn get_claude_settings() -> Result<ClaudeSettings, String> {
-    log::info!("Reading Claude settings");
+    // log::info!("Reading Claude settings");
 
     let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
     let settings_path = claude_dir.join("settings.json");

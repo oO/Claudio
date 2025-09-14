@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.47] - 2025-09-14
+
+### Refactor
+- Commented out noisy debug and info logs across backend and frontend to reduce console noise during development
+- Cleaned up unused imports while preserving enum variant consistency
+- Logs preserved as comments for future debugging needs
+
 ## [0.4.46] - 2025-09-14
 
 ### Fixed

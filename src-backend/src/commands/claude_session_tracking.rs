@@ -192,7 +192,7 @@ fn load_thinking_titles_from_file() -> Result<Vec<String>, Box<dyn std::error::E
         .filter(|line| !line.is_empty())
         .collect();
     
-    log::debug!("Loaded {} thinking titles from embedded resource", titles.len());
+    // log::debug!("Loaded {} thinking titles from embedded resource", titles.len());
     Ok(titles)
 }
 
@@ -206,6 +206,6 @@ fn load_thinking_messages_from_file() -> Result<Vec<String>, Box<dyn std::error:
         .filter(|line| !line.is_empty())
         .collect();
     
-    log::debug!("Loaded {} thinking messages from embedded resource", messages.len());
+    // log::debug!("Loaded {} thinking messages from embedded resource", messages.len());
     Ok(messages)
 }

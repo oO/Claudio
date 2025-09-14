@@ -116,9 +116,9 @@ function AppContent() {
     };
 
     // Log current debug state only once on app start
-    if (isDebugEnabled) {
-      logger.log("Debug mode is enabled. Use toggleDebug() in console to disable.");
-    }
+    // if (isDebugEnabled) {
+    //   logger.log("Debug mode is enabled. Use toggleDebug() in console to disable.");
+    // }
 
     // Cleanup global function on unmount
     return () => {
