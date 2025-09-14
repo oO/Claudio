@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.48] - 2025-09-14
+
+### Fixed
+- Fixed critical streaming message display bug where useSessionFileWatcher callback wasn't reloading messages from backend
+- Added sessionHandle.getMessages() call in onSessionChanged callback to properly refresh message display
+- Optimized session handling by simplifying message updates for NATIVE/ARCHIVED sessions
+- Disabled fake message injection for read-only sessions to prevent display conflicts
+- Cleaned up verbose logging in session management
+
 ## [0.4.47] - 2025-09-14
 
 ### Refactor

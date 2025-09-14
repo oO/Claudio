@@ -106,36 +106,28 @@ export const useSessionHandle = (
         try {
           const unsubscribe = handle.onMessagesUpdate((allMessages: any[]) => {
 
-            // Simple fake message cleanup: remove all fake messages when real ones arrive
-            setMessages((prev) => {
-              const fakeMessages = prev.filter((msg) => (msg as any).isFake);
+            // For NATIVE sessions: simple replacement, no fake message handling needed
+            if (state.session_type.type === SESSION_TYPES.NATIVE) {
+              setMessages(allMessages);
+            } else {
+              // For CLAUDIO sessions: handle fake message cleanup for optimistic UI
+              setMessages((prev) => {
+                const fakeMessages = prev.filter((msg) => (msg as any).isFake);
 
-              logger.info("🔄 Processing message update:", {
-                totalReal: allMessages.length,
-                totalFake: fakeMessages.length,
-                action: allMessages.length > 0 ? "removing all fake messages" : "keeping fake messages"
+                // If we have real messages coming in, remove ALL fake messages
+                if (allMessages.length > 0 && fakeMessages.length > 0) {
+                  return allMessages; // Just use real messages, discard all fake ones
+                }
+
+                // No real messages yet, keep existing messages (including fakes)
+                return allMessages.length > 0 ? allMessages : prev;
               });
-
-              // If we have real messages coming in, remove ALL fake messages
-              if (allMessages.length > 0 && fakeMessages.length > 0) {
-                logger.info("🧹 Removing all fake messages - real messages arrived:", {
-                  removedFakeCount: fakeMessages.length,
-                  fakeUuids: fakeMessages.map(msg => (msg as any).uuid)
-                });
-                return allMessages; // Just use real messages, discard all fake ones
-              }
-
-              // No real messages yet, keep existing messages (including fakes)
-              return prev;
-            });
+            }
 
             // Check if the last message is an assistant message to stop streaming
             if (allMessages.length > 0) {
               const lastMessage = allMessages[allMessages.length - 1];
               if (lastMessage?.type === "assistant") {
-                logger.info(
-                  "🛑 Setting isStreaming to false (assistant message in update)",
-                );
                 setIsStreaming(false);
               }
             }
@@ -268,27 +260,20 @@ export const useSessionHandle = (
         setIsStreaming(true);
         setError(null);
 
-        logger.info("🚀 Sending prompt to session handle:", {
-          prompt: prompt.substring(0, 50),
-        });
+        // Only add fake user message for interactive CLAUDIO sessions (not NATIVE/ARCHIVED)
+        if (sessionState?.session_type.type === SESSION_TYPES.CLAUDIO) {
+          const fakeUserMessage = {
+            type: "user",
+            uuid: `fake-user-${Date.now()}`,
+            message: {
+              content: [{ type: "text", text: prompt }],
+            },
+            timestamp: new Date().toISOString(),
+            isFake: true, // Mark as fake - will be removed when real messages arrive
+          } as ClaudeStreamMessage & { isFake: boolean };
 
-        // Immediately add fake user message for instant feedback
-        const fakeUserMessage = {
-          type: "user",
-          uuid: `fake-user-${Date.now()}`,
-          message: {
-            content: [{ type: "text", text: prompt }],
-          },
-          timestamp: new Date().toISOString(),
-          isFake: true, // Mark as fake - will be removed when real messages arrive
-        } as ClaudeStreamMessage & { isFake: boolean };
-
-        logger.info("🎭 Creating fake user message for optimistic UI:", {
-          uuid: fakeUserMessage.uuid,
-          promptLength: prompt.length
-        });
-
-        setMessages((prev) => [...prev, fakeUserMessage as any]);
+          setMessages((prev) => [...prev, fakeUserMessage as any]);
+        }
 
         // Send prompt to backend - all messages (including user message) come via streaming
         await sessionHandle.sendPrompt(prompt);

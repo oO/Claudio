@@ -104,12 +104,17 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
     session,
     projectId,
     onSessionChanged: async () => {
-      logger.info("📁 Session file changed, refreshing session handle");
-      // The session orchestrator will handle the message updates automatically
-      
-      // Trigger flash animation for blinky-blinky action!
+      // Reload messages from backend when session file changes
+      if (sessionData.sessionHandle) {
+        try {
+          await sessionData.sessionHandle.getMessages();
+        } catch (error) {
+          logger.error("Failed to reload messages after file change:", error);
+        }
+      }
+
+      // Trigger activity indicator for tab
       if (onSetTabActivity && tabId) {
-        logger.debug(`Triggering flash animation for session tab ${tabId} (blinky-blinky!)`);
         onSetTabActivity();
       }
     },
