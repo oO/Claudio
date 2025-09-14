@@ -233,7 +233,7 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
 
           <ThinkingIndicator content={thinkingContent} />
 
-          {!isReadOnly && (
+          {sessionData.sessionState?.session_type.type === SESSION_TYPES.CLAUDIO && (
             <PromptInput
               onSend={sessionData.handlePromptSubmit}
               isLoading={effectiveIsStreaming}

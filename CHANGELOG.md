@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.46] - 2025-09-14
+
+### Fixed
+- Fixed PromptInput showing for archived sessions bug by changing condition to only allow CLAUDIO session types
+- Removed confusing READONLY session type terminology and consolidated session types to CLAUDIO/NATIVE/ARCHIVED
+- Updated isReadOnly logic to correctly identify both NATIVE and ARCHIVED sessions as read-only
+
 ## [0.4.45] - 2025-09-14
 
 ### Fixed

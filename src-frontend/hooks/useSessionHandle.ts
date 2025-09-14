@@ -301,8 +301,9 @@ export const useSessionHandle = (
     [sessionHandle, setIsStreaming],
   );
 
-  // Computed properties
-  const isReadOnly = sessionState?.session_type.type === SESSION_TYPES.NATIVE;
+  // Computed properties - sessions that can't accept new prompts
+  const isReadOnly = sessionState?.session_type.type === SESSION_TYPES.NATIVE ||
+                    sessionState?.session_type.type === SESSION_TYPES.ARCHIVED;
 
   return {
     sessionHandle,

@@ -17,7 +17,6 @@ use tokio::sync::broadcast;
 pub const SESSION_TYPE_CLAUDIO: &str = "CLAUDIO";
 pub const SESSION_TYPE_NATIVE: &str = "NATIVE";
 pub const SESSION_TYPE_ARCHIVED: &str = "ARCHIVED";
-// pub const SESSION_TYPE_READONLY: &str = "READONLY"; // Currently unused
 
 /// Types of sessions that can be managed
 #[derive(Debug, Clone, Serialize, Deserialize)]

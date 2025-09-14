@@ -9,8 +9,7 @@ import { processMessagesWithAgentInfo } from '@/lib/messageProcessor';
 export const SESSION_TYPES = {
   CLAUDIO: 'CLAUDIO',
   NATIVE: 'NATIVE',
-  ARCHIVED: 'ARCHIVED',
-  READONLY: 'READONLY'
+  ARCHIVED: 'ARCHIVED'
 } as const;
 
 export type SessionTypeValue = typeof SESSION_TYPES[keyof typeof SESSION_TYPES];
