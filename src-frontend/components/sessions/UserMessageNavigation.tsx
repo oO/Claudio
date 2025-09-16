@@ -52,7 +52,7 @@ export const UserMessageNavigation: React.FC<UserMessageNavigationProps> = ({
             {userMessages.map((userMsg) => (
               <DropdownMenuItem
                 key={userMsg.index}
-                onClick={() => handleNavigate(userMsg.index)}
+                onClick={() => handleNavigate(userMsg.ui_index)}
                 className="p-1 px-3 text-sm"
               >
                 <div className="w-full truncate">{userMsg.content}</div>

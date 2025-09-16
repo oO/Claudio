@@ -46,7 +46,7 @@ export const useMessageClipboard = ({
       const messageLocation = {
         session_id: sessionId,
         session_path: sessionFilePath,
-        ui_index: message.messageNumber,
+        ui_index: message.ui_index,
         messages_uuid: contributingUuids,
         project_path: projectPath
       };

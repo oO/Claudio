@@ -25,18 +25,18 @@ export const useSessionNavigation = () => {
   }, []);
 
 
-  // Navigation function that takes the stable message number (001, 022, etc.) that users see
+  // Navigation function that takes the stable ui_index (001, 022, etc.) that users see
   // This handles filtering by finding the message in the filtered array
-  const navigateToMessage = useCallback((messageNumber: number) => {
+  const navigateToMessage = useCallback((ui_index: number) => {
     if (!messagesRef.current) {
       logger.warn("Cannot navigate: messagesRef not available");
       return;
     }
 
-    logger.log("🧭 Navigating to message number:", messageNumber);
-    
-    // Use the new scrollToMessage method that handles filtering
-    messagesRef.current.scrollToMessage(messageNumber);
+    logger.log("🧭 Navigating to ui_index:", ui_index);
+
+    // Use the scrollToMessage method that handles filtering
+    messagesRef.current.scrollToMessage(ui_index);
     
     // Update pinned state - if we're navigating manually, we're not pinned to bottom
     setIsPinnedToBottom(false);

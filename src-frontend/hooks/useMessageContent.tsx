@@ -4,6 +4,7 @@ import {
   ToolCallRenderer,
   ToolResultRenderer,
 } from '@/components/ui';
+import { ImageWidget } from '@/components/tools';
 import type { ClaudeStreamMessage } from "@/lib/outputCache";
 import { useStreamData } from '../contexts/StreamDataContext';
 import { logger } from '@/lib/logger';
@@ -27,6 +28,16 @@ export const useMessageContent = (message: ClaudeStreamMessage): React.ReactNode
           contentItems.push(
             <MessageContent
               key={`text-${idx}`}
+              content={content}
+            />,
+          );
+        }
+
+        // Image content
+        if (content.type === "image") {
+          contentItems.push(
+            <ImageWidget
+              key={`image-${idx}`}
               content={content}
             />,
           );
@@ -179,6 +190,13 @@ export const useMessageContent = (message: ClaudeStreamMessage): React.ReactNode
           contentItems.push(
             <MessageContent
               key={`text-${idx}`}
+              content={content}
+            />,
+          );
+        } else if (content.type === "image") {
+          contentItems.push(
+            <ImageWidget
+              key={`image-${idx}`}
               content={content}
             />,
           );

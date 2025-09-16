@@ -49,7 +49,7 @@ export const MessageFooter: React.FC<MessageFooterProps> = ({ message }) => {
 
   // Check if we should render the footer at all
   const shouldRender =
-    message.messageNumber ||
+    message.ui_index ||
     message.timestamp ||
     (resolvedUsage?.input_tokens && resolvedUsage.input_tokens > 0) ||
     (resolvedUsage?.output_tokens && resolvedUsage.output_tokens > 0);
@@ -83,14 +83,14 @@ export const MessageFooter: React.FC<MessageFooterProps> = ({ message }) => {
       )}
 
       {/* Message number with clipboard functionality */}
-      {message.messageNumber && (
+      {message.ui_index && (
         <div
           className="flex items-center gap-1 cursor-pointer bg-accent text-foreground hover:text-accent-foreground px-2 py-1 rounded-full transition-colors"
           onClick={handleClipboard}
           title="Click to copy message location JSON (all contributing messages)"
         >
           <MessageSquare className="h-3 w-3" />
-          {message.messageNumber.toString().padStart(3, "0")}
+          {message.ui_index.toString().padStart(3, "0")}
         </div>
       )}
     </div>

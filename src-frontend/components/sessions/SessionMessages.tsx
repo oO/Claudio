@@ -31,7 +31,7 @@ export interface SessionMessagesHandle {
   forceScrollToBottom: () => void;
   scrollToPreviousUserMessage: () => void;
   scrollToNextUserMessage: () => void;
-  scrollToMessage: (messageNumber: number) => void;
+  scrollToMessage: (ui_index: number) => void;
 }
 
 interface SessionMessagesProps {
@@ -63,13 +63,14 @@ export const SessionMessages = forwardRef<
     const virtuosoRef = useRef<VirtuosoHandle>(null);
 
     // Get filter states from context
-    const { 
-      toolMessages = [], 
+    const {
+      toolMessages = [],
       isToolsVisible = true,
       systemMessages = [],
       isSystemVisible = false,
       assistantMessages = [],
-      isAssistantFilterLast = false
+      isAssistantFilterLast = false,
+      userMessages = []
     } = useSessionContext();
 
     // Filter displayable messages based on tool, system, and assistant visibility
@@ -111,22 +112,14 @@ export const SessionMessages = forwardRef<
       return filtered;
     }, [displayableMessages, toolMessages, isToolsVisible, systemMessages, isSystemVisible, assistantMessages, isAssistantFilterLast]);
 
-    // Log filtering results for debugging
-    useMemo(() => {
-      logger.debug("🔧 Message filtering:", {
-        original: displayableMessages.length,
-        filtered: filteredMessages.length,
-        hidden: displayableMessages.length - filteredMessages.length,
-        isToolsVisible,
-        isSystemVisible,
-        isAssistantFilterLast
-      });
-    }, [displayableMessages, filteredMessages, isToolsVisible, isSystemVisible, isAssistantFilterLast]);
 
     // Navigation state
     const [isPinnedToBottom, setIsPinnedToBottom] = useState(true);
     const [showScrollControls, setShowScrollControls] = useState(false);
-    const [currentUserMessageIndex, setCurrentUserMessageIndex] = useState(0);
+    const [currentVisibleUiIndex, setCurrentVisibleUiIndex] = useState<number>(() => {
+      // When starting pinned to bottom, we're at the last displayable message
+      return displayableMessages.length > 0 ? displayableMessages.length : 1;
+    });
     const [isAtTop, setIsAtTop] = useState(false);
 
     // Memoize the initial index to prevent React reconciliation issues
@@ -134,45 +127,7 @@ export const SessionMessages = forwardRef<
       return Math.max(0, filteredMessages.length - 1);
     }, [filteredMessages.length]);
 
-    // Memoize user message indices for navigation
-    const userMessageIndices = useMemo(() => {
-      const indices: number[] = [];
-      displayableMessages.forEach((message, index) => {
-        // Check if this is a user message - assuming role property exists
-        if (
-          message.role === "user" ||
-          message.type === "user" ||
-          message.sender === "user"
-        ) {
-          indices.push(index);
-        }
-      });
-      return indices;
-    }, [displayableMessages]);
 
-    // Update current user message index when we're pinned to bottom or user messages change
-    useEffect(() => {
-      if (isPinnedToBottom && userMessageIndices.length > 0) {
-        // When pinned to bottom, we're conceptually "after" the last user message
-        setCurrentUserMessageIndex(userMessageIndices.length - 1);
-      } else if (userMessageIndices.length > 0) {
-        // Ensure currentUserMessageIndex doesn't exceed available user messages
-        setCurrentUserMessageIndex(prev => 
-          Math.min(prev, userMessageIndices.length - 1)
-        );
-      }
-    }, [isPinnedToBottom, userMessageIndices.length]);
-
-    // Log for debugging streaming updates
-    useEffect(() => {
-      logger.debug('🔄 Navigation state update:', {
-        currentUserMessageIndex,
-        userMessageCount: userMessageIndices.length,
-        isPinnedToBottom,
-        isAtTop,
-        totalMessages: displayableMessages.length
-      });
-    }, [currentUserMessageIndex, userMessageIndices.length, isPinnedToBottom, isAtTop, displayableMessages.length]);
 
     // Expose methods via ref
     useImperativeHandle(ref, () => ({
@@ -202,71 +157,75 @@ export const SessionMessages = forwardRef<
         setIsPinnedToBottom(true);
       },
       scrollToPreviousUserMessage: () => {
-        if (userMessageIndices.length === 0) return;
-        const newIndex = Math.max(0, currentUserMessageIndex - 1);
-        setCurrentUserMessageIndex(newIndex);
-        const messageIndex = userMessageIndices[newIndex];
-        virtuosoRef.current?.scrollToIndex({
-          index: messageIndex,
-          align: "center",
-        });
-        setIsPinnedToBottom(false);
-        logger.log(
-          "🔼 Scrolled to previous user message:",
-          newIndex,
-          messageIndex,
-        );
+        if (userMessages.length === 0) return;
+
+        // Find previous user message before current visible ui_index
+        const prevUserMsg = userMessages
+          .filter(msg => msg.ui_index < currentVisibleUiIndex)
+          .pop(); // Last one = closest before current
+
+        if (prevUserMsg) {
+          // Use our working scrollToMessage function
+          const filteredIndex = filteredMessages.findIndex(msg => msg.ui_index === prevUserMsg.ui_index);
+          if (filteredIndex !== -1) {
+            virtuosoRef.current?.scrollToIndex({
+              index: filteredIndex,
+              align: "center",
+            });
+            setCurrentVisibleUiIndex(prevUserMsg.ui_index);
+            setIsPinnedToBottom(false);
+            logger.log("🔼 Scrolled to previous user message ui_index:", prevUserMsg.ui_index);
+          }
+        }
       },
       scrollToNextUserMessage: () => {
-        if (userMessageIndices.length === 0) return;
-        const newIndex = Math.min(
-          userMessageIndices.length - 1,
-          currentUserMessageIndex + 1,
-        );
-        setCurrentUserMessageIndex(newIndex);
-        const messageIndex = userMessageIndices[newIndex];
-        virtuosoRef.current?.scrollToIndex({
-          index: messageIndex,
-          align: "center",
-        });
-        setIsPinnedToBottom(
-          newIndex === userMessageIndices.length - 1 &&
-            messageIndex === displayableMessages.length - 1,
-        );
-        logger.log("🔽 Scrolled to next user message:", newIndex, messageIndex);
+        if (userMessages.length === 0) return;
+
+        // Find next user message after current visible ui_index
+        const nextUserMsg = userMessages
+          .find(msg => msg.ui_index > currentVisibleUiIndex);
+
+        if (nextUserMsg) {
+          // Use our working scrollToMessage function
+          const filteredIndex = filteredMessages.findIndex(msg => msg.ui_index === nextUserMsg.ui_index);
+          if (filteredIndex !== -1) {
+            virtuosoRef.current?.scrollToIndex({
+              index: filteredIndex,
+              align: "center",
+            });
+            setCurrentVisibleUiIndex(nextUserMsg.ui_index);
+
+            // Check if this is the last message to determine pinned state
+            const isLastMessage = filteredIndex === filteredMessages.length - 1;
+            setIsPinnedToBottom(isLastMessage);
+            logger.log("🔽 Scrolled to next user message ui_index:", nextUserMsg.ui_index);
+          }
+        }
       },
-      scrollToMessage: (messageNumber: number) => {
-        // Find the message with this messageNumber in the filtered array
+      scrollToMessage: (ui_index: number) => {
+        // Find the message with this ui_index in the filtered array
         const filteredIndex = filteredMessages.findIndex(msg => {
-          // Get original index from displayableMessages
-          const originalIndex = displayableMessages.findIndex(original => original === msg);
-          return originalIndex + 1 === messageNumber; // messageNumber is 1-based
+          return msg.ui_index === ui_index;
         });
-        
+
         if (filteredIndex === -1) {
-          logger.warn(`Message ${messageNumber} not found in filtered messages`);
+          logger.warn(`Message with ui_index ${ui_index} not found in filtered messages`);
           return;
         }
-        
-        logger.log(`🎯 Scrolling to message ${messageNumber} at filtered index ${filteredIndex}`);
+
+        logger.log(`🎯 Scrolling to message ui_index ${ui_index} at filtered index ${filteredIndex}`);
         virtuosoRef.current?.scrollToIndex({
           index: filteredIndex,
           align: "center",
         });
-        setIsPinnedToBottom(false);
+
+        // Update current visible ui_index and pinned state
+        setCurrentVisibleUiIndex(ui_index);
+        const isLastMessage = filteredIndex === filteredMessages.length - 1;
+        setIsPinnedToBottom(isLastMessage);
       },
     }));
 
-    // Log for debugging
-    logger.info("🎯 SessionMessages props:", {
-      messageCount: displayableMessages.length,
-      initialIndex: Math.max(0, displayableMessages.length - 1),
-    });
-
-    logger.info(
-      "🎯 SessionMessages rendering with messages:",
-      displayableMessages.length,
-    );
 
     // Update scroll controls visibility based on message count
     useEffect(() => {
@@ -290,34 +249,53 @@ export const SessionMessages = forwardRef<
     };
 
     const scrollToPrevUser = () => {
-      if (userMessageIndices.length === 0) return;
-      const newIndex = Math.max(0, currentUserMessageIndex - 1);
-      setCurrentUserMessageIndex(newIndex);
-      const messageIndex = userMessageIndices[newIndex];
-      virtuosoRef.current?.scrollToIndex({
-        index: messageIndex,
-        align: "center",
-      });
-      setIsPinnedToBottom(false);
-      setIsAtTop(messageIndex === 0);
+      if (userMessages.length === 0) return;
+
+      // Find previous user message before current visible ui_index
+      const prevUserMsg = userMessages
+        .filter(msg => msg.ui_index < currentVisibleUiIndex)
+        .pop(); // Last one = closest before current
+
+      if (prevUserMsg) {
+        // Use our working scrollToMessage function
+        const filteredIndex = filteredMessages.findIndex(msg => msg.ui_index === prevUserMsg.ui_index);
+        if (filteredIndex !== -1) {
+          virtuosoRef.current?.scrollToIndex({
+            index: filteredIndex,
+            align: "center",
+          });
+          setCurrentVisibleUiIndex(prevUserMsg.ui_index);
+          setIsPinnedToBottom(false);
+          setIsAtTop(filteredIndex === 0);
+          logger.log("🔼 Scrolled to previous user message ui_index:", prevUserMsg.ui_index);
+        }
+      }
     };
 
     const scrollToNextUser = () => {
-      if (userMessageIndices.length === 0) return;
-      const newIndex = Math.min(
-        userMessageIndices.length - 1,
-        currentUserMessageIndex + 1,
-      );
-      setCurrentUserMessageIndex(newIndex);
-      const messageIndex = userMessageIndices[newIndex];
-      virtuosoRef.current?.scrollToIndex({
-        index: messageIndex,
-        align: "center",
-      });
-      const isLastUserMessage = newIndex === userMessageIndices.length - 1;
-      const isLastMessage = messageIndex === displayableMessages.length - 1;
-      setIsPinnedToBottom(isLastUserMessage && isLastMessage);
-      setIsAtTop(messageIndex === 0);
+      if (userMessages.length === 0) return;
+
+      // Find next user message after current visible ui_index
+      const nextUserMsg = userMessages
+        .find(msg => msg.ui_index > currentVisibleUiIndex);
+
+      if (nextUserMsg) {
+        // Use our working scrollToMessage function
+        const filteredIndex = filteredMessages.findIndex(msg => msg.ui_index === nextUserMsg.ui_index);
+        if (filteredIndex !== -1) {
+          virtuosoRef.current?.scrollToIndex({
+            index: filteredIndex,
+            align: "center",
+          });
+          setCurrentVisibleUiIndex(nextUserMsg.ui_index);
+
+          // Check if this is the last message to determine pinned state
+          const isLastMessage = filteredIndex === filteredMessages.length - 1;
+          setIsPinnedToBottom(isLastMessage);
+          setIsAtTop(false);
+          logger.log("🔽 Scrolled to next user message ui_index:", nextUserMsg.ui_index);
+        }
+      }
     };
 
     return (
@@ -332,13 +310,25 @@ export const SessionMessages = forwardRef<
               data={filteredMessages}
               initialTopMostItemIndex={initialTopMostItemIndex}
               alignToBottom
+              rangeChanged={(range) => {
+                // Take the middle of the rendered range as most likely to be actually visible
+                // Since overscan adds buffer on both sides, the middle should be in viewport
+                const middleIndex = Math.floor((range.startIndex + range.endIndex) / 2);
+
+                if (middleIndex < filteredMessages.length) {
+                  const middleMessage = filteredMessages[middleIndex];
+                  if (middleMessage?.ui_index) {
+                    setCurrentVisibleUiIndex(middleMessage.ui_index);
+                  }
+                }
+              }}
               itemContent={(index, message) => {
                 // Number the message based on its actual UI position (index + 1)
                 // Use original displayable message index for stable numbering
                 const originalIndex = displayableMessages.findIndex(msg => msg === message);
                 const numberedMessage = {
                   ...message,
-                  messageNumber: originalIndex + 1,
+                  ui_index: originalIndex + 1,
                 };
 
                 return (
@@ -425,18 +415,16 @@ export const SessionMessages = forwardRef<
                     variant="outline"
                     className={cn(
                       "h-10 w-10 rounded-none border-b-0 bg-card transition-colors",
-                      currentUserMessageIndex ===
-                        userMessageIndices.length - 1 ||
-                        userMessageIndices.length === 0 ||
-                        isPinnedToBottom
+                      userMessages.length === 0 ||
+                        isPinnedToBottom ||
+                        !userMessages.find(msg => msg.ui_index > currentVisibleUiIndex)
                         ? "opacity-50 cursor-not-allowed"
                         : "hover:bg-accent",
                     )}
                     disabled={
-                      currentUserMessageIndex ===
-                        userMessageIndices.length - 1 ||
-                      userMessageIndices.length === 0 ||
-                      isPinnedToBottom
+                      userMessages.length === 0 ||
+                      isPinnedToBottom ||
+                      !userMessages.find(msg => msg.ui_index > currentVisibleUiIndex)
                     }
                     title="Next user message"
                   >

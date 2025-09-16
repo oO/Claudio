@@ -58,7 +58,7 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
               userMessages.push({
                 index,
                 content: truncatedContent,
-                messageNumber: (message as any).messageNumber || index + 1,
+                ui_index: (message as any).ui_index,
               });
             }
           }
@@ -78,7 +78,7 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
         assistantMessages.push({
           index,
           messageId: (message.message as any)?.id || message.uuid || `assistant-${index}`,
-          messageNumber: (message as any).messageNumber || index + 1,
+          ui_index: (message as any).ui_index || index + 1,
           isLastInTurn: false, // Will be calculated in second pass
           isSubAgentTask,
           isSubAgentResponse,
@@ -97,7 +97,7 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
             toolMessages.push({
               index,
               toolName: toolNames.join(', '),
-              messageNumber: (message as any).messageNumber || index + 1,
+              ui_index: (message as any).ui_index || index + 1,
             });
           }
         }
@@ -125,7 +125,7 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
             systemMessages.push({
               index,
               content: truncatedContent,
-              messageNumber: (message as any).messageNumber || index + 1,
+              ui_index: (message as any).ui_index || index + 1,
               subtype: (message as any).subtype,
             });
           }
@@ -143,7 +143,7 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
           toolMessages.push({
             index,
             toolName: toolNames.join(', ') || 'tool',
-            messageNumber: (message as any).messageNumber || index + 1,
+            ui_index: (message as any).ui_index || index + 1,
           });
         }
       }
@@ -471,7 +471,7 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
               userMessages.push({
                 index: arrayIndex,
                 content: truncatedContent,
-                messageNumber: arrayIndex + 1,
+                ui_index: (message as any).ui_index,
               });
             }
           }
@@ -494,7 +494,7 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
         assistantMessages.push({
           index: arrayIndex,
           messageId: (message.message as any)?.id || (message as any).uuid || `assistant-${arrayIndex}`,
-          messageNumber: arrayIndex + 1,
+          ui_index: arrayIndex + 1,
           isLastInTurn,
           isSubAgentTask,
           isSubAgentResponse,
@@ -513,7 +513,7 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
             toolMessages.push({
               index: arrayIndex,
               toolName: toolNames.join(', '),
-              messageNumber: arrayIndex + 1,
+              ui_index: arrayIndex + 1,
             });
           }
         }
@@ -528,7 +528,7 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
           systemMessages.push({
             index: arrayIndex,
             content: truncatedContent,
-            messageNumber: arrayIndex + 1,
+            ui_index: arrayIndex + 1,
             subtype: (message as any).subtype,
           });
         }

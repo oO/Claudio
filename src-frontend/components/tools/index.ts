@@ -24,6 +24,9 @@ export { SubAgentTaskWidget } from './SubAgentTaskWidget';
 export { WebSearchWidget } from './WebSearchWidget';
 export { WebFetchWidget } from './WebFetchWidget';
 
+// Media Widgets
+export { ImageWidget } from './ImageWidget';
+
 // System & UI Widgets
 export { SystemReminderWidget } from './SystemReminderWidget';
 export { SystemInitializedWidget } from './SystemInitializedWidget';

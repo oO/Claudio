@@ -4,6 +4,7 @@
 export interface ClaudeStreamMessage {
   type: "system" | "assistant" | "user" | "result" | "status";
   subtype?: string;
+  ui_index?: number;
   message?: {
     content?: any[];
     usage?: {

@@ -138,7 +138,7 @@ export function processMessagesWithAgentInfo(messages: any[]): ClaudeStreamMessa
       subagentType,
       isSidechain,
       parentUuid: entry.parentUuid,
-      messageNumber: index + 1
+      ui_index: index + 1
     } as ClaudeStreamMessage;
   });
 
