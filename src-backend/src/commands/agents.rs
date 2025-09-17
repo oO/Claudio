@@ -1,7 +1,7 @@
 use anyhow::Result;
 use chrono;
 use dirs;
-use log::{info, warn};
+use log::warn;
 // use reqwest; // TODO: Re-enable when GitHub agent fetching is implemented
 use serde::{Deserialize, Serialize};
 // use serde_json::Value as JsonValue; // Unused
@@ -265,7 +265,6 @@ pub fn init_database(app: &tauri::AppHandle) -> SqliteResult<Connection> {
     let db_path = app_dir.join("agents.db");
     let conn = Connection::open(db_path)?;
 
-    info!("Database initialized (agents use file-based storage, other features use SQLite)");
     Ok(conn)
 }
 

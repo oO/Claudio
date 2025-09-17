@@ -139,7 +139,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       root.classList.add('dark');
     }
 
-    logger.log(`Applied theme: ${themeMode}, Background: ${backgroundColor}, Class: ${themeClass}`);
   }, []);
 
   const setTheme = useCallback(async (newTheme: ThemeMode) => {

@@ -63,19 +63,19 @@ class SessionTabRegistry {
    * Register a tab for a specific session
    */
   registerTab(tabId: string, projectId: string, sessionId?: string) {
-    logger.log(`🔧 registerTab called: tabId=${tabId}, projectId=${projectId}, sessionId=${sessionId}`);
+    // registerTab called (verbose logging removed)
     
     // Start watching project if not already watched (even for session list watchers without specific session)
     if (!this.watchedProjects.has(projectId)) {
-      logger.log(`🎯 Project ${projectId} not watched yet, starting watcher...`);
+      // Starting watcher for new project (verbose logging removed)
       this.startWatchingProject(projectId);
     } else {
-      logger.log(`📋 Project ${projectId} already being watched`);
+      // Project already being watched
     }
 
     // If no specific session, we're done (session list watcher case)
     if (!sessionId) {
-      logger.log(`✅ Session list watcher registered for project ${projectId}`);
+      // Session list watcher registered
       return;
     }
 
@@ -147,12 +147,11 @@ class SessionTabRegistry {
 
   private async startWatchingProject(projectId: string) {
     try {
-      logger.log(`🚀 Calling backend start_session_watching for project: ${projectId}`);
       await invoke('start_session_watching', { projectId });
       this.watchedProjects.add(projectId);
-      logger.log(`✅ Started watching session files for project: ${projectId}`);
+      // Only log on success, no "starting" + "started" spam
     } catch (error) {
-      logger.error(`❌ Failed to start watching project ${projectId}:`, error);
+      logger.error(`Failed to start watching project ${projectId}:`, error);
     }
   }
 
@@ -160,7 +159,7 @@ class SessionTabRegistry {
     try {
       await invoke('stop_session_watching', { projectId });
       this.watchedProjects.delete(projectId);
-      logger.log(`Stopped watching session files for project: ${projectId}`);
+      logger.debug(`Stopped watching session files for project: ${projectId}`);
     } catch (error) {
       logger.error(`Failed to stop watching project ${projectId}:`, error);
     }
@@ -185,7 +184,7 @@ export function useSessionFileWatcher({
   enabled = true,
   tabId
 }: UseSessionFileWatcherOptions) {
-  logger.log(`🎬 useSessionFileWatcher called: projectId=${projectId}, enabled=${enabled}, session=${session ? 'exists' : 'null'}, tabId=${tabId}`);
+  // Removed: Hook call logging - too noisy on every render
   
   const scrollPositionRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
@@ -288,12 +287,12 @@ export function useSessionFileWatcher({
   
   // Handle session registration/switching
   useEffect(() => {
-    logger.log(`🔄 Registration useEffect running: enabled=${enabled}, projectId=${projectId}, session=${session ? 'exists' : 'null'}`);
+    // Registration useEffect (verbose logging removed)
     
-    logger.log(`🔍 Checking conditions: enabled=${enabled}, projectId=${projectId ? 'exists' : 'null'}`);
+    // Checking conditions (verbose logging removed)
     
     if (!enabled || !projectId) {
-      logger.log(`🚫 Registration disabled: enabled=${enabled}, projectId=${projectId}`);
+      // Registration disabled (verbose logging removed)
       // If we're disabling, clean up previous session if any
       if (prevSessionIdRef.current && projectId) {
         sessionTabRegistry.unregisterTab(tabId, projectId, prevSessionIdRef.current);
@@ -302,16 +301,16 @@ export function useSessionFileWatcher({
       return;
     }
 
-    logger.log(`✅ Conditions passed, checking session: session=${session ? 'exists' : 'null'}`);
+    // Conditions passed (verbose logging removed)
 
     // For session list watchers (no specific session), register without sessionId
     if (!session) {
-      logger.log(`📝 Registering session list watcher for project ${projectId}`);
+      // Registering session list watcher (verbose logging removed)
       try {
         sessionTabRegistry.registerTab(tabId, projectId, undefined);
-        logger.log(`✅ Registration completed successfully`);
+        // Registration completed
       } catch (error) {
-        logger.error(`❌ Registration failed:`, error);
+        logger.error('Failed to register session list watcher:', error);
       }
       return;
     }
@@ -398,12 +397,12 @@ export function useSessionListWatcher(
   const tabId = useRef(`session-list-${Math.random().toString(36).substr(2, 9)}`);
   
   // Immediate debug logging (no useEffect)
-  logger.log(`📋 useSessionListWatcher called: projectId=${projectId}, enabled=${enabled}, tabId=${tabId.current}`);
+  // Removed: Hook call logging - too noisy on every render
   
   // Debug logging
   useEffect(() => {
     if (projectId && enabled) {
-      logger.log(`🎯 Starting file watcher for project ${projectId} with tab ${tabId.current}`);
+      // Starting file watcher (verbose logging removed)
     }
   }, [projectId, enabled]);
   

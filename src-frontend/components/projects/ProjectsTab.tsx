@@ -136,13 +136,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
     (tab.type === "projects" || tab.type === "project" || tab.type === "project-session") && !!selectedProject
   );
 
-  // Debug dialog state changes
-  useEffect(() => {
-    logger.log(
-      "projectDeleteDialogOpen state changed to:",
-      projectDeleteDialogOpen,
-    );
-  }, [projectDeleteDialogOpen]);
+  // Removed: Dialog state logging - pure noise
 
   // Load projects when tab becomes active and is of type 'projects' or 'project'
   useEffect(() => {

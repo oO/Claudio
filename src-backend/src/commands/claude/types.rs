@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::{BufRead, BufReader};
@@ -7,6 +7,7 @@ use std::sync::Arc;
 use tauri::AppHandle;
 use tokio::process::Child;
 use tokio::sync::Mutex;
+use crate::paths::{claude_home_dir, ensure_dir_exists};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TodoCounts {
@@ -291,16 +292,13 @@ pub fn find_claude_binary(app_handle: &AppHandle) -> Result<String, String> {
 
 /// Gets the path to the ~/.claude directory
 pub fn get_claude_dir() -> Result<PathBuf, anyhow::Error> {
-    let claude_dir = dirs::home_dir()
-        .context("Could not find home directory")?
-        .join(".claude");
-    
+    let claude_dir = claude_home_dir()
+        .map_err(|e| anyhow::anyhow!("Could not find Claude home directory: {}", e))?;
+
     // Create the directory if it doesn't exist
-    if !claude_dir.exists() {
-        std::fs::create_dir_all(&claude_dir)
-            .context("Failed to create ~/.claude directory")?;
-    }
-    
+    ensure_dir_exists(&claude_dir)
+        .map_err(|e| anyhow::anyhow!("Failed to create ~/.claude directory: {}", e))?;
+
     Ok(claude_dir)
 }
 

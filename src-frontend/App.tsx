@@ -13,6 +13,7 @@ import {
 import { TabProvider } from "@/contexts/TabContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { TodoProvider } from "@/contexts/TodoContext";
+import { UnifiedSettingsProvider } from "@/lib/settings";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ProjectList, ProjectDetail } from "@/components/projects";
@@ -682,13 +683,15 @@ function AppContent() {
  */
 function App() {
   return (
-    <ThemeProvider>
-        <TabProvider>
-          <TodoProvider>
-            <AppContent />
-          </TodoProvider>
-        </TabProvider>
-    </ThemeProvider>
+    <UnifiedSettingsProvider>
+      <ThemeProvider>
+          <TabProvider>
+            <TodoProvider>
+              <AppContent />
+            </TodoProvider>
+          </TabProvider>
+      </ThemeProvider>
+    </UnifiedSettingsProvider>
   );
 }
 

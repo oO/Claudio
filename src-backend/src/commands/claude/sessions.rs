@@ -7,6 +7,7 @@ use tauri::command;
 use serde::{Deserialize, Serialize};
 use crate::commands::claudio_storage::get_claudio_session;
 use crate::commands::session_orchestrator::{SESSION_TYPE_CLAUDIO, SESSION_TYPE_NATIVE};
+use crate::paths::{claudio_home_dir, CLAUDE_PROJECTS_DIR, SESSION_FILE_EXTENSION, JSON_EXTENSION};
 
 /// Fast line counting without JSON parsing
 fn count_lines_fast(file_path: &PathBuf) -> Result<u64, std::io::Error> {
@@ -52,7 +53,7 @@ pub async fn get_project_sessions(project_id: String) -> Result<Vec<DecoratedSes
         let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
         let path = entry.path();
 
-        if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("jsonl") {
+        if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some(SESSION_FILE_EXTENSION) {
             if let Some(session_id) = path.file_stem().and_then(|s| s.to_str()) {
                 // Get file creation time
                 let metadata = fs::metadata(&path)
@@ -87,8 +88,8 @@ pub async fn get_project_sessions(project_id: String) -> Result<Vec<DecoratedSes
                 let claudio_metadata = find_claudio_metadata_for_session(&session_id, &project_path).await;
 
                 // Check for native Claude session file
-                let home_dir = dirs::home_dir().ok_or("Cannot find home directory")?;
-                let native_file = home_dir.join(".claudio").join("projects").join(&project_id).join(format!("claude-{}.json", session_id));
+                let claudio_dir = claudio_home_dir()?;
+                let native_file = claudio_dir.join(CLAUDE_PROJECTS_DIR).join(&project_id).join(format!("claude-{}.json", session_id));
                 
                 // Determine session ID and type based on Claudio metadata
                 let (actual_session_id, live_session_type) = if let Some(ref claudio_session) = claudio_metadata {
@@ -144,14 +145,12 @@ pub async fn get_session_todos(session_id: String) -> Result<serde_json::Value, 
     let todos_dir = claude_dir.join("todos");
     let pattern = format!("{}-agent-", session_id);
     
-    log::debug!("📂 Todos dir: {:?}, pattern: {}", todos_dir, pattern);
     
     let mut agent_todos = Vec::new();
     let mut total_counts = super::types::TodoCounts { open: 0, completed: 0, total: 0 };
     
     // Find all agent todo files for this session
     if todos_dir.exists() {
-        log::debug!("Todos directory exists, reading entries");
         if let Ok(entries) = fs::read_dir(&todos_dir) {
             let mut found_files = Vec::new();
             let mut matching_files = Vec::new();
@@ -161,25 +160,20 @@ pub async fn get_session_todos(session_id: String) -> Result<serde_json::Value, 
                 found_files.push(file_name.clone());
                 
                 // Check if this is an agent todo file for our session
-                if file_name.starts_with(&pattern) && file_name.ends_with(".json") {
+                if file_name.starts_with(&pattern) && file_name.ends_with(&format!(".{}", JSON_EXTENSION)) {
                     matching_files.push(file_name.clone());
-                    log::debug!("Found matching todo file: {}", file_name);
                     
                     // Extract agent ID from filename: {session_id}-agent-{agent_id}.json
                     let agent_id = file_name
                         .strip_prefix(&pattern)
-                        .and_then(|s| s.strip_suffix(".json"))
+                        .and_then(|s| s.strip_suffix(&format!(".{}", JSON_EXTENSION)))
                         .unwrap_or("unknown")
                         .to_string();
                     
-                    log::debug!("🤖 Parsing todo file for agent: {}", agent_id);
                     
                     match super::types::parse_agent_todo_file(&entry.path()) {
                         Ok(todos) => {
-                            log::debug!("📋 Found {} todos in file {}", todos.len(), file_name);
                             let counts = super::types::count_todos_by_status(&todos);
-                            log::debug!("Todo counts for {}: open={}, completed={}, total={}", 
-                                       agent_id, counts.open, counts.completed, counts.total);
                             
                             // Add to totals
                             total_counts.open += counts.open;
@@ -200,7 +194,6 @@ pub async fn get_session_todos(session_id: String) -> Result<serde_json::Value, 
                 }
             }
             
-            log::debug!("Found {} total files in todos dir, {} matching for session {}", found_files.len(), matching_files.len(), session_id);
         } else {
             log::warn!("Failed to read todos directory: {:?}", todos_dir);
         }
@@ -225,19 +218,16 @@ pub async fn get_session_todos(session_id: String) -> Result<serde_json::Value, 
 /// This is more reliable than parsing Claude's JSONL files
 async fn get_project_path_from_claudio_session(session_id: &str, project_id: &str) -> Result<String, String> {
     // Try to find a Claudio session that tracks this Claude session
-    let claudio_dir = dirs::home_dir()
-        .ok_or("Could not find home directory".to_string())?
-        .join(".claudio")
-        .join("projects")
+    let claudio_projects_dir = claudio_home_dir()?.join(CLAUDE_PROJECTS_DIR)
         .join(project_id);
-    
-    if claudio_dir.exists() {
+
+    if claudio_projects_dir.exists() {
         // Look for Claudio session files in this project directory
-        if let Ok(entries) = fs::read_dir(&claudio_dir) {
+        if let Ok(entries) = fs::read_dir(&claudio_projects_dir) {
             for entry in entries {
                 if let Ok(entry) = entry {
                     let path = entry.path();
-                    if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("json") {
+                    if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some(JSON_EXTENSION) {
                         // Try to load the Claudio session by its claudio_id
                         if let Some(file_stem) = path.file_stem().and_then(|s| s.to_str()) {
                             // Decode project_id to get project_path for get_claudio_session call
@@ -490,7 +480,7 @@ pub async fn prune_old_sessions(
             let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
             let path = entry.path();
             
-            if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("jsonl") {
+            if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some(SESSION_FILE_EXTENSION) {
                 if let Some(session_id) = path.file_stem().and_then(|s| s.to_str()) {
                     let metadata = fs::metadata(&path)
                         .map_err(|e| format!("Failed to read file metadata: {}", e))?;

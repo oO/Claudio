@@ -5,6 +5,7 @@ use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::PathBuf;
 use tauri::command;
+use crate::paths::claude_home_dir;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UsageEntry {
@@ -290,9 +291,7 @@ fn get_all_usage_entries(claude_path: &PathBuf) -> Vec<UsageEntry> {
 
 #[command]
 pub fn get_usage_stats(days: Option<u32>) -> Result<UsageStats, String> {
-    let claude_path = dirs::home_dir()
-        .ok_or("Failed to get home directory")?
-        .join(".claude");
+    let claude_path = claude_home_dir()?;
 
     let all_entries = get_all_usage_entries(&claude_path);
 
@@ -450,9 +449,7 @@ pub fn get_usage_stats(days: Option<u32>) -> Result<UsageStats, String> {
 
 #[command]
 pub fn get_usage_by_date_range(start_date: String, end_date: String) -> Result<UsageStats, String> {
-    let claude_path = dirs::home_dir()
-        .ok_or("Failed to get home directory")?
-        .join(".claude");
+    let claude_path = claude_home_dir()?;
 
     let all_entries = get_all_usage_entries(&claude_path);
 
@@ -623,9 +620,7 @@ pub fn get_usage_details(
     project_path: Option<String>,
     date: Option<String>,
 ) -> Result<Vec<UsageEntry>, String> {
-    let claude_path = dirs::home_dir()
-        .ok_or("Failed to get home directory")?
-        .join(".claude");
+    let claude_path = claude_home_dir()?;
 
     let mut all_entries = get_all_usage_entries(&claude_path);
 
@@ -648,9 +643,7 @@ pub fn get_session_stats(
     until: Option<String>,
     order: Option<String>,
 ) -> Result<Vec<ProjectUsage>, String> {
-    let claude_path = dirs::home_dir()
-        .ok_or("Failed to get home directory")?
-        .join(".claude");
+    let claude_path = claude_home_dir()?;
 
     let all_entries = get_all_usage_entries(&claude_path);
 

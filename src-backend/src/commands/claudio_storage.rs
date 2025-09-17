@@ -6,6 +6,7 @@ use tauri::command;
 use tokio::fs;
 use tokio::sync::RwLock;
 use once_cell::sync::Lazy;
+use crate::paths::{claudio_home_dir, CLAUDIO_SETTINGS_FILE, CLAUDE_PROJECTS_DIR, JSON_EXTENSION, CLAUDE_SESSION_PREFIX};
 
 /// Global in-memory store for Claudio session metadata
 /// Key: claudio_id, Value: ClaudioSession
@@ -77,9 +78,7 @@ impl Default for ClaudeSettings {
 
 /// Get the ~/.claudio directory path
 pub fn get_claudio_dir() -> Result<PathBuf, String> {
-    let home_dir = dirs::home_dir()
-        .ok_or("Failed to find home directory")?;
-    Ok(home_dir.join(".claudio"))
+    claudio_home_dir()
 }
 
 /// Get project-specific claudio directory
@@ -87,13 +86,13 @@ pub fn get_project_claudio_dir(project_path: &str) -> Result<PathBuf, String> {
     let claudio_dir = get_claudio_dir()?;
     // Encode project path to match Claude Code's format: replace "/" and spaces with "-"
     let project_encoded = project_path.replace("/", "-").replace("\\", "-").replace(" ", "-");
-    Ok(claudio_dir.join("projects").join(project_encoded))
+    Ok(claudio_dir.join(CLAUDE_PROJECTS_DIR).join(project_encoded))
 }
 
 /// Get the path to Claudio's global settings file
 pub fn get_claudio_settings_file() -> Result<PathBuf, String> {
     let claudio_dir = get_claudio_dir()?;
-    Ok(claudio_dir.join("settings.json"))
+    Ok(claudio_dir.join(CLAUDIO_SETTINGS_FILE))
 }
 
 /// Ensure the claudio directory structure exists
@@ -104,11 +103,11 @@ pub async fn ensure_claudio_dirs() -> Result<(), String> {
     fs::create_dir_all(&claudio_dir).await
         .map_err(|e| format!("Failed to create ~/.claudio: {}", e))?;
     
-    fs::create_dir_all(claudio_dir.join("projects")).await
+    fs::create_dir_all(claudio_dir.join(CLAUDE_PROJECTS_DIR)).await
         .map_err(|e| format!("Failed to create ~/.claudio/projects: {}", e))?;
     
     // Create settings.json if it doesn't exist
-    let settings_path = claudio_dir.join("settings.json");
+    let settings_path = claudio_dir.join(CLAUDIO_SETTINGS_FILE);
     if !settings_path.exists() {
         let default_settings = serde_json::json!({
             "version": "1.0.0",
@@ -262,10 +261,10 @@ pub async fn list_claudio_sessions(project_path: String) -> Result<Vec<ClaudioSe
         .map_err(|e| format!("Failed to read directory entry: {}", e))? 
     {
         let path = entry.path();
-        if path.extension().and_then(|s| s.to_str()) == Some("json") {
+        if path.extension().and_then(|s| s.to_str()) == Some(JSON_EXTENSION) {
             // Skip native Claude session files (claude-*.json) - only process Claudio session files
             if let Some(filename) = path.file_name().and_then(|f| f.to_str()) {
-                if filename.starts_with("claude-") {
+                if filename.starts_with(CLAUDE_SESSION_PREFIX) {
                     log::debug!("Skipping native Claude session file: {}", filename);
                     continue;
                 }
@@ -475,7 +474,7 @@ pub async fn cleanup_session_files(
         if let Ok(entries) = std::fs::read_dir(&project_claudio_dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("json") {
+                if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some(JSON_EXTENSION) {
                     if let Ok(content) = std::fs::read_to_string(&path) {
                         if let Ok(session) = serde_json::from_str::<ClaudioSession>(&content) {
                             // Delete if this claudio session references the Claude session we're deleting
@@ -600,7 +599,7 @@ fn cleanup_global_orphaned_todos(
         if let Ok(entries) = std::fs::read_dir(&todos_dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("json") {
+                if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some(JSON_EXTENSION) {
                     if let Some(filename) = path.file_stem().and_then(|s| s.to_str()) {
                         // Extract session ID from agent todo filename pattern: {session_id}-agent-{agent_id}.json
                         let session_id = if let Some(dash_pos) = filename.find("-agent-") {
@@ -642,7 +641,7 @@ async fn cleanup_project_orphans(
             if let Ok(entries) = std::fs::read_dir(&claudio_dir) {
                 for entry in entries.flatten() {
                     let path = entry.path();
-                    if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("json") {
+                    if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some(JSON_EXTENSION) {
                         if let Ok(content) = std::fs::read_to_string(&path) {
                             if let Ok(session) = serde_json::from_str::<ClaudioSession>(&content) {
                                 // Check if the referenced Claude session exists
@@ -676,7 +675,7 @@ async fn cleanup_project_orphans(
         if let Ok(entries) = std::fs::read_dir(&todos_dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("json") {
+                if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some(JSON_EXTENSION) {
                     if let Some(filename) = path.file_stem().and_then(|s| s.to_str()) {
                         // Extract session ID from agent todo filename pattern: {session_id}-agent-{agent_id}.json
                         let session_id = if let Some(dash_pos) = filename.find("-agent-") {
@@ -704,7 +703,7 @@ async fn cleanup_project_orphans(
         if let Ok(entries) = std::fs::read_dir(&timelines_dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("json") {
+                if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some(JSON_EXTENSION) {
                     if let Some(session_id) = path.file_stem().and_then(|s| s.to_str()) {
                         if !existing_sessions.contains(session_id) {
                             // Orphaned timeline - delete it

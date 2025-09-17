@@ -272,16 +272,16 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setActiveTabId(restoredTabs[0].id);
             
             
-            logger.info('✅ SIMPLE RESTORATION COMPLETE:', { 
+            logger.info('Restored tabs on startup:', {
               tabCount: restoredTabs.length,
               types: restoredTabs.map(t => t.type)
             });
           }
         } else {
-          logger.info('📭 NO SAVED TABS TO RESTORE ON STARTUP');
+          logger.info('No saved tabs to restore on startup');
         }
       } catch (error) {
-        logger.error('❌ FAILED TO RESTORE TABS ON STARTUP:', error);
+        logger.error('Failed to restore tabs on startup:', error);
       }
     };
 

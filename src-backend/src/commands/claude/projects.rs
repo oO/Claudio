@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use std::time::SystemTime;
 use tauri::command;
 use serde::{Deserialize, Serialize};
+use crate::paths::{CLAUDE_SETTINGS_FILE, CLAUDE_SETTINGS_LOCAL_FILE, CLAUDE_MD_FILE, claude_project_dir, claude_project_agents_dir, AGENT_FILE_EXTENSION, SESSION_FILE_EXTENSION};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ProjectDeletionOptions {
@@ -64,7 +65,7 @@ pub fn delete_session_dependencies(claude_dir: &PathBuf, project_dir: &PathBuf, 
 
 /// Count local agents in a project's .claude/agents directory
 fn count_project_agents(project_path: &str) -> Option<u32> {
-    let agents_dir = std::path::PathBuf::from(project_path).join(".claude").join("agents");
+    let agents_dir = claude_project_agents_dir(&std::path::PathBuf::from(project_path));
     
     if !agents_dir.exists() {
         return None;
@@ -76,7 +77,7 @@ fn count_project_agents(project_path: &str) -> Option<u32> {
                 .flatten()
                 .filter(|entry| {
                     entry.path().is_file() && 
-                    entry.path().extension().and_then(|s| s.to_str()) == Some("md")
+                    entry.path().extension().and_then(|s| s.to_str()) == Some(AGENT_FILE_EXTENSION)
                 })
                 .count() as u32;
             
@@ -151,7 +152,7 @@ pub async fn list_projects() -> Result<Vec<Project>, String> {
                 for session_entry in session_entries.flatten() {
                     let session_path = session_entry.path();
                     if session_path.is_file()
-                        && session_path.extension().and_then(|s| s.to_str()) == Some("jsonl")
+                        && session_path.extension().and_then(|s| s.to_str()) == Some(SESSION_FILE_EXTENSION)
                     {
                         session_count += 1;
                         
@@ -198,7 +199,7 @@ pub async fn list_projects() -> Result<Vec<Project>, String> {
 /// Deletes project-specific agents from project/.claude/agents directory
 /// Returns number of agents deleted
 fn delete_project_agents(project_path: &str) -> Result<u32, String> {
-    let agents_dir = PathBuf::from(project_path).join(".claude").join("agents");
+    let agents_dir = claude_project_agents_dir(&PathBuf::from(project_path));
     let mut agents_deleted = 0;
     
     if !agents_dir.exists() {
@@ -208,7 +209,7 @@ fn delete_project_agents(project_path: &str) -> Result<u32, String> {
     if let Ok(entries) = fs::read_dir(&agents_dir) {
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("md") {
+            if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some(AGENT_FILE_EXTENSION) {
                 if let Err(e) = fs::remove_file(&path) {
                     log::warn!("Failed to delete agent file '{}': {}", path.display(), e);
                 } else {
@@ -240,7 +241,7 @@ fn delete_project_memories(project_path: &str) -> Result<u32, String> {
         if let Ok(entries) = fs::read_dir(dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                if path.is_file() && path.file_name().and_then(|s| s.to_str()) == Some("CLAUDE.md") {
+                if path.is_file() && path.file_name().and_then(|s| s.to_str()) == Some(CLAUDE_MD_FILE) {
                     if let Err(e) = fs::remove_file(&path) {
                         log::warn!("Failed to delete CLAUDE.md file '{}': {}", path.display(), e);
                     } else {
@@ -263,7 +264,7 @@ fn delete_project_memories(project_path: &str) -> Result<u32, String> {
 /// Checks if project has settings files (settings.json or settings.local.json)
 #[command]
 pub async fn check_project_settings(project_path: String) -> Result<u32, String> {
-    let claude_dir = PathBuf::from(&project_path).join(".claude");
+    let claude_dir = claude_project_dir(&PathBuf::from(&project_path));
     let mut settings_count = 0;
     
     if !claude_dir.exists() {
@@ -271,7 +272,7 @@ pub async fn check_project_settings(project_path: String) -> Result<u32, String>
     }
     
     // List of settings files to check
-    let settings_files = ["settings.json", "settings.local.json"];
+    let settings_files = [CLAUDE_SETTINGS_FILE, CLAUDE_SETTINGS_LOCAL_FILE];
     
     for settings_file in &settings_files {
         let settings_path = claude_dir.join(settings_file);
@@ -286,7 +287,7 @@ pub async fn check_project_settings(project_path: String) -> Result<u32, String>
 /// Deletes specific settings files (settings.json and settings.local.json) from project/.claude/
 /// Returns number of settings files deleted
 fn delete_project_settings(project_path: &str) -> Result<u32, String> {
-    let claude_dir = PathBuf::from(project_path).join(".claude");
+    let claude_dir = claude_project_dir(&PathBuf::from(project_path));
     let mut settings_deleted = 0;
     
     if !claude_dir.exists() {
@@ -294,7 +295,7 @@ fn delete_project_settings(project_path: &str) -> Result<u32, String> {
     }
     
     // List of settings files to delete
-    let settings_files = ["settings.json", "settings.local.json"];
+    let settings_files = [CLAUDE_SETTINGS_FILE, CLAUDE_SETTINGS_LOCAL_FILE];
     
     for settings_file in &settings_files {
         let settings_path = claude_dir.join(settings_file);

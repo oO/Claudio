@@ -2,16 +2,16 @@ use serde_json::{json, Value};
 use std::path::Path;
 use tauri::command;
 use tokio::fs;
+use crate::paths::{claude_home_dir, CLAUDE_SETTINGS_FILE, CLAUDE_HOOKS_DIR, HOOK_SESSION_START, HOOK_SESSION_ACTIVE, HOOK_SESSION_IDLE, HOOK_SESSION_END};
 
 /// Install Claude Code hooks for native session tracking
 #[command]
 pub async fn install_claude_session_hooks() -> Result<String, String> {
     log::info!("Installing Claude Code session tracking hooks");
     
-    let home_dir = dirs::home_dir().ok_or("Cannot find home directory")?;
-    let claude_dir = home_dir.join(".claude");
-    let hooks_dir = claude_dir.join("hooks");
-    let settings_file = claude_dir.join("settings.json");
+    let claude_dir = claude_home_dir().map_err(|e| format!("Cannot find Claude directory: {}", e))?;
+    let hooks_dir = claude_dir.join(CLAUDE_HOOKS_DIR);
+    let settings_file = claude_dir.join(CLAUDE_SETTINGS_FILE);
     
     // Create directories if they don't exist
     fs::create_dir_all(&claude_dir).await
@@ -20,10 +20,10 @@ pub async fn install_claude_session_hooks() -> Result<String, String> {
         .map_err(|e| format!("Failed to create ~/.claude/hooks directory: {}", e))?;
     
     // Install hook scripts
-    install_hook_script(&hooks_dir, "claudio-session-start.sh").await?;
-    install_hook_script(&hooks_dir, "claudio-session-active.sh").await?;
-    install_hook_script(&hooks_dir, "claudio-session-idle.sh").await?;
-    install_hook_script(&hooks_dir, "claudio-session-end.sh").await?;
+    install_hook_script(&hooks_dir, HOOK_SESSION_START).await?;
+    install_hook_script(&hooks_dir, HOOK_SESSION_ACTIVE).await?;
+    install_hook_script(&hooks_dir, HOOK_SESSION_IDLE).await?;
+    install_hook_script(&hooks_dir, HOOK_SESSION_END).await?;
     
     // Update settings.json with hook configuration
     update_claude_settings(&settings_file).await?;
@@ -35,13 +35,12 @@ pub async fn install_claude_session_hooks() -> Result<String, String> {
 /// Check if Claude Code hooks are already installed
 #[command]
 pub async fn check_hooks_installed() -> Result<bool, String> {
-    let home_dir = dirs::home_dir().ok_or("Cannot find home directory")?;
-    let claude_dir = home_dir.join(".claude");
-    let hooks_dir = claude_dir.join("hooks");
-    let settings_file = claude_dir.join("settings.json");
+    let claude_dir = claude_home_dir().map_err(|e| format!("Cannot find Claude directory: {}", e))?;
+    let hooks_dir = claude_dir.join(CLAUDE_HOOKS_DIR);
+    let settings_file = claude_dir.join(CLAUDE_SETTINGS_FILE);
     
     // Check if hook scripts exist
-    let scripts = ["claudio-session-start.sh", "claudio-session-active.sh", "claudio-session-idle.sh", "claudio-session-end.sh"];
+    let scripts = [HOOK_SESSION_START, HOOK_SESSION_ACTIVE, HOOK_SESSION_IDLE, HOOK_SESSION_END];
     for script in &scripts {
         if !hooks_dir.join(script).exists() {
             return Ok(false);
@@ -77,13 +76,12 @@ pub async fn check_hooks_installed() -> Result<bool, String> {
 pub async fn uninstall_claude_session_hooks() -> Result<String, String> {
     log::info!("Uninstalling Claude Code session tracking hooks");
     
-    let home_dir = dirs::home_dir().ok_or("Cannot find home directory")?;
-    let claude_dir = home_dir.join(".claude");
-    let hooks_dir = claude_dir.join("hooks");
-    let settings_file = claude_dir.join("settings.json");
+    let claude_dir = claude_home_dir().map_err(|e| format!("Cannot find Claude directory: {}", e))?;
+    let hooks_dir = claude_dir.join(CLAUDE_HOOKS_DIR);
+    let settings_file = claude_dir.join(CLAUDE_SETTINGS_FILE);
     
     // Remove hook scripts
-    let scripts = ["claudio-session-start.sh", "claudio-session-active.sh", "claudio-session-idle.sh", "claudio-session-end.sh"];
+    let scripts = [HOOK_SESSION_START, HOOK_SESSION_ACTIVE, HOOK_SESSION_IDLE, HOOK_SESSION_END];
     for script in &scripts {
         let script_path = hooks_dir.join(script);
         if script_path.exists() {
@@ -129,10 +127,10 @@ pub async fn uninstall_claude_session_hooks() -> Result<String, String> {
 /// Install a single hook script from embedded resource
 async fn install_hook_script(hooks_dir: &Path, script_name: &str) -> Result<(), String> {
     let script_content = match script_name {
-        "claudio-session-start.sh" => include_str!("../../../hook_scripts/claudio-session-start.sh"),
-        "claudio-session-active.sh" => include_str!("../../../hook_scripts/claudio-session-active.sh"),
-        "claudio-session-idle.sh" => include_str!("../../../hook_scripts/claudio-session-idle.sh"),
-        "claudio-session-end.sh" => include_str!("../../../hook_scripts/claudio-session-end.sh"),
+        HOOK_SESSION_START => include_str!("../../../hook_scripts/claudio-session-start.sh"),
+        HOOK_SESSION_ACTIVE => include_str!("../../../hook_scripts/claudio-session-active.sh"),
+        HOOK_SESSION_IDLE => include_str!("../../../hook_scripts/claudio-session-idle.sh"),
+        HOOK_SESSION_END => include_str!("../../../hook_scripts/claudio-session-end.sh"),
         _ => return Err(format!("Unknown hook script: {}", script_name)),
     };
     

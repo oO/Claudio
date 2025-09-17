@@ -59,7 +59,7 @@ pub async fn save_window_state(_app_handle: AppHandle, state: WindowState) -> Re
 
 #[command]
 pub async fn load_window_state() -> Result<WindowState, String> {
-    // Load settings from claudio-settings.json
+    // Load Claudio settings
     let settings = get_claudio_settings().await.unwrap_or_default();
     
     // Return window state if it exists, otherwise use defaults

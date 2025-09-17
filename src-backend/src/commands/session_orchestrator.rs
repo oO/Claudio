@@ -5,6 +5,7 @@ use tokio::sync::RwLock;
 use tauri::{command, AppHandle, Emitter};
 use uuid::Uuid;
 use chrono;
+use crate::paths::CLAUDIO_SESSION_PREFIX;
 
 use crate::commands::claudio_storage::{
     get_claudio_session, create_claudio_session,
@@ -16,7 +17,6 @@ use tokio::sync::broadcast;
 // Session type constants - single source of truth
 pub const SESSION_TYPE_CLAUDIO: &str = "CLAUDIO";
 pub const SESSION_TYPE_NATIVE: &str = "NATIVE";
-pub const SESSION_TYPE_ARCHIVED: &str = "ARCHIVED";
 
 /// Types of sessions that can be managed
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -29,7 +29,7 @@ pub enum SessionType {
     #[serde(rename = "NATIVE")] // Must match SESSION_TYPE_NATIVE
     Native { session_id: String },
     /// Archived session with no wrapper file (just raw JSONL)
-    #[serde(rename = "ARCHIVED")] // Must match SESSION_TYPE_ARCHIVED constant
+    #[serde(rename = "ARCHIVED")]
     Archived { session_id: String },
 }
 
@@ -97,7 +97,7 @@ impl SessionHandle {
         
         // Get current Claude session ID for --resume by reading fresh from storage
         // (don't rely on stale session handle state)
-        let current_claude_session = if actual_claudio_id.starts_with("claudio-") {
+        let current_claude_session = if actual_claudio_id.starts_with(CLAUDIO_SESSION_PREFIX) {
             match crate::commands::claudio_storage::get_claudio_session(actual_claudio_id.clone(), self.project_path.clone()).await {
                 Ok(claudio_session) => {
                     log::debug!("Found Claudio session with Claude session ID: {:?}", claudio_session.session_id);
@@ -344,7 +344,7 @@ impl SessionHandle {
                             // Check if this file change is relevant to our session handle
                             // For Claudio sessions, always read fresh Claude session ID from memory cache
                             // (memory is the single source of truth)
-                            let current_session = if handle_id.starts_with("claudio-") {
+                            let current_session = if handle_id.starts_with(CLAUDIO_SESSION_PREFIX) {
                                 // Claudio session - read fresh Claude session ID from memory cache
                                 let project_path = project_id.replace("-", "/");
                                 match crate::commands::claudio_storage::get_claudio_session(handle_id.clone(), project_path).await {
@@ -442,7 +442,7 @@ impl SessionHandle {
         
         // For Claudio sessions, we need to find the starting point based on last_message_uuid
         // For native sessions, we use the simple message count approach
-        let new_messages: Vec<&serde_json::Value> = if handle_id.starts_with("claudio-") {
+        let new_messages: Vec<&serde_json::Value> = if handle_id.starts_with(CLAUDIO_SESSION_PREFIX) {
             // Get the last_message_uuid from the Claudio session metadata
             let project_path = project_id.replace("-", "/");
             match crate::commands::claudio_storage::get_claudio_session(handle_id.to_string(), project_path).await {
@@ -500,7 +500,7 @@ impl SessionHandle {
         
         log::debug!("process_new_messages: handle_id={}, session_id={}, total_messages={}, new_messages={}, last_uuid_search={}", 
                    handle_id, session_id, all_messages.len(), new_messages.len(), 
-                   if handle_id.starts_with("claudio-") { "claudio_mode" } else { "count_mode" });
+                   if handle_id.starts_with(CLAUDIO_SESSION_PREFIX) { "claudio_mode" } else { "count_mode" });
 
         if !new_messages.is_empty() {
             log::debug!("Streaming {} new messages for handle {} (session: {})", new_messages.len(), handle_id, session_id);
@@ -630,7 +630,7 @@ impl SessionOrchestrator {
         // Determine session type and handle ID based on identifier
         let (session_type, handle_id) = match session_identifier {
             Some(id) => {
-                let session_type = if id.starts_with("claudio-") {
+                let session_type = if id.starts_with(CLAUDIO_SESSION_PREFIX) {
                     SessionType::Claudio { claudio_id: Some(id.clone()) }
                 } else {
                     // Check if this session has any wrapper file to determine if it's Native or Archived
@@ -869,7 +869,7 @@ pub async fn send_session_prompt(
     prompt: String
 ) -> Result<(), String> {
     // For Claudio sessions, emit active thinking event IMMEDIATELY when prompt is received
-    if handle_id.starts_with("claudio-") {
+    if handle_id.starts_with(CLAUDIO_SESSION_PREFIX) {
         let orchestrator = get_orchestrator()?;
         
         // Get project path from the session handle

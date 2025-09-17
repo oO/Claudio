@@ -55,11 +55,11 @@ export function useGlobalEvent<T = any>(
   
   useEffect(() => {
     if (!enabled) {
-      logger.log(`🚫 useGlobalEvent disabled for '${eventName}'`);
+      // useGlobalEvent disabled (verbose logging removed)
       return;
     }
     
-    logger.log(`🎧 useGlobalEvent setting up subscription for '${eventName}'`, { filter });
+    // Setting up subscription (verbose logging removed)
     
     // Subscribe to the event
     const setupSubscription = async () => {
@@ -83,7 +83,7 @@ export function useGlobalEvent<T = any>(
         );
         
         unsubscribeRef.current = unsubscribe;
-        logger.log(`✅ useGlobalEvent subscription active for '${eventName}'`);
+        // Subscription active
       } catch (error) {
         logger.error(`❌ useGlobalEvent failed to subscribe to '${eventName}':`, error);
       }
@@ -93,7 +93,7 @@ export function useGlobalEvent<T = any>(
     
     // Cleanup on unmount or dependency change
     return () => {
-      logger.log(`🧹 useGlobalEvent cleaning up subscription for '${eventName}'`);
+      // Cleaning up subscription
       if (unsubscribeRef.current) {
         unsubscribeRef.current();
         unsubscribeRef.current = null;

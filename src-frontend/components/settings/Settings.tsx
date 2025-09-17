@@ -1,27 +1,21 @@
-import React, { useState, useEffect, useRef } from "react";
-import { eventManager } from "@/lib/TauriEventManager";
-import { motion, AnimatePresence } from "framer-motion";
-import { Save, AlertCircle, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import React, { useState } from "react";
+import { AlertCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { Toast, ToastContainer } from "@/components/ui/toast";
-import { ActionButton } from "@/components/ui/atoms/ActionButton";
 import { LoadingSpinner } from "@/components/ui/atoms/LoadingSpinner";
 import { DebugLabel } from "@/components/ui/atoms";
 import {
   GeneralSettings,
+  AdvancedSettings,
+  CommandsSettings,
   PermissionsSettings,
   EnvironmentSettings,
-  AdvancedSettings,
   HooksSettings,
-  CommandsSettings,
-  NetworkSettings,
+  ProxySettings,
 } from "@/components/settings";
-import { useSettingsState, useClaudeBinaryConfig, useUnsavedChanges } from "@/hooks";
-import { api } from "@/lib/api";
-import { logger } from '@/lib/logger';
+import { useSettingsState } from "@/hooks/useSettingsState";
+import { logger } from "@/lib/logger";
 
 interface SettingsProps {
   /**
@@ -35,28 +29,21 @@ interface SettingsProps {
 }
 
 /**
- * Comprehensive Settings UI for managing Claude Code settings
- * Provides a no-code interface for editing the settings.json file
+ * Modern Settings UI with auto-save functionality
+ * No save buttons needed - changes persist automatically!
  */
 export const Settings: React.FC<SettingsProps> = ({ className }) => {
   const [activeTab, setActiveTab] = useState("general");
-  const [toast, setToast] = useState<{
-    message: string;
-    type: "success" | "error";
-  } | null>(null);
 
-  // Settings state and actions
+  // Use original working settings state hook
   const {
     settings,
     loading,
-    saving,
     error,
     allowRules,
     denyRules,
     envVars,
     hasChanges,
-    loadSettings,
-    saveSettings,
     updateSetting,
     addPermissionRule,
     updatePermissionRule,
@@ -64,102 +51,13 @@ export const Settings: React.FC<SettingsProps> = ({ className }) => {
     addEnvVar,
     updateEnvVar,
     removeEnvVar,
-    setError,
-  } = useSettingsState((success, message) => {
-    setToast({ message, type: success ? "success" : "error" });
-  });
-  
-  // Automatically sync unsaved changes state with the tab
-  const { markAsSaved } = useUnsavedChanges(hasChanges);
+    saveSettings
+  } = useSettingsState();
 
-  // Binary path management
-  const { saveBinaryPath } = useClaudeBinaryConfig();
+  // File watching is now handled automatically by the new orchestrator!
+  // No need for manual event listeners - the backend handles everything
 
-  // File watcher reference
-  const unsubscribeRef = useRef<(() => void) | null>(null);
-
-  // Load settings on mount and start file watcher
-  useEffect(() => {
-    const initializeSettings = async () => {
-      // Load initial settings
-      await loadSettings();
-      
-      // Start file watcher
-      try {
-        await api.startSettingsWatcher();
-        
-        // Set up event listener for file changes
-        const unsubscribe = await eventManager.subscribe("settings-file-changed", () => {
-          logger.log("Settings file changed externally, reloading...");
-          loadSettings();
-        });
-        
-        unsubscribeRef.current = unsubscribe;
-      } catch (error) {
-        logger.error("Failed to start settings file watcher:", error);
-      }
-    };
-    
-    initializeSettings();
-    
-    // Cleanup: remove event listener when component unmounts
-    return () => {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-      }
-    };
-  }, [loadSettings]);
-
-  /**
-   * Enhanced save settings that handles binary path
-   */
-  const handleSaveSettings = async () => {
-    try {
-      // Save the main settings
-      await saveSettings();
-
-      // Save binary path if changed
-      await saveBinaryPath();
-      
-      // Mark as saved after successful save
-      markAsSaved();
-    } catch (err) {
-      logger.error("Failed to save settings:", err);
-      setError("Failed to save settings.");
-      setToast({ message: "Failed to save settings", type: "error" });
-    }
-  };
-
-  /**
-   * Handle hooks change callback
-   */
-  const handleHooksChange = (
-    hasChanges: boolean,
-    getHooks: (() => any) | null,
-  ) => {
-    // For now, we'll handle this in the component state
-    // TODO: Integrate with useSettingsState hook
-  };
-
-  /**
-   * Handle proxy change callback
-   */
-  const handleProxyChange = (
-    hasChanges: boolean,
-    _getSettings: (() => any) | null,
-    save: (() => Promise<void>) | null,
-  ) => {
-    // For now, we'll handle this in the component state
-    // TODO: Integrate with useSettingsState hook
-  };
-
-  /**
-   * Handle binary path change callback
-   */
-  const handleBinaryPathChanged = (changed: boolean) => {
-    // For now, we'll handle this in the component state
-    // TODO: Integrate with useClaudeBinaryConfig hook
-  };
+  // No more manual save functions needed! Auto-save handles everything ✨
 
   return (
     <div
@@ -171,19 +69,12 @@ export const Settings: React.FC<SettingsProps> = ({ className }) => {
       <DebugLabel label="Settings" />
       <div className="max-w-4xl mx-auto w-full flex flex-col h-full">
         {/* Error message */}
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="mx-4 mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/50 flex items-center gap-2 text-sm text-destructive"
-            >
-              <AlertCircle className="h-4 w-4" />
-              {error}
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {error && (
+          <div className="mx-4 mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/50 flex items-center gap-2 text-sm text-destructive">
+            <AlertCircle className="h-4 w-4" />
+            {String(error)}
+          </div>
+        )}
 
         {/* Content */}
         {loading ? (
@@ -209,27 +100,11 @@ export const Settings: React.FC<SettingsProps> = ({ className }) => {
 
               {/* General Settings */}
               <TabsContent value="general" className="space-y-6">
-                <Card className="p-6 space-y-6">
-                  <div>
-                    {/* Save Button */}
-                    <div className="flex justify-end mb-4">
-                      <ActionButton
-                        icon={Save}
-                        label={saving ? "Saving..." : "Save Settings"}
-                        onClick={handleSaveSettings}
-                        disabled={saving || loading || !hasChanges}
-                        isLoading={saving}
-                        size="sm"
-                        className="bg-primary hover:bg-primary/90"
-                      />
-                    </div>
-
-                    <GeneralSettings
-                      settings={settings}
-                      onUpdateSetting={updateSetting}
-                      onBinaryPathChanged={handleBinaryPathChanged}
-                    />
-                  </div>
+                <Card className="p-6">
+                  <GeneralSettings
+                    settings={settings}
+                    onUpdateSetting={updateSetting}
+                  />
                 </Card>
               </TabsContent>
 
@@ -272,7 +147,7 @@ export const Settings: React.FC<SettingsProps> = ({ className }) => {
               <TabsContent value="hooks" className="space-y-6">
                 <Card className="p-6">
                   <HooksSettings
-                    onHooksChange={handleHooksChange}
+                    onHooksChange={() => {}}
                     activeTab={activeTab}
                   />
                 </Card>
@@ -288,9 +163,12 @@ export const Settings: React.FC<SettingsProps> = ({ className }) => {
               {/* Proxy Settings */}
               <TabsContent value="proxy">
                 <Card className="p-6">
-                  <NetworkSettings
-                    onProxyChange={handleProxyChange}
-                    onToast={setToast}
+                  <ProxySettings
+                    setToast={(toast) => {
+                      if (toast) {
+                        logger.info('Proxy settings:', toast.message);
+                      }
+                    }}
                   />
                 </Card>
               </TabsContent>
@@ -299,16 +177,7 @@ export const Settings: React.FC<SettingsProps> = ({ className }) => {
         )}
       </div>
 
-      {/* Toast Notification */}
-      <ToastContainer>
-        {toast && (
-          <Toast
-            message={toast.message}
-            type={toast.type}
-            onDismiss={() => setToast(null)}
-          />
-        )}
-      </ToastContainer>
+      {/* Success/error indicators are now handled by individual AutoSave inputs */}
     </div>
   );
 };

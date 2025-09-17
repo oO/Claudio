@@ -25,6 +25,41 @@ useEffect(() => {
 - React hooks: `src-frontend/hooks/useSessionFileWatcher.ts`
 - Components: `src-frontend/components/sessions/SessionDetail.tsx`
 
+## 🚨 CRITICAL: Tauri Parameter Naming Convention
+
+**Tauri automatically converts between frontend camelCase and backend snake_case - DO NOT worry about parameter naming!**
+
+```typescript
+// ✅ CORRECT - Use camelCase in frontend
+const handleId = await invoke<string>('create_settings_handle', {
+  projectPath: projectPath || null,    // Backend receives as "project_path"
+  settingsType: settingsType,          // Backend receives as "settings_type"
+});
+
+// ❌ WRONG - Don't try to match backend naming
+const handleId = await invoke<string>('create_settings_handle', {
+  project_path: projectPath || null,   // DON'T DO THIS
+  settings_type: settingsType,         // DON'T DO THIS
+});
+```
+
+**Frontend/Backend Parameter Mapping:**
+- Frontend: Always use `camelCase` for object properties in invoke() calls
+- Backend: Always use `snake_case` for Tauri command parameters
+- Tauri handles this conversion automatically - no manual conversion needed!
+
+**Common Tauri Parameter Patterns:**
+```typescript
+// Settings commands
+await invoke('create_settings_handle', { projectPath, settingsType });
+await invoke('update_setting_for_handle', { handleId, key, value, level });
+await invoke('get_settings_for_handle', { handleId });
+
+// Session commands
+await invoke('create_session_handle', { projectPath, sessionType });
+await invoke('start_session_execution', { handleId, agentPrompt });
+```
+
 ## 🚨 MANDATORY: Use Centralized Logger System
 
 **NEVER use console.log, console.error, console.warn, console.info, or console.debug in frontend code!**

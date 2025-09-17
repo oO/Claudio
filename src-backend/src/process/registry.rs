@@ -23,7 +23,6 @@ pub struct ProcessInfo {
     pub process_type: ProcessType,
     pub pid: u32,
     pub started_at: DateTime<Utc>,
-    pub project_path: String,
     pub task: String,
     pub model: String,
 }
@@ -68,7 +67,6 @@ impl ProcessRegistry {
         agent_id: i64,
         agent_name: String,
         pid: u32,
-        project_path: String,
         task: String,
         model: String,
         child: Child,
@@ -78,7 +76,6 @@ impl ProcessRegistry {
             process_type: ProcessType::AgentRun { agent_id, agent_name },
             pid,
             started_at: Utc::now(),
-            project_path,
             task,
             model,
         };
@@ -94,7 +91,6 @@ impl ProcessRegistry {
         agent_id: i64,
         agent_name: String,
         pid: u32,
-        project_path: String,
         task: String,
         model: String,
     ) -> Result<(), String> {
@@ -103,7 +99,6 @@ impl ProcessRegistry {
             process_type: ProcessType::AgentRun { agent_id, agent_name },
             pid,
             started_at: Utc::now(),
-            project_path,
             task,
             model,
         };
@@ -127,7 +122,6 @@ impl ProcessRegistry {
         &self,
         session_id: String,
         pid: u32,
-        project_path: String,
         task: String,
         model: String,
     ) -> Result<i64, String> {
@@ -138,7 +132,6 @@ impl ProcessRegistry {
             process_type: ProcessType::ClaudeSession { session_id },
             pid,
             started_at: Utc::now(),
-            project_path,
             task,
             model,
         };

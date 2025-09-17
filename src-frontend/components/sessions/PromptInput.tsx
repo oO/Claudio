@@ -7,6 +7,7 @@ import { FilePicker, SlashCommandPicker, ImagePreview } from "@/components/commo
 import { DebugLabel } from "@/components/ui/atoms";
 import { type FileEntry, type SlashCommand } from "@/lib/api";
 import { logger } from '@/lib/logger';
+import { useCurrentModel, useUnifiedSettingsContext } from '@/lib/settings';
 // Define QueuedPrompt type inline (previously from deprecated useSessionState)
 export interface QueuedPrompt {
   id: string;
@@ -98,8 +99,18 @@ const PromptInputInner = (
   }: PromptInputProps,
   ref: React.Ref<PromptInputRef>,
 ) => {
-  // Model and thinking mode state
-  const [selectedModel, setSelectedModel] = useState<"sonnet" | "opus">(defaultModel);
+  // Model from unified settings context - single source of truth!
+  const { model: globalModel, setModel } = useUnifiedSettingsContext();
+
+  // Convert global model to expected type with fallback
+  const selectedModel = (globalModel === "opus" || globalModel === "sonnet")
+    ? globalModel
+    : defaultModel;
+
+  // Wrapper for sync model selection
+  const setSelectedModel = (model: "sonnet" | "opus") => {
+    setModel(model).catch(err => logger.error('Failed to update model:', err));
+  };
   const [selectedThinkingMode, setSelectedThinkingMode] = useState<ThinkingMode>("auto");
   const [isExpanded, setIsExpanded] = useState(false);
   

@@ -4,6 +4,7 @@
 mod claude_binary;
 mod commands;
 mod process;
+mod paths;
 
 use std::sync::{Arc, Mutex};
 use commands::agents::{
@@ -64,6 +65,10 @@ use commands::claude_session_tracking::{
 };
 use commands::hook_installer::{
     install_claude_session_hooks, check_hooks_installed, uninstall_claude_session_hooks,
+};
+use commands::settings::{
+    create_settings_handle, get_settings_for_handle, update_setting_for_handle, destroy_settings_handle,
+    initialize_settings_orchestrator,
 };
 use process::ProcessRegistryState;
 use tauri::Manager;
@@ -145,7 +150,7 @@ fn main() {
                 runtime.spawn(async move {
                     let proxy_settings = match commands::proxy::get_proxy_settings().await {
                         Ok(settings) => {
-                            log::info!("Loaded proxy settings from claudio-settings.json: enabled={}", settings.enabled);
+                            log::info!("Loaded proxy settings: enabled={}", settings.enabled);
                             settings
                         }
                         Err(e) => {
@@ -187,6 +192,9 @@ fn main() {
             // Initialize SessionOrchestrator (new architecture)
             commands::session_orchestrator::initialize_orchestrator(app.handle().clone(), session_watcher_state);
 
+            // Initialize SettingsOrchestrator (SEPARATE from sessions - never merge!)
+            initialize_settings_orchestrator(app.handle().clone());
+
             // Setup window state tracking
             if let Err(e) = setup_window_state_tracking(app.handle().clone()) {
                 log::warn!("Failed to setup window state tracking: {}", e);
@@ -222,7 +230,7 @@ fn main() {
                         }
                     }
                     Ok(true) => {
-                        log::debug!("Claude Code session tracking hooks already installed");
+                        // Hooks already installed, no action needed
                     }
                     Err(e) => {
                         log::warn!("Failed to check hook installation status: {}", e);
@@ -378,6 +386,12 @@ fn main() {
             commands::session_orchestrator::get_session_handle,
             commands::session_orchestrator::send_session_prompt,
             commands::session_orchestrator::get_session_messages,
+
+            // Settings Management (Unified Orchestrator)
+            create_settings_handle,
+            get_settings_for_handle,
+            update_setting_for_handle,
+            destroy_settings_handle,
             
             // Claude Session Tracking (Native Sessions)
             start_claude_thinking,

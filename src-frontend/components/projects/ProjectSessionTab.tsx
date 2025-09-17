@@ -95,27 +95,27 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
   }, []);
 
   useEffect(() => {
-    logger.log(
-      `📊 ProjectSessionTab: Sessions count: ${sessions.length} at ${new Date().toISOString()}`,
-    );
-    if (sessions.length > 0) {
-      logger.log(`📊 First session:`, sessions[0]);
+    // logger.log(
+    //   `📊 ProjectSessionTab: Sessions count: ${sessions.length} at ${new Date().toISOString()}`,
+    // );
+    // if (sessions.length > 0) {
+    //   logger.log(`📊 First session:`, sessions[0]);
 
-      // Debug: Log all live sessions
-      const liveSessions = sessions.filter((s) => s.live_session_type);
-      if (liveSessions.length > 0) {
-        logger.log(`🔥 Found ${liveSessions.length} live sessions:`);
-        liveSessions.forEach((session, index) => {
-          logger.log(`🔥 Live session ${index + 1}:`, {
-            id: session.id,
-            live_session_type: session.live_session_type,
-            first_message: session.first_message?.substring(0, 50) + "...",
-          });
-        });
-      } else {
-        logger.log(`⚠️ No live sessions found in ${sessions.length} sessions`);
-      }
-    }
+    //   // Debug: Log all live sessions
+    //   const liveSessions = sessions.filter((s) => s.live_session_type);
+    //   if (liveSessions.length > 0) {
+    //     logger.log(`🔥 Found ${liveSessions.length} live sessions:`);
+    //     liveSessions.forEach((session, index) => {
+    //       logger.log(`🔥 Live session ${index + 1}:`, {
+    //         id: session.id,
+    //         live_session_type: session.live_session_type,
+    //         first_message: session.first_message?.substring(0, 50) + "...",
+    //       });
+    //     });
+    //   } else {
+    //     logger.log(`⚠️ No live sessions found in ${sessions.length} sessions`);
+    //   }
+    // }
   }, [sessions]);
 
   useSessionListWatcher(

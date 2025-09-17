@@ -1,4 +1,5 @@
 use super::types::*;
+use crate::paths::{CLAUDE_SETTINGS_FILE, CLAUDE_MD_FILE};
 use std::fs;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -11,7 +12,7 @@ pub async fn get_claude_settings() -> Result<ClaudeSettings, String> {
     // log::info!("Reading Claude settings");
 
     let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
-    let settings_path = claude_dir.join("settings.json");
+    let settings_path = claude_dir.join(CLAUDE_SETTINGS_FILE);
 
     if !settings_path.exists() {
         log::warn!("Settings file not found, returning empty settings");
@@ -35,7 +36,7 @@ pub async fn save_claude_settings(settings: serde_json::Value) -> Result<String,
     log::info!("Saving Claude settings");
 
     let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
-    let settings_path = claude_dir.join("settings.json");
+    let settings_path = claude_dir.join(CLAUDE_SETTINGS_FILE);
 
     // Pretty print the JSON with 2-space indentation
     let json_string = serde_json::to_string_pretty(&settings)
@@ -53,7 +54,7 @@ pub async fn start_settings_watcher(app: AppHandle) -> Result<String, String> {
     log::info!("Starting settings file watcher");
     
     let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
-    let settings_path = claude_dir.join("settings.json");
+    let settings_path = claude_dir.join(CLAUDE_SETTINGS_FILE);
     
     // Create parent directory if it doesn't exist
     if let Some(parent) = settings_path.parent() {
@@ -110,7 +111,7 @@ pub async fn get_system_prompt() -> Result<String, String> {
     log::info!("Reading CLAUDE.md system prompt");
 
     let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
-    let claude_md_path = claude_dir.join("CLAUDE.md");
+    let claude_md_path = claude_dir.join(CLAUDE_MD_FILE);
 
     if !claude_md_path.exists() {
         log::warn!("CLAUDE.md not found");
@@ -126,7 +127,7 @@ pub async fn save_system_prompt(content: String) -> Result<String, String> {
     log::info!("Saving CLAUDE.md system prompt");
 
     let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
-    let claude_md_path = claude_dir.join("CLAUDE.md");
+    let claude_md_path = claude_dir.join(CLAUDE_MD_FILE);
 
     fs::write(&claude_md_path, content).map_err(|e| format!("Failed to write CLAUDE.md: {}", e))?;
 
@@ -136,7 +137,6 @@ pub async fn save_system_prompt(content: String) -> Result<String, String> {
 /// Checks if Claude Code is installed and gets its version
 #[command]
 pub async fn check_claude_version(app: AppHandle) -> Result<ClaudeVersionStatus, String> {
-    log::info!("Checking Claude Code version");
 
     let claude_path = match crate::claude_binary::find_claude_binary_async(&app).await {
         Ok(path) => path,
@@ -149,8 +149,6 @@ pub async fn check_claude_version(app: AppHandle) -> Result<ClaudeVersionStatus,
         }
     };
 
-    use log::debug;
-    debug!("Claude path: {}", claude_path);
 
     // In production builds, we can't check the version directly
     #[cfg(not(debug_assertions))]

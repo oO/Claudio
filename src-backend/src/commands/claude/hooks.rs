@@ -1,6 +1,7 @@
 use super::types::*;
 use std::fs;
 use tauri::command;
+use crate::paths::{claude_project_dir, CLAUDE_HOOKS_FILE};
 
 /// Gets hooks configuration from settings at specified scope
 #[command]
@@ -14,7 +15,7 @@ pub async fn get_hooks_config(scope: String, project_path: Option<String>) -> Re
         }
         "project" => {
             if let Some(path) = project_path {
-                std::path::Path::new(&path).join(".claude").join("hooks.json")
+                claude_project_dir(std::path::Path::new(&path)).join(CLAUDE_HOOKS_FILE)
             } else {
                 return Err("Project path required for project scope".to_string());
             }
@@ -56,7 +57,7 @@ pub async fn update_hooks_config(
         }
         "project" => {
             if let Some(path) = project_path {
-                let project_config_dir = std::path::Path::new(&path).join(".claude");
+                let project_config_dir = claude_project_dir(std::path::Path::new(&path));
                 fs::create_dir_all(&project_config_dir)
                     .map_err(|e| format!("Failed to create project config directory: {}", e))?;
                 project_config_dir.join("hooks.json")

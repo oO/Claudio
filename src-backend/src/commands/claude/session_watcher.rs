@@ -1,4 +1,5 @@
 use crate::commands::claude::get_claude_dir;
+use crate::paths::{claudio_home_dir, CLAUDE_PROJECTS_DIR};
 use notify::{Watcher, RecursiveMode, Event, EventKind, RecommendedWatcher};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -89,8 +90,7 @@ impl SessionWatcherManager {
         let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
         let claude_sessions_dir = claude_dir.join("projects").join(project_id);
         
-        let home_dir = dirs::home_dir().ok_or("Cannot find home directory")?;
-        let claudio_sessions_dir = home_dir.join(".claudio").join("projects").join(project_id);
+        let claudio_sessions_dir = claudio_home_dir()?.join(CLAUDE_PROJECTS_DIR).join(project_id);
 
         // Create directories if they don't exist
         for dir in [&claude_sessions_dir, &claudio_sessions_dir] {

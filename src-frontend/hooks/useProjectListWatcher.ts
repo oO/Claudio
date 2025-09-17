@@ -34,7 +34,7 @@ export function useProjectListWatcher({
 }: UseProjectListWatcherOptions) {
   const isStartedRef = useRef(false);
   
-  logger.log(`🎬 useProjectListWatcher called: enabled=${enabled}`);
+  // Removed: Hook call logging - too noisy on every render
 
   // Handle project file events from backend
   const handleProjectFileEvent = useCallback(async (event: ProjectFileEvent) => {
@@ -54,7 +54,7 @@ export function useProjectListWatcher({
   useEffect(() => {
     if (!enabled) {
       if (isStartedRef.current) {
-        logger.log(`🛑 Stopping project watcher`);
+        logger.debug(`Stopping project watcher`);
         invoke('stop_project_watching').catch((error) => {
           logger.error('Failed to stop project watching:', error);
         });
@@ -64,11 +64,8 @@ export function useProjectListWatcher({
     }
 
     if (!isStartedRef.current) {
-      logger.log(`🚀 Starting project watcher`);
-      
-      // Start the backend watcher
+      // Start the backend watcher (it logs its own results)
       invoke('start_project_watching').then(() => {
-        logger.log(`✅ Project watcher started successfully`);
         isStartedRef.current = true;
       }).catch((error) => {
         logger.error('Failed to start project watching:', error);
@@ -83,7 +80,7 @@ export function useProjectListWatcher({
         unlisten = await listen<ProjectFileEvent>('project_file_event', (event) => {
           handleProjectFileEvent(event.payload);
         });
-        logger.debug(`📡 Project file event listener established`);
+        // Event listener established (debug only on errors)
       } catch (error) {
         logger.error('Failed to setup project file event listener:', error);
       }
@@ -95,7 +92,7 @@ export function useProjectListWatcher({
     return () => {
       if (unlisten) {
         unlisten();
-        logger.debug(`🔌 Project file event listener removed`);
+        // Event listener removed
       }
     };
   }, [enabled, handleProjectFileEvent]);

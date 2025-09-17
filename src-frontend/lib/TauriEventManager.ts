@@ -51,7 +51,7 @@ class TauriEventManager {
   private lastLoggedState: string | null = null;
   
   private constructor() {
-    logger.log('🌐 TauriEventManager singleton created');
+    logger.log('TauriEventManager singleton created');
   }
   
   static getInstance(): TauriEventManager {

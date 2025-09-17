@@ -52,7 +52,7 @@ impl ProjectWatcherManager {
         
         // Don't create duplicate watchers
         if watcher_opt.is_some() {
-            log::debug!("Project watcher already running");
+            // Silently return - idempotent functions don't announce they're already done
             return Ok(());
         }
 
@@ -102,6 +102,7 @@ impl ProjectWatcherManager {
             }
         });
 
+        log::debug!("Project watcher started successfully");
         Ok(())
     }
 
@@ -198,8 +199,6 @@ pub async fn start_project_watching(
     state: State<'_, ProjectWatcherState>,
     app_handle: AppHandle,
 ) -> Result<(), String> {
-    log::debug!("Starting project watcher");
-    
     let mut manager_opt = state.lock().map_err(|e| format!("Lock error: {}", e))?;
     
     // Create manager if it doesn't exist
@@ -209,7 +208,6 @@ pub async fn start_project_watching(
     
     if let Some(manager) = manager_opt.as_ref() {
         manager.start_watching()?;
-        log::debug!("Project watcher started successfully");
     }
     
     Ok(())

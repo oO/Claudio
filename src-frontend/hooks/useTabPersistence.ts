@@ -56,7 +56,7 @@ export const useTabPersistence = () => {
       if (tabsToSave.length === 0) {
         // Clear storage if no tabs
         await api.saveSetting(STORAGE_KEY, '');
-        logger.debug('💾 Cleared tab session (no tabs)');
+        logger.debug('Cleared tab session (no tabs)');
         return;
       }
 
@@ -68,10 +68,10 @@ export const useTabPersistence = () => {
 
       await api.saveSetting(STORAGE_KEY, JSON.stringify(sessionData));
       
-      logger.debug('💾 Saved tab session (KISS):', { 
-        tabCount: tabsToSave.length, 
+      logger.debug('Saved tab session (KISS):', {
+        tabCount: tabsToSave.length,
         panelCount: panelBreaks.length + 1,
-        activePanelIndex 
+        activePanelIndex
       });
     } catch (error) {
       logger.error('Failed to save tab session:', error);
@@ -105,7 +105,7 @@ export const useTabPersistence = () => {
         activePanelIndex: parsed.activePanelIndex || 0,
       };
 
-      logger.info('📂 Loaded tab session (KISS):', { 
+      logger.info('Loaded tab session (KISS):', {
         tabCount: sessionData.tabs.length,
         types: sessionData.tabs.map(t => t.type)
       });
@@ -123,7 +123,7 @@ export const useTabPersistence = () => {
   const clearSavedTabs = useCallback(async () => {
     try {
       await api.saveSetting(STORAGE_KEY, '');
-      logger.debug('🗑️ Cleared saved tab session');
+      logger.debug('Cleared saved tab session');
     } catch (error) {
       logger.error('Failed to clear tab session:', error);
     }

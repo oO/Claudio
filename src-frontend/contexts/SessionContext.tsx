@@ -5,19 +5,19 @@ import type { SessionTypeValue } from '@/lib/sessionHandleApi';
 export interface UserMessageItem {
   index: number;
   content: string;
-  messageNumber: number;
+  ui_index: number;
 }
 
 export interface ToolMessageItem {
   index: number;
   toolName: string;
-  messageNumber: number;
+  ui_index: number;
 }
 
 export interface AssistantMessageItem {
   index: number;
   messageId: string;
-  messageNumber: number;
+  ui_index: number;
   isLastInTurn: boolean;
   isSubAgentTask: boolean;
   isSubAgentResponse: boolean;
@@ -26,7 +26,7 @@ export interface AssistantMessageItem {
 export interface SystemMessageItem {
   index: number;
   content: string;
-  messageNumber: number;
+  ui_index: number;
   subtype?: string;
 }
 

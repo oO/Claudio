@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{command, AppHandle, Emitter};
 use tokio::fs;
 use std::path::Path;
+use crate::paths::{claudio_home_dir, CLAUDE_PROJECTS_DIR, CLAUDE_SESSION_PREFIX, JSON_EXTENSION};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LiveClaudeSession {
@@ -78,8 +79,7 @@ pub async fn end_claude_thinking(
 pub async fn get_live_claude_sessions() -> Result<Vec<LiveClaudeSession>, String> {
     log::debug!("Scanning for live Claude sessions");
     
-    let home_dir = dirs::home_dir().ok_or("Cannot find home directory")?;
-    let claudio_projects_dir = home_dir.join(".claudio").join("projects");
+    let claudio_projects_dir = claudio_home_dir()?.join(CLAUDE_PROJECTS_DIR);
     
     if !claudio_projects_dir.exists() {
         return Ok(vec![]);
@@ -111,7 +111,7 @@ pub async fn get_live_claude_sessions() -> Result<Vec<LiveClaudeSession>, String
             let filename_str = filename.to_string_lossy();
             
             // Look for claude-*.json files (not claudio-*.json)
-            if filename_str.starts_with("claude-") && filename_str.ends_with(".json") {
+            if filename_str.starts_with(CLAUDE_SESSION_PREFIX) && filename_str.ends_with(&format!(".{}", JSON_EXTENSION)) {
                 if let Ok(session) = read_claude_session_file(&file_entry.path()).await {
                     live_sessions.push(session);
                 }

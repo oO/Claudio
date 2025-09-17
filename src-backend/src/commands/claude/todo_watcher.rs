@@ -154,7 +154,6 @@ impl TodoWatcherManager {
 
                         return match &event.kind {
                             Create(_) => {
-                                log::debug!("Todo file created: {}", filename);
                                 // Try to read todo counts
                                 if let Ok(todos) = crate::commands::claude::types::parse_agent_todo_file(path) {
                                     let todo_counts = crate::commands::claude::types::count_todos_by_status(&todos);
@@ -171,7 +170,6 @@ impl TodoWatcherManager {
                                 }
                             }
                             Modify(_) => {
-                                log::debug!("Todo file modified: {}", filename);
                                 // Try to read todo counts
                                 if let Ok(todos) = crate::commands::claude::types::parse_agent_todo_file(path) {
                                     let todo_counts = crate::commands::claude::types::count_todos_by_status(&todos);
@@ -188,7 +186,6 @@ impl TodoWatcherManager {
                                 }
                             }
                             Remove(_) => {
-                                log::debug!("Todo file removed: {}", filename);
                                 Some(TodoEvent::TodoRemoved {
                                     session_id,
                                     agent_id,
@@ -224,14 +221,12 @@ impl TodoWatcherManager {
             for todo_event in rx {
                 // Use session_id:agent_id as debounce key
                 let key = format!("{}:{}", todo_event.get_session_id(), todo_event.get_agent_id());
-                log::debug!("Received todo event for debouncing: {}", key);
                 
                 rt.block_on(async {
                     // Cancel any existing timer for this session:agent
                     if let Ok(mut timers) = pending_timers.lock() {
                         if let Some(existing_timer) = timers.remove(&key) {
                             existing_timer.abort();
-                            log::debug!("Cancelled existing todo debounce timer for {}", key);
                         }
                     }
                     
@@ -250,8 +245,6 @@ impl TodoWatcherManager {
                         }
                         
                         // After debounce period, emit the event
-                        log::info!("📝 Emitting debounced todo event: {} for agent {}", 
-                                  todo_event.get_session_id(), todo_event.get_agent_id());
                         
                         // Send event via broadcast channel
                         if let Err(e) = event_sender_clone.send(todo_event.clone()) {
@@ -288,7 +281,6 @@ pub async fn start_todo_watching(
     if let Ok(mut manager_opt) = state.lock() {
         if let Some(manager) = manager_opt.as_mut() {
             manager.start_watching()?;
-            log::info!("Global todo watcher started successfully");
         } else {
             return Err("Todo watcher manager not initialized".to_string());
         }

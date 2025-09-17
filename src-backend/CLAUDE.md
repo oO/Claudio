@@ -82,9 +82,38 @@ if current_session_uuids.contains(&last_msg_uuid) {
 }
 ```
 
-## Error Handling Patterns
+## Tauri Command Guidelines
 
-**Tauri Command Error Handling:**
+**🚨 CRITICAL: Parameter Naming Convention**
+
+**Tauri automatically converts between frontend camelCase and backend snake_case - DO NOT manually add serde renames!**
+
+```rust
+// ✅ CORRECT - Let Tauri handle conversion automatically
+#[tauri::command]
+pub async fn create_settings_handle(
+    project_path: Option<String>,    // Frontend sends "projectPath"
+    settings_type: String,           // Frontend sends "settingsType"
+) -> Result<String, String> {
+    // Implementation
+}
+
+// ❌ WRONG - Don't add manual serde renames
+#[tauri::command]
+pub async fn create_settings_handle(
+    #[serde(rename = "projectPath")] project_path: Option<String>,  // UNNECESSARY
+    #[serde(rename = "settingsType")] settings_type: String,       // UNNECESSARY
+) -> Result<String, String> {
+    // This causes parameter mismatch errors!
+}
+```
+
+**Frontend/Backend Parameter Mapping:**
+- Frontend: `{ projectPath, settingsType }` (camelCase)
+- Backend: `{ project_path, settings_type }` (snake_case)
+- Tauri handles this conversion automatically - no serde attributes needed!
+
+**Error Handling Patterns:**
 ```rust
 #[tauri::command]
 pub async fn command_name() -> Result<ReturnType, String> {

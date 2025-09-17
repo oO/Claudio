@@ -39,7 +39,6 @@ pub fn find_claude_binary(app_handle: &tauri::AppHandle) -> Result<String, Strin
 /// Async version of find_claude_binary
 /// Checks settings first for stored path, then discovers available installations
 pub async fn find_claude_binary_async(_app_handle: &tauri::AppHandle) -> Result<String, String> {
-    debug!("Searching for claude binary...");
 
     // First check if we have a stored path in the settings
     use crate::commands::proxy::get_claudio_settings;
@@ -66,16 +65,12 @@ pub async fn find_claude_binary_async(_app_handle: &tauri::AppHandle) -> Result<
     }
 
     // Log all found installations
-    for installation in &installations {
-        debug!("Found Claude installation: {:?}", installation);
+    for _installation in &installations {
+        // TODO: Add debug logging for found installations
     }
 
     // Select the best installation (highest version)
     if let Some(best) = select_best_installation(installations) {
-        debug!(
-            "Selected Claude installation: path={}, version={:?}, source={}",
-            best.path, best.version, best.source
-        );
         Ok(best.path)
     } else {
         Err("No valid Claude installation found".to_string())
@@ -160,7 +155,6 @@ fn discover_system_installations() -> Vec<ClaudeInstallation> {
 
 /// Try using the 'which' command to find Claude
 fn try_which_command() -> Option<ClaudeInstallation> {
-    debug!("Trying 'which claude' to find binary...");
 
     match Command::new("which").arg("claude").output() {
         Ok(output) if output.status.success() => {
@@ -180,7 +174,6 @@ fn try_which_command() -> Option<ClaudeInstallation> {
                 Some(output_str)
             }?;
 
-            debug!("'which' found claude at: {}", path);
 
             // Verify the path exists
             let path_buf = PathBuf::from(&path);
@@ -291,7 +284,6 @@ fn find_standard_installations() -> Vec<ClaudeInstallation> {
     for (path, source) in paths_to_check {
         let path_buf = PathBuf::from(&path);
         if path_buf.exists() && path_buf.is_file() {
-            debug!("Found claude at standard path: {} ({})", path, source);
 
             // Get version
             let version = get_claude_version(&path).ok().flatten();
@@ -452,7 +444,6 @@ pub fn create_command_with_env(program: &str) -> Command {
             || key == "NO_PROXY"
             || key == "ALL_PROXY"
         {
-            debug!("Inheriting env var: {}={}", key, value);
             cmd.env(&key, &value);
         }
     }
@@ -474,7 +465,6 @@ pub fn create_command_with_env(program: &str) -> Command {
             let node_bin_str = node_bin_dir.to_string_lossy();
             if !current_path.contains(&node_bin_str.as_ref()) {
                 let new_path = format!("{}:{}", node_bin_str, current_path);
-                debug!("Adding NVM bin directory to PATH: {}", node_bin_str);
                 cmd.env("PATH", new_path);
             }
         }
