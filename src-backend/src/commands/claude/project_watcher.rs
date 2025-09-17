@@ -95,7 +95,6 @@ impl ProjectWatcherManager {
                         log::error!("File watcher error: {}", e);
                     }
                     Err(mpsc::RecvError) => {
-                        log::info!("Project file watcher channel closed, stopping...");
                         break;
                     }
                 }
@@ -112,7 +111,6 @@ impl ProjectWatcherManager {
         
         if let Some(watcher) = watcher_opt.take() {
             drop(watcher); // This stops the watcher
-            log::info!("Stopped watching projects directory");
         }
         
         Ok(())
@@ -218,10 +216,8 @@ pub async fn start_project_watching(
 pub async fn stop_project_watching(
     state: State<'_, ProjectWatcherState>,
 ) -> Result<(), String> {
-    log::info!("🛑 Stopping project watcher");
-    
     let manager_opt = state.lock().map_err(|e| format!("Lock error: {}", e))?;
-    
+
     if let Some(manager) = manager_opt.as_ref() {
         manager.stop_watching()?;
         log::debug!("Project watcher stopped successfully");

@@ -15,7 +15,6 @@ import type { DecoratedSession } from "@/lib/api";
 import { DebugLabel } from "@/components/ui/atoms";
 import { SessionDeleteDialog } from "./SessionDeleteDialog";
 import { SessionCard } from "@/components/sessions/SessionCard";
-import { useSessionListWatcher } from "@/hooks";
 import { useTabState } from "@/hooks/useTabState";
 import { SESSION_TYPES } from "@/lib/sessionHandleApi";
 
@@ -80,20 +79,6 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
     return saved !== null ? JSON.parse(saved) : true;
   });
 
-  // Watch for session file changes
-  const handleSessionListChanged = async () => {
-    logger.debug(
-      `Session files changed for project ${projectId}, refreshing sessions...`,
-    );
-    // Trigger parent to refresh sessions data smoothly
-    onSessionsRefresh?.();
-  };
-
-  // Debug: Log component mount and sessions
-  useEffect(() => {
-    logger.log(`🚀 ProjectSessionTab MOUNTED at ${new Date().toISOString()}`);
-  }, []);
-
   useEffect(() => {
     // logger.log(
     //   `📊 ProjectSessionTab: Sessions count: ${sessions.length} at ${new Date().toISOString()}`,
@@ -117,12 +102,6 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
     //   }
     // }
   }, [sessions]);
-
-  useSessionListWatcher(
-    projectId,
-    handleSessionListChanged,
-    true, // enabled
-  );
 
   // Persist filter state to localStorage with tab-scoped keys
   useEffect(() => {
@@ -188,7 +167,7 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
     const timeout3 = setTimeout(calculateHeight, 300);
 
     return () => {
-      logger.log("ProjectSessionTab: Cleaning up height calculation listeners");
+      // Cleanup height calculation listeners
       window.removeEventListener("resize", calculateHeight);
       clearTimeout(timeout1);
       clearTimeout(timeout2);

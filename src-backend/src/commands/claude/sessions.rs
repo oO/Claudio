@@ -21,7 +21,6 @@ fn count_lines_fast(file_path: &PathBuf) -> Result<u64, std::io::Error> {
 #[command]
 pub async fn get_project_sessions(project_id: String) -> Result<Vec<DecoratedSession>, String> {
     let start_time = std::time::Instant::now();
-    log::info!("🕐 Starting get_project_sessions for project: {}", project_id);
 
     let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
     let project_dir = claude_dir.join("projects").join(&project_id);
@@ -127,12 +126,7 @@ pub async fn get_project_sessions(project_id: String) -> Result<Vec<DecoratedSes
     sessions.sort_by(|a, b| b.modified_at.cmp(&a.modified_at));
 
     let duration = start_time.elapsed();
-    log::info!(
-        "⏱️ Found {} sessions for project {} in {:.2}ms",
-        sessions.len(),
-        project_id,
-        duration.as_secs_f64() * 1000.0
-    );
+    log::debug!("Found {} sessions for project {} in {:.2}ms", sessions.len(), project_id, duration.as_secs_f64() * 1000.0);
     Ok(sessions)
 }
 

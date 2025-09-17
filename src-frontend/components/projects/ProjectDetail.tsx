@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   FileText,
   MessagesSquare,
@@ -10,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import type { Session, DecoratedSession, ClaudeMdFile, Agent } from "@/lib/api";
 import { api } from "@/lib/api";
+import { useProjectSessions } from "@/stores/sessionStore";
 import { DebugLabel } from "@/components/ui/atoms";
 import { logger } from '@/lib/logger';
 import { useTabState } from '@/hooks/useTabState';
@@ -23,10 +24,6 @@ import {
 import { SlashCommandsManager } from "@/components/common";
 
 interface ProjectDetailProps {
-  /**
-   * Array of sessions to display
-   */
-  sessions: DecoratedSession[];
   /**
    * The current project path being viewed
    */
@@ -92,10 +89,6 @@ interface ProjectDetailProps {
    */
   onSessionsRefresh?: () => void;
   /**
-   * Whether sessions are currently loading
-   */
-  sessionsLoading?: boolean;
-  /**
    * Selected project for back navigation
    */
   selectedProject?: any;
@@ -123,7 +116,6 @@ interface ProjectDetailProps {
  * all aspects of a Claude Code project.
  */
 export const ProjectDetail: React.FC<ProjectDetailProps> = ({
-  sessions,
   projectPath,
   projectId,
   initialActiveTab = "sessions",
@@ -140,7 +132,6 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
   onToast,
   onSessionsDeleted,
   onSessionsRefresh,
-  sessionsLoading,
   selectedProject,
   currentTab,
   onUpdateTab,
@@ -150,12 +141,28 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
   const [activeTab, setActiveTab] = useState(initialActiveTab);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
+  // Use centralized session store instead of local state
+  const { sessions, isLoading: sessionsLoading, error: sessionError, refetch } = useProjectSessions(projectId);
+
+  // Show toast for session errors
+  useEffect(() => {
+    if (sessionError) {
+      onToast?.('Failed to load sessions for this project', 'error');
+    }
+  }, [sessionError, onToast]);
+
   // Update activeTab when initialActiveTab changes (for restoration)
   useEffect(() => {
     if (initialActiveTab && initialActiveTab !== activeTab) {
       setActiveTab(initialActiveTab);
     }
   }, [initialActiveTab]);
+
+  // Handle session refresh requests
+  const handleSessionsRefresh = useCallback(() => {
+    refetch(); // Force refresh from centralized store
+    onSessionsRefresh?.(); // Still notify parent if it needs to know
+  }, [refetch, onSessionsRefresh]);
   const [sessionToDelete, setSessionToDelete] = useState<Session | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -253,7 +260,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
               onSessionsDeleted?.();
               logger.log("Sessions deleted, parent should refresh");
             }}
-            onSessionsRefresh={onSessionsRefresh}
+            onSessionsRefresh={handleSessionsRefresh}
             sessionsLoading={sessionsLoading}
             onToast={onToast}
           />

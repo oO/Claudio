@@ -118,7 +118,6 @@ pub async fn list_projects() -> Result<Vec<Project>, String> {
 
             // Skip hidden directories (starting with .)
             if dir_name.starts_with('.') {
-                log::debug!("Skipping hidden directory: {}", dir_name);
                 continue;
             }
 

@@ -56,7 +56,6 @@ function AppContent() {
   const { createClaudioSession } = useSessionCreation();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [sessions, setSessions] = useState<Session[]>([]);
   const [editingClaudeFile, setEditingClaudeFile] =
     useState<ClaudeMdFile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -255,21 +254,10 @@ function AppContent() {
   };
 
   /**
-   * Handles project selection and loads its sessions
+   * Handles project selection
    */
   const handleProjectClick = async (project: Project) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const sessionList = await api.getProjectSessions(project.id);
-      setSessions(sessionList);
-      setSelectedProject(project);
-    } catch (err) {
-      logger.error("Failed to load sessions:", err);
-      setError("Failed to load sessions for this project.");
-    } finally {
-      setLoading(false);
-    }
+    setSelectedProject(project);
   };
 
   /**
@@ -327,7 +315,6 @@ function AppContent() {
    */
   const handleBack = () => {
     setSelectedProject(null);
-    setSessions([]);
   };
 
   /**
@@ -366,7 +353,6 @@ function AppContent() {
    * Handles session deletion
    */
   const handleSessionDeleted = (sessionId: string) => {
-    setSessions((prev) => prev.filter((s) => s.id !== sessionId));
     setToast({ message: "Session deleted successfully", type: "success" });
   };
 
@@ -532,7 +518,6 @@ function AppContent() {
                       transition={{ duration: 0.3 }}
                     >
                       <ProjectDetail
-                        sessions={sessions}
                         projectPath={selectedProject.path}
                         projectId={selectedProject.id}
                         onSessionClick={handleSessionClick}

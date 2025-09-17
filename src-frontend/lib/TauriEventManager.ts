@@ -51,7 +51,7 @@ class TauriEventManager {
   private lastLoggedState: string | null = null;
   
   private constructor() {
-    logger.log('TauriEventManager singleton created');
+    // TauriEventManager singleton initialization
   }
   
   static getInstance(): TauriEventManager {
@@ -68,11 +68,9 @@ class TauriEventManager {
   private logStateIfChanged(): void {
     const debugInfo = this.getDebugInfo();
     const currentStateHash = JSON.stringify(debugInfo);
-    
+
     if (this.lastLoggedState !== currentStateHash) {
-      logger.log(`🔍 TauriEventManager State Changed:`, debugInfo);
-      logger.log(`🔍 Active listeners: ${debugInfo.listeners.length}`, debugInfo.listeners);
-      logger.log(`🔍 Active subscriptions:`, debugInfo.subscriptions);
+      logger.debug(`TauriEventManager state updated: ${debugInfo.listeners.length} listeners, ${Object.keys(debugInfo.subscriptions).length} event types`);
       this.lastLoggedState = currentStateHash;
     }
   }
@@ -87,10 +85,7 @@ class TauriEventManager {
   ): Promise<() => void> {
     const subscriptionId = `${eventName}-${++this.subscriptionCounter}`;
     
-    logger.log(`🎧 Subscribing to '${eventName}' with ID: ${subscriptionId}`, {
-      filter,
-      totalSubscriptions: this.getSubscriptionCount(eventName)
-    });
+    logger.debug(`Subscribing to '${eventName}' (${this.getSubscriptionCount(eventName) + 1} total)`);
     
     // Create subscription
     const subscription: EventSubscription<T> = {
@@ -121,19 +116,17 @@ class TauriEventManager {
    * Unsubscribe from an event
    */
   private async unsubscribe(eventName: string, subscriptionId: string): Promise<void> {
-    logger.log(`🔇 Unsubscribing from '${eventName}' ID: ${subscriptionId}`);
-    
     const subscriptionSet = this.subscriptions.get(eventName);
     if (!subscriptionSet) {
-      logger.warn(`⚠️ No subscriptions found for event: ${eventName}`);
+      logger.warn(`No subscriptions found for event: ${eventName}`);
       return;
     }
-    
+
     // Remove the specific subscription
     const subscription = Array.from(subscriptionSet).find(s => s.id === subscriptionId);
     if (subscription) {
       subscriptionSet.delete(subscription);
-      logger.log(`✅ Removed subscription ${subscriptionId} for '${eventName}'`);
+      logger.debug(`Unsubscribed from '${eventName}' (${subscriptionSet.size} remaining)`);
     }
     
     // If no more subscriptions, tear down the Tauri listener
@@ -151,21 +144,18 @@ class TauriEventManager {
    */
   private async setupTauriListener(eventName: string): Promise<void> {
     try {
-      logger.log(`🚀 Setting up Tauri listener for '${eventName}'`);
-      
       const unlisten = await listen(eventName, (event) => {
-        logger.info(`🎯 Tauri listener received '${eventName}' event:`, event.payload);
         this.routeEvent(eventName, event.payload);
       });
-      
+
       this.listeners.set(eventName, unlisten);
-      logger.log(`✅ Tauri listener active for '${eventName}'`);
-      
+      logger.debug(`Tauri listener active for '${eventName}'`);
+
       // Log state change after setting up listener
       this.logStateIfChanged();
       
     } catch (error) {
-      logger.error(`❌ Failed to setup Tauri listener for '${eventName}':`, error);
+      logger.error(`Failed to setup Tauri listener for '${eventName}':`, error);
       throw error;
     }
   }
@@ -179,12 +169,12 @@ class TauriEventManager {
       try {
         await unlisten();
         this.listeners.delete(eventName);
-        logger.log(`🧹 Torn down Tauri listener for '${eventName}'`);
-        
+        logger.debug(`Torn down Tauri listener for '${eventName}'`);
+
         // Log state change after tearing down listener
         this.logStateIfChanged();
       } catch (error) {
-        logger.error(`❌ Failed to teardown Tauri listener for '${eventName}':`, error);
+        logger.error(`Failed to teardown Tauri listener for '${eventName}':`, error);
       }
     }
   }
@@ -195,40 +185,31 @@ class TauriEventManager {
   private routeEvent(eventName: string, payload: any): void {
     const subscriptionSet = this.subscriptions.get(eventName);
     if (!subscriptionSet || subscriptionSet.size === 0) {
-      logger.warn(`📭 Received event '${eventName}' but no subscriptions exist`);
+      logger.warn(`Received event '${eventName}' but no subscriptions exist`);
       return;
     }
-    
-    // Debug logging for session file events
-    if (eventName === 'session-file-changed') {
-      logger.debug(`🔍 Routing session-file-changed event:`, payload);
-    }
-    
+
     // Special logging for thinking events
     if (eventName === 'claude-session-thinking') {
-      logger.info(`🧠 THINKING EVENT ROUTING: payload=`, payload);
+      logger.info(`Thinking event received:`, payload);
     }
-    
-    logger.log(`📨 Routing event '${eventName}' to ${subscriptionSet.size} subscription(s)`);
-    
+
     let routedCount = 0;
-    let filteredOutCount = 0;
-    
-    for (const subscription of subscriptionSet) {      
+
+    for (const subscription of subscriptionSet) {
       if (this.matchesFilter(subscription.filter, payload)) {
         try {
-          // Execute callback for subscription
           subscription.callback(payload);
           routedCount++;
         } catch (error) {
-          logger.error(`❌ Error in event callback for '${eventName}' subscription ${subscription.id}:`, error);
+          logger.error(`Error in event callback for '${eventName}' subscription ${subscription.id}:`, error);
         }
-      } else {
-        filteredOutCount++;
       }
     }
-    
-    logger.log(`✅ Event '${eventName}' routed to ${routedCount}/${subscriptionSet.size} subscriptions (${filteredOutCount} filtered out)`);
+
+    if (routedCount === 0) {
+      logger.debug(`Event '${eventName}' filtered out for all ${subscriptionSet.size} subscriptions`);
+    }
   }
   
   /**
@@ -302,20 +283,20 @@ class TauriEventManager {
    * Emergency cleanup - tear down all listeners (for debugging)
    */
   async emergencyCleanup(): Promise<void> {
-    logger.warn('🚨 Emergency cleanup of all Tauri listeners');
-    
+    logger.warn('Emergency cleanup of all Tauri listeners');
+
     for (const [eventName, unlisten] of this.listeners) {
       try {
         await unlisten();
-        logger.log(`🧹 Emergency cleanup: removed listener for '${eventName}'`);
+        logger.debug(`Emergency cleanup: removed listener for '${eventName}'`);
       } catch (error) {
-        logger.error(`❌ Emergency cleanup failed for '${eventName}':`, error);
+        logger.error(`Emergency cleanup failed for '${eventName}':`, error);
       }
     }
-    
+
     this.listeners.clear();
     this.subscriptions.clear();
-    logger.log('✅ Emergency cleanup completed');
+    logger.debug('Emergency cleanup completed');
   }
 }
 

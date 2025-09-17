@@ -137,7 +137,6 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } else {
         // Set first tab in panel as active
         newActiveTabs[panelIndex] = panelTabs[0].id;
-        logger.debug(`🎯 Set panel ${panelIndex} active tab to: ${panelTabs[0].id}`);
       }
     }
     
@@ -148,7 +147,6 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     
     if (hasChanges) {
       setActiveTabs(newActiveTabs);
-      logger.debug('🎯 Updated active tabs:', newActiveTabs);
     }
     
     // Update global activeTabId to match the active panel's active tab
@@ -194,7 +192,6 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         // Set first tab in panel as active
         newActiveTabs[panelIndex] = panelTabs[0].id;
         hasChanges = true;
-        logger.debug(`🎯 Set panel ${panelIndex} active tab to: ${panelTabs[0].id}`);
       }
       
       // Check if this panel's active tab changed
@@ -207,13 +204,11 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (panelCount === 1 && activePanelIndexRef.current !== 0) {
       setActivePanelIndex(0);
       hasChanges = true;
-      logger.debug('🎯 Set single panel mode - panel 0 active');
     }
     
     // Only update state if something actually changed
     if (hasChanges) {
       setActiveTabs(newActiveTabs);
-      logger.debug('🎯 Updated active tabs:', newActiveTabs);
       
       // Update global activeTabId to match the active panel's active tab
       const targetPanelIndex = panelCount === 1 ? 0 : activePanelIndexRef.current;
@@ -231,7 +226,6 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       
       // Only attempt restoration if we haven't loaded tabs yet
       if (tabs.length > 0) {
-        logger.info('🚫 SKIPPING RESTORATION - TABS ALREADY EXIST', { tabsLength: tabs.length });
         return;
       }
 
@@ -240,7 +234,7 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const sessionData = await loadTabs();
         
         if (sessionData.tabs.length > 0) {
-          logger.info('🔄 RESTORING TABS (KISS approach):', sessionData);
+          // Restoring tabs from saved session
           
           // Simple restoration - just recreate tabs from saved data
           const restoredTabs: Tab[] = sessionData.tabs.map((savedTab, index) => ({
@@ -272,10 +266,7 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setActiveTabId(restoredTabs[0].id);
             
             
-            logger.info('Restored tabs on startup:', {
-              tabCount: restoredTabs.length,
-              types: restoredTabs.map(t => t.type)
-            });
+            logger.debug(`Restored tabs on startup: ${restoredTabs.length} tabs`);
           }
         } else {
           logger.info('No saved tabs to restore on startup');
@@ -315,10 +306,6 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Save tabs and panel state on component unmount (app closing) and window unload
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      logger.info('🛑 APP RECEIVED BEFOREUNLOAD EVENT - saving tabs...', {
-        tabCount: tabs.length,
-        reason: 'beforeunload'
-      });
       // Always save, even if tabs.length is 0 (empty state is valid)
       saveTabs(tabs, panelBreaks, activePanelIndex);
     };
@@ -344,7 +331,7 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         // logger.info('🎧 Tauri close listener set up successfully');
         return unlisten;
       } catch (error) {
-        logger.warn('⚠️ Failed to set up Tauri listeners (might be in dev mode):', error);
+        logger.warn('Failed to set up Tauri listeners (might be in dev mode):', error);
         return () => {}; // noop
       }
     };
@@ -587,23 +574,18 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setPanelBreaks(newPanelBreaks);
     setActivePanelIndex(newPanelBreaks.length); // Focus the new panel (last index)
     
-    logger.debug('➕ Split panel - moved last tab to new panel:', {
-      newPanelBreaks,
-      activePanelIndex: newPanelBreaks.length,
-      lastTabMovedToNewPanel: true
-    });
     
   }, [panelBreaks, tabs.length, ensureActiveTabs]);
 
   const closePanel = useCallback((panelIndex: number, keepTabs: boolean = true) => {
     const panelCount = getPanelCount();
     if (panelCount <= 1) {
-      logger.warn('🗑️ Cannot close the last panel');
+      logger.warn('Cannot close the last panel');
       return;
     }
     
     if (panelIndex < 0 || panelIndex >= panelCount) {
-      logger.warn('🗑️ Invalid panel index:', panelIndex);
+      logger.warn('Invalid panel index:', panelIndex);
       return;
     }
     
@@ -629,12 +611,6 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setPanelBreaks(newPanelBreaks);
     setActivePanelIndex(newActivePanelIndex);
     
-    logger.debug('🗑️ Closed panel:', { 
-      panelIndex, 
-      keepTabs, 
-      newPanelBreaks,
-      newActivePanelIndex
-    });
   }, [panelBreaks, activePanelIndex, getPanelCount]);
 
   const getTabsForPanel = useCallback((panelIndex: number): Tab[] => {
@@ -708,10 +684,6 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
 
-    logger.info('✨ Simple tab restoration complete:', { 
-      tabCount: restoredTabs.length,
-      types: restoredTabs.map(t => t.type)
-    });
   }, [ensureActiveTabs]);
 
   // Multi-view panel support methods

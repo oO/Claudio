@@ -67,11 +67,12 @@ export const useTabPersistence = () => {
       };
 
       await api.saveSetting(STORAGE_KEY, JSON.stringify(sessionData));
-      
-      logger.debug('Saved tab session (KISS):', {
-        tabCount: tabsToSave.length,
-        panelCount: panelBreaks.length + 1,
-        activePanelIndex
+
+      logger.debug(`Saved tab session: ${tabsToSave.length} tabs`);
+
+      // Log each saved tab for debugging
+      tabsToSave.forEach((tab, index) => {
+        logger.debug(`Saved Tab ${index}: type=${tab.type}, title=${tab.title}, id=${tab.id}, initialProjectPath=${tab.initialProjectPath || 'none'}, hasRestoreState=${!!tab.restoreProjectState}`);
       });
     } catch (error) {
       logger.error('Failed to save tab session:', error);
@@ -105,11 +106,13 @@ export const useTabPersistence = () => {
         activePanelIndex: parsed.activePanelIndex || 0,
       };
 
-      logger.info('Loaded tab session (KISS):', {
-        tabCount: sessionData.tabs.length,
-        types: sessionData.tabs.map(t => t.type)
+      logger.debug(`Loaded tab session: ${sessionData.tabs.length} tabs (${sessionData.tabs.map(t => t.type).join(', ')})`);
+
+      // Log each tab details for debugging
+      sessionData.tabs.forEach((tab, index) => {
+        logger.debug(`Tab ${index}: type=${tab.type}, title=${tab.title}, id=${tab.id}, initialProjectPath=${tab.initialProjectPath || 'none'}, hasRestoreState=${!!tab.restoreProjectState}`);
       });
-      
+
       return sessionData;
     } catch (error) {
       logger.error('Failed to load tab session:', error);

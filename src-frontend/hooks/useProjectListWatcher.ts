@@ -101,7 +101,6 @@ export function useProjectListWatcher({
   useEffect(() => {
     return () => {
       if (isStartedRef.current) {
-        logger.log(`🧹 Cleaning up project watcher on unmount`);
         invoke('stop_project_watching').catch((error) => {
           logger.error('Failed to stop project watching on cleanup:', error);
         });

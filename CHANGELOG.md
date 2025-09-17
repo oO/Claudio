@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.0] - 2025-09-17
+
+### Feat
+- Implemented centralized session store with reactive caching architecture
+- Added comprehensive file watching system for real-time session updates
+- Fixed duplicate API calls issue (reduced from 4+ calls to 1) when clicking projects
+- Fixed project tab restoration bug for tabs with only initialProjectPath
+- Added detailed tab-specific logging for better debugging of tab restoration
+- Eliminated "thundering herd" problem by implementing proper reactive caching
+- Removed excessive emoji logging spam from TauriEventManager and session components
+- Fixed infinite useEffect loop caused by zustand store in dependency array
+
 ## [0.4.48] - 2025-09-14
 
 ### Fixed
