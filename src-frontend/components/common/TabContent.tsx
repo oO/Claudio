@@ -42,11 +42,7 @@ const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
       case "projects":
       case "project":
       case "project-session":
-        return (
-          <NavigationProvider tabId={tab.id}>
-            <ProjectsTab tab={tab} isActive={isActive} />
-          </NavigationProvider>
-        );
+        return <ProjectsTab tab={tab} isActive={isActive} />;
 
       case "agents":
         return (

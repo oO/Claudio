@@ -17,34 +17,6 @@ interface MessageRouterProps {
   messageIndex?: number;
 }
 
-/**
- * Utility function to detect and bundle consecutive summary messages
- */
-const shouldBundleSummaries = (
-  messages: ClaudeStreamMessage[],
-  startIndex: number
-): { shouldBundle: boolean; bundleCount: number; summaries: string[] } => {
-  let bundleCount = 0;
-  const summaries: string[] = [];
-  
-  // Count consecutive summary messages starting from startIndex
-  for (let i = startIndex; i < messages.length; i++) {
-    const msg = messages[i];
-    if (msg.leafUuid && msg.summary && (msg as any).type === "summary") {
-      bundleCount++;
-      summaries.push(msg.summary);
-    } else {
-      break;
-    }
-  }
-  
-  // Only bundle if we have 2 or more consecutive summaries
-  return {
-    shouldBundle: bundleCount >= 2,
-    bundleCount,
-    summaries
-  };
-};
 
 /**
  * Clean message router that delegates to specialized message components
@@ -61,36 +33,13 @@ const MessageRouterComponent: React.FC<MessageRouterProps> = ({
       return null;
     }
 
-    // Summary bundling is now handled in SessionDetail, not here
-
-    // Handle summary messages - check if we should bundle consecutive ones
+    // Handle summary messages (bundling already done in useMessageProcessing)
     if (
       message.leafUuid &&
       message.summary &&
       (message as any).type === "summary"
     ) {
-      const bundleInfo = shouldBundleSummaries(streamMessages, messageIndex);
-      
-      if (bundleInfo.shouldBundle) {
-        // Collect all contributing UUIDs
-        const contributingUuids = streamMessages
-          .slice(messageIndex, messageIndex + bundleInfo.bundleCount)
-          .map(msg => msg.leafUuid)
-          .filter(Boolean) as string[];
-        
-        // Create a bundled summary message object
-        const bundledMessage = {
-          ...message,
-          summary: bundleInfo.summaries, // Pass array of summaries
-          _contributingMessageUuids: contributingUuids,
-          _bundleCount: bundleInfo.bundleCount,
-          _isBundle: true
-        };
-        
-        return <SummaryMessage message={bundledMessage} />;
-      } else {
-        return <SummaryMessage message={message} />;
-      }
+      return <SummaryMessage message={message} />;
     }
 
     // System initialization message - delegate to SystemInitializedWidget

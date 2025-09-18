@@ -10,7 +10,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import type { Session, DecoratedSession, ClaudeMdFile, Agent } from "@/lib/api";
 import { api } from "@/lib/api";
-import { useProjectSessions } from "@/stores/sessionStore";
 import { DebugLabel } from "@/components/ui/atoms";
 import { logger } from '@/lib/logger';
 import { useTabState } from '@/hooks/useTabState';
@@ -43,7 +42,7 @@ interface ProjectDetailProps {
   /**
    * Callback when a session is clicked
    */
-  onSessionClick?: (session: Session) => void;
+  onSessionClick?: (session: DecoratedSession) => void;
   /**
    * Callback when editing a CLAUDE.md file
    */
@@ -141,33 +140,17 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
   const [activeTab, setActiveTab] = useState(initialActiveTab);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-  // Use centralized session store instead of local state
-  const { sessions, isLoading: sessionsLoading, error: sessionError, refetch } = useProjectSessions(projectId);
-
-  // Show toast for session errors
-  useEffect(() => {
-    if (sessionError) {
-      onToast?.('Failed to load sessions for this project', 'error');
-    }
-  }, [sessionError, onToast]);
-
   // Update activeTab when initialActiveTab changes (for restoration)
   useEffect(() => {
     if (initialActiveTab && initialActiveTab !== activeTab) {
       setActiveTab(initialActiveTab);
     }
   }, [initialActiveTab]);
-
-  // Handle session refresh requests
-  const handleSessionsRefresh = useCallback(() => {
-    refetch(); // Force refresh from centralized store
-    onSessionsRefresh?.(); // Still notify parent if it needs to know
-  }, [refetch, onSessionsRefresh]);
-  const [sessionToDelete, setSessionToDelete] = useState<Session | null>(null);
+  const [sessionToDelete, setSessionToDelete] = useState<DecoratedSession | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
-  const handleSessionDelete = (session: Session) => {
+  const handleSessionDelete = (session: DecoratedSession) => {
     setSessionToDelete(session);
     setDeleteDialogOpen(true);
   };
@@ -177,7 +160,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
 
     setIsDeleting(true);
     try {
-      const result = await api.deleteSession(
+      await api.deleteSession(
         sessionToDelete.project_id,
         sessionToDelete.id,
       );
@@ -243,7 +226,6 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
         {/* Sessions Tab */}
         <TabsContent value="sessions" className="mt-2 flex-1 flex flex-col">
           <ProjectSessionTab
-            sessions={sessions}
             projectId={projectId}
             projectName={projectPath.split("/").pop() || "Project"}
             onSessionClick={onSessionClick}
@@ -255,13 +237,12 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
                 const message = `Deleted ${result.sessions_deleted} session${result.sessions_deleted !== 1 ? 's' : ''}, ${result.todos_deleted} todo file${result.todos_deleted !== 1 ? 's' : ''}, freed ${result.size_freed_mb.toFixed(2)} MB`;
                 onToast?.(message, "success");
               }
-              
+
               // Trigger parent to reload sessions
               onSessionsDeleted?.();
               logger.log("Sessions deleted, parent should refresh");
             }}
-            onSessionsRefresh={handleSessionsRefresh}
-            sessionsLoading={sessionsLoading}
+            onSessionsRefresh={onSessionsRefresh}
             onToast={onToast}
           />
         </TabsContent>

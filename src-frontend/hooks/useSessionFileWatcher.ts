@@ -395,17 +395,27 @@ export function useSessionListWatcher(
 ) {
   // Generate a unique tab ID for this session list component
   const tabId = useRef(`session-list-${Math.random().toString(36).substr(2, 9)}`);
-  
+
   // Immediate debug logging (no useEffect)
   // Removed: Hook call logging - too noisy on every render
-  
+
   // Debug logging
   useEffect(() => {
     if (projectId && enabled) {
       // Starting file watcher (verbose logging removed)
     }
   }, [projectId, enabled]);
-  
+
+  // Initial fetch when component mounts with valid projectId
+  useEffect(() => {
+    if (projectId && enabled) {
+      logger.debug(`🚀 Initial fetch for session list watcher, project: ${projectId}`);
+      onSessionListChanged().catch(error => {
+        logger.error(`❌ Initial session list fetch failed for project ${projectId}:`, error);
+      });
+    }
+  }, [projectId, enabled]); // Only run when projectId or enabled changes
+
   return useSessionFileWatcher({
     projectId,
     onSessionChanged: async () => {

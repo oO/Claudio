@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.5.2] - 2025-09-18
+
+### Refactor
+- Simplified ProjectsTab navigation system using KISS principles
+- Removed over-engineered NavigationProvider stack system for simple 3-level hierarchy (Projects → Project → Session)
+- Fixed back navigation duplication bug caused by repeated tab restoration logic
+- Added one-time restoration flag to prevent navigation state conflicts
+- Simplified navigation hierarchy with clean back button logic
+
+## [0.5.1] - 2025-09-18
+
+### Fixed
+- Fixed summary message duplication in SessionDetail tab by removing redundant bundling logic from MessageRouter.tsx
+
 ## [0.5.0] - 2025-09-17
 
 ### Feat

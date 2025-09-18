@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Loader2, Plus, MoreVertical, Trash2, Settings, Activity, FolderOpen } from "lucide-react";
-import { api, type Project, type Session, type DecoratedSession, type ClaudeMdFile } from "@/lib/api";
+import { api, type Project, type Session, type ClaudeMdFile } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { prettifyProjectName } from "@/lib/utils";
 import { formatSessionIdCompact } from "@/lib/sessionUtils";
@@ -35,7 +35,7 @@ import { Input } from "@/components/ui/input";
 import { TabPageLayout } from "@/components/common";
 import { useTabState } from "@/hooks/useTabState";
 import { useScreenTracking, useProjectListWatcher, useSessionCreation } from "@/hooks";
-import { useSessionStore, useProjectSessions } from "@/stores/sessionStore";
+// Removed: useNavigation - over-engineered for simple 3-level navigation
 import { SESSION_TYPES } from "@/lib/sessionHandleApi";
 import { Tab } from "@/contexts/TabContext";
 
@@ -47,14 +47,26 @@ interface ProjectsTabProps {
 export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   const { updateTab, findTabBySessionId, createProjectTab } = useTabState();
   const { createClaudioSession } = useSessionCreation();
+  // Simple 3-level navigation state - KISS approach
+  type ViewLevel = 'projects' | 'project' | 'session';
+
+  // Initialize viewLevel based on tab type and restoration state
+  const getInitialViewLevel = (): ViewLevel => {
+    if (tab.type === 'project-session') return 'session';
+    if (tab.type === 'project') return 'project';
+    return 'projects';
+  };
+
+  const [viewLevel, setViewLevel] = useState<ViewLevel>(getInitialViewLevel());
+
+  // Track if we've already restored tab state to prevent repeated restoration
+  const [hasRestored, setHasRestored] = useState(false);
+
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [activeProjectTab, setActiveProjectTab] = useState<string>("sessions");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Use centralized session store instead of local state
-  const { sessions, isLoading: sessionsLoading } = useProjectSessions(selectedProject?.id);
   
   // Session viewing state - to render SessionDetail directly
   const [viewingSession, setViewingSession] = useState<{
@@ -62,7 +74,6 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
     projectPath: string;
     backState: {
       selectedProject: Project | null;
-      sessions: DecoratedSession[];
       activeTab: string;
     };
   } | null>(null);
@@ -112,40 +123,6 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
     enabled: tab.type === "projects", // Watch even when tab is not active so it can flash
   });
 
-  // Initialize centralized session file watcher and flash tab on changes
-  const sessionStoreActions = useSessionStore();
-
-  useEffect(() => {
-    // Initialize file watcher globally
-    sessionStoreActions.initializeFileWatcher();
-
-    // Add project to watch list if selected
-    if (selectedProject?.id) {
-      sessionStoreActions.addProjectToWatch(selectedProject.id);
-    }
-  }, [selectedProject?.id, sessionStoreActions]);
-
-  // Flash tab when sessions change for this project (simple subscription to store)
-  useEffect(() => {
-    if (!selectedProject?.id || !((tab.type === "projects" || tab.type === "project" || tab.type === "project-session") && !!selectedProject)) return;
-
-    // Track the previous session count to detect changes
-    let previousSessionCount = useSessionStore.getState().sessions[selectedProject.id]?.length || 0;
-
-    // Subscribe to sessions changes for flash animation only
-    const unsubscribe = useSessionStore.subscribe(
-      (state: any) => {
-        const currentSessionCount = state.sessions[selectedProject.id]?.length || 0;
-        if (currentSessionCount !== previousSessionCount) {
-          // Flash tab when session count changes
-          updateTab(tab.id, { lastActivityAt: Date.now() });
-          previousSessionCount = currentSessionCount;
-        }
-      }
-    );
-
-    return unsubscribe;
-  }, [selectedProject?.id, tab.type, tab.id, updateTab]);
 
   // Removed: Dialog state logging - pure noise
 
@@ -153,50 +130,55 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   useEffect(() => {
     const loadTabContent = async () => {
       if (isActive && (tab.type === "projects" || tab.type === "project")) {
-        // Check if we need to restore project state first
-        if (tab.restoreProjectState) {
-          const project = tab.restoreProjectState.selectedProject;
-          setSelectedProject(project);
-          setActiveProjectTab(tab.restoreProjectState.activeTab || "sessions");
+        // Only run restoration logic once at startup
+        if (!hasRestored && (tab.restoreProjectState || (tab.type === "project" && tab.initialProjectPath))) {
+          logger.debug('🔄 Running one-time tab restoration');
 
-          // Sessions will be loaded automatically by useProjectSessions hook
+          if (tab.restoreProjectState) {
+            const project = tab.restoreProjectState.selectedProject;
+            setSelectedProject(project);
+            setActiveProjectTab(tab.restoreProjectState.activeTab || "sessions");
+            logger.debug('🔄 Restored from restoreProjectState:', project?.path);
+          } else if (tab.type === "project" && tab.initialProjectPath) {
+            // Restore project tab from just the path (missing restoreProjectState)
+            try {
+              const projectList = await api.listProjects();
+              const project = projectList.find(p => p.path === tab.initialProjectPath);
 
-          // Keep the restore state for future tab persistence - don't clear it!
-        } else if (tab.type === "project" && tab.initialProjectPath) {
-          // Restore project tab from just the path (missing restoreProjectState)
-          try {
-            const projectList = await api.listProjects();
-            const project = projectList.find(p => p.path === tab.initialProjectPath);
+              if (project) {
+                setSelectedProject(project);
+                setActiveProjectTab("sessions");
+                logger.debug('🔄 Restored from initialProjectPath:', project?.path);
 
-            if (project) {
-              setSelectedProject(project);
-              setActiveProjectTab("sessions");
-
-              // Update tab with proper restore state for future persistence
-              updateTab(tab.id, {
-                restoreProjectState: {
-                  selectedProject: project,
-                  sessions: [], // Will be loaded by centralized store
-                  activeTab: "sessions"
-                }
-              });
-            } else {
-              logger.warn(`Project not found for restoration: ${tab.initialProjectPath}`);
-              setError(`Project not found: ${tab.initialProjectPath}`);
+                // Update tab with proper restore state for future persistence
+                updateTab(tab.id, {
+                  restoreProjectState: {
+                    selectedProject: project,
+                    activeTab: "sessions"
+                  }
+                });
+              } else {
+                logger.warn(`Project not found for restoration: ${tab.initialProjectPath}`);
+                setError(`Project not found: ${tab.initialProjectPath}`);
+              }
+            } catch (error) {
+              logger.error('Failed to restore project tab:', error);
+              setError('Failed to restore project tab');
             }
-          } catch (error) {
-            logger.error('Failed to restore project tab:', error);
-            setError('Failed to restore project tab');
           }
+
+          setHasRestored(true); // Mark restoration as complete
         } else if (tab.type === "projects") {
           // Only load project list if we're in projects mode (not single project mode)
           loadProjects();
+        } else if (hasRestored) {
+          logger.debug('🔄 Skipping restoration - already restored once');
         }
       }
     };
-    
+
     loadTabContent();
-  }, [isActive, tab.type, tab.restoreProjectState]);
+  }, [isActive, tab.type, hasRestored]);
 
   // Handle restoration of project-session tabs (when rehydrated from persistence)
   useEffect(() => {
@@ -213,21 +195,22 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
             
             
             if (project && project.id) {
-              // Get session data using the sessionId (from centralized store)
-              const sessionStore = useSessionStore.getState();
-              const sessions = sessionStore.sessions[project.id] || [];
-              const session = sessions.find(s => s.id === tab.sessionId);
+              // Get session data using the sessionId (load sessions directly)
+              const projectSessions = await api.getProjectSessions(project.id);
+              const session = projectSessions.find(s => s.id === tab.sessionId);
               
               if (session) {
                 // Session tab restoration successful
-                
+
+                // Also set the selectedProject so component state is correct
+                setSelectedProject(project);
+
                 // Set viewingSession to render the SessionDetail
                 setViewingSession({
                   session: session,
                   projectPath: tab.initialProjectPath,
                   backState: {
                     selectedProject: project,   // Set the project for back navigation
-                    sessions: sessions,         // Set all sessions for back navigation
                     activeTab: "sessions"       // Return to sessions tab when going back
                   }
                 });
@@ -246,6 +229,22 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
     
     restoreSessionTab();
   }, [isActive, tab.type, tab.sessionId, tab.initialProjectPath, viewingSession]);
+
+  // Determine view level based on current state - KISS approach
+  useEffect(() => {
+    const newViewLevel = viewingSession ? 'session' : selectedProject ? 'project' : 'projects';
+
+    if (newViewLevel !== viewLevel) {
+      logger.debug('📊 View level changing:', {
+        from: viewLevel,
+        to: newViewLevel,
+        selectedProject: selectedProject?.path,
+        viewingSession: viewingSession?.session?.id,
+        tabType: tab.type
+      });
+      setViewLevel(newViewLevel);
+    }
+  }, [viewingSession, selectedProject, viewLevel]);
 
   const loadProjects = async () => {
     try {
@@ -275,15 +274,15 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
       setSelectedProject(project);
       setError(null);
 
-      // Update tab title and type to single project mode, store project info
       const projectName = getProjectName(project.path);
+
+      // Update tab to reflect project selection - simple approach
       updateTab(tab.id, {
         title: projectName,
         type: 'project',
-        initialProjectPath: project.path, // Store project path for persistence
+        initialProjectPath: project.path,
         restoreProjectState: {
           selectedProject: project,
-          sessions: [], // Sessions will be loaded by centralized store
           activeTab: activeProjectTab
         }
       });
@@ -295,11 +294,38 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   };
 
   const handleBack = () => {
-    // Simple back navigation without navigation stack
-    setSelectedProject(null);
-    setActiveProjectTab("sessions"); // Reset to default
-    // Restore tab title and type to project list mode
-    updateTab(tab.id, { title: "Projects", type: 'projects' });
+    logger.debug('🔙 handleBack clicked - current state:', {
+      viewLevel,
+      selectedProject: selectedProject?.path,
+      viewingSession: viewingSession?.session?.id,
+      tabType: tab.type
+    });
+
+    // Simple state-based navigation - KISS approach
+    if (viewLevel === 'session') {
+      logger.debug('🔙 Session -> Project navigation');
+      // Session -> Project: Clear viewing session
+      setViewingSession(null);
+      if (selectedProject) {
+        const projectName = getProjectName(selectedProject.path);
+        updateTab(tab.id, { title: projectName, type: 'project', displayId: undefined });
+        logger.debug('🔙 Updated tab to project:', { title: projectName, type: 'project' });
+      }
+    } else if (viewLevel === 'project') {
+      logger.debug('🔙 Project -> Projects navigation');
+      // Project -> Projects: Always works - where else would a project come from?
+      setSelectedProject(null);
+      setActiveProjectTab("sessions");
+      updateTab(tab.id, {
+        title: "Projects",
+        type: 'projects',
+        restoreProjectState: undefined,  // Clear restore state so it doesn't restore project again
+        initialProjectPath: undefined    // Clear this too
+      });
+      logger.debug('🔙 Updated tab to projects list');
+    } else {
+      logger.debug('🔙 Already at projects level, no navigation needed');
+    }
   };
 
   // Get project name from path
@@ -307,13 +333,9 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
     return prettifyProjectName(path);
   };
 
-  // Calculate deletion counts from existing data
-  const getSessionCount = () => sessions.length;
-  const getTodoCount = () => {
-    return sessions.reduce((total, session) => {
-      return total + (session.todo_counts?.total || 0);
-    }, 0);
-  };
+  // Session counts are now managed by ProjectSessionTab
+  const getSessionCount = () => 0; // TODO: Get from ProjectSessionTab if needed
+  const getTodoCount = () => 0; // TODO: Get from ProjectSessionTab if needed
 
   // Get real counts from loaded data
   const getAgentCount = () => deletionCounts.agents;
@@ -357,10 +379,6 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
     }
   };
 
-  const handleSessionDeleted = (sessionId: string) => {
-    // Centralized store will automatically update when file changes are detected
-    // No manual session removal needed
-  };
 
   // Helper function to show toast notifications
   const showToast = (message: string, type: ToastType) => {
@@ -510,7 +528,6 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
         projectPath: pathToUse,
         backState: {
           selectedProject: selectedProject,
-          sessions: sessions,
           activeTab: "sessions",
         },
       });
@@ -523,18 +540,27 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   };
 
 
-  // Handle back navigation from session view
+  // Handle back navigation from session view - simple approach
   const handleBackFromSession = () => {
+    logger.debug('🔙 handleBackFromSession clicked - current state:', {
+      viewLevel,
+      selectedProject: selectedProject?.path,
+      viewingSession: viewingSession?.session?.id,
+      backStateProject: viewingSession?.backState?.selectedProject?.path,
+      tabType: tab.type
+    });
+
     if (viewingSession) {
-      // Restore previous state
+      // Restore previous state from backState
       setSelectedProject(viewingSession.backState.selectedProject);
       setActiveProjectTab(viewingSession.backState.activeTab);
       setViewingSession(null);
 
-      // Restore tab type to 'project' since we're going back to single project view
+      // Update tab to project view
       if (viewingSession.backState.selectedProject) {
         const projectName = getProjectName(viewingSession.backState.selectedProject.path);
         updateTab(tab.id, { title: projectName, type: 'project', displayId: undefined });
+        logger.debug('🔙 Session -> Project: Updated tab:', { title: projectName, type: 'project' });
       }
     }
   };
@@ -549,9 +575,8 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
         return;
       }
 
-      // Get updated session data from centralized store
-      const sessionStore = useSessionStore.getState();
-      const updatedSessions = sessionStore.sessions[viewingSession.backState.selectedProject.id] || [];
+      // Get updated session data directly from API
+      const updatedSessions = await api.getProjectSessions(viewingSession.backState.selectedProject.id);
       const updatedSession = updatedSessions.find(s => s.id === claudioId);
 
       if (!updatedSession) {
@@ -565,7 +590,6 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
         projectPath: viewingSession.projectPath,
         backState: {
           ...viewingSession.backState,
-          sessions: updatedSessions, // Update the sessions list too
         }
       });
 
@@ -612,7 +636,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
         }
         subtitle={
           selectedProject
-            ? `${selectedProject.path} • ${sessions.length} session${sessions.length !== 1 ? "s" : ""}`
+            ? selectedProject.path
             : "Browse your Claude Code sessions"
         }
         onBack={selectedProject ? handleBack : undefined}
@@ -701,46 +725,48 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                         if (session.live_session_type === SESSION_TYPES.CLAUDIO) {
                           // Interactive claudio session - same pattern as native sessions
                           logger.debug('Continuing claudio session:', session.id);
-                          
+
                           const projectName = getProjectName(session.project_path);
                           const sessionShort = session.id ? formatSessionIdCompact(session.id) ?? undefined : undefined;
-                          updateTab(tab.id, { 
+
+                          // Simple session navigation - just update tab and set viewing session
+                          updateTab(tab.id, {
                             title: projectName,
                             displayId: sessionShort,
                             type: 'project-session',
                             sessionId: session.id,
-                            sessionData: session 
+                            sessionData: session
                           });
-                          
+
                           setViewingSession({
                             session: session,
                             projectPath: session.project_path,
                             backState: {
                               selectedProject: selectedProject,
-                              sessions: sessions,
                               activeTab: activeProjectTab,
                             },
                           });
                         } else {
                           // Native Claude Code session - set viewing session state for read-only view
                           logger.debug('Opening native session:', session.id);
-                          // Update tab for native session view: title=project, displayId=session  
+
                           const projectName = getProjectName(session.project_path);
                           const sessionShort = session.id ? formatSessionIdCompact(session.id) ?? undefined : undefined;
-                          updateTab(tab.id, { 
+
+                          // Simple session navigation for native sessions too
+                          updateTab(tab.id, {
                             title: projectName,
                             displayId: sessionShort,
                             type: 'project-session',
                             sessionId: session.id,
-                            sessionData: session 
+                            sessionData: session
                           });
-                          
+
                           setViewingSession({
                             session: session,
                             projectPath: session.project_path,
                             backState: {
                               selectedProject: selectedProject,
-                              sessions: sessions,
                               activeTab: activeProjectTab,
                             },
                           });
@@ -789,19 +815,22 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                           new CustomEvent("open-import-agent-tab"),
                         );
                       }}
-                      onSessionDeleted={handleSessionDeleted}
+                      onSessionDeleted={async (sessionId) => {
+                        // Session deletion handled by ProjectSessionTab
+                        updateTab(tab.id, { lastActivityAt: Date.now() });
+                      }}
                       onProjectDeleted={handleProjectDeleted}
                       onToast={(message, type) => {
                         // Simple toast implementation - could be enhanced with a proper toast system
                         // TODO: Integrate with a proper toast notification system
                       }}
                       onSessionsDeleted={async () => {
-                        // Centralized store will automatically refresh when file changes are detected
-                        // No manual refresh needed
+                        // Session deletion handled by ProjectSessionTab
+                        updateTab(tab.id, { lastActivityAt: Date.now() });
                       }}
                       onSessionsRefresh={async () => {
-                        // Centralized store handles all session refreshing automatically
-                        // No manual refresh needed
+                        // Session refresh handled by ProjectSessionTab
+                        updateTab(tab.id, { lastActivityAt: Date.now() });
                       }}
                       selectedProject={selectedProject}
                       currentTab={tab}

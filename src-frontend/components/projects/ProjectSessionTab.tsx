@@ -11,15 +11,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
-import type { DecoratedSession } from "@/lib/api";
+import { api, type DecoratedSession } from "@/lib/api";
 import { DebugLabel } from "@/components/ui/atoms";
 import { SessionDeleteDialog } from "./SessionDeleteDialog";
 import { SessionCard } from "@/components/sessions/SessionCard";
 import { useTabState } from "@/hooks/useTabState";
+import { useSessionListWatcher } from "@/hooks";
 import { SESSION_TYPES } from "@/lib/sessionHandleApi";
 
 interface ProjectSessionTabProps {
-  sessions: DecoratedSession[];
   projectId: string;
   projectName: string;
   onSessionClick?: (session: DecoratedSession) => void;
@@ -32,12 +32,10 @@ interface ProjectSessionTabProps {
   }) => void;
   onSessionsRefresh?: () => void;
   onToast?: (message: string, type: "success" | "error") => void;
-  sessionsLoading?: boolean;
   className?: string;
 }
 
 export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
-  sessions,
   projectId,
   projectName,
   onSessionClick,
@@ -46,13 +44,38 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
   onSessionsDeleted,
   onSessionsRefresh,
   onToast,
-  sessionsLoading,
   className,
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [scrollPosition, setScrollPosition] = useState({ start: 0, end: 0 });
+
+
+  // Internal session management - no prop drilling!
+  const [sessions, setSessions] = useState<DecoratedSession[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [containerHeight, setContainerHeight] = useState(600);
+
+  // Watch for session list changes and manage our own sessions
+  useSessionListWatcher(
+    projectId,
+    async () => {
+      try {
+        setSessionsLoading(true);
+        const projectSessions = await api.getProjectSessions(projectId);
+        setSessions(projectSessions);
+        onSessionsRefresh?.(); // Notify parent for flash animation
+      } catch (error) {
+        logger.error("❌ ProjectSessionTab: Failed to load sessions for project:", projectId, error);
+        onToast?.("Failed to load sessions for this project", "error");
+      } finally {
+        setSessionsLoading(false);
+        setHasLoadedOnce(true);
+      }
+    },
+    true // Always enabled when this component is mounted
+  );
   const [showSessionDeleteDialog, setShowSessionDeleteDialog] = useState(false);
 
   // Get current tab ID for scoped filter persistence
@@ -371,7 +394,7 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
                   Adjust the filter settings above to see sessions.
                 </p>
               </div>
-            ) : sessions.length === 0 && !sessionsLoading ? (
+            ) : sessions.length === 0 && !sessionsLoading && hasLoadedOnce ? (
               <div className="text-center py-8">
                 <MessagesSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-muted-foreground mb-2">

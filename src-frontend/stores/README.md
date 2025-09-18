@@ -1,6 +1,6 @@
 # Store Implementation Notes
 
-The store files (`sessionStore.ts` and `agentStore.ts`) provide examples of how to implement global state management with Zustand for the Claudia application.
+The store files (`agentStore.ts`) provide examples of how to implement global state management with Zustand for the Claudia application.
 
 ## Key Benefits:
 - Eliminates prop drilling across components
@@ -19,15 +19,15 @@ These stores are example implementations that would need to be adapted to match 
 
 ## Example Usage:
 ```typescript
-import { useSessionStore } from '@/stores/sessionStore';
+import { useAgentStore } from '@/stores/agentStore';
 
 function MyComponent() {
-  const { sessions, fetchSessions } = useSessionStore();
-  
+  const { agents, fetchAgents } = useAgentStore();
+
   useEffect(() => {
-    fetchSessions();
+    fetchAgents();
   }, []);
-  
-  return <div>{sessions.length} sessions</div>;
+
+  return <div>{agents.length} agents</div>;
 }
 ```
