@@ -117,19 +117,31 @@ export interface ClaudioClaudeSettings {
 }
 
 /**
+ * Individual session information (current or historical)
+ */
+export interface SessionInfo {
+  /** Claude CLI session ID */
+  session_id: string;
+  /** UUID of the last message in this session */
+  last_message_uuid: string;
+  /** Timestamp of the last message in this session */
+  last_message_timestamp: string;
+}
+
+/**
  * Session metadata stored in ~/.claudio/projects/<project_id>/<session_id>.json
  */
 export interface ClaudioSession {
   /** Unique identifier for this Claudio session */
   claudio_id: string;
-  /** Current Claude CLI session ID (the actual conversation) */
-  session_id?: string;
   /** Project path this session belongs to */
   project_path: string;
+  /** Current active session (None if no session is active) */
+  current_session?: SessionInfo;
   /** Session status */
   status: ClaudioSessionStatus;
-  /** Claude CLI settings for this session */
-  settings: ClaudioClaudeSettings;
+  /** History of previous sessions (newest first) */
+  session_history: SessionInfo[];
 }
 
 /**
@@ -1871,17 +1883,17 @@ export const api = {
   /**
    * Creates a new Claudio session and returns the claudio_id
    * @param projectPath - Project path
-   * @param settings - Claude CLI settings
+   * @param settings - Claude CLI settings (optional)
    * @returns Promise resolving to the new claudio_id
    */
   async createClaudioSession(
     projectPath: string,
-    settings: ClaudioClaudeSettings = {}
+    settings?: ClaudioClaudeSettings
   ): Promise<string> {
     try {
       return await invoke<string>("create_claudio_session", {
         projectPath,
-        settings
+        sessionId: null, // New session (not resuming)
       });
     } catch (error) {
       logger.error("Failed to create Claudio session:", error);
@@ -1997,14 +2009,14 @@ export const api = {
   },
 
   /**
-   * Exit a Claudio session (equivalent of /exit for native sessions)
+   * Delete a Claudio session wrapper
    * This removes the Claudio wrapper metadata, effectively archiving the session
    * while preserving the underlying Claude session JSONL file for history
-   * @param claudioSessionId The Claudio session ID to exit
+   * @param claudioSessionId The Claudio session ID to delete
    * @param projectPath The project path
-   * @returns Promise resolving with exit result details
+   * @returns Promise resolving with deletion result details
    */
-  async exitClaudioSession(
+  async deleteClaudioSession(
     claudioSessionId: string,
     projectPath: string
   ): Promise<{
@@ -2015,12 +2027,12 @@ export const api = {
     message: string;
   }> {
     try {
-      return await invoke("exit_claudio_session", {
+      return await invoke("delete_claudio_session", {
         claudioSessionId: claudioSessionId,
         projectPath: projectPath
       });
     } catch (error) {
-      logger.error("Failed to exit Claudio session:", error);
+      logger.error("Failed to delete Claudio session:", error);
       throw error;
     }
   },
@@ -2030,22 +2042,16 @@ export const api = {
    * This converts an archived session back into an active Claudio session
    * @param archivedSessionId The UUID of the archived session to resume
    * @param projectPath The project path
-   * @returns Promise resolving with resume result details
+   * @returns Promise resolving with the new claudio_id
    */
   async resumeClaudioSession(
     archivedSessionId: string,
     projectPath: string
-  ): Promise<{
-    success: boolean;
-    claudio_id: string;
-    archived_session_id: string;
-    project_path: string;
-    message: string;
-  }> {
+  ): Promise<string> {
     try {
-      return await invoke("resume_claudio_session", {
-        archivedSessionId: archivedSessionId,
-        projectPath: projectPath
+      return await invoke("create_claudio_session", {
+        projectPath: projectPath,
+        sessionId: archivedSessionId, // Pass the session to resume
       });
     } catch (error) {
       logger.error("Failed to resume Claudio session:", error);
@@ -2068,7 +2074,7 @@ export const api = {
       
       // 3. Create lookup map for fast decoration
       const claudioMap = new Map(
-        claudioSessions.map(session => [session.session_id, session])
+        claudioSessions.map(session => [session.current_session?.session_id, session])
       );
       
       // 4. Decorate Claude sessions with Claudio metadata

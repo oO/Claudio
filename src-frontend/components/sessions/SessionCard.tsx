@@ -1,5 +1,4 @@
 import React from "react";
-import { motion } from "framer-motion";
 import {
   Clock,
   MessageSquare,
@@ -42,62 +41,51 @@ export const SessionCard: React.FC<SessionCardProps> = ({
   const { getTodoData, setSessionTodos } = useTodoContext();
   const { createSessionTab } = useTabState();
   const [todoData, setTodoData] = React.useState(getTodoData(session.id));
-  
-  // Fetch todo data on mount if not in context
+
+  // Consolidated todo data fetching and context updates
   React.useEffect(() => {
     const fetchTodoData = async () => {
+      // Check context first
       const contextData = getTodoData(session.id);
       if (contextData) {
         setTodoData(contextData);
         return;
       }
-      
+
+      // Fetch from backend if not in context
       try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        const data = await invoke<SessionTodoData>('get_session_todos', { sessionId: session.id });
-        
-        
+        const { invoke } = await import("@tauri-apps/api/core");
+        const data = await invoke<SessionTodoData>("get_session_todos", {
+          sessionId: session.id,
+        });
+
         if (data && data.total_counts && data.total_counts.total > 0) {
           setTodoData(data);
           setSessionTodos(session.id, data);
         } else {
+          logger.debug('No todos found for session:', session.id);
         }
       } catch (error) {
+        logger.error('Failed to fetch todo data for session:', session.id, error);
       }
     };
-    
+
     fetchTodoData();
   }, [session.id, getTodoData, setSessionTodos]);
-  
-  // Update when context changes (from events)
-  React.useEffect(() => {
-    const contextData = getTodoData(session.id);
-    if (contextData) {
-      setTodoData(contextData);
-    }
-  }, [getTodoData, session.id]);
 
   return (
-    <motion.div
-      key={session.id}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="px-0 py-0"
-    >
-      <div
+    <div
         className={cn(
           "group relative flex items-center justify-between gap-2 px-3 py-2 rounded-lg border bg-card hover:bg-card-hover hover:border-hover transition-colors cursor-pointer min-h-[80px]",
           className,
         )}
         onClick={(event) => {
-          
           // Handle Cmd+click (Mac) or Ctrl+click (Windows/Linux) directly
           if (event.metaKey || event.ctrlKey) {
             createSessionTab(session.project_path, undefined, session.id);
             return; // Don't call onSessionClick for modifier clicks
           }
-          
+
           // Normal click - call the provided callback
           onSessionClick?.(session);
         }}
@@ -130,6 +118,17 @@ export const SessionCard: React.FC<SessionCardProps> = ({
               </p>
             </div>
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <Badge
+                variant="outline"
+                className={cn(
+                  "text-xs",
+                  !session.live_session_type
+                    ? "text-muted-foreground border-muted-foreground"
+                    : "text-accent border-accent",
+                )}
+              >
+                {session.live_session_type?.toLowerCase() || "archived"}
+              </Badge>
               <div className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
                 <span>
@@ -159,14 +158,6 @@ export const SessionCard: React.FC<SessionCardProps> = ({
                   </span>
                 </div>
               )}
-              {session.live_session_type && (
-                <Badge
-                  variant="outline"
-                  className="text-xs text-accent border-accent"
-                >
-                  {session.live_session_type.toLowerCase()}
-                </Badge>
-              )}
             </div>
           </div>
         </div>
@@ -188,13 +179,12 @@ export const SessionCard: React.FC<SessionCardProps> = ({
                 e.stopPropagation();
                 onSessionDelete?.(session);
               }}
-              className="h-8 w-8 text-muted-foreground hover:text-destructive disabled:opacity-50"
+              className="h-6 w-6 text-muted-foreground hover:text-destructive disabled:opacity-50"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         </div>
       </div>
-    </motion.div>
   );
 };

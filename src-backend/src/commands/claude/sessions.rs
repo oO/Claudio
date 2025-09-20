@@ -228,8 +228,8 @@ async fn get_project_path_from_claudio_session(session_id: &str, project_id: &st
                             let fallback_project_path = decode_project_path(project_id);
                             if let Ok(claudio_session) = get_claudio_session(file_stem.to_string(), fallback_project_path).await {
                                 // Check if this Claudio session tracks the Claude session we're looking for
-                                if let Some(ref claude_session_id) = claudio_session.session_id {
-                                    if claude_session_id == session_id {
+                                if let Some(ref current_session) = claudio_session.current_session {
+                                    if current_session.session_id == session_id {
                                         log::debug!("Found project path from Claudio session: {}", claudio_session.project_path);
                                         return Ok(claudio_session.project_path);
                                     }
@@ -353,35 +353,18 @@ pub async fn load_session_history(
 }
 
 
-/// Deletes a specific session from a project and all associated data
+/// Deletes a specific Claude session from a project and all associated data
+/// Note: This function only handles Claude session IDs (UUID format), not Claudio session IDs
 #[command]
 pub async fn delete_session(project_id: String, session_id: String) -> Result<serde_json::Value, String> {
-    log::info!("Deleting session '{}' from project '{}'", session_id, project_id);
-    
+    log::info!("Deleting Claude session '{}' from project '{}'", session_id, project_id);
+
     let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
     let project_dir = claude_dir.join("projects").join(&project_id);
-    
-    // Handle Claudio sessions: resolve claudio_id to actual Claude session_id
-    let actual_session_id = if session_id.starts_with("claudio-") {
-        log::info!("Resolving Claudio session ID: {}", session_id);
-        let decoded_project_path = crate::commands::claude::decode_project_path(&project_id);
-        
-        match crate::commands::claudio_storage::get_claudio_session(session_id.clone(), decoded_project_path).await {
-            Ok(claudio_session) => {
-                if let Some(claude_session_id) = claudio_session.session_id {
-                    log::info!("Resolved {} to Claude session: {}", session_id, claude_session_id);
-                    claude_session_id
-                } else {
-                    return Err(format!("Claudio session '{}' has no associated Claude session", session_id));
-                }
-            },
-            Err(e) => {
-                return Err(format!("Failed to resolve Claudio session '{}': {}", session_id, e));
-            }
-        }
-    } else {
-        session_id.clone()
-    };
+
+    // This function only handles Claude session IDs (UUID format)
+    // For Claudio session management, use dedicated claudio_storage functions
+    let actual_session_id = session_id.clone();
     
     let session_file = project_dir.join(format!("{}.jsonl", actual_session_id));
     
@@ -398,8 +381,31 @@ pub async fn delete_session(project_id: String, session_id: String) -> Result<se
     let decoded_project_path = crate::commands::claude::decode_project_path(&project_id);
     
     // Use unified DRY cleanup function (this handles both Claude and Claudio files)
-    let (_claude_files_deleted, claudio_files_deleted) = crate::commands::claudio_storage::cleanup_session_files(&decoded_project_path, &actual_session_id).await
+    let (_claude_files_deleted, mut claudio_files_deleted) = crate::commands::claudio_storage::cleanup_session_files(&decoded_project_path, &actual_session_id).await
         .unwrap_or((0, 0));
+
+    // Check if this Claude session is the current_session of any Claudio session
+    // If so, delete the Claudio session file as well
+    match crate::commands::claudio_storage::find_claudio_session_by_current_session(&decoded_project_path, &actual_session_id).await {
+        Ok(Some(claudio_session)) => {
+            log::info!("Claude session '{}' is current session of Claudio session '{}', deleting Claudio session", actual_session_id, claudio_session.claudio_id);
+            match crate::commands::claudio_storage::delete_claudio_session(claudio_session.claudio_id, decoded_project_path.clone()).await {
+                Ok(_) => {
+                    claudio_files_deleted += 1;
+                    log::info!("Successfully deleted Claudio session");
+                },
+                Err(e) => {
+                    log::warn!("Failed to delete Claudio session: {}", e);
+                }
+            }
+        },
+        Ok(None) => {
+            // No Claudio session has this as current_session, normal cleanup
+        },
+        Err(e) => {
+            log::warn!("Error checking for Claudio sessions: {}", e);
+        }
+    }
     
     // Clean up associated todos and timelines (not covered by cleanup_session_files)
     let (todos_deleted, timelines_deleted) = super::projects::delete_session_dependencies(&claude_dir, &project_dir, &actual_session_id);
@@ -815,8 +821,8 @@ async fn find_claudio_metadata_for_session(
                             project_path.to_string()
                         ).await {
                             // Check if this claudio session references our Claude session
-                            if let Some(ref session_id) = claudio_session.session_id {
-                                if session_id == claude_session_id {
+                            if let Some(ref current_session) = claudio_session.current_session {
+                                if current_session.session_id == claude_session_id {
                                     log::debug!("Found claudio metadata for session {}: claudio_id={}", claude_session_id, claudio_id);
                                     return Some(claudio_session);
                                 }

@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState } from "react";
+import { useRef, useCallback, useState, useMemo } from "react";
 import { logger } from "@/lib/logger";
 import type { SessionMessagesHandle } from "@/components/sessions/SessionMessages";
 
@@ -42,7 +42,7 @@ export const useSessionNavigation = () => {
     setIsPinnedToBottom(false);
   }, []);
 
-  return {
+  return useMemo(() => ({
     messagesRef,
     isPinnedToBottom,
     setIsPinnedToBottom,
@@ -51,5 +51,12 @@ export const useSessionNavigation = () => {
     isStreaming,
     setIsStreaming,
     navigateToMessage,
-  };
+  }), [
+    isPinnedToBottom,
+    handleScrollToTop,
+    handleScrollToBottom,
+    isStreaming,
+    setIsStreaming,
+    navigateToMessage,
+  ]);
 };

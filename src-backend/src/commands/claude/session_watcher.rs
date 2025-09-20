@@ -473,35 +473,34 @@ impl SessionWatcherManager {
         let claudio_sessions = list_claudio_sessions(project_path.clone()).await?;
         
         for claudio_session in claudio_sessions {
-            // Check if this claudio session's last_message_uuid appears in the current session
-            if let Some(last_msg_uuid) = &claudio_session.last_message_uuid {
-                if current_session_uuids.contains(last_msg_uuid) {
-                    log::debug!("Detected UUID {} from previous session appearing in current session {} for claudio session: {}", 
-                              last_msg_uuid, session_id, claudio_session.claudio_id);
-                    
-                    // Clean up sessions from history that are not the current session
+            // Check if any historical session's last_message_uuid appears in the current session
+            // This indicates successful resume and we can clean up the old files
+            for historical_session in &claudio_session.session_history {
+                if current_session_uuids.contains(&historical_session.last_message_uuid) {
+                    log::debug!("Detected UUID {} from historical session {} appearing in current session {} for claudio session: {}",
+                              &historical_session.last_message_uuid, &historical_session.session_id, session_id, claudio_session.claudio_id);
+
+                    // Clean up all sessions from history (their content has been incorporated)
                     let mut cleaned_sessions = Vec::new();
-                    for historical_session_id in &claudio_session.session_history {
-                        if historical_session_id != session_id {
-                            match cleanup_session_files(&project_path, historical_session_id).await {
-                                Ok((claude_files, claudio_files)) => {
-                                    log::debug!("Cleaned up historical session {}: {} claude files, {} claudio files", 
-                                              historical_session_id, claude_files, claudio_files);
-                                    cleaned_sessions.push(historical_session_id.clone());
-                                },
-                                Err(e) => {
-                                    log::error!("Failed to cleanup historical session {}: {}", historical_session_id, e);
-                                }
+                    for historical_session_info in &claudio_session.session_history {
+                        match cleanup_session_files(&project_path, &historical_session_info.session_id).await {
+                            Ok((claude_files, claudio_files)) => {
+                                log::debug!("Cleaned up historical session {}: {} claude files, {} claudio files",
+                                          &historical_session_info.session_id, claude_files, claudio_files);
+                                cleaned_sessions.push(historical_session_info.session_id.clone());
+                            },
+                            Err(e) => {
+                                log::error!("Failed to cleanup historical session {}: {}", &historical_session_info.session_id, e);
                             }
                         }
                     }
                     
                     // Keep session history as a record - don't remove cleaned sessions
-                    
+
                     // Keep the last_message_uuid and session_history as permanent records
                     log::debug!("Cleaned up historical sessions for claudio session: {}", claudio_session.claudio_id);
-                    
-                    break; // Found the matching claudio session, no need to continue
+
+                    break; // Found a matching UUID, cleaned up all sessions, exit the historical session loop
                 }
             }
         }

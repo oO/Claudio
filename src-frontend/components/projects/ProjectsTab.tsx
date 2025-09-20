@@ -59,8 +59,6 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
 
   const [viewLevel, setViewLevel] = useState<ViewLevel>(getInitialViewLevel());
 
-  // Track if we've already restored tab state to prevent repeated restoration
-  const [hasRestored, setHasRestored] = useState(false);
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -126,109 +124,92 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
 
   // Removed: Dialog state logging - pure noise
 
-  // Load projects when tab becomes active and is of type 'projects' or 'project'
+  // Load projects when tab becomes active and is of type 'projects'
   useEffect(() => {
     const loadTabContent = async () => {
-      if (isActive && (tab.type === "projects" || tab.type === "project")) {
-        // Only run restoration logic once at startup
-        if (!hasRestored && (tab.restoreProjectState || (tab.type === "project" && tab.initialProjectPath))) {
-          logger.debug('🔄 Running one-time tab restoration');
+      if (isActive && tab.type === "projects") {
+        // Load project list for projects mode
+        loadProjects();
+      } else if (isActive && tab.type === "project") {
+        if (tab.restoreProjectState) {
+          // Set up restored project state
+          const project = tab.restoreProjectState.selectedProject;
+          setSelectedProject(project);
+          setActiveProjectTab(tab.restoreProjectState.activeTab || "sessions");
+          logger.debug('🔄 Applied restored project state:', project?.path);
+        } else if (tab.initialProjectPath) {
+          // Restore project from path
+          try {
+            const projectList = await api.listProjects();
+            const project = projectList.find(p => p.path === tab.initialProjectPath);
 
-          if (tab.restoreProjectState) {
-            const project = tab.restoreProjectState.selectedProject;
-            setSelectedProject(project);
-            setActiveProjectTab(tab.restoreProjectState.activeTab || "sessions");
-            logger.debug('🔄 Restored from restoreProjectState:', project?.path);
-          } else if (tab.type === "project" && tab.initialProjectPath) {
-            // Restore project tab from just the path (missing restoreProjectState)
-            try {
-              const projectList = await api.listProjects();
-              const project = projectList.find(p => p.path === tab.initialProjectPath);
+            if (project) {
+              setSelectedProject(project);
+              setActiveProjectTab("sessions");
 
-              if (project) {
-                setSelectedProject(project);
-                setActiveProjectTab("sessions");
-                logger.debug('🔄 Restored from initialProjectPath:', project?.path);
+              // Update tab title to show project name
+              const projectName = getProjectName(project.path);
+              updateTab(tab.id, { title: projectName });
 
-                // Update tab with proper restore state for future persistence
-                updateTab(tab.id, {
-                  restoreProjectState: {
-                    selectedProject: project,
-                    activeTab: "sessions"
-                  }
-                });
-              } else {
-                logger.warn(`Project not found for restoration: ${tab.initialProjectPath}`);
-                setError(`Project not found: ${tab.initialProjectPath}`);
-              }
-            } catch (error) {
-              logger.error('Failed to restore project tab:', error);
-              setError('Failed to restore project tab');
+              logger.debug('🔄 Restored project from path:', project?.path, 'with title:', projectName);
+            } else {
+              logger.warn(`Project not found for restoration: ${tab.initialProjectPath}`);
+              setError(`Project not found: ${tab.initialProjectPath}`);
             }
+          } catch (error) {
+            logger.error('Failed to restore project tab:', error);
+            setError('Failed to restore project tab');
           }
-
-          setHasRestored(true); // Mark restoration as complete
-        } else if (tab.type === "projects") {
-          // Only load project list if we're in projects mode (not single project mode)
-          loadProjects();
-        } else if (hasRestored) {
-          logger.debug('🔄 Skipping restoration - already restored once');
         }
       }
     };
 
     loadTabContent();
-  }, [isActive, tab.type, hasRestored]);
+  }, [isActive, tab.type]);
 
-  // Handle restoration of project-session tabs (when rehydrated from persistence)
+  // Handle project-session tabs restoration
   useEffect(() => {
-    const restoreSessionTab = async () => {
-      // Only handle project-session tabs that have a sessionId but no viewingSession set yet
-      if (isActive && tab.type === 'project-session' && tab.sessionId && !viewingSession) {
-        
-        try {
-          // Extract project info from initialProjectPath
-          if (tab.initialProjectPath) {
-            // Find the project by path to get the full project object
+    const setupSessionTab = async () => {
+      if (isActive && tab.type === 'project-session' && !viewingSession) {
+        if (tab.sessionId && tab.initialProjectPath) {
+          // Restore session from sessionId and path
+          try {
             const projectList = await api.listProjects();
             const project = projectList.find(p => p.path === tab.initialProjectPath);
-            
-            
+
             if (project && project.id) {
-              // Get session data using the sessionId (load sessions directly)
               const projectSessions = await api.getProjectSessions(project.id);
               const session = projectSessions.find(s => s.id === tab.sessionId);
-              
+
               if (session) {
-                // Session tab restoration successful
-
-                // Also set the selectedProject so component state is correct
                 setSelectedProject(project);
-
-                // Set viewingSession to render the SessionDetail
                 setViewingSession({
                   session: session,
                   projectPath: tab.initialProjectPath,
                   backState: {
-                    selectedProject: project,   // Set the project for back navigation
-                    activeTab: "sessions"       // Return to sessions tab when going back
+                    selectedProject: project,
+                    activeTab: "sessions"
                   }
                 });
+                logger.debug('🔄 Restored session from sessionId and path:', {
+                  project: project?.path,
+                  session: session?.id
+                });
               } else {
-                logger.warn(`Session not found during restoration: ${tab.sessionId}`);
+                logger.warn(`Session not found: ${tab.sessionId}`);
               }
             } else {
-              logger.warn(`Project not found during restoration: ${tab.initialProjectPath}`);
+              logger.warn(`Project not found: ${tab.initialProjectPath}`);
             }
+          } catch (error) {
+            logger.error('Failed to restore session tab:', error);
           }
-        } catch (error) {
-          logger.error('Failed to restore session tab:', error);
         }
       }
     };
-    
-    restoreSessionTab();
-  }, [isActive, tab.type, tab.sessionId, tab.initialProjectPath, viewingSession]);
+
+    setupSessionTab();
+  }, [isActive, tab.type, tab.restoreProjectState, tab.sessionId, tab.initialProjectPath, viewingSession]);
 
   // Determine view level based on current state - KISS approach
   useEffect(() => {

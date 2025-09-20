@@ -4,7 +4,7 @@ use tauri::{command, AppHandle, Emitter};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 use crate::commands::claudio_storage::{
-    update_claudio_session, ClaudeSettings, SessionStatus, ClaudioSession
+    update_claudio_session, SessionStatus, ClaudioSession
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -147,23 +147,11 @@ pub async fn start_claude_direct_session(
             // Fresh start
             let new_claudio_id = format!("claudio-{}", chrono::Utc::now().timestamp_millis());
             
-            let claude_settings = ClaudeSettings {
-                model: None,
-                max_turns: options.max_turns,
-                system_prompt: options.custom_system_prompt.clone(),
-                append_system_prompt: None,
-                tools: options.allowed_tools.clone(),
-                working_directory: options.working_directory.clone(),
-            };
-            
             let new_session = ClaudioSession {
                 claudio_id: new_claudio_id.clone(),
-                session_id: None,
                 project_path: project_path.clone(),
+                current_session: None, // Will be populated when turn completes
                 status: SessionStatus::Active,
-                settings: claude_settings,
-                last_message_uuid: None,
-                message_uuid: None,
                 session_history: Vec::new(),
             };
             
@@ -178,23 +166,11 @@ pub async fn start_claude_direct_session(
             // Forking existing session
             let new_claudio_id = format!("claudio-{}", chrono::Utc::now().timestamp_millis());
             
-            let claude_settings = ClaudeSettings {
-                model: None,
-                max_turns: options.max_turns,
-                system_prompt: options.custom_system_prompt.clone(),
-                append_system_prompt: None,
-                tools: options.allowed_tools.clone(),
-                working_directory: options.working_directory.clone(),
-            };
-            
             let new_session = ClaudioSession {
                 claudio_id: new_claudio_id.clone(),
-                session_id: None,  // Don't pre-populate - let update_session_claude_id handle it
                 project_path: project_path.clone(),
+                current_session: None, // Will be populated when turn completes
                 status: SessionStatus::Active,
-                settings: claude_settings,
-                last_message_uuid: None,
-                message_uuid: None,
                 session_history: Vec::new(),
             };
             
@@ -509,23 +485,20 @@ async fn update_session_claude_id(
     let mut session = get_claudio_session(claudio_id.clone(), project_path.clone()).await?;
     
     log::debug!("Updating claudio session {} with new Claude session ID: {}", claudio_id, new_session_id);
-    
-    // Push the old session ID to history so the watcher can delete it after transition
-    if let Some(old_session_id) = session.session_id.clone() {
-        session.session_history.insert(0, old_session_id); // Insert at front (newest first)
+
+    // Move current_session to history (if it exists) before creating new one
+    if let Some(current_session) = session.current_session.take() {
+        session.session_history.insert(0, current_session); // Insert at front (newest first)
+        log::debug!("Moved previous session {} to history", session.session_history[0].session_id);
     }
-    
-    // Two-phase UUID tracking: Move current turn's UUID to last_message_uuid for next turn's deduplication
-    if let Some(current_message_uuid) = session.message_uuid.take() {
-        session.last_message_uuid = Some(current_message_uuid);
-        log::debug!("Promoted message_uuid to last_message_uuid for deduplication: {}", session.last_message_uuid.as_ref().unwrap());
-    }
-    
-    // Clear message_uuid for the new turn
-    session.message_uuid = None;
-    
-    // Update with the new Claude session info
-    session.session_id = Some(new_session_id.clone());
+
+    // We'll extract the timestamp and UUID when the session completes
+    // For now, create a placeholder that will be updated by extract_and_store_last_message_uuid_from_claudio_session
+    session.current_session = Some(crate::commands::claudio_storage::SessionInfo {
+        session_id: new_session_id.clone(),
+        last_message_uuid: "placeholder".to_string(), // Will be updated later
+        last_message_timestamp: chrono::Utc::now(), // Will be updated with actual message timestamp
+    });
     
     // Save updated metadata (now updates memory immediately!)
     update_claudio_session(claudio_id.clone(), project_path.clone(), session).await?;
@@ -569,10 +542,10 @@ async fn extract_and_store_last_message_uuid_from_claudio_session(
     let mut claudio_session = get_claudio_session(claudio_id.clone(), project_path.clone()).await?;
     
     // Get the Claude session ID this claudio session is currently tracking
-    let claude_session_id = match claudio_session.session_id.as_ref() {
-        Some(id) => id.clone(),
+    let claude_session_id = match claudio_session.current_session.as_ref() {
+        Some(session) => session.session_id.clone(),
         None => {
-            log::warn!("Claudio session {} has no Claude session ID - nothing to extract UUID from", claudio_id);
+            log::warn!("Claudio session {} has no current session - nothing to extract UUID from", claudio_id);
             return Ok(());
         }
     };
@@ -606,13 +579,26 @@ async fn extract_and_store_last_message_uuid_from_claudio_session(
     if !last_line.is_empty() {
         if let Ok(last_message) = serde_json::from_str::<serde_json::Value>(last_line) {
             if let Some(last_uuid) = last_message["uuid"].as_str() {
-                // Update claudio session with the current turn's message UUID
-                // This will be promoted to last_message_uuid when the next turn starts
-                claudio_session.message_uuid = Some(last_uuid.to_string());
-                
-                update_claudio_session(claudio_id.clone(), project_path, claudio_session).await?;
-                log::debug!("Stored current turn message UUID: {} -> {} (session: {})", 
-                          claudio_id, last_uuid, claude_session_id);
+                // Extract timestamp from the message
+                let timestamp = if let Some(created_at) = last_message["created_at"].as_str() {
+                    chrono::DateTime::parse_from_rfc3339(created_at)
+                        .map(|dt| dt.with_timezone(&chrono::Utc))
+                        .unwrap_or_else(|_| chrono::Utc::now())
+                } else {
+                    chrono::Utc::now() // Fallback to current time
+                };
+
+                // Update current_session with real UUID and timestamp
+                if let Some(ref mut current_session) = claudio_session.current_session {
+                    current_session.last_message_uuid = last_uuid.to_string();
+                    current_session.last_message_timestamp = timestamp;
+
+                    update_claudio_session(claudio_id.clone(), project_path, claudio_session).await?;
+                    log::debug!("Updated current session with UUID: {} and timestamp: {} (session: {})",
+                              last_uuid, timestamp, claude_session_id);
+                } else {
+                    log::warn!("No current_session to update with UUID {}", last_uuid);
+                }
             } else {
                 log::warn!("No UUID field found in last message of session {}", claude_session_id);
             }

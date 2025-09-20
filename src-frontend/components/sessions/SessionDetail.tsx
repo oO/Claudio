@@ -159,19 +159,6 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
     return <SessionErrorState error={sessionData.error} onBack={onBack} />;
   }
 
-  logger.info("✨ SessionDetail rendering main component:", {
-    hasSessionHandle: !!sessionData.sessionHandle,
-    hasSessionState: !!sessionData.sessionState,
-    hasHandlePromptSubmit: !!sessionData.handlePromptSubmit,
-    handlePromptSubmitType: typeof sessionData.handlePromptSubmit,
-    displayableMessagesCount: displayableMessages.length,
-    rawMessagesCount: sessionData.messages.length,
-    isReadOnly,
-    totalTokens,
-    // DEBUG: Check what we're getting for project data
-    "sessionState.project_path": sessionData.sessionState?.project_path,
-    "projectPath prop": projectPath,
-  });
 
   return (
     <SessionProvider

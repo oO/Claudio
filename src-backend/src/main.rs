@@ -56,8 +56,7 @@ use commands::claude_sdk_simple::{start_claude_sdk_session, continue_claude_sdk_
 use commands::claude_direct::{start_claude_direct_session};
 use commands::claudio_storage::{
     create_claudio_session, update_claudio_session, get_claudio_session,
-    list_claudio_sessions, delete_claudio_session, exit_claudio_session,
-    resume_claudio_session, cleanup_orphaned_files,
+    list_claudio_sessions, delete_claudio_session, cleanup_orphaned_files,
 };
 use commands::claude_session_tracking::{
     start_claude_thinking, end_claude_thinking, get_live_claude_sessions,
@@ -148,6 +147,11 @@ fn main() {
                 let tx_clone = tx.clone();
                 
                 runtime.spawn(async move {
+                    // Initialize Claudio session cache
+                    if let Err(e) = commands::claudio_storage::initialize_claudio_cache().await {
+                        log::error!("Failed to initialize Claudio session cache: {}", e);
+                    }
+
                     let proxy_settings = match commands::proxy::get_proxy_settings().await {
                         Ok(settings) => {
                             log::info!("Loaded proxy settings: enabled={}", settings.enabled);
@@ -360,8 +364,6 @@ fn main() {
             get_claudio_session,
             list_claudio_sessions,
             delete_claudio_session,
-            exit_claudio_session,
-            resume_claudio_session,
             cleanup_orphaned_files,
             
             // Session File Watching

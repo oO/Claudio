@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.5.3] - 2025-09-20
+
+### Fix
+- Fixed critical session deletion bug that was deleting current sessions instead of requested sessions
+- Fixed resume session bug with proper UUID and timestamp reading from .jsonl files
+- Fixed resume session status to start as Idle instead of Active for proper turn management
+- Added smart Claudio cleanup that deletes wrapper sessions when their Claude session is deleted
+- Added proper path handling using existing constants instead of manual path building
+- Made resume operations fail-fast to prevent broken streaming with invalid session data
+
+### Enhancement
+- Added session type badges to SessionCard UI showing "archived", "claudio", or "native" status
+- Moved session type badge to first position in metadata row for better UX
+- Improved styling with muted colors for archived sessions and accent colors for active sessions
+- Removed unnecessary framer-motion wrapper to reduce animation overhead
+- Added proper error logging throughout session components
+- Consolidated frontend data fetching logic for cleaner implementation
+
+## [0.6.0] - 2025-09-20
+
+### Feat
+- Added session type badges to SessionCard component showing "archived", "claudio", or "native" status
+- Moved session type badge to first position in metadata row for improved UX
+- Enhanced session status visibility with proper color coding (muted for archived, accent for active)
+
+### Refactor
+- Removed framer-motion wrapper from SessionCard to eliminate unnecessary animation overhead
+- Consolidated todo data fetching by combining two useEffect hooks into cleaner implementation
+- Added proper error logging with logger.error() and logger.debug() replacing empty catch blocks
+
 ## [0.5.2] - 2025-09-18
 
 ### Refactor

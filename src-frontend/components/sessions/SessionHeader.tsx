@@ -263,7 +263,7 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
     }
 
     try {
-      const result = await api.exitClaudioSession(sessionId, projectPath);
+      const result = await api.deleteClaudioSession(sessionId, projectPath);
       logger.log("Successfully exited Claudio session:", result);
 
       // Navigate back to project view since session is now archived
@@ -280,12 +280,12 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
     }
 
     try {
-      const result = await api.resumeClaudioSession(sessionId, projectPath);
-      logger.log("Successfully resumed archived session:", result);
+      const claudio_id = await api.resumeClaudioSession(sessionId, projectPath);
+      logger.log("Successfully resumed archived session, new claudio_id:", claudio_id);
 
       // Call the parent callback with the new claudio_id to update the session
-      if (onSessionResumed && result.claudio_id) {
-        onSessionResumed(result.claudio_id);
+      if (onSessionResumed && claudio_id) {
+        onSessionResumed(claudio_id);
       } else {
         // Fallback to page reload if no callback provided
         window.location.reload();

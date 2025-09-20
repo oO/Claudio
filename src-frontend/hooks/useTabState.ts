@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useTabContext } from '@/contexts/TabContext';
 import { Tab } from '@/contexts/TabContext';
 import { formatSessionIdCompact } from '@/lib/sessionUtils';
@@ -14,7 +14,11 @@ interface UseTabStateReturn {
   
   // Operations
   createSessionTab: (initialProjectPath?: string, title?: string, sessionId?: string) => string;
-  createProjectTab: (project: any, projectName: string) => string;
+  createProjectTab: (project: any, projectName: string, options?: {
+    viewLevel?: 'project' | 'session';
+    session?: any;
+    activeTab?: string;
+  }) => string;
   createProjectsTab: () => string | null;
   createUsageTab: () => string | null;
   createMCPTab: () => string | null;
@@ -52,7 +56,7 @@ export const useTabState = (): UseTabStateReturn => {
     getTabsByType
   } = useTabContext();
 
-  const activeTab = useMemo(() => 
+  const activeTab = useMemo(() =>
     activeTabId ? getTabById(activeTabId) : undefined,
     [activeTabId, getTabById]
   );
@@ -62,13 +66,13 @@ export const useTabState = (): UseTabStateReturn => {
 
   const createSessionTab = useCallback((initialProjectPath?: string, title?: string, sessionId?: string): string => {
     logger.log('🔥 createSessionTab called with:', { initialProjectPath, title, sessionId });
-    
+
     // Check if tab already exists for this session
     if (sessionId) {
       const currentTabs = getTabsByType('project-session');
       const existingTab = currentTabs.find(tab => tab.sessionId === sessionId);
       logger.log('🔍 Checking for existing tab with sessionId:', sessionId, 'found:', existingTab?.id);
-      
+
       if (existingTab) {
         logger.log('✅ Found existing tab, switching to:', existingTab.id);
         setActiveTab(existingTab.id);
@@ -76,18 +80,18 @@ export const useTabState = (): UseTabStateReturn => {
       }
     }
 
-    // Build session tab title: <project name>:<compact session_id>
+    // Build session tab title: <project name> <compact session_id>
     let tabTitle = title;
     if (!tabTitle && sessionId && initialProjectPath) {
       const projectName = initialProjectPath.split('/').pop() || 'Project';
       const sessionShort = formatSessionIdCompact(sessionId);
-      tabTitle = `${projectName}:${sessionShort}`;
+      tabTitle = `${projectName} ${sessionShort}`;
     } else if (!tabTitle) {
       tabTitle = `Session ${sessionTabCount + 1}`;
     }
-    
+
     logger.log('📝 Creating new tab with title:', tabTitle, 'sessionId:', sessionId);
-    
+
     const newTabId = addTab({
       type: 'project-session',
       title: tabTitle,
@@ -95,8 +99,9 @@ export const useTabState = (): UseTabStateReturn => {
       initialProjectPath, // Set the project path for new sessions
       status: 'idle',
       hasUnsavedChanges: false,
+      icon: 'messages-square',
     });
-    
+
     logger.log('✨ Created new tab with ID:', newTabId);
     return newTabId;
   }, [addTab, sessionTabCount, getTabsByType, setActiveTab]);
@@ -109,6 +114,7 @@ export const useTabState = (): UseTabStateReturn => {
       title: 'Projects',
       status: 'idle',
       hasUnsavedChanges: false,
+      icon: 'folder-open',
     });
   }, [addTab]);
 
@@ -309,17 +315,57 @@ export const useTabState = (): UseTabStateReturn => {
     return tabs.length < 20; // MAX_TABS from context
   }, [tabs.length]);
 
-  const createProjectTab = useCallback((project: any, projectName: string): string => {
+  const createProjectTab = useCallback((
+    project: any,
+    projectName: string,
+    options?: {
+      viewLevel?: 'project' | 'session';
+      session?: any;
+      activeTab?: string;
+    }
+  ): string => {
+    const { viewLevel = 'project', session, activeTab = 'sessions' } = options || {};
+
+    // Create tab at session level if session is provided
+    if (viewLevel === 'session' && session) {
+      const sessionShort = session.id ? session.id.replace('claudio-', '').substr(-6) : undefined;
+      return addTab({
+        type: 'project-session',
+        title: `${projectName} ${sessionShort}`,
+        displayId: sessionShort,
+        sessionId: session.id,
+        sessionData: session,
+        status: 'idle',
+        hasUnsavedChanges: false,
+        initialProjectPath: project.path,
+        icon: 'messages-square',
+        restoreProjectState: {
+          selectedProject: project,
+          activeTab: activeTab,
+          viewingSession: {
+            session: session,
+            projectPath: project.path,
+            backState: {
+              selectedProject: project,
+              activeTab: activeTab
+            }
+          }
+        }
+      });
+    }
+
+    // Create tab at project level (default)
     return addTab({
       type: 'project',
       title: projectName,
       status: 'idle',
       hasUnsavedChanges: false,
-      initialProjectPath: project.path, // Store project path for persistence
+      initialProjectPath: project.path,
+      icon: 'folder',
       restoreProjectState: {
         selectedProject: project,
         sessions: [],
-        activeTab: 'sessions'
+        activeTab: activeTab
       }
     });
   }, [addTab]);

@@ -100,8 +100,8 @@ impl SessionHandle {
         let current_claude_session = if actual_claudio_id.starts_with(CLAUDIO_SESSION_PREFIX) {
             match crate::commands::claudio_storage::get_claudio_session(actual_claudio_id.clone(), self.project_path.clone()).await {
                 Ok(claudio_session) => {
-                    log::debug!("Found Claudio session with Claude session ID: {:?}", claudio_session.session_id);
-                    claudio_session.session_id
+                    log::debug!("Found Claudio session with Claude session ID: {:?}", claudio_session.current_session.as_ref().map(|s| &s.session_id));
+                    claudio_session.current_session.map(|s| s.session_id)
                 },
                 Err(_) => {
                     log::debug!("No existing Claudio session found, starting fresh");
@@ -173,7 +173,7 @@ impl SessionHandle {
                     // Re-read the Claudio session to get the updated Claude session ID
                     if let Ok(claudio_session) = crate::commands::claudio_storage::get_claudio_session(claudio_id_for_update, project_path).await {
                         let mut guard = current_claude_session.write().await;
-                        *guard = claudio_session.session_id;
+                        *guard = claudio_session.current_session.map(|s| s.session_id);
                         log::debug!("Updated session handle's current Claude session ID: {:?}", guard);
                     }
                 });
@@ -349,8 +349,8 @@ impl SessionHandle {
                                 let project_path = project_id.replace("-", "/");
                                 match crate::commands::claudio_storage::get_claudio_session(handle_id.clone(), project_path).await {
                                     Ok(claudio_session) => {
-                                        log::debug!("Found Claudio session in cache: claudio_id={}, claude_session_id={:?}", handle_id, claudio_session.session_id);
-                                        claudio_session.session_id
+                                        log::debug!("Found Claudio session in cache: claudio_id={}, claude_session_id={:?}", handle_id, claudio_session.current_session.as_ref().map(|s| &s.session_id));
+                                        claudio_session.current_session.map(|s| s.session_id)
                                     },
                                     Err(e) => {
                                         log::debug!("❌ Failed to get Claudio session from cache: claudio_id={}, error={}", handle_id, e);
@@ -447,7 +447,8 @@ impl SessionHandle {
             let project_path = project_id.replace("-", "/");
             match crate::commands::claudio_storage::get_claudio_session(handle_id.to_string(), project_path).await {
                 Ok(claudio_session) => {
-                    if let Some(last_uuid) = &claudio_session.last_message_uuid {
+                    if let Some(last_session) = claudio_session.session_history.last() {
+                        let last_uuid = &last_session.last_message_uuid;
                         // Find the index of the last processed message
                         let mut start_index = 0;
                         for (i, message) in all_messages.iter().enumerate() {
@@ -643,9 +644,7 @@ impl SessionOrchestrator {
                 log::debug!("Creating new Claudio session for project: {}", project_path);
                 
                 // Create the actual claudio session file and get the claudio_id
-                // Use default Claude CLI settings for now - they can be configured later
-                let claude_settings = crate::commands::claudio_storage::ClaudeSettings::default();
-                let claudio_id = match create_claudio_session(project_path.clone(), claude_settings).await {
+                let claudio_id = match create_claudio_session(project_path.clone(), None).await {
                     Ok(id) => id,
                     Err(e) => {
                         log::error!("Failed to create new Claudio session: {}", e);
@@ -677,7 +676,7 @@ impl SessionOrchestrator {
                     match get_claudio_session(claudio_id_str.clone(), project_path.clone()).await {
                         Ok(claudio_session) => {
                             let mut guard = current_claude_session.write().await;
-                            *guard = claudio_session.session_id;
+                            *guard = claudio_session.current_session.map(|s| s.session_id);
                         },
                         Err(_) => {
                             // Session doesn't exist yet - will be created on first prompt
@@ -739,7 +738,7 @@ impl SessionOrchestrator {
                 if let Some(claudio_id_str) = claudio_id {
                     // Re-read from memory cache to get fresh Claude session ID
                     match crate::commands::claudio_storage::get_claudio_session(claudio_id_str.clone(), project_path.to_string()).await {
-                        Ok(claudio_session) => claudio_session.session_id,
+                        Ok(claudio_session) => claudio_session.current_session.map(|s| s.session_id),
                         Err(_) => None // Session might not exist yet
                     }
                 } else {

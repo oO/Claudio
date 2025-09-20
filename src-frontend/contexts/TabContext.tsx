@@ -33,6 +33,14 @@ export interface Tab {
     selectedProject: any;
     sessions?: any[];
     activeTab?: string;
+    viewingSession?: {
+      session: any;
+      projectPath: string;
+      backState: {
+        selectedProject: any;
+        activeTab: string;
+      };
+    };
   };
   
   status: 'active' | 'idle' | 'running' | 'complete' | 'error';
@@ -90,8 +98,24 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const activePanelIndexRef = useRef<number>(0); // Ref to avoid stale closure in useEffect
   const [activeTabs, setActiveTabs] = useState<Record<number, string>>({}); // Active tab per panel
   const [windowWidth, setWindowWidth] = useState<number>(window.innerWidth);
+  const [isInitialRestoration, setIsInitialRestoration] = useState(true); // Prevent saves during startup restoration
   const { saveTabs, loadTabs } = useTabPersistence();
   const { settings } = useSettingsState();
+
+  // Debouncing for save operations to prevent rapid-fire saves during restoration/shutdown
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const debouncedSave = useCallback((tabs: Tab[], panelBreaks: number[], activePanelIndex: number) => {
+    // Clear any pending save
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    // Schedule save with debounce
+    saveTimeoutRef.current = setTimeout(() => {
+      saveTabs(tabs, panelBreaks, activePanelIndex);
+      saveTimeoutRef.current = null;
+    }, 100); // 100ms debounce
+  }, [saveTabs]);
 
   // Keep activePanelIndexRef in sync with activePanelIndex
   useEffect(() => {
@@ -264,8 +288,7 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setPanelBreaks(sessionData.panelBreaks || []);
             setActivePanelIndex(sessionData.activePanelIndex || 0);
             setActiveTabId(restoredTabs[0].id);
-            
-            
+
             logger.debug(`Restored tabs on startup: ${restoredTabs.length} tabs`);
           }
         } else {
@@ -273,6 +296,9 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       } catch (error) {
         logger.error('Failed to restore tabs on startup:', error);
+      } finally {
+        // Mark initial restoration as complete, allowing saves to begin
+        setIsInitialRestoration(false);
       }
     };
 
@@ -303,31 +329,48 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // KISS: No immediate saves - only save on shutdown!
 
-  // Save tabs and panel state on component unmount (app closing) and window unload
+  // Debounced save effect: Save tabs when they change, but debounce to prevent rapid-fire saves
+  useEffect(() => {
+    // Only save after initial restoration is complete and we have tabs
+    if (!isInitialRestoration && tabs.length > 0) {
+      debouncedSave(tabs, panelBreaks, activePanelIndex);
+    }
+  }, [tabs, panelBreaks, activePanelIndex, debouncedSave, isInitialRestoration]);
+
+  // Immediate save on shutdown events
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      // Always save, even if tabs.length is 0 (empty state is valid)
+      // Clear any pending debounced save and save immediately
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
       saveTabs(tabs, panelBreaks, activePanelIndex);
     };
 
     // logger.info('🎧 Setting up quit/shutdown listeners...');
     window.addEventListener('beforeunload', handleBeforeUnload);
-    
+
     // Also listen for Tauri app close events (more reliable for Tauri apps)
     const setupTauriListeners = async () => {
       try {
         // Import Tauri event system
         const { listen } = await import('@tauri-apps/api/event');
-        
-        // Listen for Tauri app close event  
+
+        // Listen for Tauri app close event
         const unlisten = await listen('tauri://close-requested', () => {
           // logger.info('🛑 APP RECEIVED TAURI CLOSE EVENT - saving tabs...', {
           //   tabCount: tabs.length,
           //   reason: 'tauri-close'
           // });
+          // Clear any pending debounced save and save immediately
+          if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
+            saveTimeoutRef.current = null;
+          }
           saveTabs(tabs, panelBreaks, activePanelIndex);
         });
-        
+
         // logger.info('🎧 Tauri close listener set up successfully');
         return unlisten;
       } catch (error) {
@@ -335,12 +378,12 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return () => {}; // noop
       }
     };
-    
+
     let tauriUnlisten: (() => void) | null = null;
     setupTauriListeners().then(unlisten => {
       tauriUnlisten = unlisten;
     });
-    
+
     return () => {
       // logger.info('🛑 APP COMPONENT UNMOUNTING - saving tabs...', {
       //   tabCount: tabs.length,
@@ -348,7 +391,12 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // });
       window.removeEventListener('beforeunload', handleBeforeUnload);
       if (tauriUnlisten) tauriUnlisten();
-      // Always save on unmount, even if tabs.length is 0
+
+      // Clear any pending debounced save and save immediately on unmount
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
       saveTabs(tabs, panelBreaks, activePanelIndex);
     };
   }, [tabs, panelBreaks, activePanelIndex, saveTabs]);

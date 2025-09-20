@@ -65,7 +65,8 @@ export function ClaudoSessionSettings({
       setLoading(true);
       const data = await api.getClaudioSession(sessionId, projectPath);
       setSession(data);
-      setSettings(data.settings);
+      // Note: Settings removed from session metadata in v0.5+
+      // setSettings(data.settings);
       logger.info('Loaded session metadata:', data);
     } catch (error) {
       logger.error('Failed to load session metadata:', error);
@@ -106,7 +107,8 @@ export function ClaudoSessionSettings({
 
   const handleReset = () => {
     if (session) {
-      setSettings(session.settings);
+      // Note: Settings removed from session metadata in v0.5+
+      // setSettings(session.settings);
     } else {
       setSettings({
         model: undefined,
