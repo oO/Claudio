@@ -250,7 +250,7 @@ export const useSessionHandle = (
 
   // Handle prompt submission
   const handlePromptSubmit = useCallback(
-    async (prompt: string, model: "sonnet" | "opus") => {
+    async (prompt: string, model: string) => {
       try {
         
         if (!sessionHandle) {
@@ -276,7 +276,7 @@ export const useSessionHandle = (
         }
 
         // Send prompt to backend - all messages (including user message) come via streaming
-        await sessionHandle.sendPrompt(prompt);
+        await sessionHandle.sendPrompt(prompt, model);
       } catch (err) {
         logger.error("Failed to send prompt:", err);
         setError(err instanceof Error ? err.message : "Failed to send prompt");

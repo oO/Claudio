@@ -107,6 +107,7 @@ export const ThinkingModeSelector: React.FC<ThinkingModeSelectorProps> = ({
       className={cn("gap-2", className)}
     >
       <Brain className="h-4 w-4" />
+      <span className="text-sm">{selectedMode.name}</span>
       <ThinkingModeIndicator level={selectedMode.level} />
     </Button>
   );

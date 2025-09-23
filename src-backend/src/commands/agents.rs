@@ -622,20 +622,20 @@ pub async fn import_agent_from_file(
 
 #[tauri::command] 
 pub async fn get_claude_binary_path() -> Result<Option<String>, String> {
-    use crate::commands::proxy::get_claudio_settings;
-    
-    let settings = get_claudio_settings().await.unwrap_or_default();
+    use crate::commands::claudio_app_settings::load_claudio_app_settings;
+
+    let settings = load_claudio_app_settings().await.unwrap_or_default();
     Ok(settings.claude_binary_path)
 }
 
 #[tauri::command]
 pub async fn set_claude_binary_path(path: String) -> Result<(), String> {
-    use crate::commands::proxy::{get_claudio_settings, save_claudio_settings};
-    
-    let mut settings = get_claudio_settings().await.unwrap_or_default();
+    use crate::commands::claudio_app_settings::{load_claudio_app_settings, save_claudio_app_settings};
+
+    let mut settings = load_claudio_app_settings().await.unwrap_or_default();
     settings.claude_binary_path = Some(path.clone());
-    
-    save_claudio_settings(settings).await?;
+
+    save_claudio_app_settings(settings).await?;
     // log::info!("Claude binary path set to: {}", path);
     Ok(())
 }

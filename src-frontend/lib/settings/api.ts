@@ -17,19 +17,17 @@ import { SettingsError } from './types';
 // ===== Handle Management =====
 
 /**
- * Create a new settings handle for a project
+ * Create a new Claude Code settings handle for a project
  */
 export async function createSettingsHandle(
-  projectPath: string | null,
-  settingsType: SettingsType
+  projectPath: string | null
 ): Promise<string> {
   try {
     return await invoke('create_settings_handle', {
-      project_path: projectPath,
-      settings_type: settingsType,
+      projectPath: projectPath,
     });
   } catch (error) {
-    throw new SettingsError(`Failed to create settings handle: ${error}`);
+    throw new SettingsError(`Failed to create Claude Code settings handle: ${error}`);
   }
 }
 
@@ -38,7 +36,7 @@ export async function createSettingsHandle(
  */
 export async function destroySettingsHandle(handleId: string): Promise<void> {
   try {
-    await invoke('destroy_settings_handle', { handle_id: handleId });
+    await invoke('destroy_settings_handle', { handleId: handleId });
   } catch (error) {
     throw new SettingsError(`Failed to destroy settings handle: ${error}`);
   }
@@ -49,7 +47,7 @@ export async function destroySettingsHandle(handleId: string): Promise<void> {
  */
 export async function getSettingsForHandle(handleId: string): Promise<any> {
   try {
-    return await invoke('get_settings_for_handle', { handle_id: handleId });
+    return await invoke('get_settings_for_handle', { handleId: handleId });
   } catch (error) {
     throw new SettingsError(`Failed to get settings: ${error}`);
   }
@@ -65,7 +63,7 @@ export async function updateSettingForHandle(
 ): Promise<void> {
   try {
     await invoke('update_setting_for_handle', {
-      handle_id: handleId,
+      handleId: handleId,
       key,
       value,
     });
@@ -165,13 +163,12 @@ export async function getClaudeCodeSettings(handleId: string): Promise<ClaudeCod
 // ===== Convenience Functions =====
 
 /**
- * Create a handle and get settings in one call
+ * Create a Claude Code handle and get settings in one call
  */
 export async function createHandleAndGetSettings<T = any>(
-  projectPath: string | null,
-  settingsType: SettingsType
+  projectPath: string | null
 ): Promise<{ handleId: string; settings: T }> {
-  const handleId = await createSettingsHandle(projectPath, settingsType);
+  const handleId = await createSettingsHandle(projectPath);
   const settings = await getSettingsForHandle(handleId);
   return { handleId, settings };
 }
@@ -224,49 +221,44 @@ export async function updateModel(handleId: string, model: string): Promise<void
 }
 
 /**
- * Get current Claudio theme setting
+ * @deprecated Claudio theme settings use direct API via useClaudioAppSettings
+ * This function was for the orchestrator which only handles Claude Code settings now
  */
-export async function getCurrentTheme(handleId: string): Promise<string | null> {
-  try {
-    const settings = await getClaudioSettings(handleId);
-    return settings.theme || null;
-  } catch (error) {
-    console.error('Failed to get current theme:', error);
-    return null;
-  }
+export async function getCurrentTheme(): Promise<never> {
+  throw new Error('getCurrentTheme is deprecated. Use useClaudioAppSettings from @/lib/claudio-app-settings instead');
 }
 
 /**
- * Update Claudio theme setting
+ * @deprecated Claudio theme settings use direct API via useClaudioAppSettings
+ * This function was for the orchestrator which only handles Claude Code settings now
  */
-export async function updateTheme(handleId: string, theme: string): Promise<void> {
-  await updateSettingForHandle(handleId, 'theme', theme);
+export async function updateTheme(): Promise<never> {
+  throw new Error('updateTheme is deprecated. Use useClaudioAppSettings from @/lib/claudio-app-settings instead');
 }
 
 // ===== Project Management Helpers =====
 
 /**
- * Get or create settings handle for a project
+ * Get or create Claude Code settings handle for a project
  */
 export async function getOrCreateProjectHandle(
-  projectPath: string | null,
-  settingsType: SettingsType
+  projectPath: string | null
 ): Promise<string> {
   if (!projectPath) {
-    return await createSettingsHandle(null, settingsType);
+    return await createSettingsHandle(null);
   }
 
   // Check if handle already exists for this project
   const projectHandles = await getProjectSettingsHandles(projectPath);
   const existingHandle = projectHandles.find(handleId =>
-    handleId.includes(settingsType === 'claudio' ? 'claudio-settings' : 'claudecode-settings')
+    handleId.includes('claudecode-settings')
   );
 
   if (existingHandle) {
     return existingHandle;
   }
 
-  return await createSettingsHandle(projectPath, settingsType);
+  return await createSettingsHandle(projectPath);
 }
 
 /**

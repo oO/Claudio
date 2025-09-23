@@ -36,7 +36,7 @@ import {
  * Core hook for managing settings with handle lifecycle
  */
 export function useSettings<T = any>(options: UseSettingsOptions): UseSettingsReturn<T> {
-  const { projectPath, settingsType, autoCreate = true, onUpdate } = options;
+  const { projectPath, autoCreate = true, onUpdate } = options;
 
   const [settings, setSettings] = useState<T | null>(null);
   const [loading, setLoading] = useState(false);
@@ -60,8 +60,8 @@ export function useSettings<T = any>(options: UseSettingsOptions): UseSettingsRe
         setLoading(true);
         setError(null);
 
-        const newHandleId = await createSettingsHandle(projectPath || null, settingsType);
-        logger.debug('✅ Settings handle created successfully', { newHandleId, projectPath, settingsType });
+        const newHandleId = await createSettingsHandle(projectPath || null);
+        logger.debug('✅ Claude Code settings handle created successfully', { newHandleId, projectPath });
 
         if (cancelled || !mountedRef.current) {
           // Component unmounted, clean up
@@ -97,7 +97,7 @@ export function useSettings<T = any>(options: UseSettingsOptions): UseSettingsRe
     return () => {
       cancelled = true;
     };
-  }, [projectPath, settingsType, autoCreate]);
+  }, [projectPath, autoCreate]);
 
   // Cleanup handle on unmount
   useEffect(() => {
@@ -124,7 +124,7 @@ export function useSettings<T = any>(options: UseSettingsOptions): UseSettingsRe
         setSettings(updatedSettings);
         onUpdate?.({
           handle_id: handleId,
-          settings_type: settingsType,
+          settings_type: 'claudecode',
           changed_keys: [key],
           timestamp: new Date().toISOString(),
         });
@@ -134,7 +134,7 @@ export function useSettings<T = any>(options: UseSettingsOptions): UseSettingsRe
       setError(settingsError);
       throw settingsError;
     }
-  }, [handleId, settingsType, onUpdate]);
+  }, [handleId, onUpdate]);
 
   // Refresh settings function
   const refresh = useCallback(async () => {
@@ -174,17 +174,11 @@ export function useSettings<T = any>(options: UseSettingsOptions): UseSettingsRe
 // ===== Type-Safe Settings Hooks =====
 
 /**
- * Hook for Claudio app settings
+ * @deprecated Use useClaudioAppSettings from @/lib/claudio-app-settings instead
+ * This function used the orchestrator which only handles Claude Code settings now
  */
-export function useClaudioSettings(
-  projectPath?: string,
-  options: Omit<UseSettingsOptions, 'settingsType'> = {}
-): UseSettingsReturn<ClaudioSettings> {
-  return useSettings<ClaudioSettings>({
-    ...options,
-    projectPath,
-    settingsType: 'claudio',
-  });
+export function useClaudioSettings(): never {
+  throw new Error('useClaudioSettings is deprecated. Use useClaudioAppSettings from @/lib/claudio-app-settings instead');
 }
 
 /**
@@ -192,13 +186,12 @@ export function useClaudioSettings(
  */
 export function useClaudeCodeSettings(
   projectPath?: string,
-  options: Omit<UseSettingsOptions, 'settingsType'> = {}
+  options: UseSettingsOptions = {}
 ): UseSettingsReturn<ClaudeCodeSettings> {
 
   const result = useSettings<ClaudeCodeSettings>({
     ...options,
     projectPath,
-    settingsType: 'claudecode',
   });
 
 
@@ -214,7 +207,28 @@ export function useModelSetting(projectPath?: string) {
   const { settings, updateSetting, loading, error } = useClaudeCodeSettings(projectPath);
 
   const currentModel = useMemo(() => {
-    const model = settings?.effective?.model || 'default';
+    // Handle both old and new settings formats
+    let model = 'default';
+
+    if (settings) {
+      // Try new format first (direct JSON from our KISS backend)
+      if ((settings as any).model) {
+        model = (settings as any).model;
+      }
+      // Fallback to old nested format
+      else if (settings.effective?.model) {
+        model = settings.effective.model;
+      }
+    }
+
+    logger.debug('useModelSetting: extracted model from settings', {
+      settingsRaw: settings,
+      extractedModel: model,
+      projectPath,
+      loading,
+      hasError: !!error
+    });
+
     return model;
   }, [settings, projectPath, loading, error]);
 
@@ -232,29 +246,6 @@ export function useModelSetting(projectPath?: string) {
   };
 }
 
-/**
- * Hook specifically for the Claudio theme setting
- */
-export function useThemeSetting() {
-  const { settings, updateSetting, loading, error } = useClaudioSettings();
-
-  const currentTheme = useMemo(() => {
-    return settings?.theme || 'system';
-  }, [settings]);
-
-  const setTheme = useCallback(async (theme: string) => {
-    await updateSetting('theme', theme);
-  }, [updateSetting]);
-
-  return {
-    theme: currentTheme,
-    setTheme,
-    loading,
-    error,
-    // Expose underlying settings for advanced usage
-    allSettings: settings,
-  };
-}
 
 // ===== Project Context Hook =====
 
@@ -325,18 +316,14 @@ export function useMultiProjectSettings(projectPaths: string[]) {
       // Load settings for each project in parallel
       const loadPromises = projectPaths.map(async (projectPath) => {
         try {
-          // Create temporary handles to get settings
-          const claudioHandle = await createSettingsHandle(projectPath, 'claudio');
-          const claudecodeHandle = await createSettingsHandle(projectPath, 'claudecode');
+          // Only Claude Code settings use orchestrator now
+          const claudecodeHandle = await createSettingsHandle(projectPath);
 
-          const [claudioSettings, claudecodeSettings] = await Promise.all([
-            getClaudioSettings(claudioHandle).catch(() => null),
-            getClaudeCodeSettings(claudecodeHandle).catch(() => null),
-          ]);
+          const claudecodeSettings = await getClaudeCodeSettings(claudecodeHandle).catch(() => null);
+          const claudioSettings = null; // Claudio settings use direct API
 
-          // Clean up temporary handles
+          // Clean up temporary handle
           await Promise.all([
-            safeDestroyHandle(claudioHandle),
             safeDestroyHandle(claudecodeHandle),
           ]);
 
@@ -377,31 +364,30 @@ export function useMultiProjectSettings(projectPaths: string[]) {
 // ===== Handle Management Hook =====
 
 /**
- * Hook for manual handle management (advanced usage)
+ * Hook for manual Claude Code handle management (advanced usage)
  */
-export function useSettingsHandle(projectPath?: string, settingsType?: SettingsType) {
+export function useSettingsHandle(projectPath?: string) {
   const [handleId, setHandleId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<SettingsError | null>(null);
 
   const createHandle = useCallback(async (
-    targetProjectPath: string | null = projectPath || null,
-    targetSettingsType: SettingsType = settingsType || 'claudio'
+    targetProjectPath: string | null = projectPath || null
   ) => {
     try {
       setLoading(true);
       setError(null);
-      const newHandleId = await createSettingsHandle(targetProjectPath, targetSettingsType);
+      const newHandleId = await createSettingsHandle(targetProjectPath);
       setHandleId(newHandleId);
       return newHandleId;
     } catch (err) {
-      const settingsError = toSettingsError(err, 'Failed to create handle');
+      const settingsError = toSettingsError(err, 'Failed to create Claude Code handle');
       setError(settingsError);
       throw settingsError;
     } finally {
       setLoading(false);
     }
-  }, [projectPath, settingsType]);
+  }, [projectPath]);
 
   const destroyHandle = useCallback(async (targetHandleId: string = handleId!) => {
     if (!targetHandleId) return;

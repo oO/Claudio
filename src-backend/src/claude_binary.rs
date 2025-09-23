@@ -41,8 +41,8 @@ pub fn find_claude_binary(app_handle: &tauri::AppHandle) -> Result<String, Strin
 pub async fn find_claude_binary_async(_app_handle: &tauri::AppHandle) -> Result<String, String> {
 
     // First check if we have a stored path in the settings
-    use crate::commands::proxy::get_claudio_settings;
-    if let Ok(settings) = get_claudio_settings().await {
+    use crate::commands::claudio_app_settings::load_claudio_app_settings;
+    if let Ok(settings) = load_claudio_app_settings().await {
         if let Some(stored_path) = settings.claude_binary_path {
             debug!("Found stored claude path in settings: {}", stored_path);
             

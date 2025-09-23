@@ -16,7 +16,7 @@ use commands::agents::{
     load_agent_session_history, set_claude_binary_path, update_agent, AgentDb,
 };
 use commands::claude::{
-    cancel_claude_execution, check_claude_version, continue_claude_code, execute_claude_code,
+    cancel_claude_execution, check_claude_version, execute_claude_code,
     find_claude_md_files, get_claude_session_output, get_claude_settings, get_project_sessions,
     get_session_todos,
     get_system_prompt,
@@ -50,7 +50,7 @@ use commands::storage::{
     storage_list_tables, storage_read_table, storage_update_row, storage_delete_row,
     storage_insert_row, storage_execute_sql, storage_reset_database,
 };
-use commands::proxy::{get_proxy_settings, save_proxy_settings, apply_proxy_settings, get_setting, save_setting};
+use commands::claudio_app_settings::{get_proxy_settings, save_proxy_settings, apply_proxy_settings, load_claudio_app_setting, save_claudio_app_setting};
 use commands::window::{save_window_state, load_window_state, get_current_window_state, restore_window_state, setup_window_state_tracking};
 use commands::claude_sdk_simple::{start_claude_sdk_session, continue_claude_sdk_session, resume_claude_sdk_session, terminate_claude_sdk_session};
 use commands::claude_direct::{start_claude_direct_session};
@@ -67,7 +67,7 @@ use commands::hook_installer::{
 };
 use commands::settings::{
     create_settings_handle, get_settings_for_handle, update_setting_for_handle, destroy_settings_handle,
-    initialize_settings_orchestrator,
+    initialize_claude_code_settings_manager,
 };
 use process::ProcessRegistryState;
 use tauri::Manager;
@@ -152,14 +152,15 @@ fn main() {
                         log::error!("Failed to initialize Claudio session cache: {}", e);
                     }
 
-                    let proxy_settings = match commands::proxy::get_proxy_settings().await {
+
+                    let proxy_settings = match commands::claudio_app_settings::get_proxy_settings().await {
                         Ok(settings) => {
                             log::info!("Loaded proxy settings: enabled={}", settings.enabled);
                             settings
                         }
                         Err(e) => {
                             log::warn!("Failed to load proxy settings: {}", e);
-                            commands::proxy::ProxySettings::default()
+                            commands::claudio_app_settings::ProxySettings::default()
                         }
                     };
                     let _ = tx_clone.send(proxy_settings);
@@ -196,8 +197,8 @@ fn main() {
             // Initialize SessionOrchestrator (new architecture)
             commands::session_orchestrator::initialize_orchestrator(app.handle().clone(), session_watcher_state);
 
-            // Initialize SettingsOrchestrator (SEPARATE from sessions - never merge!)
-            initialize_settings_orchestrator(app.handle().clone());
+            // Initialize Claude Code Settings Manager (SEPARATE from sessions - never merge!)
+            initialize_claude_code_settings_manager(app.handle().clone());
 
             // Setup window state tracking
             if let Err(e) = setup_window_state_tracking(app.handle().clone()) {
@@ -244,6 +245,14 @@ fn main() {
 
             Ok(())
         })
+        .on_window_event(|_window, event| {
+            match event {
+                tauri::WindowEvent::CloseRequested { .. } => {
+                    log::info!("🛑 Window close requested, saving settings...");
+                }
+                _ => {}
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             // Claude & Project Management
             list_projects,
@@ -262,7 +271,6 @@ fn main() {
             delete_file,
             load_session_history,
             execute_claude_code,
-            continue_claude_code,
             resume_claude_code,
             cancel_claude_execution,
             list_running_claude_sessions,
@@ -338,9 +346,9 @@ fn main() {
             get_proxy_settings,
             save_proxy_settings,
             
-            // General Settings
-            get_setting,
-            save_setting,
+            // Claudio App Settings
+            load_claudio_app_setting,
+            save_claudio_app_setting,
             
             // Window Management
             save_window_state,

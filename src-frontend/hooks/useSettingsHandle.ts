@@ -3,12 +3,11 @@ import { invoke } from '@tauri-apps/api/core';
 import { logger } from "@/lib/logger";
 
 /**
- * Hook for managing settings handle lifecycle and operations via unified orchestrator
- * Uses the same handle pattern as sessions for consistent architecture
+ * Hook for managing Claude Code settings handle via orchestrator
+ * KISS: Only Claude Code settings use orchestrator, Claudio uses direct API
  */
 export const useSettingsHandle = (
-  projectPath: string | undefined,
-  settingsType: 'claudio' | 'claudecode'
+  projectPath: string | undefined
 ) => {
   // Simple state - just what we need for the UI
   const [settingsHandle, setSettingsHandle] = useState<string | null>(null);
@@ -21,8 +20,8 @@ export const useSettingsHandle = (
 
   // Use useMemo to create stable settings key to prevent unnecessary re-initializations
   const settingsKey = useMemo(() => {
-    return `${projectPath || 'global'}-${settingsType}`;
-  }, [projectPath, settingsType]);
+    return `${projectPath || 'global'}-claudecode`;
+  }, [projectPath]);
 
   // Settings initialization effect - COPY THE WORKING SESSION PATTERN
   useEffect(() => {
@@ -36,12 +35,11 @@ export const useSettingsHandle = (
         setError(null);
         setLoading(true);
 
-        logger.debug('Creating unified settings handle for:', { projectPath, settingsType });
+        logger.debug('Creating Claude Code settings handle for:', { projectPath });
 
-        // Get settings handle from unified orchestrator
+        // Get settings handle from Claude Code orchestrator
         const handleId = await invoke<string>('create_settings_handle', {
           projectPath: projectPath || null,
-          settingsType: settingsType,
         });
 
         logger.debug('Created unified settings handle:', handleId);
@@ -73,7 +71,7 @@ export const useSettingsHandle = (
         clearTimeout(cleanupTimeoutRef.current);
       }
     };
-  }, [settingsKey, projectPath, settingsType]);
+  }, [settingsKey, projectPath]);
 
   // Update settings function
   const updateSetting = useCallback(async (key: string, value: any, level?: 'env' | 'local' | 'project' | 'global') => {
@@ -114,7 +112,7 @@ export const useSettingsHandle = (
  * Hook specifically for ClaudeCode model setting
  */
 export function useModelSetting(projectPath?: string) {
-  const { settings, updateSetting, loading, error } = useSettingsHandle(projectPath, 'claudecode');
+  const { settings, updateSetting, loading, error } = useSettingsHandle(projectPath);
 
   const currentModel = useMemo(() => {
     const model = settings?.effective?.model || 'default';

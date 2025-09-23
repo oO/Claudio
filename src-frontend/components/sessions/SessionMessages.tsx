@@ -86,8 +86,14 @@ export const SessionMessages = forwardRef<
 
       // Apply system message filtering
       if (!isSystemVisible) {
-        // Hide system messages - filter out messages that are system type
-        filtered = filtered.filter(message => message.type !== "system");
+        // Hide system messages AND summary messages
+        filtered = filtered.filter(message => {
+          // Filter out system type messages
+          if (message.type === "system") return false;
+          // Also filter out summary messages (Context Summary)
+          if (message.summary) return false;
+          return true;
+        });
       }
 
       // Apply assistant filtering

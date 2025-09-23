@@ -490,16 +490,29 @@ pub fn create_system_command(
     project_path: &str,
 ) -> tokio::process::Command {
     let mut cmd = create_command_with_env(claude_path);
-    
+
+    // Log the command execution details
+    log::info!("cwd: {}", project_path);
+    let mut i = 0;
+    while i < args.len() {
+        if args[i].starts_with("--") && i + 1 < args.len() && !args[i + 1].starts_with("--") {
+            log::info!("{}: {}", args[i], args[i + 1]);
+            i += 2;
+        } else {
+            log::info!("{}", args[i]);
+            i += 1;
+        }
+    }
+
     // Add all arguments
     for arg in args {
         cmd.arg(arg);
     }
-    
+
     cmd.current_dir(project_path)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped());
-    
+
     cmd
 }
 

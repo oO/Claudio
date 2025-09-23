@@ -96,10 +96,13 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [panelBreaks, setPanelBreaks] = useState<number[]>([]); // Empty array = single panel with all tabs
   const [activePanelIndex, setActivePanelIndex] = useState<number>(0);
   const activePanelIndexRef = useRef<number>(0); // Ref to avoid stale closure in useEffect
+  const tabsRef = useRef<Tab[]>([]); // Always have current tabs for event listeners
+  const panelBreaksRef = useRef<number[]>([]); // Always have current panelBreaks for event listeners
   const [activeTabs, setActiveTabs] = useState<Record<number, string>>({}); // Active tab per panel
   const [windowWidth, setWindowWidth] = useState<number>(window.innerWidth);
   const [isInitialRestoration, setIsInitialRestoration] = useState(true); // Prevent saves during startup restoration
-  const { saveTabs, loadTabs } = useTabPersistence();
+  const [restorationAttempted, setRestorationAttempted] = useState(false); // Track if we've attempted restoration (React Strict Mode safety)
+  const { saveTabs, loadTabs, clearSavedTabs } = useTabPersistence();
   const { settings } = useSettingsState();
 
   // Debouncing for save operations to prevent rapid-fire saves during restoration/shutdown
@@ -114,13 +117,15 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     saveTimeoutRef.current = setTimeout(() => {
       saveTabs(tabs, panelBreaks, activePanelIndex);
       saveTimeoutRef.current = null;
-    }, 100); // 100ms debounce
+    }, 500); // 500ms debounce for in-memory store (much lighter now)
   }, [saveTabs]);
 
-  // Keep activePanelIndexRef in sync with activePanelIndex
+  // Keep refs in sync with state for event listeners
   useEffect(() => {
     activePanelIndexRef.current = activePanelIndex;
-  }, [activePanelIndex]);
+    tabsRef.current = tabs;
+    panelBreaksRef.current = panelBreaks;
+  }, [activePanelIndex, tabs, panelBreaks]);
 
   // Track window width changes for panel calculations
   useEffect(() => {
@@ -248,15 +253,25 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const attemptInitialRestore = async () => {
       // logger.info('🚀 RESTORATION USEEFFECT FIRED', { tabsLength: tabs.length });
       
-      // Only attempt restoration if we haven't loaded tabs yet
-      if (tabs.length > 0) {
+      // Only attempt restoration once - React Strict Mode safe
+      if (restorationAttempted) {
+        logger.info('🚫 Skipping restoration - already attempted (React Strict Mode)');
         return;
       }
 
+      // Mark that we've attempted restoration
+      setRestorationAttempted(true);
+
       try {
-        // logger.info('🔄 ATTEMPTING INITIAL TAB RESTORATION...');
+        logger.info('🔄 ATTEMPTING INITIAL TAB RESTORATION...');
         const sessionData = await loadTabs();
-        
+
+        logger.info('📋 Loaded session data:', {
+          tabCount: sessionData.tabs.length,
+          panelBreaks: sessionData.panelBreaks,
+          activePanelIndex: sessionData.activePanelIndex
+        });
+
         if (sessionData.tabs.length > 0) {
           // Restoring tabs from saved session
           
@@ -331,13 +346,13 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Debounced save effect: Save tabs when they change, but debounce to prevent rapid-fire saves
   useEffect(() => {
-    // Only save after initial restoration is complete and we have tabs
-    if (!isInitialRestoration && tabs.length > 0) {
+    // Only save after initial restoration is complete
+    if (!isInitialRestoration) {
       debouncedSave(tabs, panelBreaks, activePanelIndex);
     }
   }, [tabs, panelBreaks, activePanelIndex, debouncedSave, isInitialRestoration]);
 
-  // Immediate save on shutdown events
+  // Immediate save on shutdown events - using refs to avoid multiple cleanup functions
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       // Clear any pending debounced save and save immediately
@@ -345,7 +360,7 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = null;
       }
-      saveTabs(tabs, panelBreaks, activePanelIndex);
+      saveTabs(tabsRef.current, panelBreaksRef.current, activePanelIndexRef.current);
     };
 
     // logger.info('🎧 Setting up quit/shutdown listeners...');
@@ -360,7 +375,7 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         // Listen for Tauri app close event
         const unlisten = await listen('tauri://close-requested', () => {
           // logger.info('🛑 APP RECEIVED TAURI CLOSE EVENT - saving tabs...', {
-          //   tabCount: tabs.length,
+          //   tabCount: tabsRef.current.length,
           //   reason: 'tauri-close'
           // });
           // Clear any pending debounced save and save immediately
@@ -368,7 +383,7 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             clearTimeout(saveTimeoutRef.current);
             saveTimeoutRef.current = null;
           }
-          saveTabs(tabs, panelBreaks, activePanelIndex);
+          saveTabs(tabsRef.current, panelBreaksRef.current, activePanelIndexRef.current);
         });
 
         // logger.info('🎧 Tauri close listener set up successfully');
@@ -386,7 +401,7 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     return () => {
       // logger.info('🛑 APP COMPONENT UNMOUNTING - saving tabs...', {
-      //   tabCount: tabs.length,
+      //   tabCount: tabsRef.current.length,
       //   reason: 'component-unmount'
       // });
       window.removeEventListener('beforeunload', handleBeforeUnload);
@@ -397,9 +412,9 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = null;
       }
-      saveTabs(tabs, panelBreaks, activePanelIndex);
+      saveTabs(tabsRef.current, panelBreaksRef.current, activePanelIndexRef.current);
     };
-  }, [tabs, panelBreaks, activePanelIndex, saveTabs]);
+  }, [saveTabs]); // Only depend on saveTabs - refs are always current!
 
   const generateTabId = () => {
     return `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -581,7 +596,6 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     
     setTabs([]);
     setActiveTabId(null);
-    // localStorage.removeItem(STORAGE_KEY); // Persistence disabled
   }, [tabs]);
 
   const getTabsByType = useCallback((type: Tab['type']): Tab[] => {

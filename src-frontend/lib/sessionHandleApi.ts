@@ -126,7 +126,7 @@ export class SessionHandle {
   /**
    * Send a prompt to this session (handles all backend complexity automatically)
    */
-  async sendPrompt(prompt: string): Promise<void> {
+  async sendPrompt(prompt: string, model?: string): Promise<void> {
     try {
       logger.info('🚀 SessionHandle.sendPrompt called:', { handleId: this.handleId, promptPreview: prompt.substring(0, 50) });
       
@@ -144,10 +144,11 @@ export class SessionHandle {
         setTimeout(() => reject(new Error('Tauri invoke timed out after 10 seconds')), 10000);
       });
       
-      logger.info('📡 Calling Tauri invoke send_session_prompt...');
+      logger.info('📡 Calling Tauri invoke send_session_prompt...', { model });
       const invokePromise = invoke('send_session_prompt', {
         handleId: this.handleId,
         prompt,
+        model: model || null, // Send null if no model override
       });
       
       await Promise.race([invokePromise, timeoutPromise]);
@@ -242,9 +243,7 @@ export class SessionHandle {
     this.messageListeners.forEach((listener) => {
       listenerIndex++;
       try {
-        logger.info(`🔔 Calling message listener ${listenerIndex}/${this.messageListeners.size} with ${processedMessages.length} processed messages`);
         listener(processedMessages);
-        logger.info(`✅ Message listener ${listenerIndex} completed successfully`);
       } catch (error) {
         logger.error(`❌ Error in message listener ${listenerIndex}:`, error);
       }

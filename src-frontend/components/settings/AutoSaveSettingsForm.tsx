@@ -18,8 +18,8 @@ export interface SettingsFieldConfig {
 }
 
 export interface AutoSaveSettingsFormProps {
-  /** Type of settings - determines which manager to use */
-  settingsType: 'claudio' | 'claudecode';
+  /** Type of settings - Claude Code only (Claudio settings use direct API) */
+  settingsType: 'claudecode';
 
   /** Project path - required for claudecode settings */
   projectPath?: string;
@@ -52,8 +52,7 @@ export function AutoSaveSettingsForm({
   'data-testid': testId,
 }: AutoSaveSettingsFormProps) {
   const { settings, loading, error, updateSetting } = useSettingsHandle(
-    projectPath,
-    settingsType
+    projectPath
   );
 
   if (loading) {
@@ -168,7 +167,7 @@ interface SettingsFieldProps {
   field: SettingsFieldConfig;
   value: any;
   onChange: (value: any) => Promise<void>;
-  settingsType: 'claudio' | 'claudecode';
+  settingsType: 'claudecode';
 }
 
 function SettingsField({ field, value, onChange, settingsType }: SettingsFieldProps) {

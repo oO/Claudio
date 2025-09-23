@@ -62,8 +62,6 @@ export const SessionCard: React.FC<SessionCardProps> = ({
         if (data && data.total_counts && data.total_counts.total > 0) {
           setTodoData(data);
           setSessionTodos(session.id, data);
-        } else {
-          logger.debug('No todos found for session:', session.id);
         }
       } catch (error) {
         logger.error('Failed to fetch todo data for session:', session.id, error);

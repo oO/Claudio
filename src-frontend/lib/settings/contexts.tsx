@@ -13,12 +13,12 @@ import type {
   ProjectContext,
 } from './types';
 import {
-  useClaudioSettings,
-  useClaudeCodeSettings,
   useProjectContext,
-  useModelSetting,
-  useThemeSetting,
 } from './hooks';
+import {
+  useCachedClaudeCodeSettings,
+  useCachedClaudeCodeModelSetting,
+} from './useCachedClaudeCodeSettings';
 
 // ===== Project Context =====
 
@@ -105,12 +105,11 @@ export function ClaudioSettingsProvider({
     updateSetting,
     loading,
     error
-  } = useClaudioSettings(projectPath);
+  } = { settings: null, updateSetting: async () => {}, loading: false, error: null }; // Claudio settings use direct API now
 
-  const {
-    theme,
-    setTheme
-  } = useThemeSetting();
+  // Theme settings use direct Claudio API now
+  const theme = 'system';
+  const setTheme = async () => {};
 
   const contextValue = useMemo(() => ({
     settings,
@@ -164,13 +163,12 @@ export function ClaudeCodeSettingsProvider({
     updateSetting,
     loading,
     error
-  } = useClaudeCodeSettings(projectPath);
+  } = useCachedClaudeCodeSettings(projectPath);
 
   const {
     model,
-    setModel,
-    allSettings
-  } = useModelSetting(projectPath);
+    updateModel: setModel
+  } = useCachedClaudeCodeModelSetting(projectPath);
 
   const contextValue = useMemo(() => ({
     settings,
@@ -179,8 +177,8 @@ export function ClaudeCodeSettingsProvider({
     error,
     model,
     setModel,
-    allSettings,
-  }), [settings, updateSetting, loading, error, model, setModel, allSettings]);
+    allSettings: settings,
+  }), [settings, updateSetting, loading, error, model, setModel]);
 
   return (
     <ClaudeCodeSettingsContext.Provider value={contextValue}>
@@ -446,6 +444,22 @@ export function useCurrentModel(): string {
  */
 export function useCurrentTheme(): string {
   const { theme } = useClaudioSettingsContext();
+  return theme;
+}
+
+/**
+ * Direct access to cached model setting (bypasses context)
+ */
+export function useDirectCachedModel(projectPath?: string): string {
+  const { model } = useCachedClaudeCodeModelSetting(projectPath);
+  return model;
+}
+
+/**
+ * Direct access to cached theme setting (bypasses context)
+ */
+export function useDirectCachedTheme(projectPath?: string): string {
+  const theme = 'system'; // Theme settings use direct Claudio API now
   return theme;
 }
 

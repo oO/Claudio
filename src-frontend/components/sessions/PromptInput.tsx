@@ -1,13 +1,13 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Maximize2, X, ChevronUp, ChevronDown } from "lucide-react";
+import { X, ChevronUp, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { FilePicker, SlashCommandPicker, ImagePreview } from "@/components/common";
 import { DebugLabel } from "@/components/ui/atoms";
 import { type FileEntry, type SlashCommand } from "@/lib/api";
 import { logger } from '@/lib/logger';
-import { useCurrentModel, useUnifiedSettingsContext } from '@/lib/settings';
+import { useCachedClaudeCodeModelSetting } from '@/lib/settings/useCachedClaudeCodeSettings';
 // Define QueuedPrompt type inline (previously from deprecated useSessionState)
 export interface QueuedPrompt {
   id: string;
@@ -17,10 +17,9 @@ export interface QueuedPrompt {
 
 // Import our extracted components and hooks
 import { PromptTextarea } from "./PromptTextarea";
-import { ModelSelector } from "./ModelSelector";
+import { ModelSelector, type ModelId } from "./ModelSelector";
 import { ThinkingModeSelector, type ThinkingMode, THINKING_MODES } from "./ThinkingModeSelector";
 import { PromptControls } from "./PromptControls";
-import { ExpandedPromptModal } from "./ExpandedPromptModal";
 import {
   usePromptInput,
   useSlashCommands,
@@ -32,7 +31,7 @@ interface PromptInputProps {
   /**
    * Callback when prompt is sent
    */
-  onSend: (prompt: string, model: "sonnet" | "opus") => void;
+  onSend: (prompt: string, model: ModelId) => void;
   /**
    * Whether the input is loading
    */
@@ -42,9 +41,9 @@ interface PromptInputProps {
    */
   disabled?: boolean;
   /**
-   * Default model to select
+   * Default model to select (unused - model comes from settings)
    */
-  defaultModel?: "sonnet" | "opus";
+  defaultModel?: ModelId;
   /**
    * Project path for file picker
    */
@@ -88,7 +87,7 @@ const PromptInputInner = (
     onSend,
     isLoading = false,
     disabled = false,
-    defaultModel = "sonnet",
+    defaultModel,
     projectPath,
     className,
     onCancel,
@@ -99,25 +98,27 @@ const PromptInputInner = (
   }: PromptInputProps,
   ref: React.Ref<PromptInputRef>,
 ) => {
-  // Model from unified settings context - single source of truth!
-  const { model: globalModel, setModel } = useUnifiedSettingsContext();
+  // Get model from cached settings - this should now show "opusplan" correctly!
+  const { model: settingsModel, loading: modelLoading } = useCachedClaudeCodeModelSetting(projectPath);
 
-  // Convert global model to expected type with fallback
-  const selectedModel = (globalModel === "opus" || globalModel === "sonnet")
-    ? globalModel
-    : defaultModel;
+  // Temporary model override for current prompt only
+  const [temporaryModel, setTemporaryModel] = useState<ModelId | null>(null);
 
-  // Wrapper for sync model selection
-  const setSelectedModel = (model: "sonnet" | "opus") => {
-    setModel(model).catch(err => logger.error('Failed to update model:', err));
+  // Temporary thinking mode override for current prompt only
+  const [temporaryThinkingMode, setTemporaryThinkingMode] = useState<ThinkingMode | null>(null);
+
+  // Current effective model - temporary override or from settings
+  const selectedModel: ModelId | null = temporaryModel || (settingsModel as ModelId) || null;
+
+
+  // Set temporary model override (does not save to settings)
+  const setSelectedModel = (model: ModelId) => {
+    logger.debug('Setting temporary model override:', { model, previous: temporaryModel });
+    setTemporaryModel(model);
   };
-  const [selectedThinkingMode, setSelectedThinkingMode] = useState<ThinkingMode>("auto");
-  const [isExpanded, setIsExpanded] = useState(false);
-  
 
   // Textarea refs
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const expandedTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Core prompt input logic
   const {
@@ -132,6 +133,84 @@ const PromptInputInner = (
     defaultValue: "",
     disabled,
   });
+
+  // Track when user manually selects a mode (vs auto-detection)
+  const [userSelectedMode, setUserSelectedMode] = useState<{ mode: ThinkingMode; timestamp: number } | null>(null);
+
+  const setSelectedThinkingMode = useCallback((mode: ThinkingMode) => {
+    logger.debug('User manually selected thinking mode:', { mode, previous: temporaryThinkingMode, currentPrompt: prompt });
+    setTemporaryThinkingMode(mode);
+    setUserSelectedMode({ mode, timestamp: Date.now() }); // Track manual selection
+  }, [temporaryThinkingMode, prompt]);
+
+  // Auto-detect thinking mode from prompt text
+  const autoDetectedThinkingMode = useMemo(() => {
+    if (!prompt.trim()) return null;
+
+    const text = prompt.toLowerCase();
+
+    // Check for exact thinking commands in order of specificity (most specific first)
+    // Use word boundaries to avoid matching words like "thinking", "rethink", etc.
+    if (/\bultrathink\b/.test(text)) return 'ultrathink';
+    if (/\bthink\s+harder\b/.test(text)) return 'think_harder';
+    if (/\bthink\s+hard\b/.test(text)) return 'think_hard';
+    if (/\bthink\b/.test(text)) return 'think';
+
+    return null;
+  }, [prompt]);
+
+  // Current effective thinking mode - temporary override > auto-detected > default
+  const selectedThinkingMode: ThinkingMode = temporaryThinkingMode || autoDetectedThinkingMode || "auto";
+
+  // Update prompt text when user manually changes selector (KISS!)
+  const updatePromptWithThinking = useCallback((mode: ThinkingMode) => {
+    const currentText = prompt.trim();
+    if (!currentText) return;
+
+    logger.debug('updatePromptWithThinking:', { mode, currentText });
+
+    // Remove any existing thinking phrases - handle all cases
+    let cleanText = currentText
+      // Remove "ultrathink" (with or without dots, anywhere in text)
+      .replace(/(\.\s*)?ultrathink(\.\s*)?/gi, '')
+      // Remove "think harder" (with or without dots)
+      .replace(/(\.\s*)?think\s+harder(\.\s*)?/gi, '')
+      // Remove "think hard" (with or without dots)
+      .replace(/(\.\s*)?think\s+hard(\.\s*)?/gi, '')
+      // Remove standalone "think" (with or without dots, but not part of other words)
+      .replace(/(\.\s*)?\bthink\b(\.\s*)?/gi, '')
+      // Clean up multiple spaces and trailing punctuation
+      .replace(/\s+/g, ' ')
+      .replace(/\.\s*\./g, '.')
+      .trim();
+
+    logger.debug('Cleaned text:', { original: currentText, cleaned: cleanText });
+
+    // Add new thinking phrase if not auto mode
+    const thinkingMode = THINKING_MODES.find(m => m.id === mode);
+    if (thinkingMode && thinkingMode.phrase && mode !== 'auto') {
+      const updatedText = `${cleanText}. ${thinkingMode.phrase}.`;
+      logger.debug('Adding thinking phrase:', { phrase: thinkingMode.phrase, updatedText });
+      setPrompt(updatedText);
+    } else {
+      // Auto mode - just use the clean text
+      logger.debug('Auto mode, using clean text:', cleanText);
+      setPrompt(cleanText);
+    }
+  }, [prompt, setPrompt]);
+
+  // Update prompt when user manually selects a thinking mode
+  React.useEffect(() => {
+    if (userSelectedMode && prompt.trim()) {
+      logger.debug('Updating prompt for manual mode selection:', userSelectedMode.mode);
+      updatePromptWithThinking(userSelectedMode.mode);
+      setUserSelectedMode(null); // Clear after processing
+    }
+  }, [userSelectedMode, updatePromptWithThinking, prompt]);
+
+  // Temporary override persists until user sends prompt or manually changes selection
+  // Auto-detection should not clear manual selections
+
 
   // Image handling
   const {
@@ -148,12 +227,10 @@ const PromptInputInner = (
     projectPath,
     onPromptUpdate: updatePrompt,
     onFocusTextarea: () => {
-      const target = isExpanded ? expandedTextareaRef.current : textareaRef.current;
-      target?.focus();
+      textareaRef.current?.focus();
     },
     onSetCursor: (position: number) => {
-      const target = isExpanded ? expandedTextareaRef.current : textareaRef.current;
-      target?.setSelectionRange(position, position);
+      textareaRef.current?.setSelectionRange(position, position);
     },
   });
 
@@ -183,22 +260,17 @@ const PromptInputInner = (
     projectPath,
   });
 
-  // Focus management
+  // Focus management - simplified since no expanded modal
   useEffect(() => {
-    if (isExpanded && expandedTextareaRef.current) {
-      expandedTextareaRef.current.focus();
-    } else if (!isExpanded && textareaRef.current) {
-      textareaRef.current.focus();
-    }
-  }, [isExpanded]);
+    textareaRef.current?.focus();
+  }, []);
 
   // Expose imperative handle
   React.useImperativeHandle(
     ref,
     () => ({
       focus: () => {
-        const target = isExpanded ? expandedTextareaRef.current : textareaRef.current;
-        target?.focus();
+        textareaRef.current?.focus();
       },
       clear: () => {
         clearPrompt();
@@ -210,21 +282,27 @@ const PromptInputInner = (
         setPrompt(newPrompt);
       }
     }),
-    [addImage, prompt, setPrompt, clearPrompt, isExpanded]
+    [addImage, prompt, setPrompt, clearPrompt]
   );
 
-  // Handle sending with thinking mode
+  // Don't render if settings aren't loaded yet or model is still null
+  // IMPORTANT: This must be AFTER all hooks to avoid "more hooks than previous render" error
+  if (modelLoading || selectedModel === null) {
+    return null; // Component should not render until model is loaded
+  }
+
+  // Handle sending - KISS! Thinking phrase is already in the prompt text
   const handleSend = () => {
     if (canSend) {
-      let finalPrompt = prompt.trim();
-      
-      // Append thinking phrase if not auto mode
-      const thinkingMode = THINKING_MODES.find(m => m.id === selectedThinkingMode);
-      if (thinkingMode && thinkingMode.phrase) {
-        finalPrompt = `${finalPrompt}.\n\n${thinkingMode.phrase}.`;
-      }
-      
-      onSend(finalPrompt, selectedModel);
+      const finalPrompt = prompt.trim(); // Send exactly what user sees
+
+      // Send the actual selected model - let backend decide if --model flag is needed
+      // TypeScript doesn't know selectedModel is guaranteed non-null here due to early return
+      onSend(finalPrompt, selectedModel!);
+
+      // Reset both temporary overrides after sending
+      setTemporaryModel(null);
+      setTemporaryThinkingMode(null);
       clearPrompt();
       setEmbeddedImages([]);
     }
@@ -277,16 +355,15 @@ const PromptInputInner = (
 
     // Focus and set cursor position
     setTimeout(() => {
-      const target = isExpanded ? expandedTextareaRef.current : textareaRef.current;
-      target?.focus();
+      textareaRef.current?.focus();
       const newCursorPos = beforeAt.length + relativePath.length + 2; // +2 for @ and space
-      target?.setSelectionRange(newCursorPos, newCursorPos);
+      textareaRef.current?.setSelectionRange(newCursorPos, newCursorPos);
     }, 0);
   };
 
   // Enhanced slash command select handler
   const handleSlashCommandSelect = (command: SlashCommand) => {
-    const textarea = isExpanded ? expandedTextareaRef.current : textareaRef.current;
+    const textarea = textareaRef.current;
     if (!textarea) return;
 
     // Find the / position before cursor
@@ -348,7 +425,7 @@ const PromptInputInner = (
       return;
     }
 
-    if (e.key === "Enter" && !e.shiftKey && !isExpanded && !showFilePicker && !showSlashCommandPicker) {
+    if (e.key === "Enter" && !e.shiftKey && !showFilePicker && !showSlashCommandPicker) {
       e.preventDefault();
       handleSend();
     }
@@ -424,28 +501,6 @@ const PromptInputInner = (
         </AnimatePresence>
       )}
       
-      {/* Expanded Modal */}
-      <ExpandedPromptModal
-        isOpen={isExpanded}
-        onClose={() => setIsExpanded(false)}
-        prompt={prompt}
-        onPromptChange={handleTextChange}
-        onPaste={handlePaste}
-        selectedModel={selectedModel}
-        onModelSelect={setSelectedModel}
-        selectedThinkingMode={selectedThinkingMode}
-        onThinkingModeSelect={setSelectedThinkingMode}
-        embeddedImages={embeddedImages}
-        onRemoveImage={(index) => handleRemoveImage(index, prompt)}
-        onSend={handleSend}
-        canSend={canSend}
-        isLoading={isLoading}
-        disabled={disabled}
-        onDragEnter={handleDrag}
-        onDragLeave={handleDrag}
-        onDragOver={handleDrag}
-        onDrop={handleDrop}
-      />
 
       {/* Docked Input Bar */}
       <div
@@ -469,23 +524,9 @@ const PromptInputInner = (
             />
           )}
 
-          <div className="p-4">
-            <div className="flex items-end gap-3">
-              {/* Model Selector */}
-              <ModelSelector
-                selectedModel={selectedModel}
-                onModelSelect={setSelectedModel}
-                disabled={disabled}
-              />
-
-              {/* Thinking Mode Selector */}
-              <ThinkingModeSelector
-                selectedThinkingMode={selectedThinkingMode}
-                onThinkingModeSelect={setSelectedThinkingMode}
-                disabled={disabled}
-                showTooltip={true}
-              />
-
+          <div className="p-4 space-y-3">
+            {/* Line 1: Prompt Input + Send Button */}
+            <div className="flex items-start gap-3">
               {/* Prompt Input */}
               <div className="flex-1 relative">
                 <PromptTextarea
@@ -504,15 +545,7 @@ const PromptInputInner = (
                   onDrop={handleDrop}
                 />
 
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setIsExpanded(true)}
-                  disabled={disabled}
-                  className="absolute right-1 bottom-1 h-8 w-8"
-                >
-                  <Maximize2 className="h-4 w-4" />
-                </Button>
+                {/* Expand button removed - no expanded modal needed */}
 
                 {/* File Picker */}
                 <AnimatePresence>
@@ -550,7 +583,24 @@ const PromptInputInner = (
               />
             </div>
 
-            <div className="mt-2 text-xs text-muted-foreground">
+            {/* Line 2: Model Selector + Thinking Mode Selector */}
+            <div className="flex items-center gap-4">
+              <ModelSelector
+                selectedModel={selectedModel!}
+                onModelSelect={setSelectedModel}
+                disabled={disabled}
+              />
+
+              <ThinkingModeSelector
+                selectedThinkingMode={selectedThinkingMode}
+                onThinkingModeSelect={setSelectedThinkingMode}
+                disabled={disabled}
+                showTooltip={false}
+              />
+            </div>
+
+
+            <div className="text-xs text-muted-foreground">
               Press Enter to send, Shift+Enter for new line{projectPath?.trim() && ", @ to mention files, / for commands, drag & drop or paste images"}
             </div>
           </div>

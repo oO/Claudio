@@ -3,15 +3,16 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tauri::{command, AppHandle, Manager, PhysicalPosition, PhysicalSize};
 use tokio::time::sleep;
-use crate::commands::proxy::{get_claudio_settings, save_claudio_settings};
+use crate::commands::claudio_app_settings::{load_claudio_app_settings, save_claudio_app_settings};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WindowState {
-    pub x: i32,
-    pub y: i32,
-    pub width: u32,
-    pub height: u32,
+    pub width: f64,
+    pub height: f64,
+    pub x: f64,
+    pub y: f64,
     pub maximized: bool,
+    pub fullscreen: bool,
 }
 
 #[derive(Debug)]
@@ -32,11 +33,12 @@ impl Default for DebounceState {
 impl Default for WindowState {
     fn default() -> Self {
         Self {
-            x: 100,
-            y: 100,
-            width: 1200,
-            height: 800,
+            width: 1200.0,
+            height: 800.0,
+            x: 100.0,
+            y: 100.0,
             maximized: false,
+            fullscreen: false,
         }
     }
 }
@@ -45,23 +47,23 @@ impl Default for WindowState {
 #[command]
 pub async fn save_window_state(_app_handle: AppHandle, state: WindowState) -> Result<(), String> {
     // Load existing settings
-    let mut settings = get_claudio_settings().await.unwrap_or_default();
-    
+    let mut settings = load_claudio_app_settings().await.unwrap_or_default();
+
     // Update window state
     settings.window_state = Some(state.clone());
-    
-    // Save back to file
-    save_claudio_settings(settings).await?;
-    
-    log::info!("Window state saved successfully");
+
+    // Save back to file immediately
+    save_claudio_app_settings(settings).await?;
+
+    log::debug!("Window state saved to file");
     Ok(())
 }
 
 #[command]
 pub async fn load_window_state() -> Result<WindowState, String> {
     // Load Claudio settings
-    let settings = get_claudio_settings().await.unwrap_or_default();
-    
+    let settings = load_claudio_app_settings().await.unwrap_or_default();
+
     // Return window state if it exists, otherwise use defaults
     let state = settings.window_state.unwrap_or_else(WindowState::default);
     
@@ -82,13 +84,17 @@ pub async fn get_current_window_state(app_handle: AppHandle) -> Result<WindowSta
     
     let maximized = window.is_maximized()
         .map_err(|e| format!("Failed to get maximized state: {}", e))?;
-    
+
+    let fullscreen = window.is_fullscreen()
+        .map_err(|e| format!("Failed to get fullscreen state: {}", e))?;
+
     let state = WindowState {
-        x: position.x,
-        y: position.y,
-        width: size.width,
-        height: size.height,
+        x: position.x as f64,
+        y: position.y as f64,
+        width: size.width as f64,
+        height: size.height as f64,
         maximized,
+        fullscreen,
     };
     
     Ok(state)
@@ -102,12 +108,12 @@ pub async fn restore_window_state(app_handle: AppHandle) -> Result<(), String> {
         .ok_or("Main window not found")?;
     
     // Restore position
-    let position = PhysicalPosition::new(state.x, state.y);
+    let position = PhysicalPosition::new(state.x as i32, state.y as i32);
     window.set_position(position)
         .map_err(|e| format!("Failed to set window position: {}", e))?;
-    
+
     // Restore size
-    let size = PhysicalSize::new(state.width, state.height);
+    let size = PhysicalSize::new(state.width as u32, state.height as u32);
     window.set_size(size)
         .map_err(|e| format!("Failed to set window size: {}", e))?;
     
@@ -116,7 +122,13 @@ pub async fn restore_window_state(app_handle: AppHandle) -> Result<(), String> {
         window.maximize()
             .map_err(|e| format!("Failed to maximize window: {}", e))?;
     }
-    
+
+    // Restore fullscreen state
+    if state.fullscreen {
+        window.set_fullscreen(true)
+            .map_err(|e| format!("Failed to set fullscreen: {}", e))?;
+    }
+
     log::info!("Window state restored successfully");
     Ok(())
 }

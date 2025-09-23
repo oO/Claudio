@@ -171,5 +171,37 @@ Agent prompt content here...
 - Resource monitoring for performance insights
 - Error boundary integration for crash reporting
 
+### Settings Architecture
+
+**Two Completely Separate Settings Systems - DO NOT UNIFY!**
+
+#### 1. Claudio App Settings (Our Control)
+- **Purpose**: Window position, tabs, proxy, theme, telemetry - app-only settings
+- **Storage**: `~/.claudio/settings.json` (global only, no project-level complexity)
+- **Implementation**: Simple in-memory cache with flush-on-change (`claudio_app_settings.rs`)
+- **Frontend API**: `useClaudioAppSettings()` - optimistic updates, instant UI response
+- **No watchers needed** - only our app reads/writes this file
+
+#### 2. Claude Code Settings (Shared Control)
+- **Purpose**: Model config, permissions, API keys - shared with Claude Code binary
+- **Storage**: Multi-layered files that Claude Code binary also modifies
+  - `~/.claude/settings.json` (global)
+  - `project/.claude/settings.json` (project shared)
+  - `project/.claude/settings.local.json` (project local)
+- **Implementation**: Complex orchestrator with file watchers (`claude_code_settings.rs`)
+- **Frontend API**: `useClaudeCodeSettings(projectPath)` - validated updates, external change detection
+- **Requires orchestration** - both our app and Claude Code binary can modify simultaneously
+
+#### Why Two Systems?
+1. **Different ownership models** - we control vs shared control
+2. **Different complexity needs** - simple cache vs multi-layer precedence
+3. **Different UX patterns** - optimistic vs validated updates
+4. **KISS principle** - each system optimized for its purpose
+
+#### Naming Convention
+- **ClaudioAppSettings** / **claudio_app_settings.rs** - Our app's settings only
+- **ClaudeCodeSettings** / **claude_code_settings.rs** - Shared Claude Code settings
+- **Never unify these** - they serve fundamentally different purposes
+
 ### Agent Collaboration
 Always delegate to the best available sub-agent for the task using Claude Code's native Task tool.

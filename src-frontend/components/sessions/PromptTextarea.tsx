@@ -58,26 +58,26 @@ export const PromptTextarea = React.forwardRef<HTMLTextAreaElement, PromptTextar
       <div className="relative">
         <DebugLabel label="PromptTextarea" />
         <Textarea
-        ref={ref}
-        value={value}
-        onChange={onChange}
-        onKeyDown={onKeyDown}
-        onPaste={onPaste}
-        placeholder={placeholder}
-        disabled={disabled}
-        rows={rows}
-        className={cn(
-          "resize-none",
-          autoResize && "min-h-[44px] max-h-[120px]",
-          dragActive && "border-primary",
-          className
-        )}
-        onDragEnter={onDragEnter}
-        onDragLeave={onDragLeave}
-        onDragOver={onDragOver}
-        onDrop={onDrop}
-        style={autoResize ? undefined : { minHeight, maxHeight }}
-      />
+          ref={ref}
+          value={value}
+          onChange={onChange}
+          onKeyDown={onKeyDown}
+          onPaste={onPaste}
+          placeholder={placeholder}
+          disabled={disabled}
+          rows={rows}
+          className={cn(
+            "resize-none",
+            autoResize && "min-h-[44px] max-h-[120px]",
+            dragActive && "border-primary",
+            className
+          )}
+          onDragEnter={onDragEnter}
+          onDragLeave={onDragLeave}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+          style={autoResize ? undefined : { minHeight, maxHeight }}
+        />
       </div>
     );
   }

@@ -7,7 +7,7 @@ pub mod mcp;
 pub mod usage;
 pub mod storage;
 pub mod slash_commands;
-pub mod proxy;
+pub mod claudio_app_settings;
 pub mod window;
 pub mod claude_sdk_simple;
 pub mod claude_direct;

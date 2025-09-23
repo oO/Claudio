@@ -6,7 +6,7 @@
 
 // ===== Core Settings Types =====
 
-export type SettingsType = 'claudio' | 'claudecode';
+export type SettingsType = 'claudecode'; // Only Claude Code settings use orchestrator now
 
 export type SettingsLevel = 'env' | 'local' | 'project' | 'global';
 
@@ -21,7 +21,6 @@ export interface WindowState {
 }
 
 export interface ClaudioSettings {
-  theme?: string;
   telemetry?: boolean;
   auto_update?: boolean;
   default_project_path?: string;
@@ -50,6 +49,18 @@ export interface ClaudeCodeConfig {
   permissions?: Permissions;
   hooks?: HookConfig;
   system_prompt?: string;
+  // Additional dynamic fields
+  [key: string]: any;
+}
+
+// Support for direct JSON format from new backend
+export interface ClaudeCodeConfigDirect {
+  model?: string;
+  permissions?: any; // Raw JSON format
+  hooks?: any;       // Raw JSON format
+  env?: any;
+  statusLine?: any;
+  verbose?: boolean;
   // Additional dynamic fields
   [key: string]: any;
 }
@@ -167,7 +178,6 @@ export interface ThemeConfig {
 // ===== Settings Update Payloads =====
 
 export interface ClaudioSettingsUpdate {
-  theme?: ThemeId;
   telemetry?: boolean;
   auto_update?: boolean;
   default_project_path?: string;
@@ -196,7 +206,6 @@ export interface SettingsHandle {
 
 export interface UseSettingsOptions {
   projectPath?: string;
-  settingsType: SettingsType;
   autoCreate?: boolean;
   onUpdate?: (event: SettingsUpdateEvent) => void;
 }
@@ -254,7 +263,7 @@ export const VALID_THEMES: ThemeConfig[] = [
 
 export function isClaudioSettings(settings: any): settings is ClaudioSettings {
   return settings && typeof settings === 'object' &&
-    (settings.theme !== undefined || settings.telemetry !== undefined || settings.auto_update !== undefined);
+    (settings.telemetry !== undefined || settings.auto_update !== undefined);
 }
 
 export function isClaudeCodeSettings(settings: any): settings is ClaudeCodeSettings {
@@ -273,10 +282,7 @@ export function isValidTheme(theme: string): theme is ThemeId {
 // ===== Settings Path Helpers =====
 
 export function getSettingsDisplayName(settingsType: SettingsType): string {
-  switch (settingsType) {
-    case 'claudio': return 'Claudio Settings';
-    case 'claudecode': return 'Claude Code Settings';
-  }
+  return 'Claude Code Settings';
 }
 
 export function getSettingsLevelDisplayName(level: SettingsLevel): string {

@@ -80,7 +80,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const loadTheme = async () => {
       try {
         // Load custom colors first
-        const savedColors = await api.getSetting(CUSTOM_COLORS_STORAGE_KEY);
+        const savedColors = await api.loadClaudioAppSetting(CUSTOM_COLORS_STORAGE_KEY);
         let colors = customColors;
 
         if (savedColors) {
@@ -89,7 +89,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
 
         // Load theme preference
-        const savedTheme = await api.getSetting(THEME_STORAGE_KEY);
+        const savedTheme = await api.loadClaudioAppSetting(THEME_STORAGE_KEY);
 
         let themeMode: ThemeMode = 'neutral_dark'; // default
         if (savedTheme) {
@@ -150,7 +150,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       applyTheme(newTheme, customColors);
 
       // Save to storage
-      await api.saveSetting(THEME_STORAGE_KEY, newTheme);
+      await api.saveClaudioAppSetting(THEME_STORAGE_KEY, newTheme);
     } catch (error) {
       logger.error('Failed to save theme preference:', error);
     } finally {
@@ -171,7 +171,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
 
       // Save to storage
-      await api.saveSetting(CUSTOM_COLORS_STORAGE_KEY, JSON.stringify(newColors));
+      await api.saveClaudioAppSetting(CUSTOM_COLORS_STORAGE_KEY, JSON.stringify(newColors));
     } catch (error) {
       logger.error('Failed to save custom colors:', error);
     } finally {

@@ -47,7 +47,6 @@ export const RunningClaudeSessions: React.FC<RunningClaudeSessionsProps> = ({
         // Listen for session file changes (created/modified/removed)
         // This is emitted by the session_watcher.rs file watcher system
         unlistenFileWatcher = await listen('session-file-changed', (event: any) => {
-          logger.debug('Session file changed event received:', event.payload);
           // Refresh the running sessions list when session files change
           loadRunningSessions();
         });

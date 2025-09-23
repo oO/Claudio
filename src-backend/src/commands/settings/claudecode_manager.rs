@@ -141,12 +141,12 @@ impl ClaudeCodeSettingsManager {
 
     /// Load environment variables layer
     async fn load_env_layer(&self) -> Option<ClaudeCodeConfig> {
-        let mut config = ClaudeCodeConfig::default();
+        let mut config = ClaudeCodeConfig::empty();
         let mut has_any = false;
 
         // Check for model environment variable
         if let Some(model) = env_vars::get_model_from_env() {
-            config.model = Some(model);
+            config.set_model(Some(model));
             has_any = true;
         }
 
@@ -194,7 +194,7 @@ impl ClaudeCodeSettingsManager {
         self.load_config_from_file(&local_settings_path).await
     }
 
-    /// Load config from a specific file
+    /// Load config from a specific file - KISS approach with raw JSON
     async fn load_config_from_file(&self, file_path: &Path) -> Result<Option<ClaudeCodeConfig>, String> {
         let content = fs::read_to_string(file_path)
             .map_err(|e| format!("Failed to read settings file {:?}: {}", file_path, e))?;
@@ -203,9 +203,13 @@ impl ClaudeCodeSettingsManager {
             return Ok(None);
         }
 
-        // Parse JSON
-        let config: ClaudeCodeConfig = serde_json::from_str(&content)
-            .map_err(|e| format!("Failed to parse settings JSON from {:?}: {}", file_path, e))?;
+        // Parse as raw JSON first - no struct constraints!
+        let json: serde_json::Value = serde_json::from_str(&content)
+            .map_err(|e| format!("Failed to parse JSON from {:?}: {}", file_path, e))?;
+
+        // Wrap in our JSON-based config
+        let config = ClaudeCodeConfig::from_json(json);
+        log::debug!("Successfully loaded config from {:?} with model: {:?}", file_path, config.model());
 
         Ok(Some(config))
     }
@@ -238,26 +242,11 @@ impl ClaudeCodeSettingsManager {
         effective
     }
 
-    /// Apply one config over another (higher precedence overwrites)
+    /// Apply one config over another (higher precedence overwrites) - JSON merge approach
     fn apply_config(&self, target: &mut ClaudeCodeConfig, source: &ClaudeCodeConfig) {
-        if source.model.is_some() {
-            target.model = source.model.clone();
-        }
-        if source.permissions.is_some() {
-            target.permissions = source.permissions.clone();
-        }
-        if source.hooks.is_some() {
-            target.hooks = source.hooks.clone();
-        }
-        if source.system_prompt.is_some() {
-            target.system_prompt = source.system_prompt.clone();
-        }
-        if source.max_turns.is_some() {
-            target.max_turns = source.max_turns;
-        }
-        if source.auto_save.is_some() {
-            target.auto_save = source.auto_save;
-        }
+        // Merge JSON objects - source overwrites target for any matching keys
+        target.merge(source);
+        log::debug!("Applied config merge - target now has model: {:?}", target.model());
     }
 
     /// Update global settings file
@@ -293,54 +282,31 @@ impl ClaudeCodeSettingsManager {
         self.save_config_to_file(&config, &settings_path).await
     }
 
-    /// Update a specific field in config
+    /// Update a specific field in config - KISS JSON approach
     fn update_config_field(
         &self,
         config: &mut ClaudeCodeConfig,
         key: String,
         value: serde_json::Value,
     ) -> Result<(), String> {
-        match key.as_str() {
-            "model" => {
-                config.model = serde_json::from_value(value)
-                    .map_err(|e| format!("Invalid model value: {}", e))?;
-            },
-            "permissions" => {
-                config.permissions = serde_json::from_value(value)
-                    .map_err(|e| format!("Invalid permissions value: {}", e))?;
-            },
-            "hooks" => {
-                config.hooks = serde_json::from_value(value)
-                    .map_err(|e| format!("Invalid hooks value: {}", e))?;
-            },
-            "system_prompt" => {
-                config.system_prompt = serde_json::from_value(value)
-                    .map_err(|e| format!("Invalid system_prompt value: {}", e))?;
-            },
-            "max_turns" => {
-                config.max_turns = serde_json::from_value(value)
-                    .map_err(|e| format!("Invalid max_turns value: {}", e))?;
-            },
-            "auto_save" => {
-                config.auto_save = serde_json::from_value(value)
-                    .map_err(|e| format!("Invalid auto_save value: {}", e))?;
-            },
-            _ => {
-                return Err(format!("Unknown Claude Code setting key: {}", key));
-            }
-        }
+        log::debug!("Updating config field '{}' with value: {:?}", key, value);
 
+        // Just set the field directly in the JSON - no validation needed
+        // Claude Code will validate its own settings when it reads them
+        config.json[&key] = value;
+
+        log::debug!("Config field '{}' updated successfully. Model is now: {:?}", key, config.model());
         Ok(())
     }
 
-    /// Save config to file with atomic write
+    /// Save config to file with atomic write - preserves all JSON fields
     async fn save_config_to_file(&self, config: &ClaudeCodeConfig, file_path: &Path) -> Result<(), String> {
         // Ensure parent directory exists
         ensure_parent_dir_exists(file_path)
             .map_err(|e| format!("Failed to create settings directory: {}", e))?;
 
-        // Serialize with pretty printing
-        let json_content = serde_json::to_string_pretty(config)
+        // Use our JSON-aware pretty printing method
+        let json_content = config.to_pretty_json()
             .map_err(|e| format!("Failed to serialize Claude Code settings: {}", e))?;
 
         // Atomic write
@@ -352,7 +318,8 @@ impl ClaudeCodeSettingsManager {
         fs::rename(&temp_path, file_path)
             .map_err(|e| format!("Failed to commit settings file: {}", e))?;
 
-        log::debug!("Successfully saved Claude Code settings to {:?}", file_path);
+        log::debug!("Successfully saved Claude Code settings to {:?} with model: {:?}",
+                   file_path, config.model());
         Ok(())
     }
 

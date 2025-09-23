@@ -36,31 +36,15 @@ pub async fn execute_claude_code(
     prompt: String,
     model: String,
 ) -> Result<(), String> {
-    log::info!("Executing Claude Code with prompt at path: {}", project_path);
-    
+    log::info!("prompt: {}", prompt);
+
     let claude_path = find_claude_binary(&app)?;
     let args = vec!["--model".to_string(), model.clone()];
-    
+
     let cmd = create_system_command(&claude_path, args, &project_path);
     spawn_claude_process(app, cmd, prompt, model, project_path).await
 }
 
-/// Continue an existing Claude Code conversation with streaming output
-#[command]
-pub async fn continue_claude_code(
-    app: AppHandle,
-    project_path: String,
-    prompt: String,
-    model: String,
-) -> Result<(), String> {
-    log::info!("Continuing Claude Code conversation at path: {}", project_path);
-    
-    let claude_path = find_claude_binary(&app)?;
-    let args = vec!["--continue".to_string(), "--model".to_string(), model.clone()];
-    
-    let cmd = create_system_command(&claude_path, args, &project_path);
-    spawn_claude_process(app, cmd, prompt, model, project_path).await
-}
 
 /// Resume an existing Claude Code session by ID with streaming output
 #[command]
@@ -71,8 +55,8 @@ pub async fn resume_claude_code(
     prompt: String,
     model: String,
 ) -> Result<(), String> {
-    log::info!("Resuming Claude Code session {} at path: {}", session_id, project_path);
-    
+    log::info!("prompt: {}", prompt);
+
     let claude_path = find_claude_binary(&app)?;
     let args = vec!["--resume".to_string(), session_id, "--model".to_string(), model.clone()];
     

@@ -1,13 +1,11 @@
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 
-/// Types of settings that can be managed - SEPARATE from session types
+/// Types of settings that can be managed - CLAUDE CODE SETTINGS ONLY
+/// Claudio app settings handled separately via claudio_app_settings module
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum SettingsType {
-    /// App-level Claudio settings (single file, global)
-    #[serde(rename = "claudio")]
-    Claudio,
     /// CLI Claude Code settings (multi-level precedence)
     #[serde(rename = "claudecode")]
     ClaudeCode,
@@ -31,83 +29,87 @@ pub enum SettingsLevel {
 pub struct SettingsState {
     pub handle_id: String,
     pub settings_type: SettingsType,
-    pub project_path: Option<String>,  // None for global Claudio settings
+    pub project_path: Option<String>,  // Required for Claude Code settings
     pub effective_settings: serde_json::Value,
     pub last_updated: i64,
 }
 
-/// Claudio app-level settings structure
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ClaudioSettings {
-    pub theme: Option<String>,           // "light", "dark", "system"
-    pub telemetry: Option<bool>,         // Analytics opt-out
-    pub auto_update: Option<bool>,       // Auto update Claudio
-    pub default_project_path: Option<String>,
-    pub window_state: Option<WindowState>,
-    pub debug_mode: Option<bool>,
-    pub proxy_settings: Option<ProxySettings>,
-}
+// Claudio app settings removed - handled by claudio_app_settings module
+// Only Claude Code settings remain in the orchestrator system
 
-impl Default for ClaudioSettings {
-    fn default() -> Self {
-        Self {
-            theme: Some("system".to_string()),
-            telemetry: Some(true),
-            auto_update: Some(true),
-            default_project_path: None,
-            window_state: None,
-            debug_mode: Some(false),
-            proxy_settings: None,
-        }
-    }
-}
-
-/// Window state for Claudio app
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WindowState {
-    pub width: f64,
-    pub height: f64,
-    pub x: Option<f64>,
-    pub y: Option<f64>,
-    pub maximized: bool,
-    pub fullscreen: bool,
-}
-
-/// Proxy settings for Claudio
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProxySettings {
-    pub enabled: bool,
-    pub host: Option<String>,
-    pub port: Option<u16>,
-    pub username: Option<String>,
-    pub password: Option<String>,
-}
-
-/// Claude Code CLI configuration
+/// Claude Code CLI configuration - KISS JSON wrapper approach
+/// This preserves ALL fields from Claude Code's settings.json including unknown ones
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClaudeCodeConfig {
-    pub model: Option<String>,          // "auto", "default", "opus", "sonnet", "opusplan"
-    pub permissions: Option<Permissions>,
-    pub hooks: Option<HookConfig>,
-    pub system_prompt: Option<String>,
-    pub max_turns: Option<u32>,
-    pub auto_save: Option<bool>,
+    #[serde(flatten)]
+    pub json: serde_json::Value,
+}
+
+impl ClaudeCodeConfig {
+    /// Create from raw JSON value
+    pub fn from_json(json: serde_json::Value) -> Self {
+        Self { json }
+    }
+
+    /// Create empty config
+    pub fn empty() -> Self {
+        Self {
+            json: serde_json::json!({}),
+        }
+    }
+
+    /// Get model setting
+    pub fn model(&self) -> Option<String> {
+        self.json.get("model")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())
+    }
+
+    /// Set model setting
+    pub fn set_model(&mut self, model: Option<String>) {
+        if let Some(model_val) = model {
+            self.json["model"] = serde_json::Value::String(model_val);
+        } else {
+            if let Some(obj) = self.json.as_object_mut() {
+                obj.remove("model");
+            }
+        }
+    }
+
+
+
+
+    /// Merge another config into this one (other overwrites this)
+    pub fn merge(&mut self, other: &ClaudeCodeConfig) {
+        if let (Some(this_obj), Some(other_obj)) = (self.json.as_object_mut(), other.json.as_object()) {
+            for (key, value) in other_obj {
+                this_obj.insert(key.clone(), value.clone());
+            }
+        }
+    }
+
+    /// Convert to pretty JSON string
+    pub fn to_pretty_json(&self) -> Result<String, serde_json::Error> {
+        serde_json::to_string_pretty(&self.json)
+    }
 }
 
 impl Default for ClaudeCodeConfig {
     fn default() -> Self {
         Self {
-            model: Some("auto".to_string()),
-            permissions: None,
-            hooks: None,
-            system_prompt: None,
-            max_turns: None,
-            auto_save: Some(true),
+            json: serde_json::json!({
+                "model": "auto",
+                "auto_save": true
+            }),
         }
     }
 }
 
-/// Claude Code settings with multi-level precedence
+/// CLAUDE CODE SETTINGS (SHARED WITH ANTHROPIC'S CLAUDE CODE BINARY)
+/// ⚠️  CRITICAL: These settings are SHARED between our app and Claude Code binary
+/// Both applications can read/write these files simultaneously
+/// Requires watchers and orchestration to handle concurrent access
+/// Files: ~/.claude/settings.json, project/.claude/settings.json, project/.claude/settings.local.json
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClaudeCodeSettings {
     pub effective: ClaudeCodeConfig,    // Computed final settings
@@ -135,26 +137,8 @@ impl Default for ClaudeCodeLayers {
     }
 }
 
-/// Permissions configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Permissions {
-    pub allowed_tools: Option<Vec<String>>,
-    pub denied_tools: Option<Vec<String>>,
-    pub auto_approve: Option<bool>,
-    pub dangerous_commands: Option<bool>,
-}
-
-/// Hook configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HookConfig {
-    pub session_start: Option<String>,
-    pub session_end: Option<String>,
-    pub user_prompt_submit: Option<String>,
-    pub tool_use: Option<String>,
-    pub stop: Option<String>,
-    pub subagent_stop: Option<String>,
-    pub pre_compact: Option<String>,
-}
+/// Legacy permissions/hooks structs removed - we handle these as raw JSON now
+/// This preserves Claude Code's actual format without trying to force it into our structures
 
 /// Settings handle for frontend communication
 pub struct SettingsHandle {

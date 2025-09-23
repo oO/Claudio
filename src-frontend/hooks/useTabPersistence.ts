@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { api } from '@/lib/api';
 import { Tab } from '@/contexts/TabContext';
 import { logger } from '@/lib/logger';
@@ -12,6 +12,13 @@ export interface PersistedTabSession {
   activePanelIndex: number;
 }
 
+// Default empty session structure
+const DEFAULT_EMPTY_SESSION: PersistedTabSession = {
+  tabs: [],
+  panelBreaks: [],
+  activePanelIndex: 0,
+};
+
 /**
  * KISS Tab persistence - just save/restore raw tab data on shutdown
  * No complex dehydration/rehydration nonsense!
@@ -23,11 +30,6 @@ export const useTabPersistence = () => {
    */
   const saveTabs = useCallback(async (tabs: Tab[], panelBreaks: number[] = [], activePanelIndex: number = 0) => {
     try {
-      // logger.info('💾 SAVE TABS CALLED:', {
-      //   tabCount: tabs.length,
-      //   tabTypes: tabs.map(t => t.type),
-      //   tabTitles: tabs.map(t => t.title)
-      // });
       
       // KISS: Only save minimal creation inputs, not fetched data
       const tabsToSave: Partial<Tab>[] = tabs.map(tab => {
@@ -54,9 +56,8 @@ export const useTabPersistence = () => {
       });
 
       if (tabsToSave.length === 0) {
-        // Clear storage if no tabs
-        await api.saveSetting(STORAGE_KEY, '');
-        logger.debug('Cleared tab session (no tabs)');
+        // Save empty session if no tabs
+        await api.saveClaudioAppSetting(STORAGE_KEY, JSON.stringify(DEFAULT_EMPTY_SESSION));
         return;
       }
 
@@ -66,14 +67,7 @@ export const useTabPersistence = () => {
         activePanelIndex,
       };
 
-      await api.saveSetting(STORAGE_KEY, JSON.stringify(sessionData));
-
-      logger.debug(`Saved tab session: ${tabsToSave.length} tabs`);
-
-      // Log each saved tab for debugging
-      tabsToSave.forEach((tab, index) => {
-        logger.debug(`Saved Tab ${index}: type=${tab.type}, title=${tab.title}, id=${tab.id}, initialProjectPath=${tab.initialProjectPath || 'none'}, hasRestoreState=${!!tab.restoreProjectState}`);
-      });
+      await api.saveClaudioAppSetting(STORAGE_KEY, JSON.stringify(sessionData));
     } catch (error) {
       logger.error('Failed to save tab session:', error);
     }
@@ -84,12 +78,12 @@ export const useTabPersistence = () => {
    */
   const loadTabs = useCallback(async (): Promise<PersistedTabSession> => {
     try {
-      // logger.info('📂 Loading tab session (KISS approach)...');
-      const serialized = await api.getSetting(STORAGE_KEY);
-      
+      logger.info('📂 Loading tab session from API...');
+      const serialized = await api.loadClaudioAppSetting(STORAGE_KEY);
+
       if (!serialized) {
-        // logger.info('📂 No saved tabs found');
-        return { tabs: [], panelBreaks: [], activePanelIndex: 0 };
+        logger.info('📂 No saved tabs found');
+        return DEFAULT_EMPTY_SESSION;
       }
 
       const parsed = JSON.parse(serialized) as PersistedTabSession;
@@ -97,36 +91,29 @@ export const useTabPersistence = () => {
       // Basic validation
       if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.tabs)) {
         logger.warn('Invalid tab session data, starting fresh');
-        return { tabs: [], panelBreaks: [], activePanelIndex: 0 };
+        return DEFAULT_EMPTY_SESSION;
       }
 
       const sessionData: PersistedTabSession = {
         tabs: parsed.tabs,
-        panelBreaks: parsed.panelBreaks || [],
-        activePanelIndex: parsed.activePanelIndex || 0,
+        panelBreaks: parsed.panelBreaks || DEFAULT_EMPTY_SESSION.panelBreaks,
+        activePanelIndex: parsed.activePanelIndex ?? DEFAULT_EMPTY_SESSION.activePanelIndex,
       };
 
-      logger.debug(`Loaded tab session: ${sessionData.tabs.length} tabs (${sessionData.tabs.map(t => t.type).join(', ')})`);
-
-      // Log each tab details for debugging
-      sessionData.tabs.forEach((tab, index) => {
-        logger.debug(`Tab ${index}: type=${tab.type}, title=${tab.title}, id=${tab.id}, initialProjectPath=${tab.initialProjectPath || 'none'}, hasRestoreState=${!!tab.restoreProjectState}`);
-      });
 
       return sessionData;
     } catch (error) {
       logger.error('Failed to load tab session:', error);
-      return { tabs: [], panelBreaks: [], activePanelIndex: 0 };
+      return DEFAULT_EMPTY_SESSION;
     }
   }, []);
 
   /**
-   * Clear saved tab session
+   * Clear saved tab session (explicit user action)
    */
   const clearSavedTabs = useCallback(async () => {
     try {
-      await api.saveSetting(STORAGE_KEY, '');
-      logger.debug('Cleared saved tab session');
+      await api.saveClaudioAppSetting(STORAGE_KEY, JSON.stringify(DEFAULT_EMPTY_SESSION));
     } catch (error) {
       logger.error('Failed to clear tab session:', error);
     }

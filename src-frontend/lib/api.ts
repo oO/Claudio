@@ -1476,30 +1476,30 @@ export const api = {
   // Theme settings helpers
 
   /**
-   * Gets a setting from the consolidated Claudio settings file
+   * Loads a setting from the Claudio app settings file
    * @param key - The setting key
    * @returns Promise resolving to the setting value, or null if not found
    */
-  async getSetting(key: string): Promise<string | null> {
+  async loadClaudioAppSetting(key: string): Promise<string | null> {
     try {
-      return await invoke<string | null>("get_setting", { key });
+      return await invoke<string | null>("load_claudio_app_setting", { key });
     } catch (error) {
-      logger.error(`Failed to get setting ${key}:`, error);
+      logger.error(`Failed to load Claudio app setting ${key}:`, error);
       throw error;
     }
   },
 
   /**
-   * Saves a setting to the consolidated Claudio settings file
+   * Saves a setting to the Claudio app settings file
    * @param key - The setting key
    * @param value - The setting value
    * @returns Promise resolving when the setting is saved
    */
-  async saveSetting(key: string, value: string): Promise<void> {
+  async saveClaudioAppSetting(key: string, value: string): Promise<void> {
     try {
-      await invoke<void>("save_setting", { key, value });
+      await invoke<void>("save_claudio_app_setting", { key, value });
     } catch (error) {
-      logger.error(`Failed to save setting ${key}:`, error);
+      logger.error(`Failed to save Claudio app setting ${key}:`, error);
       throw error;
     }
   },

@@ -120,7 +120,6 @@ export {
 
   // Specialized hooks
   useModelSetting,
-  useThemeSetting,
 
   // Project hooks
   useProjectContext,
