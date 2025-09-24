@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useCallback, useEffect, use
 import type { NavigationStack } from './NavigationContext';
 import { useTabPersistence, type PersistedTabSession } from '@/hooks/useTabPersistence';
 import { useSettingsState } from '@/hooks/useSettingsState';
+import { api } from '@/lib/api';
 import { logger } from '@/lib/logger';
 
 export interface Tab {
@@ -104,6 +105,26 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [restorationAttempted, setRestorationAttempted] = useState(false); // Track if we've attempted restoration (React Strict Mode safety)
   const { saveTabs, loadTabs, clearSavedTabs } = useTabPersistence();
   const { settings } = useSettingsState();
+  const [panelMinWidth, setPanelMinWidth] = useState<number>(PANEL_MIN_WIDTH);
+
+  // Load panel min width from Claudio app settings
+  useEffect(() => {
+    const loadPanelMinWidth = async () => {
+      try {
+        const saved = await api.loadClaudioAppSetting("panelMinWidth");
+        if (saved) {
+          const value = parseInt(saved);
+          if (!isNaN(value)) {
+            setPanelMinWidth(Math.max(300, Math.min(800, value)));
+          }
+        }
+      } catch (error) {
+        logger.error("Failed to load panel min width:", error);
+      }
+    };
+
+    loadPanelMinWidth();
+  }, []);
 
   // Debouncing for save operations to prevent rapid-fire saves during restoration/shutdown
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -255,7 +276,7 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       
       // Only attempt restoration once - React Strict Mode safe
       if (restorationAttempted) {
-        logger.info('🚫 Skipping restoration - already attempted (React Strict Mode)');
+        // Tab restoration already attempted
         return;
       }
 
@@ -263,14 +284,10 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setRestorationAttempted(true);
 
       try {
-        logger.info('🔄 ATTEMPTING INITIAL TAB RESTORATION...');
+        // Removed log - log the result, not the attempt
         const sessionData = await loadTabs();
 
-        logger.info('📋 Loaded session data:', {
-          tabCount: sessionData.tabs.length,
-          panelBreaks: sessionData.panelBreaks,
-          activePanelIndex: sessionData.activePanelIndex
-        });
+        // Removed verbose session data logging
 
         if (sessionData.tabs.length > 0) {
           // Restoring tabs from saved session
@@ -304,10 +321,10 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setActivePanelIndex(sessionData.activePanelIndex || 0);
             setActiveTabId(restoredTabs[0].id);
 
-            logger.debug(`Restored tabs on startup: ${restoredTabs.length} tabs`);
+            logger.info(`Tab restoration completed: ${restoredTabs.length} tabs restored`);
           }
         } else {
-          logger.info('No saved tabs to restore on startup');
+          logger.info('Tab restoration completed: no saved tabs found');
         }
       } catch (error) {
         logger.error('Failed to restore tabs on startup:', error);
@@ -504,16 +521,7 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
     
-    // Clean up localStorage entries for this tab
-    const filterKeys = [
-      `claudio-session-filters-regular-${id}`,
-      `claudio-session-filters-native-${id}`,
-      `claudio-session-filters-claudio-${id}`,
-    ];
-    
-    filterKeys.forEach(key => {
-      localStorage.removeItem(key);
-    });
+    // Session filters are now just component state, no cleanup needed
     
     setTabs(prevTabs => {
       const filteredTabs = prevTabs.filter(tab => tab.id !== id);
@@ -581,18 +589,7 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [tabs]);
 
   const closeAllTabs = useCallback(() => {
-    // Clean up all tab-scoped localStorage entries
-    tabs.forEach(tab => {
-      const filterKeys = [
-        `claudio-session-filters-regular-${tab.id}`,
-        `claudio-session-filters-native-${tab.id}`,
-        `claudio-session-filters-claudio-${tab.id}`,
-      ];
-      
-      filterKeys.forEach(key => {
-        localStorage.removeItem(key);
-      });
-    });
+    // Session filters are now just component state, no cleanup needed
     
     setTabs([]);
     setActiveTabId(null);
@@ -704,10 +701,9 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const canAddPanel = useCallback((): boolean => {
     // Only restricted by window width, not tab count
     const currentPanelCount = getPanelCount();
-    const panelMinWidth = settings?.panelMinWidth || PANEL_MIN_WIDTH;
     const requiredWidth = (currentPanelCount + 1) * panelMinWidth;
     return windowWidth >= requiredWidth;
-  }, [getPanelCount, settings?.panelMinWidth, windowWidth]);
+  }, [getPanelCount, panelMinWidth, windowWidth]);
 
   const restoreTabs = useCallback(async (sessionData: PersistedTabSession): Promise<void> => {
     if (sessionData.tabs.length === 0) return;

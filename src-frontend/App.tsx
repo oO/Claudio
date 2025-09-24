@@ -13,6 +13,7 @@ import {
 import { TabProvider } from "@/contexts/TabContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { TodoProvider } from "@/contexts/TodoContext";
+import { DebugProvider } from "@/contexts/DebugContext";
 import { UnifiedSettingsProvider } from "@/lib/settings";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -101,24 +102,24 @@ function AppContent() {
 
   // Global debug mode setup - runs once on app start
   useEffect(() => {
-    const debugFlag = localStorage.getItem("claudio_debug_mode");
-    const isDebugEnabled = debugFlag === "true";
-    
-    // Set up global toggle function
-    (window as any).toggleDebug = () => {
-      const currentDebug = localStorage.getItem("claudio_debug_mode") === "true";
-      const newDebugMode = !currentDebug;
-      localStorage.setItem("claudio_debug_mode", newDebugMode.toString());
-      logger.log(`Debug mode ${newDebugMode ? "enabled" : "disabled"}`);
-      
-      // Trigger a custom event to notify debug components
-      window.dispatchEvent(new CustomEvent('debugModeChanged', { detail: newDebugMode }));
-    };
+    // Set up global toggle function that uses settings instead of localStorage
+    (window as any).toggleDebug = async () => {
+      try {
+        // Get current debug mode from settings
+        const currentDebugStr = await api.loadClaudioAppSetting("debugMode");
+        const currentDebug = currentDebugStr === "true";
+        const newDebugMode = !currentDebug;
 
-    // Log current debug state only once on app start
-    // if (isDebugEnabled) {
-    //   logger.log("Debug mode is enabled. Use toggleDebug() in console to disable.");
-    // }
+        // Save to settings
+        await api.saveClaudioAppSetting("debugMode", newDebugMode.toString());
+        logger.log(`Debug mode ${newDebugMode ? "enabled" : "disabled"}`);
+
+        // Trigger a custom event to notify debug components
+        window.dispatchEvent(new CustomEvent('debugModeChanged', { detail: newDebugMode }));
+      } catch (error) {
+        logger.error("Failed to toggle debug mode:", error);
+      }
+    };
 
     // Cleanup global function on unmount
     return () => {
@@ -291,7 +292,7 @@ function AppContent() {
   const handleNewClaudioSessionFromProject = async (projectPath: string) => {
     try {
       // DEBUG: This should appear in logs if my function is called
-      logger.log("🔥 DEBUGGING: handleNewClaudioSessionFromProject called with:", projectPath);
+      logger.log("handleNewClaudioSessionFromProject called with:", projectPath);
       
       // Use shared session creation hook
       const claudioId = await createClaudioSession({ projectPath });
@@ -669,13 +670,15 @@ function AppContent() {
 function App() {
   return (
     <UnifiedSettingsProvider>
-      <ThemeProvider>
-          <TabProvider>
-            <TodoProvider>
-              <AppContent />
-            </TodoProvider>
-          </TabProvider>
-      </ThemeProvider>
+      <DebugProvider>
+        <ThemeProvider>
+            <TabProvider>
+              <TodoProvider>
+                <AppContent />
+              </TodoProvider>
+            </TabProvider>
+        </ThemeProvider>
+      </DebugProvider>
     </UnifiedSettingsProvider>
   );
 }

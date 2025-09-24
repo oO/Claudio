@@ -1,5 +1,5 @@
 import React from "react";
-import { useDebug } from "@/hooks";
+import { useDebugContext } from "@/contexts/DebugContext";
 
 interface DebugLabelProps {
   label: string;
@@ -10,7 +10,7 @@ interface DebugLabelProps {
  * Atomic component for debug labels that only show when debug mode is enabled
  */
 export const DebugLabel: React.FC<DebugLabelProps> = ({ label, className = "" }) => {
-  const { isDebugMode } = useDebug();
+  const { isDebugMode } = useDebugContext();
 
   if (!isDebugMode) {
     return null;

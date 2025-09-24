@@ -136,7 +136,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
           const project = tab.restoreProjectState.selectedProject;
           setSelectedProject(project);
           setActiveProjectTab(tab.restoreProjectState.activeTab || "sessions");
-          logger.debug('🔄 Applied restored project state:', project?.path);
+          logger.debug('Applied restored project state:', project?.path);
         } else if (tab.initialProjectPath) {
           // Restore project from path
           try {
@@ -151,7 +151,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
               const projectName = getProjectName(project.path);
               updateTab(tab.id, { title: projectName });
 
-              logger.debug('🔄 Restored project from path:', project?.path, 'with title:', projectName);
+              logger.debug('Restored project from path:', project?.path, 'with title:', projectName);
             } else {
               logger.warn(`Project not found for restoration: ${tab.initialProjectPath}`);
               setError(`Project not found: ${tab.initialProjectPath}`);
@@ -191,7 +191,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                     activeTab: "sessions"
                   }
                 });
-                logger.debug('🔄 Restored session from sessionId and path:', {
+                logger.debug('Restored session from sessionId and path:', {
                   project: project?.path,
                   session: session?.id
                 });

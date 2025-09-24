@@ -63,16 +63,13 @@ class TauriEventManager {
   }
   
   /**
-   * Log current state when it changes (not periodically)
+   * Log current state when it changes (not periodically) - removed verbose logging
    */
   private logStateIfChanged(): void {
     const debugInfo = this.getDebugInfo();
     const currentStateHash = JSON.stringify(debugInfo);
-
-    if (this.lastLoggedState !== currentStateHash) {
-      logger.debug(`TauriEventManager state updated: ${debugInfo.listeners.length} listeners, ${Object.keys(debugInfo.subscriptions).length} event types`);
-      this.lastLoggedState = currentStateHash;
-    }
+    this.lastLoggedState = currentStateHash;
+    // Removed debug logging - internal event manager state is not user-relevant
   }
   
   /**
@@ -85,7 +82,7 @@ class TauriEventManager {
   ): Promise<() => void> {
     const subscriptionId = `${eventName}-${++this.subscriptionCounter}`;
     
-    logger.debug(`Subscribing to '${eventName}' (${this.getSubscriptionCount(eventName) + 1} total)`);
+    // Removed debug logging - subscription management is internal infrastructure
     
     // Create subscription
     const subscription: EventSubscription<T> = {
@@ -126,7 +123,7 @@ class TauriEventManager {
     const subscription = Array.from(subscriptionSet).find(s => s.id === subscriptionId);
     if (subscription) {
       subscriptionSet.delete(subscription);
-      logger.debug(`Unsubscribed from '${eventName}' (${subscriptionSet.size} remaining)`);
+      // Removed debug logging - unsubscription is internal infrastructure
     }
     
     // If no more subscriptions, tear down the Tauri listener
@@ -149,7 +146,7 @@ class TauriEventManager {
       });
 
       this.listeners.set(eventName, unlisten);
-      logger.debug(`Tauri listener active for '${eventName}'`);
+      // Removed debug logging - listener setup is internal infrastructure
 
       // Log state change after setting up listener
       this.logStateIfChanged();
@@ -169,7 +166,7 @@ class TauriEventManager {
       try {
         await unlisten();
         this.listeners.delete(eventName);
-        logger.debug(`Torn down Tauri listener for '${eventName}'`);
+        // Removed debug logging - listener teardown is internal infrastructure
 
         // Log state change after tearing down listener
         this.logStateIfChanged();
@@ -208,7 +205,7 @@ class TauriEventManager {
     }
 
     if (routedCount === 0) {
-      logger.debug(`Event '${eventName}' filtered out for all ${subscriptionSet.size} subscriptions`);
+      // Removed debug logging - event filtering is internal infrastructure
     }
   }
   
@@ -288,7 +285,7 @@ class TauriEventManager {
     for (const [eventName, unlisten] of this.listeners) {
       try {
         await unlisten();
-        logger.debug(`Emergency cleanup: removed listener for '${eventName}'`);
+        logger.warn(`Emergency cleanup: removed listener for '${eventName}' - this indicates a resource leak`);
       } catch (error) {
         logger.error(`Emergency cleanup failed for '${eventName}':`, error);
       }
@@ -296,7 +293,7 @@ class TauriEventManager {
 
     this.listeners.clear();
     this.subscriptions.clear();
-    logger.debug('Emergency cleanup completed');
+    logger.warn('TauriEventManager emergency cleanup completed - this indicates a resource leak');
   }
 }
 

@@ -56,7 +56,7 @@ export const MODELS: Model[] = [
 ];
 
 export interface ModelSelectorProps {
-  selectedModel: ModelId;
+  selectedModel: ModelId | null;
   onModelSelect: (model: ModelId) => void;
   disabled?: boolean;
   variant?: "compact" | "full";
@@ -74,9 +74,10 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   className,
 }) => {
   const [open, setOpen] = React.useState(false);
-  const selectedModelData = MODELS.find((m) => m.id === selectedModel);
+  const selectedModelData = selectedModel ? MODELS.find((m) => m.id === selectedModel) : null;
 
-  if (!selectedModelData) {
+  // If selectedModel is provided but not found in MODELS, that's an error
+  if (selectedModel && !selectedModelData) {
     throw new Error(`[ModelSelector] Invalid model '${selectedModel}' - not found in MODELS list!`);
   }
 
@@ -94,14 +95,15 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
             className={cn(
               "gap-2",
               isCompact ? "min-w-[60px]" : "min-w-[180px] justify-start",
+              !selectedModelData && "text-muted-foreground",
               className,
             )}
           >
-            {selectedModelData.icon}
+            {selectedModelData?.icon || <Settings className="h-4 w-4" />}
             {!isCompact && (
               <>
                 <span className="flex-1 text-left">
-                  {selectedModelData.name}
+                  {selectedModelData?.name || "Select Model"}
                 </span>
                 <ChevronUp className="h-4 w-4 opacity-50" />
               </>

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -7,8 +7,82 @@ import { ClaudeVersionSelector } from "@/components/claude";
 import { useTheme } from "@/hooks";
 import { useClaudeBinaryConfig } from "@/hooks/useClaudeBinaryConfig";
 import type { ClaudeSettings } from "@/lib/api";
+import { api } from "@/lib/api";
 import { THEMES } from "@/lib/themes";
 import { DebugLabel } from "@/components/ui/atoms";
+import { logger } from "@/lib/logger";
+
+/**
+ * Panel Min Width Setting Component - uses ClaudioAppSettings
+ */
+const PanelMinWidthSetting: React.FC = () => {
+  const [panelMinWidth, setPanelMinWidth] = useState<number>(500);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadPanelMinWidth = async () => {
+      try {
+        const saved = await api.loadClaudioAppSetting("panelMinWidth");
+        if (saved) {
+          const value = parseInt(saved);
+          setPanelMinWidth(isNaN(value) ? 500 : Math.max(300, Math.min(800, value)));
+        }
+      } catch (error) {
+        logger.error("Failed to load panel min width:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPanelMinWidth();
+  }, []);
+
+  const handleChange = async (newValue: number) => {
+    const clampedValue = Math.max(300, Math.min(800, newValue));
+    setPanelMinWidth(clampedValue);
+
+    try {
+      await api.saveClaudioAppSetting("panelMinWidth", clampedValue.toString());
+      logger.info("Panel min width saved:", clampedValue);
+    } catch (error) {
+      logger.error("Failed to save panel min width:", error);
+      // Revert on error
+      const saved = await api.loadClaudioAppSetting("panelMinWidth");
+      if (saved) {
+        const value = parseInt(saved);
+        setPanelMinWidth(isNaN(value) ? 500 : value);
+      }
+    }
+  };
+
+  if (loading) {
+    return <div className="space-y-2">
+      <Label>Panel Minimum Width (pixels)</Label>
+      <div className="h-10 bg-muted rounded animate-pulse w-24" />
+    </div>;
+  }
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="panelMinWidth">Panel Minimum Width (pixels)</Label>
+      <p className="text-xs text-muted-foreground">
+        Minimum width for each panel when splitting tabs (300-800 pixels)
+      </p>
+      <Input
+        id="panelMinWidth"
+        type="number"
+        min="300"
+        max="800"
+        value={panelMinWidth}
+        onChange={(e) => {
+          const value = parseInt(e.target.value) || 500;
+          handleChange(value);
+        }}
+        className="w-24"
+      />
+    </div>
+  );
+};
 
 interface GeneralSettingsProps {
   settings: ClaudeSettings | null;
@@ -186,74 +260,8 @@ export const GeneralSettings: React.FC<GeneralSettingsProps> = ({
             </div>
           )}
           
-          {/* Include Co-authored By */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5 flex-1">
-              <Label htmlFor="coauthored">Include "Co-authored by Claude"</Label>
-              <p className="text-xs text-muted-foreground">
-                Add Claude attribution to git commits and pull requests
-              </p>
-            </div>
-            <Switch
-              id="coauthored"
-              checked={settings?.includeCoAuthoredBy !== false}
-              onCheckedChange={(checked) => onUpdateSetting("includeCoAuthoredBy", checked)}
-            />
-          </div>
-          
-          {/* Verbose Output */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5 flex-1">
-              <Label htmlFor="verbose">Verbose Output</Label>
-              <p className="text-xs text-muted-foreground">
-                Show full bash and command outputs
-              </p>
-            </div>
-            <Switch
-              id="verbose"
-              checked={settings?.verbose === true}
-              onCheckedChange={(checked) => onUpdateSetting("verbose", checked)}
-            />
-          </div>
-          
           {/* Panel Minimum Width */}
-          <div className="space-y-2">
-            <Label htmlFor="panelMinWidth">Panel Minimum Width (pixels)</Label>
-            <p className="text-xs text-muted-foreground">
-              Minimum width for each panel when splitting tabs (300-800 pixels)
-            </p>
-            <Input
-              id="panelMinWidth"
-              type="number"
-              min="300"
-              max="800"
-              value={settings?.panelMinWidth || 500}
-              onChange={(e) => {
-                const value = Math.max(300, Math.min(800, parseInt(e.target.value) || 500));
-                onUpdateSetting("panelMinWidth", value);
-              }}
-              className="w-24"
-            />
-          </div>
-          
-          {/* Cleanup Period */}
-          <div className="space-y-2">
-            <Label htmlFor="cleanup">Chat Transcript Retention (days)</Label>
-            <Input
-              id="cleanup"
-              type="number"
-              min="1"
-              placeholder="30"
-              value={settings?.cleanupPeriodDays || ""}
-              onChange={(e) => {
-                const value = e.target.value ? parseInt(e.target.value) : undefined;
-                onUpdateSetting("cleanupPeriodDays", value);
-              }}
-            />
-            <p className="text-xs text-muted-foreground">
-              How long to retain chat transcripts locally (default: 30 days)
-            </p>
-          </div>
+          <PanelMinWidthSetting />
           
           {/* Claude Binary Path Selector */}
           <div className="space-y-4">

@@ -119,11 +119,11 @@ export const SessionDeleteDialog: React.FC<SessionDeleteDialogProps> = ({
   const handleSessionsDeleted = async () => {
     setIsDeletingSessions(true);
     try {
-      logger.log("🗑️ Deleting sessions older than", sessionDeletionAge, "days");
+      logger.log("Deleting sessions older than", sessionDeletionAge, "days");
 
       const result = await api.deleteSessionsByAge(projectId, sessionDeletionAge);
 
-      logger.log("✅ Session deletion completed:", result);
+      logger.log("Session deletion completed:", result);
 
       // Close dialog and reset state
       onOpenChange(false);
@@ -133,7 +133,7 @@ export const SessionDeleteDialog: React.FC<SessionDeleteDialogProps> = ({
       // Notify parent with results
       onSessionsDeleted(result);
     } catch (error) {
-      logger.error("❌ Failed to delete sessions:", error);
+      logger.error("Failed to delete sessions:", error);
       // You could add error toast here if needed
     } finally {
       setIsDeletingSessions(false);

@@ -5,7 +5,8 @@
  * with automatic project awareness and handle management
  */
 
-import React, { createContext, useContext, useEffect, useState, ReactNode, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useMemo, useCallback } from 'react';
+import { logger } from '@/lib/logger';
 import type {
   ClaudioSettings,
   ClaudeCodeSettings,
@@ -17,7 +18,6 @@ import {
 } from './hooks';
 import {
   useCachedClaudeCodeSettings,
-  useCachedClaudeCodeModelSetting,
 } from './useCachedClaudeCodeSettings';
 
 // ===== Project Context =====
@@ -165,10 +165,17 @@ export function ClaudeCodeSettingsProvider({
     error
   } = useCachedClaudeCodeSettings(projectPath);
 
-  const {
-    model,
-    updateModel: setModel
-  } = useCachedClaudeCodeModelSetting(projectPath);
+  // Extract model from settings instead of separate hook
+  const model = settings?.effective?.model || null;
+
+  const setModel = useCallback(async (newModel: string) => {
+    try {
+      await updateSetting('model', newModel);
+    } catch (error) {
+      logger.error('Failed to update model setting:', error);
+      throw error;
+    }
+  }, [updateSetting]);
 
   const contextValue = useMemo(() => ({
     settings,
@@ -384,7 +391,7 @@ export function SettingsRouterProvider({ children }: SettingsRouterProviderProps
     settingsType: 'claudio' | 'claudecode'
   ): T | null => {
     // TODO: Implement proper project-specific settings lookup
-    console.log(`Getting ${settingsType} settings for ${projectPath}`);
+    // TODO: Implement proper project-specific settings lookup - removed console.log
     return null;
   }, []);
 

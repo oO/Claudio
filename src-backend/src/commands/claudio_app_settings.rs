@@ -13,18 +13,11 @@
 
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
-use crate::commands::window::WindowState;
-
-// Global state for save deduplication
-static LAST_SAVE: std::sync::LazyLock<Arc<Mutex<Option<(Instant, String)>>>> =
-    std::sync::LazyLock::new(|| Arc::new(Mutex::new(None)));
-
-const SAVE_DEBOUNCE_MS: u64 = 500;
+use tokio::fs as tokio_fs;
 
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ProxySettings {
     pub http_proxy: Option<String>,
     pub https_proxy: Option<String>,
@@ -33,109 +26,50 @@ pub struct ProxySettings {
     pub enabled: bool,
 }
 
-
-/// CLAUDIO APP-ONLY SETTINGS
-/// These settings are ONLY used by our Claudio app - NO external tools read/write them
-/// Simple load/save model - no watchers needed since only we access this file
-/// Location: ~/.claudio/settings.json
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ClaudioAppSettings {
-    #[serde(default)]
-    pub proxy: ProxySettings,
-    #[serde(default)]
-    pub claude_binary_path: Option<String>,
-    #[serde(default)]
-    pub window_state: Option<WindowState>,
-    #[serde(default)]
-    pub tabs_session: Option<serde_json::Value>, // Tab session data as JSON (array for legacy, object for new format)
-    // Future Claudio-specific settings can be added here
-    // pub analytics: AnalyticsSettings,
-}
-
-impl Default for ProxySettings {
-    fn default() -> Self {
-        Self {
-            http_proxy: None,
-            https_proxy: None,
-            no_proxy: None,
-            all_proxy: None,
-            enabled: false,
-        }
-    }
-}
-
-
-impl Default for ClaudioAppSettings {
-    fn default() -> Self {
-        Self {
-            proxy: ProxySettings::default(),
-            claude_binary_path: None,
-            window_state: None,
-            tabs_session: None,
-        }
-    }
-}
-
 /// Get proxy settings from file
 #[tauri::command]
 pub async fn get_proxy_settings() -> Result<ProxySettings, String> {
-    let claudio_settings = load_claudio_app_settings().await?;
-    Ok(claudio_settings.proxy)
+    // Load the entire ProxySettings as JSON or return defaults
+    match load_claudio_app_setting("proxySettings".to_string()).await {
+        Ok(Some(json_str)) => {
+            // Try to deserialize the stored JSON
+            serde_json::from_str(&json_str)
+                .map_err(|e| format!("Failed to parse proxy settings JSON: {}", e))
+        }
+        Ok(None) => {
+            // No stored settings, return defaults
+            Ok(ProxySettings {
+                http_proxy: None,
+                https_proxy: None,
+                no_proxy: None,
+                all_proxy: None,
+                enabled: false,
+            })
+        }
+        Err(e) => {
+            log::warn!("Failed to load proxy settings, using defaults: {}", e);
+            Ok(ProxySettings {
+                http_proxy: None,
+                https_proxy: None,
+                no_proxy: None,
+                all_proxy: None,
+                enabled: false,
+            })
+        }
+    }
 }
 
-/// Read all Claudio app settings from file
-/// Load Claudio app-only settings from ~/.claudio/settings.json
-/// This is ONLY for our app - window position, tabs, proxy, etc.
-pub async fn load_claudio_app_settings() -> Result<ClaudioAppSettings, String> {
-    use crate::commands::claudio_storage::get_claudio_settings_file;
-    
-    let claudio_file = get_claudio_settings_file()?;
-    
-    if !claudio_file.exists() {
-        log::info!("Claudio settings file not found, creating empty file");
-        // Create minimal empty JSON file
-        fs::write(&claudio_file, "{}")
-            .map_err(|e| format!("Failed to create empty settings file: {}", e))?;
-        return Ok(ClaudioAppSettings::default());
-    }
-    
-    let content = fs::read_to_string(&claudio_file)
-        .map_err(|e| format!("Failed to read Claudio settings file: {}", e))?;
-
-    if content.trim().is_empty() {
-        log::warn!("Claudio settings file is empty, initializing with empty JSON");
-        fs::write(&claudio_file, "{}")
-            .map_err(|e| format!("Failed to initialize empty settings file: {}", e))?;
-        return Ok(ClaudioAppSettings::default());
-    }
-
-    let settings: ClaudioAppSettings = serde_json::from_str(&content)
-        .map_err(|e| {
-            log::error!("Failed to parse Claudio settings JSON: {}", e);
-            log::error!("File content: '{}'", content);
-            // Backup corrupted file for debugging
-            let backup_path = claudio_file.with_extension("json.corrupted");
-            let _ = fs::copy(&claudio_file, &backup_path);
-            log::warn!("Backed up corrupted settings to: {:?}", backup_path);
-            format!("Failed to parse Claudio settings JSON: {}", e)
-        })?;
-    
-    Ok(settings)
-}
 
 /// Save proxy settings to file immediately
 #[tauri::command]
 pub async fn save_proxy_settings(settings: ProxySettings) -> Result<(), String> {
     log::info!("💾 Saving proxy settings");
 
-    // Load existing settings
-    let mut claudio_settings = load_claudio_app_settings().await.unwrap_or_default();
+    // Serialize the entire ProxySettings as JSON and save in one call
+    let json_value = serde_json::to_string(&settings)
+        .map_err(|e| format!("Failed to serialize proxy settings: {}", e))?;
 
-    // Update proxy settings
-    claudio_settings.proxy = settings.clone();
-
-    // Save immediately to disk
-    save_claudio_app_settings(claudio_settings).await?;
+    save_claudio_app_setting("proxySettings".to_string(), json_value).await?;
 
     // Apply the proxy settings immediately to the current process
     log::info!("🌐 Applying proxy settings to current process...");
@@ -145,78 +79,27 @@ pub async fn save_proxy_settings(settings: ProxySettings) -> Result<(), String> 
     Ok(())
 }
 
-/// Save all Claudio app settings to file with automatic deduplication
-/// Save Claudio app-only settings to ~/.claudio/settings.json
-/// This is ONLY for our app - window position, tabs, proxy, etc.
-/// Automatically prevents duplicate saves and provides debouncing
-pub async fn save_claudio_app_settings(claudio_app_settings: ClaudioAppSettings) -> Result<(), String> {
-    use crate::commands::claudio_storage::{get_claudio_settings_file, ensure_claudio_dirs};
-
-    let json_string = serde_json::to_string_pretty(&claudio_app_settings)
-        .map_err(|e| format!("Failed to serialize Claudio settings: {}", e))?;
-
-    // Check for duplicate saves with debouncing
-    {
-        let mut last_save = LAST_SAVE.lock().unwrap();
-        let now = Instant::now();
-
-        if let Some((last_time, last_data)) = &*last_save {
-            // If same data within debounce window, skip save
-            if now.duration_since(*last_time) < Duration::from_millis(SAVE_DEBOUNCE_MS) &&
-               *last_data == json_string {
-                return Ok(());
-            }
-        }
-
-        // Update last save tracker
-        *last_save = Some((now, json_string.clone()));
-    }
-
-    ensure_claudio_dirs().await?;
-
-    let claudio_file = get_claudio_settings_file()?;
-
-    // Validate JSON before writing
-    if json_string.trim().is_empty() {
-        return Err("Generated empty JSON string".to_string());
-    }
-
-    // Double-check serialization by parsing it back
-    let _validation: ClaudioAppSettings = serde_json::from_str(&json_string)
-        .map_err(|e| format!("Failed to validate serialized JSON: {}", e))?;
-
-    // Atomic write: write to temp file first, then rename
-    let temp_file = claudio_file.with_extension("json.tmp");
-
-    fs::write(&temp_file, &json_string)
-        .map_err(|e| format!("Failed to write Claudio settings temp file: {}", e))?;
-
-    // Verify temp file was written correctly
-    let verify_content = fs::read_to_string(&temp_file)
-        .map_err(|e| format!("Failed to verify temp file content: {}", e))?;
-
-    if verify_content != json_string {
-        return Err("Temp file content doesn't match expected JSON".to_string());
-    }
-
-    // Atomic rename - this prevents corruption if process is killed mid-write
-    fs::rename(&temp_file, &claudio_file)
-        .map_err(|e| format!("Failed to rename Claudio settings temp file: {}", e))?;
-
-    log::debug!("Successfully saved Claudio app settings: {} bytes", json_string.len());
-    Ok(())
-}
 
 /// Load a specific setting from file (generic key-value store)
 #[tauri::command]
 pub async fn load_claudio_app_setting(key: String) -> Result<Option<String>, String> {
-    let settings = load_claudio_app_settings().await.unwrap_or_default();
+    use crate::commands::claudio_storage::get_claudio_settings_file;
 
-    // Get the raw JSON value from the settings file
-    let json_string = serde_json::to_string(&settings)
-        .map_err(|e| format!("Failed to serialize settings: {}", e))?;
+    let claudio_file = get_claudio_settings_file()?;
 
-    let json_value: serde_json::Value = serde_json::from_str(&json_string)
+    if !claudio_file.exists() {
+        log::info!("Claudio settings file not found, creating empty file");
+        // Create empty JSON file
+        fs::write(&claudio_file, "{}")
+            .map_err(|e| format!("Failed to create empty settings file: {}", e))?;
+        return Ok(None);
+    }
+
+    // Read the raw JSON from file
+    let content = fs::read_to_string(&claudio_file)
+        .map_err(|e| format!("Failed to read Claudio settings: {}", e))?;
+
+    let json_value: serde_json::Value = serde_json::from_str(&content)
         .map_err(|e| format!("Failed to parse settings JSON: {}", e))?;
 
     // Look up the key in the JSON object
@@ -236,14 +119,19 @@ pub async fn load_claudio_app_setting(key: String) -> Result<Option<String>, Str
 /// Save a specific setting to file immediately (generic key-value store)
 #[tauri::command]
 pub async fn save_claudio_app_setting(key: String, value: String) -> Result<(), String> {
-    let settings = load_claudio_app_settings().await.unwrap_or_default();
+    use crate::commands::claudio_storage::{get_claudio_settings_file, ensure_claudio_dirs};
 
-    // Get the current settings as a JSON object
-    let json_string = serde_json::to_string(&settings)
-        .map_err(|e| format!("Failed to serialize settings: {}", e))?;
+    let claudio_file = get_claudio_settings_file()?;
 
-    let mut json_value: serde_json::Value = serde_json::from_str(&json_string)
-        .map_err(|e| format!("Failed to parse settings JSON: {}", e))?;
+    // Load existing JSON or create empty object
+    let mut json_value: serde_json::Value = if claudio_file.exists() {
+        let content = fs::read_to_string(&claudio_file)
+            .map_err(|e| format!("Failed to read Claudio settings: {}", e))?;
+        serde_json::from_str(&content)
+            .map_err(|e| format!("Failed to parse settings JSON: {}", e))?
+    } else {
+        serde_json::json!({})
+    };
 
     // Parse the new value as JSON (or store as string if not valid JSON)
     let new_value = if value.is_empty() {
@@ -255,11 +143,23 @@ pub async fn save_claudio_app_setting(key: String, value: String) -> Result<(), 
     // Set the key-value pair
     json_value[&key] = new_value;
 
-    // Convert back to struct and save
-    let updated_settings: ClaudioAppSettings = serde_json::from_value(json_value)
-        .map_err(|e| format!("Failed to convert updated JSON to settings: {}", e))?;
+    // Save the JSON directly to file
+    ensure_claudio_dirs().await?;
 
-    save_claudio_app_settings(updated_settings).await?;
+    let json_string = serde_json::to_string_pretty(&json_value)
+        .map_err(|e| format!("Failed to serialize JSON: {}", e))?;
+
+    // Atomic write: write to temp file first, then rename
+    let temp_file = claudio_file.with_extension("json.tmp");
+
+    tokio_fs::write(&temp_file, &json_string).await
+        .map_err(|e| format!("Failed to write Claudio settings temp file: {}", e))?;
+
+    // Atomic rename
+    tokio_fs::rename(&temp_file, &claudio_file).await
+        .map_err(|e| format!("Failed to rename Claudio settings temp file: {}", e))?;
+
+    log::debug!("Successfully saved setting {} to Claudio app settings", key);
     Ok(())
 }
 

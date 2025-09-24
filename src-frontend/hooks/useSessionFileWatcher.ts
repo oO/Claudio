@@ -206,72 +206,47 @@ export function useSessionFileWatcher({
 
   // Handle session file events from backend
   const handleSessionFileEvent = useCallback(async (event: SessionFileEvent) => {
-    logger.debug(`🎯 handleSessionFileEvent called with event:`, event);
-    logger.debug(`🎯 Current state: projectId=${projectId}, session=${session ? session.id : 'null'}`);
-    
     // Extract type and data from new event structure
     const eventType = event.type;
     const eventData = event.data;
 
-    logger.debug(`🎯 Event details: type=${eventType}, sessionId=${eventData.session_id}, eventProjectId=${eventData.project_id}`);
-
     // Only handle events for the current project
     if (projectId && eventData.project_id !== projectId) {
-      logger.debug(`🚫 Project ID mismatch: expected ${projectId}, got ${eventData.project_id}`);
       return;
     }
-    
-    logger.debug(`✅ Project ID matches, proceeding with event handling`);
 
     switch (eventType) {
       case 'Modified':
-        logger.debug(`🔄 Modified event: sessionId=${eventData.session_id}`);
-        
         // If we're watching a session list (no specific session), always refresh
         if (!session) {
-          logger.debug(`📋 Session list watcher - refreshing on any session change`);
           try {
             await onSessionChanged();
-            logger.debug(`✅ Session list refreshed successfully`);
           } catch (error) {
             logger.error('Failed to refresh session list after file change:', error);
           }
-        } 
+        }
         // If watching a specific session, check if it has active tabs
         else {
-          logger.debug(`🔍 hasActiveTab check: ${sessionTabRegistry.hasActiveTab(eventData.session_id)}`);
-          
           if (sessionTabRegistry.hasActiveTab(eventData.session_id)) {
-            logger.debug(`✅ Session has active tabs, checking if current session matches`);
-            
             // If this is the current session, refresh it
             if (eventData.session_id === session.id) {
-              logger.debug(`🎯 This is the current session, refreshing...`);
               preserveScrollPosition();
-              
               try {
                 await onSessionChanged();
                 restoreScrollPosition();
-                logger.debug(`✅ Current session refreshed successfully`);
               } catch (error) {
                 logger.error('Failed to refresh session after file change:', error);
               }
-            } else {
-              logger.debug(`📝 Modified session ${eventData.session_id} is not current session ${session.id}`);
             }
-          } else {
-            logger.debug(`🚫 Session ${eventData.session_id} has no active tabs, skipping`);
           }
         }
         break;
 
       case 'Created':
-        logger.debug(`➕ Created event: sessionId=${eventData.session_id}`);
         onSessionCreated?.(eventData.session_id);
         break;
 
       case 'Removed':
-        logger.debug(`❌ Removed event: sessionId=${eventData.session_id}`);
         onSessionRemoved?.(eventData.session_id);
         break;
 
@@ -409,7 +384,7 @@ export function useSessionListWatcher(
   // Initial fetch when component mounts with valid projectId
   useEffect(() => {
     if (projectId && enabled) {
-      logger.debug(`🚀 Initial fetch for session list watcher, project: ${projectId}`);
+      // Initial fetch - only log on errors
       onSessionListChanged().catch(error => {
         logger.error(`❌ Initial session list fetch failed for project ${projectId}:`, error);
       });
@@ -419,19 +394,13 @@ export function useSessionListWatcher(
   return useSessionFileWatcher({
     projectId,
     onSessionChanged: async () => {
-      logger.debug(`📋 Session list watcher onSessionChanged called for project ${projectId}`);
       await onSessionListChanged();
-      logger.debug(`📋 Session list watcher onSessionChanged completed for project ${projectId}`);
     },
     onSessionCreated: async () => {
-      logger.debug(`➕ Session list watcher onSessionCreated called for project ${projectId}`);
       await onSessionListChanged();
-      logger.debug(`➕ Session list watcher onSessionCreated completed for project ${projectId}`);
     },
     onSessionRemoved: async () => {
-      logger.debug(`❌ Session list watcher onSessionRemoved called for project ${projectId}`);
       await onSessionListChanged();
-      logger.debug(`❌ Session list watcher onSessionRemoved completed for project ${projectId}`);
     },
     enabled,
     tabId: tabId.current

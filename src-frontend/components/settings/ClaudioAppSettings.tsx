@@ -70,16 +70,9 @@ export function ClaudioAppSettings() {
   const handleFieldChange = async (field: FieldConfig, value: any) => {
     try {
       await updateSetting(field.key, value);
-      logger.debug('ClaudioAppSettings: successfully updated setting', {
-        key: field.key,
-        value,
-      });
+      logger.debug(`ClaudioAppSettings: successfully updated setting ${field.key}`);
     } catch (error) {
-      logger.error('ClaudioAppSettings: failed to update setting', {
-        key: field.key,
-        value,
-        error,
-      });
+      logger.error(`ClaudioAppSettings: failed to update setting ${field.key}:`, error);
       throw error;
     }
   };

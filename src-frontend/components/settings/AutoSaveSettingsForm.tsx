@@ -86,21 +86,9 @@ export function AutoSaveSettingsForm({
   const handleFieldChange = async (field: SettingsFieldConfig, value: any) => {
     try {
       await updateSetting(field.key, value, field.level);
-      logger.debug('AutoSaveSettingsForm: successfully updated setting', {
-        settingsType,
-        projectPath,
-        key: field.key,
-        value,
-        level: field.level,
-      });
+      logger.debug(`AutoSaveSettingsForm: successfully updated ${field.key} setting`);
     } catch (error) {
-      logger.error('AutoSaveSettingsForm: failed to update setting', {
-        settingsType,
-        projectPath,
-        key: field.key,
-        value,
-        error,
-      });
+      logger.error(`AutoSaveSettingsForm: failed to update ${field.key} setting:`, error);
       throw error; // Let AutoSaveInput handle the error state
     }
   };

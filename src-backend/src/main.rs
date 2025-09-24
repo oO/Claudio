@@ -208,10 +208,7 @@ fn main() {
             // Run orphan cleanup on startup to ensure data integrity
             tauri::async_runtime::spawn(async move {
                 match cleanup_orphaned_files().await {
-                    Ok(result) => {
-                        log::info!("Startup cleanup completed: {}", 
-                                   result.get("message").and_then(|m| m.as_str()).unwrap_or("unknown"));
-                    }
+                    Ok(_result) => {}
                     Err(e) => {
                         log::warn!("Failed to run startup cleanup: {}", e);
                     }

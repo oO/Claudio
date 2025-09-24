@@ -332,7 +332,7 @@ export function useMultiProjectSettings(projectPaths: string[]) {
             claudecode: claudecodeSettings,
           });
         } catch (err) {
-          console.warn(`Failed to load settings for project ${projectPath}:`, err);
+          logger.warn(`Failed to load settings for project ${projectPath}:`, err);
           settingsMap.set(projectPath, {
             claudio: null,
             claudecode: null,
@@ -453,7 +453,7 @@ export function useDebouncedSettings<T>(
       try {
         await Promise.all(updates.map(([k, v]) => updateFn(k, v)));
       } catch (error) {
-        console.error('Failed to apply debounced updates:', error);
+        logger.error('Failed to apply debounced updates:', error);
       }
     }, delay);
   }, [updateFn, delay]);

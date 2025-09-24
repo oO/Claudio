@@ -620,23 +620,18 @@ pub async fn import_agent_from_file(
 // Remaining functions that depend on external APIs or complex process management
 // are kept as placeholders for now
 
-#[tauri::command] 
+#[tauri::command]
 pub async fn get_claude_binary_path() -> Result<Option<String>, String> {
-    use crate::commands::claudio_app_settings::load_claudio_app_settings;
+    use crate::commands::claudio_app_settings::load_claudio_app_setting;
 
-    let settings = load_claudio_app_settings().await.unwrap_or_default();
-    Ok(settings.claude_binary_path)
+    load_claudio_app_setting("claudeBinaryPath".to_string()).await
 }
 
 #[tauri::command]
 pub async fn set_claude_binary_path(path: String) -> Result<(), String> {
-    use crate::commands::claudio_app_settings::{load_claudio_app_settings, save_claudio_app_settings};
+    use crate::commands::claudio_app_settings::save_claudio_app_setting;
 
-    let mut settings = load_claudio_app_settings().await.unwrap_or_default();
-    settings.claude_binary_path = Some(path.clone());
-
-    save_claudio_app_settings(settings).await?;
-    // log::info!("Claude binary path set to: {}", path);
+    save_claudio_app_setting("claudeBinaryPath".to_string(), path).await?;
     Ok(())
 }
 

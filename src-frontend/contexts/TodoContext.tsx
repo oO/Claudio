@@ -164,10 +164,10 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
           // Check watcher status to verify it's running
           await invoke('get_todo_watching_status');
         } catch (error) {
-          logger.error('❌ Failed to start todo watcher:', error);
+          logger.error('Failed to start todo watcher:', error);
         }
       } catch (error) {
-        logger.error('❌ Failed to set up todo event listener:', error);
+        logger.error('Failed to set up todo event listener:', error);
       }
     };
 
@@ -223,7 +223,7 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
       
       setSessionTodos(sessionId, todoData);
     } catch (error) {
-      logger.error(`❌ Failed to load todos for session ${sessionId}:`, error);
+      logger.error(`Failed to load todos for session ${sessionId}:`, error);
     }
   };
 

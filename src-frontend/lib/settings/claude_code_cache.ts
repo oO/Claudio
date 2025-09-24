@@ -49,12 +49,11 @@ export async function getCachedSettings(
 
   // Return cached data if valid
   if (cached && isCacheValid(cached)) {
-    logger.debug('🎯 Settings cache hit', { cacheKey, handleId: cached.handleId });
     return cached.data;
   }
 
   // Cache miss or expired - load fresh data
-  logger.debug('🔄 Settings cache miss, loading fresh data', { cacheKey });
+  // Removed debug logging - cache hits/misses are frequent and not user-relevant
 
   try {
     // Create handle and load settings
@@ -70,14 +69,9 @@ export async function getCachedSettings(
       handleId
     });
 
-    logger.debug('✅ Settings loaded and cached', {
-      cacheKey,
-      handleId,
-      hasData: !!settings,
-      dataKeys: settings ? Object.keys(settings) : []
-    });
+    // Settings loaded and cached successfully - removed debug logging
 
-    return { data: settings, loading: false, error: null };
+    return settings;
   } catch (error) {
     logger.error('❌ Failed to load settings', {
       cacheKey,
@@ -86,7 +80,7 @@ export async function getCachedSettings(
       errorStack: error instanceof Error ? error.stack : undefined
     });
     const settingsError = error instanceof SettingsError ? error : new SettingsError(String(error));
-    return { data: null, loading: false, error: settingsError };
+    throw settingsError;
   }
 }
 

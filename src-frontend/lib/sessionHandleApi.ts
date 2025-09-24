@@ -104,21 +104,18 @@ export class SessionHandle {
         sessionId: this.handleId === 'new' ? null : this.handleId,
         projectPath: this.projectPath,
       };
-      logger.info('🔍 SessionHandle.getState calling Tauri invoke:', invokeParams);
-      
+
       const state = await invoke<SessionState>('get_session_handle', invokeParams);
-      logger.info('✅ SessionHandle.getState received response:', state);
-      
+
       // Update internal handleId with the actual handle_id from backend
       // This is crucial for new sessions where backend generates a UUID
       if (this.handleId === 'new' && state.handle_id !== 'new') {
-        logger.info('📝 Updating handleId from "new" to actual backend handle_id:', state.handle_id);
         this.handleId = state.handle_id;
       }
-      
+
       return state;
     } catch (error) {
-      logger.error('❌ SessionHandle.getState failed:', error);
+      logger.error('Failed to get session state:', error);
       throw error;
     }
   }
@@ -128,34 +125,32 @@ export class SessionHandle {
    */
   async sendPrompt(prompt: string, model?: string): Promise<void> {
     try {
-      logger.info('🚀 SessionHandle.sendPrompt called:', { handleId: this.handleId, promptPreview: prompt.substring(0, 50) });
-      
+      logger.info('Sending prompt to session');
+
       // Ensure process event listener is set up to handle completion
       if (!this.isProcessEventSetup) {
-        logger.info('🔧 Setting up process event listener for execution tracking');
         await this.setupProcessEventListener();
       }
-      
+
       // Add execution lock to prevent handle destruction during Claude CLI execution
       SessionHandleManager.addExecutionLock(this.handleId, this.projectPath);
-      
+
       // Add timeout wrapper to detect hanging calls
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error('Tauri invoke timed out after 10 seconds')), 10000);
       });
-      
-      logger.info('📡 Calling Tauri invoke send_session_prompt...', { model });
+
       const invokePromise = invoke('send_session_prompt', {
         handleId: this.handleId,
         prompt,
         model: model || null, // Send null if no model override
       });
-      
+
       await Promise.race([invokePromise, timeoutPromise]);
-      logger.info('✅ send_session_prompt completed successfully');
-      
+      logger.info('Prompt sent successfully');
+
     } catch (error) {
-      logger.error('❌ Failed to send prompt:', error);
+      logger.error('Failed to send prompt:', error);
       // Remove execution lock on error
       SessionHandleManager.removeExecutionLock(this.handleId, this.projectPath);
       throw error;
@@ -168,41 +163,36 @@ export class SessionHandle {
   async getMessages(): Promise<any[]> {
     // If messages are already loaded, return them immediately
     if (this.allMessages.length > 0) {
-      logger.info('📦 Returning cached messages for handle:', this.handleId, 'count:', this.allMessages.length);
       return [...this.allMessages]; // Return copy to prevent external mutation
     }
 
     // If a request is already in flight, wait for it
     if (this.messagesPromise) {
-      logger.info('⏳ Waiting for existing message load for handle:', this.handleId);
       return this.messagesPromise;
     }
 
-    logger.info('🔄 Loading messages for handle:', this.handleId);
-    
     // Start the request and cache the promise
     this.messagesPromise = this.loadMessagesFromBackend();
-    
+
     try {
       const messages = await this.messagesPromise;
       this.allMessages = [...messages]; // Store internal copy
       this.messagesPromise = null; // Clear promise
-      logger.info('✅ Messages loaded and cached for handle:', this.handleId, 'count:', messages.length);
-      
+
       // Process messages with agent attribution and notify listeners
       const processedMessages = processMessagesWithAgentInfo(this.allMessages);
       this.messageListeners.forEach(listener => {
         try {
           listener(processedMessages);
         } catch (error) {
-          logger.error('❌ Error in message listener:', error);
+          logger.error('Error in message listener:', error);
         }
       });
-      
+
       return [...messages]; // Return copy
     } catch (error) {
       this.messagesPromise = null; // Clear promise on error
-      logger.error('❌ Failed to load messages for handle:', this.handleId, error);
+      logger.error('Failed to load session messages:', error);
       throw error;
     }
   }
@@ -227,25 +217,21 @@ export class SessionHandle {
     if (newMessage.uuid) {
       const existingMessage = this.allMessages.find(msg => msg.uuid === newMessage.uuid);
       if (existingMessage) {
-        logger.info('🔄 Ignoring duplicate streaming message for handle:', this.handleId, 'uuid:', newMessage.uuid);
         return;
       }
     }
-    
+
     this.allMessages.push(newMessage);
-    logger.info('📝 Appended streaming message for handle:', this.handleId, 'new count:', this.allMessages.length, 'uuid:', newMessage.uuid);
-    
+
     // Process all messages with agent attribution (subagent detection, etc.)
     const processedMessages = processMessagesWithAgentInfo(this.allMessages);
-    
+
     // Notify all listeners with the processed message list
-    let listenerIndex = 0;
     this.messageListeners.forEach((listener) => {
-      listenerIndex++;
       try {
         listener(processedMessages);
       } catch (error) {
-        logger.error(`❌ Error in message listener ${listenerIndex}:`, error);
+        logger.error('Error in message listener:', error);
       }
     });
   }
@@ -254,20 +240,15 @@ export class SessionHandle {
    * Listen for message list updates (gets complete message list)
    */
   onMessagesUpdate(callback: (messages: any[]) => void): () => void {
-    logger.info('📝 Adding message listener for handle:', this.handleId, 'total listeners will be:', this.messageListeners.size + 1);
     this.messageListeners.add(callback);
-    
+
     // Setup stream listener lazily when first listener is added
-    // BUT prevent duplicate setup during React StrictMode
     if (!this.isStreamingSetup && this.messageListeners.size === 1) {
-      logger.info('🎧 Setting up SINGLE stream listener for first listener');
       this.setupStreamListener().catch(error => {
-        logger.error('❌ Failed to setup stream listener:', error);
+        logger.error('Failed to setup stream listener:', error);
       });
-    } else if (this.messageListeners.size > 1) {
-      logger.info('⚠️ Multiple listeners detected - stream already setup, skipping');
     }
-    
+
     // Send initial message list if we have cached messages
     if (this.allMessages.length > 0) {
       setTimeout(() => {
@@ -277,14 +258,12 @@ export class SessionHandle {
         }
       }, 0);
     }
-    
+
     return () => {
-      logger.info('🗑️ Removing message listener for handle:', this.handleId, 'remaining listeners will be:', this.messageListeners.size - 1);
       this.messageListeners.delete(callback);
-      
+
       // Clean up stream listener when last listener is removed
       if (this.messageListeners.size === 0 && this.messageStreamUnsubscribe) {
-        logger.info('🧹 No more listeners, cleaning up stream listener for handle:', this.handleId);
         this.messageStreamUnsubscribe();
         this.messageStreamUnsubscribe = null;
         this.isStreamingSetup = false;
@@ -306,24 +285,20 @@ export class SessionHandle {
    * Listen for process events (thinking messages, completion, etc.)
    */
   onProcessEvent(callback: (event: ClaudeProcessEvent) => void): () => void {
-    logger.info('📝 Adding process event listener for handle:', this.handleId, 'total listeners will be:', this.processEventListeners.size + 1);
     this.processEventListeners.add(callback);
-    
+
     // Setup process event listener lazily when first listener is added
     if (!this.isProcessEventSetup && this.processEventListeners.size === 1) {
-      logger.info('🎧 Setting up process event listener for first listener');
       this.setupProcessEventListener().catch(error => {
-        logger.error('❌ Failed to setup process event listener:', error);
+        logger.error('Failed to setup process event listener:', error);
       });
     }
-    
+
     return () => {
-      logger.info('🗑️ Removing process event listener for handle:', this.handleId, 'remaining listeners will be:', this.processEventListeners.size - 1);
       this.processEventListeners.delete(callback);
-      
+
       // Clean up process event listener when last listener is removed
       if (this.processEventListeners.size === 0 && this.processEventUnsubscribe) {
-        logger.info('🧹 No more process event listeners, cleaning up for handle:', this.handleId);
         this.processEventUnsubscribe();
         this.processEventUnsubscribe = null;
         this.isProcessEventSetup = false;
@@ -335,25 +310,24 @@ export class SessionHandle {
    * Clean up resources when session handle is no longer needed
    */
   destroy(): void {
-    logger.info('🗑️ Destroying session handle:', this.handleId);
     this.isDestroyed = true;
-    
+
     // Clean up all event subscriptions
     if (this.messageStreamUnsubscribe) {
       this.messageStreamUnsubscribe();
       this.messageStreamUnsubscribe = null;
     }
-    
+
     if (this.processEventUnsubscribe) {
       this.processEventUnsubscribe();
       this.processEventUnsubscribe = null;
     }
-    
+
     if (this.sessionStateUnsubscribe) {
       this.sessionStateUnsubscribe();
       this.sessionStateUnsubscribe = null;
     }
-    
+
     if (this.stateChangeUnsubscribe) {
       this.stateChangeUnsubscribe();
       this.stateChangeUnsubscribe = null;
@@ -365,7 +339,6 @@ export class SessionHandle {
     this.messageListeners.clear();
     this.stateUpdateListeners.clear();
     this.processEventListeners.clear();
-    logger.info('✅ Session handle destroyed:', this.handleId);
   }
 
   /**
@@ -374,60 +347,36 @@ export class SessionHandle {
    */
   private async setupStreamListener(): Promise<void> {
     if (this.isDestroyed) {
-      logger.info('🚫 Not setting up listener - handle already destroyed:', this.handleId);
       return;
     }
-    
+
     if (this.isStreamingSetup) {
-      logger.info('⚡ Stream listener already setup for handle:', this.handleId);
       return;
     }
-    
+
     try {
-      logger.info('🎧 Setting up Tauri event listener for session_message_stream, handleId:', this.handleId);
       this.isStreamingSetup = true;
-      
+
       // Use global event manager for session message streaming
       this.messageStreamUnsubscribe = await eventManager.subscribe<StreamedMessage>(
         'session_message_stream',
         (message) => {
           // Early return if destroyed
           if (this.isDestroyed) {
-            logger.info('🚫 Ignoring message - handle destroyed:', this.handleId);
             return;
           }
-        logger.info('📻 Received Tauri event session_message_stream:', { 
-          messageHandleId: message.handle_id, 
-          ourHandleId: this.handleId,
-          messageType: message.message_type,
-          uuid: message.uuid,
-          timestamp: message.timestamp,
-          eventTimestamp: new Date().toISOString()
-        });
-        
+
         // Only handle messages for this session handle
         if (message.handle_id === this.handleId) {
-          logger.info('✅ Message matches our handle, appending and notifying:', {
-            handleId: this.handleId,
-            messageUuid: message.uuid,
-            currentMessageCount: this.allMessages.length
-          });
-          
           // Append message and notify all listeners with complete list
           this.appendMessageAndNotify(message.content);
-        } else {
-          logger.info('🔇 Ignoring message for different handle:', { 
-            messageHandleId: message.handle_id, 
-            ourHandleId: this.handleId,
-            messageUuid: message.uuid
-          });
         }
       },
       { handleId: this.handleId }
       );
-      
+
     } catch (error) {
-      logger.error('❌ Failed to setup stream listener for handle:', this.handleId, error);
+      logger.error('Failed to setup stream listener:', error);
       this.isStreamingSetup = false;
     }
   }
@@ -437,72 +386,52 @@ export class SessionHandle {
    */
   private async setupProcessEventListener(): Promise<void> {
     if (this.isDestroyed) {
-      logger.info('🚫 Not setting up process event listener - handle already destroyed:', this.handleId);
       return;
     }
-    
+
     if (this.isProcessEventSetup) {
-      logger.info('⚡ Process event listener already setup for handle:', this.handleId);
       return;
     }
-    
+
     try {
-      logger.info('🎧 Setting up Tauri event listener for claude-process-event, handleId:', this.handleId);
       this.isProcessEventSetup = true;
-      
+
       // Use global event manager for claude process events
       this.processEventUnsubscribe = await eventManager.subscribe<ClaudeProcessEvent>(
         'claude-process-event',
         (processEvent) => {
           // Early return if destroyed
           if (this.isDestroyed) {
-            logger.info('🚫 Ignoring process event - handle destroyed:', this.handleId);
             return;
           }
-        logger.info('📻 Received claude-process-event:', { 
-          claudioSessionId: processEvent.claudio_session_id, 
-          ourHandleId: this.handleId,
-          status: processEvent.status.type,
-          title: processEvent.title,
-          timestamp: processEvent.timestamp
-        });
-        
+
         // Only handle process events for this session handle
         // Match by claudio_session_id since that's what the backend emits
         if (processEvent.claudio_session_id === this.handleId) {
-          logger.info('✅ Process event matches our handle, notifying listeners:', {
-            handleId: this.handleId,
-            status: processEvent.status.type,
-            title: processEvent.title,
-            listenersCount: this.processEventListeners.size
-          });
-          
           // Check if this indicates completion (Claude CLI finished)
-          if (processEvent.status.type === 'Completed' || processEvent.status.type === 'Failed') {
-            logger.info('🔓 Process completed, removing execution lock for handle:', this.handleId);
+          if (processEvent.status.type === 'Completed') {
+            logger.info('Claude process completed');
+            SessionHandleManager.removeExecutionLock(this.handleId, this.projectPath);
+          } else if (processEvent.status.type === 'Failed') {
+            logger.error('Claude process failed:', processEvent.status.data);
             SessionHandleManager.removeExecutionLock(this.handleId, this.projectPath);
           }
-          
+
           // Notify all process event listeners
           this.processEventListeners.forEach((listener) => {
             try {
               listener(processEvent);
             } catch (error) {
-              logger.error('❌ Error in process event listener:', error);
+              logger.error('Error in process event listener:', error);
             }
-          });
-        } else {
-          logger.info('🔇 Ignoring process event for different handle:', { 
-            eventClaudioSessionId: processEvent.claudio_session_id, 
-            ourHandleId: this.handleId
           });
         }
       },
       { claudioid: this.handleId }
       );
-      
+
     } catch (error) {
-      logger.error('❌ Failed to setup process event listener for handle:', this.handleId, error);
+      logger.error('Failed to setup process event listener:', error);
       this.isProcessEventSetup = false;
     }
   }
@@ -512,46 +441,37 @@ export class SessionHandle {
    */
   private async setupSessionStateChangeListener(): Promise<void> {
     try {
-      logger.info('🎧 Setting up session-state-changed listener for handle:', this.handleId);
-      
       interface SessionStateChangeEvent {
         claudio_id: string;
         new_claude_session_id: string;
         project_path: string;
       }
-      
+
       this.sessionStateUnsubscribe = await eventManager.subscribe<SessionStateChangeEvent>(
-        'session-state-changed', 
+        'session-state-changed',
         async (stateChange) => {
           // Handle state changes for this Claudio session (account for handleId updates)
-          const isOurSession = (stateChange.claudio_id === this.handleId || this.handleId === 'new') 
+          const isOurSession = (stateChange.claudio_id === this.handleId || this.handleId === 'new')
                               && stateChange.project_path === this.projectPath;
           if (isOurSession) {
             // If we're still "new", update to the real handleId
             if (this.handleId === 'new') {
               this.handleId = stateChange.claudio_id;
-              logger.info('📝 Updated handleId from state change event:', this.handleId);
             }
-            
-            logger.info('🔄 Received session state change for our handle:', {
-              handleId: this.handleId,
-              newClaudeSessionId: stateChange.new_claude_session_id
-            });
-            
+
             // Refresh the session state by calling getState() again
             try {
               await this.getState();
-              logger.info('✅ Successfully refreshed session state after Claude session creation');
             } catch (error) {
-              logger.error('❌ Failed to refresh session state:', error);
+              logger.error('Failed to refresh session state:', error);
             }
           }
         },
         { claudioid: this.handleId }
       );
-      
+
     } catch (error) {
-      logger.error('❌ Failed to setup session state change listener for handle:', this.handleId, error);
+      logger.error('Failed to setup session state change listener:', error);
     }
   }
 }
@@ -570,34 +490,26 @@ export class SessionHandleManager {
    */
   static async getHandle(sessionId: string | null, projectPath: string): Promise<SessionHandle> {
     const handleKey = `${projectPath}:${sessionId ?? 'new'}`;
-    
-    logger.info('🔍 SessionHandleManager.getHandle called:', { sessionId, projectPath, handleKey });
-    
+
     // Increment reference count
     const currentRefCount = this.refCounts.get(handleKey) || 0;
     this.refCounts.set(handleKey, currentRefCount + 1);
-    logger.info('📊 Reference count incremented:', { handleKey, newRefCount: currentRefCount + 1 });
-    
+
     // Return existing handle if available
     if (this.handles.has(handleKey)) {
-      logger.info('♻️ Returning existing handle for key:', handleKey, 'with refCount:', currentRefCount + 1);
       return this.handles.get(handleKey)!;
     }
 
-    logger.info('🆕 Creating new handle for key:', handleKey);
     // Create new handle
     const handle = new SessionHandle(sessionId ?? 'new', projectPath);
     this.handles.set(handleKey, handle);
-    logger.info('💾 Stored handle in cache');
-    
+
     // Verify the handle works by getting initial state
     try {
-      logger.info('🔍 Verifying handle by getting initial state...');
       await handle.getState();
-      logger.info('✨ Created and verified session handle:', { sessionId, projectPath });
       return handle;
     } catch (error) {
-      logger.error('❌ Handle verification failed:', error);
+      logger.error('Failed to create session handle:', error);
       // Clean up failed handle and decrement ref count
       this.handles.delete(handleKey);
       this.refCounts.delete(handleKey);
@@ -620,39 +532,28 @@ export class SessionHandleManager {
    */
   static destroyHandle(sessionId: string, projectPath: string): void {
     const handleKey = `${projectPath}:${sessionId}`;
-    
+
     // Decrement reference count
     const currentRefCount = this.refCounts.get(handleKey) || 0;
     const newRefCount = Math.max(0, currentRefCount - 1);
-    
+
     if (newRefCount === 0) {
       // Reference count reached zero - check execution locks before destroying
       const executionLocks = this.executionLocks.get(handleKey) || 0;
       if (executionLocks > 0) {
-        logger.info('🔒 Reference count zero but execution locks present, preserving handle:', { 
-          handleKey, sessionId, projectPath, executionLocks 
-        });
         this.refCounts.set(handleKey, newRefCount); // Keep ref count at 0 for later cleanup
       } else {
         // No references and no execution locks - actually destroy the handle
-        logger.info('🗑️ Reference count reached zero with no execution locks, destroying handle:', { handleKey, sessionId, projectPath });
         const handle = this.handles.get(handleKey);
         if (handle) {
           handle.destroy();
           this.handles.delete(handleKey);
         }
         this.refCounts.delete(handleKey);
-        logger.info('✅ Session handle destroyed:', { sessionId, projectPath });
       }
     } else {
       // Still has references - just decrement counter
       this.refCounts.set(handleKey, newRefCount);
-      logger.info('📊 Reference count decremented (handle preserved):', { 
-        handleKey, 
-        sessionId, 
-        projectPath, 
-        newRefCount 
-      });
     }
   }
 
@@ -664,7 +565,6 @@ export class SessionHandleManager {
     this.handles.clear();
     this.refCounts.clear();
     this.executionLocks.clear();
-    logger.info('🧹 Destroyed all session handles');
   }
 
   /**
@@ -674,7 +574,6 @@ export class SessionHandleManager {
     const handleKey = `${projectPath}:${sessionId}`;
     const currentLocks = this.executionLocks.get(handleKey) || 0;
     this.executionLocks.set(handleKey, currentLocks + 1);
-    logger.info('🔒 Execution lock added:', { handleKey, lockCount: currentLocks + 1 });
   }
 
   /**
@@ -684,15 +583,13 @@ export class SessionHandleManager {
     const handleKey = `${projectPath}:${sessionId}`;
     const currentLocks = this.executionLocks.get(handleKey) || 0;
     const newLockCount = Math.max(0, currentLocks - 1);
-    
+
     if (newLockCount === 0) {
       this.executionLocks.delete(handleKey);
-      logger.info('🔓 Execution lock removed, checking for cleanup:', { handleKey });
-      
+
       // Check if handle can be destroyed (no references and no execution locks)
       const refCount = this.refCounts.get(handleKey) || 0;
       if (refCount === 0) {
-        logger.info('🗑️ No references or execution locks, destroying handle:', handleKey);
         const handle = this.handles.get(handleKey);
         if (handle) {
           handle.destroy();
@@ -702,7 +599,6 @@ export class SessionHandleManager {
       }
     } else {
       this.executionLocks.set(handleKey, newLockCount);
-      logger.info('🔒 Execution lock decremented:', { handleKey, lockCount: newLockCount });
     }
   }
 }

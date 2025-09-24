@@ -105,33 +105,7 @@ export function useCachedClaudeCodeSettings(
   };
 }
 
-/**
- * Hook for cached model setting (CLAUDE CODE settings only)
- */
-export function useCachedClaudeCodeModelSetting(projectPath?: string) {
-  const { settings, loading, error, updateSetting } = useCachedClaudeCodeSettings(projectPath);
-
-  const model = useMemo(() => {
-    if (!settings) return null;
-    return settings.effective?.model || null;
-  }, [settings]);
-
-  const updateModel = useCallback(async (newModel: string) => {
-    try {
-      await updateSetting('model', newModel);
-    } catch (error) {
-      logger.error('Failed to update model setting:', error);
-      throw error;
-    }
-  }, [updateSetting]);
-
-  return {
-    model,
-    loading,
-    error,
-    updateModel
-  };
-}
+// Removed redundant useCachedClaudeCodeModelSetting hook - just use useCachedClaudeCodeSettings and extract model
 
 /**
  * Hook for general Claude Code CLI settings

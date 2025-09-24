@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tauri::{command, AppHandle, Manager, PhysicalPosition, PhysicalSize};
 use tokio::time::sleep;
-use crate::commands::claudio_app_settings::{load_claudio_app_settings, save_claudio_app_settings};
+use crate::commands::claudio_app_settings::{load_claudio_app_setting, save_claudio_app_setting};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WindowState {
@@ -46,14 +46,11 @@ impl Default for WindowState {
 
 #[command]
 pub async fn save_window_state(_app_handle: AppHandle, state: WindowState) -> Result<(), String> {
-    // Load existing settings
-    let mut settings = load_claudio_app_settings().await.unwrap_or_default();
+    // Serialize the entire WindowState as JSON and save in one call
+    let json_value = serde_json::to_string(&state)
+        .map_err(|e| format!("Failed to serialize window state: {}", e))?;
 
-    // Update window state
-    settings.window_state = Some(state.clone());
-
-    // Save back to file immediately
-    save_claudio_app_settings(settings).await?;
+    save_claudio_app_setting("windowState".to_string(), json_value).await?;
 
     log::debug!("Window state saved to file");
     Ok(())
@@ -61,14 +58,23 @@ pub async fn save_window_state(_app_handle: AppHandle, state: WindowState) -> Re
 
 #[command]
 pub async fn load_window_state() -> Result<WindowState, String> {
-    // Load Claudio settings
-    let settings = load_claudio_app_settings().await.unwrap_or_default();
-
-    // Return window state if it exists, otherwise use defaults
-    let state = settings.window_state.unwrap_or_else(WindowState::default);
-    
-    log::info!("Window state loaded successfully");
-    Ok(state)
+    // Load the entire WindowState as JSON or return defaults
+    match load_claudio_app_setting("windowState".to_string()).await {
+        Ok(Some(json_str)) => {
+            // Try to deserialize the stored JSON
+            serde_json::from_str(&json_str)
+                .map_err(|e| format!("Failed to parse window state JSON: {}", e))
+        }
+        Ok(None) => {
+            // No stored state, return defaults
+            log::info!("No window state found, using defaults");
+            Ok(WindowState::default())
+        }
+        Err(e) => {
+            log::warn!("Failed to load window state, using defaults: {}", e);
+            Ok(WindowState::default())
+        }
+    }
 }
 
 #[command]

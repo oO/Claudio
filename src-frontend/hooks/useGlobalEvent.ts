@@ -67,10 +67,7 @@ export function useGlobalEvent<T = any>(
         const unsubscribe = await eventManager.subscribe(
           eventName,
           (payload: T) => {
-            // Debug logging for React callback
-            if (eventName === 'session-file-changed') {
-              logger.debug(`🔍 React callback for ${eventName}:`, payload);
-            }
+            // Removed debug logging - event callbacks are frequent and not user-relevant
 
             try {
               // Use ref to get latest callback

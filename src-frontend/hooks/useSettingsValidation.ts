@@ -16,7 +16,6 @@ export interface FieldValidation {
 
 export interface SettingsValidation {
   overall: ValidationResult;
-  cleanupPeriodDays: FieldValidation;
   apiKeyHelper: FieldValidation;
   permissions: {
     allow: FieldValidation[];
@@ -38,7 +37,6 @@ export const useSettingsValidation = (
   const validation = useMemo(() => {
     const result: SettingsValidation = {
       overall: { isValid: true, errors: [], warnings: [] },
-      cleanupPeriodDays: { isValid: true },
       apiKeyHelper: { isValid: true },
       permissions: {
         allow: [],
@@ -53,24 +51,6 @@ export const useSettingsValidation = (
       return result;
     }
 
-    // Validate cleanup period
-    if (settings.cleanupPeriodDays !== undefined) {
-      const days = settings.cleanupPeriodDays;
-      if (typeof days !== 'number' || days < 1 || days > 365) {
-        result.cleanupPeriodDays = {
-          isValid: false,
-          error: "Cleanup period must be between 1 and 365 days"
-        };
-        result.overall.isValid = false;
-        result.overall.errors.push("Invalid cleanup period");
-      } else if (days < 7) {
-        result.cleanupPeriodDays = {
-          isValid: true,
-          warning: "Short cleanup periods may impact performance"
-        };
-        result.overall.warnings.push("Very short cleanup period");
-      }
-    }
 
     // Validate API key helper
     if (settings.apiKeyHelper) {

@@ -14,7 +14,7 @@ analytics.initialize();
 resourceMonitor.startMonitoring(120000);
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  <React.StrictMode>
+  // <React.StrictMode> // Temporarily disabled to test without double-execution
     <PostHogProvider
       apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_KEY}
       options={{
@@ -30,5 +30,5 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
         </AnalyticsErrorBoundary>
       </ErrorBoundary>
     </PostHogProvider>
-  </React.StrictMode>,
+  // </React.StrictMode>,
 );

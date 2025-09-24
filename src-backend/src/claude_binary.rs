@@ -41,18 +41,16 @@ pub fn find_claude_binary(app_handle: &tauri::AppHandle) -> Result<String, Strin
 pub async fn find_claude_binary_async(_app_handle: &tauri::AppHandle) -> Result<String, String> {
 
     // First check if we have a stored path in the settings
-    use crate::commands::claudio_app_settings::load_claudio_app_settings;
-    if let Ok(settings) = load_claudio_app_settings().await {
-        if let Some(stored_path) = settings.claude_binary_path {
-            debug!("Found stored claude path in settings: {}", stored_path);
-            
-            // Check if the path still exists
-            let path_buf = PathBuf::from(&stored_path);
-            if path_buf.exists() && path_buf.is_file() {
-                return Ok(stored_path);
-            } else {
-                warn!("Stored claude path no longer exists: {}", stored_path);
-            }
+    use crate::commands::claudio_app_settings::load_claudio_app_setting;
+    if let Ok(Some(stored_path)) = load_claudio_app_setting("claudeBinaryPath".to_string()).await {
+        debug!("Found stored claude path in settings: {}", stored_path);
+
+        // Check if the path still exists
+        let path_buf = PathBuf::from(&stored_path);
+        if path_buf.exists() && path_buf.is_file() {
+            return Ok(stored_path);
+        } else {
+            warn!("Stored claude path no longer exists: {}", stored_path);
         }
     }
 

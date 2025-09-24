@@ -7,7 +7,7 @@ import { FilePicker, SlashCommandPicker, ImagePreview } from "@/components/commo
 import { DebugLabel } from "@/components/ui/atoms";
 import { type FileEntry, type SlashCommand } from "@/lib/api";
 import { logger } from '@/lib/logger';
-import { useCachedClaudeCodeModelSetting } from '@/lib/settings/useCachedClaudeCodeSettings';
+import { useClaudeCodeSettingsContext } from '@/lib/settings';
 // Define QueuedPrompt type inline (previously from deprecated useSessionState)
 export interface QueuedPrompt {
   id: string;
@@ -98,8 +98,8 @@ const PromptInputInner = (
   }: PromptInputProps,
   ref: React.Ref<PromptInputRef>,
 ) => {
-  // Get model from cached settings - this should now show "opusplan" correctly!
-  const { model: settingsModel, loading: modelLoading } = useCachedClaudeCodeModelSetting(projectPath);
+  // Get model from context settings - this should now show "opusplan" correctly!
+  const { model: settingsModel, loading: modelLoading } = useClaudeCodeSettingsContext();
 
   // Temporary model override for current prompt only
   const [temporaryModel, setTemporaryModel] = useState<ModelId | null>(null);
@@ -107,13 +107,11 @@ const PromptInputInner = (
   // Temporary thinking mode override for current prompt only
   const [temporaryThinkingMode, setTemporaryThinkingMode] = useState<ThinkingMode | null>(null);
 
-  // Current effective model - temporary override or from settings
+  // Current effective model - temporary override > settings > unselected
   const selectedModel: ModelId | null = temporaryModel || (settingsModel as ModelId) || null;
-
 
   // Set temporary model override (does not save to settings)
   const setSelectedModel = (model: ModelId) => {
-    logger.debug('Setting temporary model override:', { model, previous: temporaryModel });
     setTemporaryModel(model);
   };
 
@@ -126,7 +124,7 @@ const PromptInputInner = (
     setPrompt,
     updatePrompt,
     clearPrompt,
-    canSend,
+    canSend: canSendBase,
     cursorPosition,
     setCursorPosition,
   } = usePromptInput({
@@ -134,11 +132,13 @@ const PromptInputInner = (
     disabled,
   });
 
+  // Can only send if prompt is ready AND model is selected
+  const canSend = canSendBase && selectedModel !== null;
+
   // Track when user manually selects a mode (vs auto-detection)
   const [userSelectedMode, setUserSelectedMode] = useState<{ mode: ThinkingMode; timestamp: number } | null>(null);
 
   const setSelectedThinkingMode = useCallback((mode: ThinkingMode) => {
-    logger.debug('User manually selected thinking mode:', { mode, previous: temporaryThinkingMode, currentPrompt: prompt });
     setTemporaryThinkingMode(mode);
     setUserSelectedMode({ mode, timestamp: Date.now() }); // Track manual selection
   }, [temporaryThinkingMode, prompt]);
@@ -167,7 +167,6 @@ const PromptInputInner = (
     const currentText = prompt.trim();
     if (!currentText) return;
 
-    logger.debug('updatePromptWithThinking:', { mode, currentText });
 
     // Remove any existing thinking phrases - handle all cases
     let cleanText = currentText
@@ -184,17 +183,14 @@ const PromptInputInner = (
       .replace(/\.\s*\./g, '.')
       .trim();
 
-    logger.debug('Cleaned text:', { original: currentText, cleaned: cleanText });
 
     // Add new thinking phrase if not auto mode
     const thinkingMode = THINKING_MODES.find(m => m.id === mode);
     if (thinkingMode && thinkingMode.phrase && mode !== 'auto') {
       const updatedText = `${cleanText}. ${thinkingMode.phrase}.`;
-      logger.debug('Adding thinking phrase:', { phrase: thinkingMode.phrase, updatedText });
       setPrompt(updatedText);
     } else {
       // Auto mode - just use the clean text
-      logger.debug('Auto mode, using clean text:', cleanText);
       setPrompt(cleanText);
     }
   }, [prompt, setPrompt]);
@@ -202,7 +198,6 @@ const PromptInputInner = (
   // Update prompt when user manually selects a thinking mode
   React.useEffect(() => {
     if (userSelectedMode && prompt.trim()) {
-      logger.debug('Updating prompt for manual mode selection:', userSelectedMode.mode);
       updatePromptWithThinking(userSelectedMode.mode);
       setUserSelectedMode(null); // Clear after processing
     }
@@ -285,11 +280,8 @@ const PromptInputInner = (
     [addImage, prompt, setPrompt, clearPrompt]
   );
 
-  // Don't render if settings aren't loaded yet or model is still null
-  // IMPORTANT: This must be AFTER all hooks to avoid "more hooks than previous render" error
-  if (modelLoading || selectedModel === null) {
-    return null; // Component should not render until model is loaded
-  }
+  // Always render for CLAUDIO sessions - settings loading shouldn't break UX
+  // The selectedModel now has a fallback, so it's never null
 
   // Handle sending - KISS! Thinking phrase is already in the prompt text
   const handleSend = () => {
@@ -297,8 +289,10 @@ const PromptInputInner = (
       const finalPrompt = prompt.trim(); // Send exactly what user sees
 
       // Send the actual selected model - let backend decide if --model flag is needed
-      // TypeScript doesn't know selectedModel is guaranteed non-null here due to early return
-      onSend(finalPrompt, selectedModel!);
+      // Only send if we have a valid model selected
+      if (selectedModel) {
+        onSend(finalPrompt, selectedModel);
+      }
 
       // Reset both temporary overrides after sending
       setTemporaryModel(null);
@@ -586,9 +580,9 @@ const PromptInputInner = (
             {/* Line 2: Model Selector + Thinking Mode Selector */}
             <div className="flex items-center gap-4">
               <ModelSelector
-                selectedModel={selectedModel!}
+                selectedModel={selectedModel}
                 onModelSelect={setSelectedModel}
-                disabled={disabled}
+                disabled={disabled || selectedModel === null}
               />
 
               <ThinkingModeSelector

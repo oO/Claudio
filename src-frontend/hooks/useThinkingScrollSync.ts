@@ -45,12 +45,11 @@ export const useThinkingScrollSync = ({
       // Delay ensures DOM has updated with ThinkingIndicator changes
       // 150ms gives enough time for animations and layout shifts
       setTimeout(() => {
-        logger.debug(`🔍 Attempting to force scroll, messagesRef.current:`, messagesRef.current);
-        logger.debug(`🔍 Available methods:`, messagesRef.current ? Object.keys(messagesRef.current) : 'ref is null');
+        // Removed debug logging - internal scroll mechanics are not user-relevant
         
         if (messagesRef.current?.forceScrollToBottom) {
           messagesRef.current.forceScrollToBottom();
-          logger.debug(`📜 Forced scroll to bottom after thinking ${action}`);
+          // Scroll completed successfully
         } else {
           logger.error(`❌ forceScrollToBottom method not found on messagesRef.current`);
           // Fallback to regular scrollToBottom if it exists
@@ -61,7 +60,7 @@ export const useThinkingScrollSync = ({
         }
       }, 150);
     } else if ((thinkingStarted || thinkingStopped) && !wasPinned) {
-      logger.debug(`🧠 Thinking ${thinkingStarted ? 'started' : 'stopped'}, but user was not pinned to bottom - preserving scroll position`);
+      // Thinking state changed but preserving user's scroll position
     }
 
     // Update refs for next comparison

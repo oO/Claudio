@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.6.1] - 2025-09-24
+
+### Fix
+- Fixed critical async filesystem bug in save_claudio_app_setting() that was mixing sync std::fs with async functions, causing "No such file or directory" errors - now properly uses tokio::fs throughout
+- Removed localStorage persistence for session filters to improve UX (filters now just component state that resets on navigation)
+- Fixed window and proxy settings to use single JSON saves instead of multiple individual saves for better performance
+
+### Refactor
+- Migrated debug mode from localStorage to ClaudioAppSettings for proper settings management
+- Removed all localStorage cleanup code from TabContext since session filters no longer persist
+- Completed localStorage migration - only analytics consent remains in localStorage (appropriate for privacy)
+
 ## [0.5.3] - 2025-09-20
 
 ### Fix
