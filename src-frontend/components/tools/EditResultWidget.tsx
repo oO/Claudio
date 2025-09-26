@@ -2,7 +2,7 @@ import React from "react";
 import { GitBranch, ChevronRight } from "lucide-react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { getClaudeSyntaxTheme } from "@/lib/claudeSyntaxTheme";
-import { useTheme } from "@/hooks";
+import { useThemeUnified } from "@/hooks";
 import { ToolWidgetTemplate } from "./ToolWidgetTemplate";
 
 const getLanguage = (path: string) => {
@@ -50,7 +50,7 @@ const getLanguage = (path: string) => {
  * Widget for Edit tool result - shows a diff view
  */
 export const EditResultWidget: React.FC<{ content: string }> = ({ content }) => {
-  const { theme } = useTheme();
+  const { theme } = useThemeUnified();
   const syntaxTheme = getClaudeSyntaxTheme(theme);
   
   // Parse the content to extract file path and code snippet

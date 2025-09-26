@@ -1,6 +1,6 @@
 import React from "react";
 import MDEditor, { MDEditorProps } from "@uiw/react-md-editor";
-import { useThemeContext } from "@/contexts/ThemeContext";
+import { useThemeUnified } from "@/hooks/useThemeUnified";
 import { getThemeById } from "@/lib/themes";
 import { cn } from "@/lib/utils";
 
@@ -53,7 +53,7 @@ export const ThemedMDEditor: React.FC<ThemedMDEditorProps> = ({
   visibleDragbar = false,
   ...props
 }) => {
-  const { theme } = useThemeContext();
+  const { theme } = useThemeUnified();
   
   // Determine if current theme is dark
   const isDarkTheme = theme === 'custom' ? true : (getThemeById(theme)?.isDark ?? true);

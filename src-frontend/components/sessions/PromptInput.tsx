@@ -7,7 +7,7 @@ import { FilePicker, SlashCommandPicker, ImagePreview } from "@/components/commo
 import { DebugLabel } from "@/components/ui/atoms";
 import { type FileEntry, type SlashCommand } from "@/lib/api";
 import { logger } from '@/lib/logger';
-import { useClaudeCodeSettingsContext } from '@/lib/settings';
+import { useCachedClaudeCodeSettings } from '@/lib/settings';
 // Define QueuedPrompt type inline (previously from deprecated useSessionState)
 export interface QueuedPrompt {
   id: string;
@@ -98,8 +98,14 @@ const PromptInputInner = (
   }: PromptInputProps,
   ref: React.Ref<PromptInputRef>,
 ) => {
-  // Get model from context settings - this should now show "opusplan" correctly!
-  const { model: settingsModel, loading: modelLoading } = useClaudeCodeSettingsContext();
+  // Get model from tri-level ClaudeCode settings for this specific project
+  const {
+    settings: claudeCodeSettings,
+    loading: modelLoading
+  } = useCachedClaudeCodeSettings(projectPath);
+
+  // Extract model from effective settings (user + team + local merged)
+  const settingsModel = claudeCodeSettings?.effective?.model || 'sonnet';
 
   // Temporary model override for current prompt only
   const [temporaryModel, setTemporaryModel] = useState<ModelId | null>(null);

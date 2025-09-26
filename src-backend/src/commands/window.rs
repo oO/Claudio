@@ -46,11 +46,10 @@ impl Default for WindowState {
 
 #[command]
 pub async fn save_window_state(_app_handle: AppHandle, state: WindowState) -> Result<(), String> {
-    // Serialize the entire WindowState as JSON and save in one call
-    let json_value = serde_json::to_string(&state)
-        .map_err(|e| format!("Failed to serialize window state: {}", e))?;
-
-    save_claudio_app_setting("windowState".to_string(), json_value).await?;
+    // Convert WindowState directly to serde_json::Value
+    let window_json_value = serde_json::to_value(&state)
+        .map_err(|e| format!("Failed to convert window state to JSON: {}", e))?;
+    save_claudio_app_setting("windowState".to_string(), window_json_value).await?;
 
     log::debug!("Window state saved to file");
     Ok(())

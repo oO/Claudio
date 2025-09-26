@@ -59,6 +59,7 @@ interface TabContextType {
   panelBreaks: number[]; // Panel break points: [3, 6] means panel 0: tabs 0-2, panel 1: tabs 3-5, panel 2: tabs 6+
   activePanelIndex: number; // Which panel is currently active
   activeTabs: Record<number, string>; // Active tab per panel: { 0: "tab-1", 1: "tab-5" }
+  panelMinWidth: number; // Minimum width per panel for splitting logic
   addTab: (tab: Omit<Tab, 'id' | 'order' | 'createdAt' | 'updatedAt'>, panelIndex?: number) => string;
   removeTab: (id: string, force?: boolean) => boolean;
   updateTab: (id: string, updates: Partial<Tab>) => void;
@@ -77,6 +78,7 @@ interface TabContextType {
   getPanelCount: () => number;
   getPanelCounts: () => number[]; // For backwards compatibility
   canAddPanel: () => boolean; // Check if window width allows another panel
+  setPanelMinWidth: (width: number) => void; // Update minimum panel width
   
   // Multi-view panel support
   setActiveTabForPanel: (panelIndex: number, tabId: string) => void;
@@ -99,6 +101,7 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const activePanelIndexRef = useRef<number>(0); // Ref to avoid stale closure in useEffect
   const tabsRef = useRef<Tab[]>([]); // Always have current tabs for event listeners
   const panelBreaksRef = useRef<number[]>([]); // Always have current panelBreaks for event listeners
+  const panelMinWidthRef = useRef<number>(PANEL_MIN_WIDTH); // Always have current panelMinWidth for event listeners
   const [activeTabs, setActiveTabs] = useState<Record<number, string>>({}); // Active tab per panel
   const [windowWidth, setWindowWidth] = useState<number>(window.innerWidth);
   const [isInitialRestoration, setIsInitialRestoration] = useState(true); // Prevent saves during startup restoration
@@ -107,28 +110,9 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const { settings } = useSettingsState();
   const [panelMinWidth, setPanelMinWidth] = useState<number>(PANEL_MIN_WIDTH);
 
-  // Load panel min width from Claudio app settings
-  useEffect(() => {
-    const loadPanelMinWidth = async () => {
-      try {
-        const saved = await api.loadClaudioAppSetting("panelMinWidth");
-        if (saved) {
-          const value = parseInt(saved);
-          if (!isNaN(value)) {
-            setPanelMinWidth(Math.max(300, Math.min(800, value)));
-          }
-        }
-      } catch (error) {
-        logger.error("Failed to load panel min width:", error);
-      }
-    };
-
-    loadPanelMinWidth();
-  }, []);
-
   // Debouncing for save operations to prevent rapid-fire saves during restoration/shutdown
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const debouncedSave = useCallback((tabs: Tab[], panelBreaks: number[], activePanelIndex: number) => {
+  const debouncedSave = useCallback((tabs: Tab[], panelBreaks: number[], activePanelIndex: number, panelMinWidth: number) => {
     // Clear any pending save
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
@@ -136,7 +120,7 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Schedule save with debounce
     saveTimeoutRef.current = setTimeout(() => {
-      saveTabs(tabs, panelBreaks, activePanelIndex);
+      saveTabs(tabs, panelBreaks, activePanelIndex, panelMinWidth);
       saveTimeoutRef.current = null;
     }, 500); // 500ms debounce for in-memory store (much lighter now)
   }, [saveTabs]);
@@ -146,7 +130,8 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     activePanelIndexRef.current = activePanelIndex;
     tabsRef.current = tabs;
     panelBreaksRef.current = panelBreaks;
-  }, [activePanelIndex, tabs, panelBreaks]);
+    panelMinWidthRef.current = panelMinWidth;
+  }, [activePanelIndex, tabs, panelBreaks, panelMinWidth]);
 
   // Track window width changes for panel calculations
   useEffect(() => {
@@ -319,11 +304,14 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setTabs(restoredTabs);
             setPanelBreaks(sessionData.panelBreaks || []);
             setActivePanelIndex(sessionData.activePanelIndex || 0);
+            setPanelMinWidth(sessionData.panelMinWidth || PANEL_MIN_WIDTH);
             setActiveTabId(restoredTabs[0].id);
 
             logger.info(`Tab restoration completed: ${restoredTabs.length} tabs restored`);
           }
         } else {
+          // No saved tabs, but still set default panelMinWidth
+          setPanelMinWidth(sessionData.panelMinWidth || PANEL_MIN_WIDTH);
           logger.info('Tab restoration completed: no saved tabs found');
         }
       } catch (error) {
@@ -365,9 +353,9 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     // Only save after initial restoration is complete
     if (!isInitialRestoration) {
-      debouncedSave(tabs, panelBreaks, activePanelIndex);
+      debouncedSave(tabs, panelBreaks, activePanelIndex, panelMinWidth);
     }
-  }, [tabs, panelBreaks, activePanelIndex, debouncedSave, isInitialRestoration]);
+  }, [tabs, panelBreaks, activePanelIndex, panelMinWidth, debouncedSave, isInitialRestoration]);
 
   // Immediate save on shutdown events - using refs to avoid multiple cleanup functions
   useEffect(() => {
@@ -377,7 +365,7 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = null;
       }
-      saveTabs(tabsRef.current, panelBreaksRef.current, activePanelIndexRef.current);
+      saveTabs(tabsRef.current, panelBreaksRef.current, activePanelIndexRef.current, panelMinWidthRef.current);
     };
 
     // logger.info('🎧 Setting up quit/shutdown listeners...');
@@ -400,7 +388,7 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             clearTimeout(saveTimeoutRef.current);
             saveTimeoutRef.current = null;
           }
-          saveTabs(tabsRef.current, panelBreaksRef.current, activePanelIndexRef.current);
+          saveTabs(tabsRef.current, panelBreaksRef.current, activePanelIndexRef.current, panelMinWidthRef.current);
         });
 
         // logger.info('🎧 Tauri close listener set up successfully');
@@ -429,7 +417,7 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = null;
       }
-      saveTabs(tabsRef.current, panelBreaksRef.current, activePanelIndexRef.current);
+      saveTabs(tabsRef.current, panelBreaksRef.current, activePanelIndexRef.current, panelMinWidthRef.current);
     };
   }, [saveTabs]); // Only depend on saveTabs - refs are always current!
 
@@ -735,6 +723,7 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTabs(restoredTabs);
     setPanelBreaks(sessionData.panelBreaks || []);
     setActivePanelIndex(sessionData.activePanelIndex || 0);
+    setPanelMinWidth(sessionData.panelMinWidth || PANEL_MIN_WIDTH);
     
     // Set the first restored tab as active
     if (restoredTabs.length > 0) {
@@ -756,12 +745,18 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return activeTabs[panelIndex] || null;
   }, [activeTabs]);
 
+  const updatePanelMinWidth = useCallback((width: number) => {
+    const clampedWidth = Math.max(300, Math.min(800, width));
+    setPanelMinWidth(clampedWidth);
+  }, []);
+
   const value: TabContextType = {
     tabs,
     activeTabId,
     panelBreaks,
     activePanelIndex,
     activeTabs,
+    panelMinWidth,
     addTab,
     removeTab,
     updateTab,
@@ -778,6 +773,7 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getPanelCount,
     getPanelCounts,
     canAddPanel,
+    setPanelMinWidth: updatePanelMinWidth,
     setActiveTabForPanel,
     getActiveTabForPanel,
     getPanelIndexForTab,

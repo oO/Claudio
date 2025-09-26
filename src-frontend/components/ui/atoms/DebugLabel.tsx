@@ -1,5 +1,5 @@
 import React from "react";
-import { useDebugContext } from "@/contexts/DebugContext";
+import { useDebugUnified } from "@/hooks/useDebugUnified";
 
 interface DebugLabelProps {
   label: string;
@@ -8,9 +8,10 @@ interface DebugLabelProps {
 
 /**
  * Atomic component for debug labels that only show when debug mode is enabled
+ * Now uses UnifiedSettings for cached debug mode access (no API calls!)
  */
 export const DebugLabel: React.FC<DebugLabelProps> = ({ label, className = "" }) => {
-  const { isDebugMode } = useDebugContext();
+  const { isDebugMode } = useDebugUnified();
 
   if (!isDebugMode) {
     return null;

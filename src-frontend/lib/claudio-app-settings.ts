@@ -29,7 +29,7 @@ export interface ClaudioAppSettings {
     enabled: boolean;
   };
   claude_binary_path?: string;
-  theme?: string;
+  theme_preference?: string;
   telemetry?: boolean;
   auto_update?: boolean;
   debug_mode?: boolean;
@@ -51,22 +51,22 @@ export function useClaudioAppSettings() {
         setLoading(true);
         setError(null);
 
-        // Get all settings at once for efficiency
-        const windowState = await invoke<any>('get_claudio_app_setting', { key: 'window_state' });
-        const tabsSession = await invoke<any>('get_claudio_app_setting', { key: 'tabs_session' });
-        const proxy = await invoke<any>('get_claudio_app_setting', { key: 'proxy' });
-        const binaryPath = await invoke<string>('get_claudio_app_setting', { key: 'claude_binary_path' });
-        const theme = await invoke<string>('get_claudio_app_setting', { key: 'theme' });
-        const telemetry = await invoke<boolean>('get_claudio_app_setting', { key: 'telemetry' });
-        const autoUpdate = await invoke<boolean>('get_claudio_app_setting', { key: 'auto_update' });
-        const debugMode = await invoke<boolean>('get_claudio_app_setting', { key: 'debug_mode' });
+        // Load settings from backend memory cache (fast!)
+        const windowState = await getClaudioAppSetting('window_state');
+        const tabsSession = await getClaudioAppSetting('tabs_session');
+        const proxy = await getClaudioAppSetting('proxy');
+        const binaryPath = await getClaudioAppSetting('claude_binary_path');
+        const theme = await getClaudioAppSetting('theme_preference');
+        const telemetry = await getClaudioAppSetting('telemetry');
+        const autoUpdate = await getClaudioAppSetting('auto_update');
+        const debugMode = await getClaudioAppSetting('debug_mode');
 
         setSettings({
           window_state: windowState,
           tabs_session: tabsSession,
           proxy: proxy,
           claude_binary_path: binaryPath,
-          theme: theme,
+          theme_preference: theme,
           telemetry: telemetry,
           auto_update: autoUpdate,
           debug_mode: debugMode,
@@ -90,7 +90,7 @@ export function useClaudioAppSettings() {
 
     try {
       // Persist to backend
-      await invoke('set_claudio_app_setting', { key, value });
+      await invoke('save_claudio_app_setting', { key, value });
       logger.debug('Updated Claudio app setting:', { key, value });
     } catch (err) {
       // Revert on failure
@@ -113,7 +113,8 @@ export function useClaudioAppSettings() {
  */
 export async function getClaudioAppSetting<T = any>(key: string): Promise<T | null> {
   try {
-    return await invoke<T>('get_claudio_app_setting', { key });
+    const jsonString = await invoke<string | null>('load_claudio_app_setting', { key });
+    return jsonString ? JSON.parse(jsonString) : null;
   } catch (err) {
     logger.error('Failed to get Claudio app setting:', { key, error: err });
     return null;
@@ -125,7 +126,7 @@ export async function getClaudioAppSetting<T = any>(key: string): Promise<T | nu
  */
 export async function setClaudioAppSetting(key: string, value: any): Promise<void> {
   try {
-    await invoke('set_claudio_app_setting', { key, value });
+    await invoke('save_claudio_app_setting', { key, value });
     logger.debug('Set Claudio app setting:', { key, value });
   } catch (err) {
     logger.error('Failed to set Claudio app setting:', { key, value, error: err });

@@ -1480,9 +1480,10 @@ export const api = {
    * @param key - The setting key
    * @returns Promise resolving to the setting value, or null if not found
    */
-  async loadClaudioAppSetting(key: string): Promise<string | null> {
+  async loadClaudioAppSetting<T = any>(key: string): Promise<T | null> {
     try {
-      return await invoke<string | null>("load_claudio_app_setting", { key });
+      const jsonString = await invoke<string | null>("load_claudio_app_setting", { key });
+      return jsonString ? JSON.parse(jsonString) : null;
     } catch (error) {
       logger.error(`Failed to load Claudio app setting ${key}:`, error);
       throw error;
@@ -1492,10 +1493,10 @@ export const api = {
   /**
    * Saves a setting to the Claudio app settings file
    * @param key - The setting key
-   * @param value - The setting value
+   * @param value - The setting value (any JSON-serializable type)
    * @returns Promise resolving when the setting is saved
    */
-  async saveClaudioAppSetting(key: string, value: string): Promise<void> {
+  async saveClaudioAppSetting(key: string, value: any): Promise<void> {
     try {
       await invoke<void>("save_claudio_app_setting", { key, value });
     } catch (error) {

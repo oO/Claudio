@@ -3,7 +3,7 @@ import { FileEdit } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { getClaudeSyntaxTheme } from "@/lib/claudeSyntaxTheme";
-import { useTheme } from "@/hooks";
+import { useThemeUnified } from "@/hooks";
 import { ToolWidgetTemplate } from "./ToolWidgetTemplate";
 import * as Diff from "diff";
 
@@ -154,7 +154,7 @@ export const EditWidget: React.FC<{
   new_string: string;
   result?: any;
 }> = ({ file_path, old_string, new_string, result: _result }) => {
-  const { theme } = useTheme();
+  const { theme } = useThemeUnified();
   const syntaxTheme = getClaudeSyntaxTheme(theme);
 
   const diffResult = Diff.diffLines(old_string || "", new_string || "", {

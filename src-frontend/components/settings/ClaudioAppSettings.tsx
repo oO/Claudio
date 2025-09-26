@@ -25,7 +25,7 @@ export function ClaudioAppSettings() {
 
   const fields: FieldConfig[] = [
     {
-      key: 'theme',
+      key: 'theme_preference',
       label: 'Theme',
       description: 'Choose your preferred color scheme',
       type: 'select',
@@ -84,7 +84,7 @@ export function ClaudioAppSettings() {
 
   const getDefaultValue = (field: FieldConfig) => {
     switch (field.key) {
-      case 'theme': return 'system';
+      case 'theme_preference': return 'system';
       case 'telemetry': return true;
       case 'auto_update': return true;
       case 'debug_mode': return false;

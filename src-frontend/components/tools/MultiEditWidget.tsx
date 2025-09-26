@@ -3,7 +3,7 @@ import { FileEdit } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { getClaudeSyntaxTheme } from "@/lib/claudeSyntaxTheme";
-import { useTheme } from "@/hooks";
+import { useThemeUnified } from "@/hooks";
 import { ToolWidgetTemplate } from "./ToolWidgetTemplate";
 import * as Diff from 'diff';
 
@@ -153,7 +153,7 @@ export const MultiEditWidget: React.FC<{
   result?: any;
 }> = ({ file_path, edits, result: _result }) => {
   const language = getLanguage(file_path);
-  const { theme } = useTheme();
+  const { theme } = useThemeUnified();
   const syntaxTheme = getClaudeSyntaxTheme(theme);
   
   // Calculate total lines across all edits to determine if large

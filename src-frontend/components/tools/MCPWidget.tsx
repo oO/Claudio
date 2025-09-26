@@ -9,7 +9,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { getClaudeSyntaxTheme } from "@/lib/claudeSyntaxTheme";
-import { useTheme } from "@/hooks";
+import { useThemeUnified } from "@/hooks";
 import { ToolWidgetTemplate } from "./ToolWidgetTemplate";
 
 /**
@@ -20,7 +20,7 @@ export const MCPWidget: React.FC<{
   input?: any;
   result?: any;
 }> = ({ toolName, input, result: _result }) => {
-  const { theme } = useTheme();
+  const { theme } = useThemeUnified();
   const syntaxTheme = getClaudeSyntaxTheme(theme);
   
   // Parse the tool name to extract components

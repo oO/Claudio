@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.6.2] - 2025-09-26
+
+### Refactor
+- Unified tabsState architecture with cohesive panel layout system
+- Moved panelMinWidth from separate global app setting into tabsState for better organization
+- Renamed storage key from `tabs_session` → `tabs` → `tabsState` for consistency with windowState naming
+- Centralized all panel-related state (panelBreaks, activePanelIndex, panelMinWidth) in single cohesive system
+- Fixed confusing `tabs.tabs` nesting issue while maintaining all existing functionality
+
 ## [0.6.1] - 2025-09-24
 
 ### Fix
@@ -335,7 +344,7 @@
 
 ## [0.4.16] - 2025-09-04
 - Enhanced SessionHeader UI with session title subtitle and todo counter
-- Added shared session utility functions (getSessionTitle, formatSessionIdCompact)  
+- Added shared session utility functions (getSessionTitle, formatSessionIdCompact)
 - Standardized session ID display format across all tabs and components
 - Improved session metadata display with robust null/undefined handling
 - Reduced debug logging noise in backend session orchestrator
@@ -359,7 +368,7 @@
 
 ## [0.4.13] - 2025-09-03
 - Optimized project listing performance by replacing sessions array with session_count integer
-- Removed expensive session file parsing from list_projects command 
+- Removed expensive session file parsing from list_projects command
 - Simplified Project struct to avoid over-engineering with unnecessary session analytics
 - Updated frontend to use session_count instead of sessions.length for display
 - Maintained fast on-demand filesystem scanning without complex caching

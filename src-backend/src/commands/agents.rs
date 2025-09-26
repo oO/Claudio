@@ -631,7 +631,7 @@ pub async fn get_claude_binary_path() -> Result<Option<String>, String> {
 pub async fn set_claude_binary_path(path: String) -> Result<(), String> {
     use crate::commands::claudio_app_settings::save_claudio_app_setting;
 
-    save_claudio_app_setting("claudeBinaryPath".to_string(), path).await?;
+    save_claudio_app_setting("claudeBinaryPath".to_string(), serde_json::Value::String(path)).await?;
     Ok(())
 }
 

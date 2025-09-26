@@ -2,7 +2,7 @@ import React from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { useDebug } from "@/hooks";
+import { useDebugUnified } from "@/hooks";
 import type { ClaudeSettings } from "@/lib/api";
 import { DebugLabel } from "@/components/ui/atoms";
 
@@ -10,7 +10,7 @@ import { DebugLabel } from "@/components/ui/atoms";
  * Debug Mode Toggle Component
  */
 const DebugModeToggle: React.FC = () => {
-  const { isDebugMode, toggleDebug } = useDebug();
+  const { isDebugMode, toggleDebug } = useDebugUnified();
 
   return (
     <Switch

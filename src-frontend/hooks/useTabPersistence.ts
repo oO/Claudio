@@ -3,13 +3,14 @@ import { api } from '@/lib/api';
 import { Tab } from '@/contexts/TabContext';
 import { logger } from '@/lib/logger';
 
-const STORAGE_KEY = 'tabs_session';
+const STORAGE_KEY = 'tabsState';
 
 // Simple interface - just save raw tab data
 export interface PersistedTabSession {
   tabs: Partial<Tab>[];  // Save tabs as-is, minus runtime stuff
   panelBreaks: number[];
   activePanelIndex: number;
+  panelMinWidth: number;  // Minimum width per panel for splitting logic
 }
 
 // Default empty session structure
@@ -17,6 +18,7 @@ const DEFAULT_EMPTY_SESSION: PersistedTabSession = {
   tabs: [],
   panelBreaks: [],
   activePanelIndex: 0,
+  panelMinWidth: 500,  // Default minimum panel width
 };
 
 /**
@@ -28,7 +30,7 @@ export const useTabPersistence = () => {
   /**
    * Save current tabs directly - no dehydration complexity
    */
-  const saveTabs = useCallback(async (tabs: Tab[], panelBreaks: number[] = [], activePanelIndex: number = 0) => {
+  const saveTabs = useCallback(async (tabs: Tab[], panelBreaks: number[] = [], activePanelIndex: number = 0, panelMinWidth: number = 500) => {
     try {
       
       // KISS: Only save minimal creation inputs, not fetched data
@@ -57,7 +59,7 @@ export const useTabPersistence = () => {
 
       if (tabsToSave.length === 0) {
         // Save empty session if no tabs
-        await api.saveClaudioAppSetting(STORAGE_KEY, JSON.stringify(DEFAULT_EMPTY_SESSION));
+        await api.saveClaudioAppSetting(STORAGE_KEY, DEFAULT_EMPTY_SESSION);
         return;
       }
 
@@ -65,9 +67,10 @@ export const useTabPersistence = () => {
         tabs: tabsToSave,
         panelBreaks,
         activePanelIndex,
+        panelMinWidth,
       };
 
-      await api.saveClaudioAppSetting(STORAGE_KEY, JSON.stringify(sessionData));
+      await api.saveClaudioAppSetting(STORAGE_KEY, sessionData);
     } catch (error) {
       logger.error('Failed to save tab session:', error);
     }
@@ -79,14 +82,12 @@ export const useTabPersistence = () => {
   const loadTabs = useCallback(async (): Promise<PersistedTabSession> => {
     try {
       logger.info('📂 Loading tab session from API...');
-      const serialized = await api.loadClaudioAppSetting(STORAGE_KEY);
+      const parsed = await api.loadClaudioAppSetting<PersistedTabSession>(STORAGE_KEY);
 
-      if (!serialized) {
+      if (!parsed) {
         logger.info('📂 No saved tabs found');
         return DEFAULT_EMPTY_SESSION;
       }
-
-      const parsed = JSON.parse(serialized) as PersistedTabSession;
       
       // Basic validation
       if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.tabs)) {
@@ -98,6 +99,7 @@ export const useTabPersistence = () => {
         tabs: parsed.tabs,
         panelBreaks: parsed.panelBreaks || DEFAULT_EMPTY_SESSION.panelBreaks,
         activePanelIndex: parsed.activePanelIndex ?? DEFAULT_EMPTY_SESSION.activePanelIndex,
+        panelMinWidth: parsed.panelMinWidth ?? DEFAULT_EMPTY_SESSION.panelMinWidth,
       };
 
 
@@ -113,7 +115,7 @@ export const useTabPersistence = () => {
    */
   const clearSavedTabs = useCallback(async () => {
     try {
-      await api.saveClaudioAppSetting(STORAGE_KEY, JSON.stringify(DEFAULT_EMPTY_SESSION));
+      await api.saveClaudioAppSetting(STORAGE_KEY, DEFAULT_EMPTY_SESSION);
     } catch (error) {
       logger.error('Failed to clear tab session:', error);
     }

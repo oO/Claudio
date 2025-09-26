@@ -11,15 +11,13 @@ import {
   type Agent,
 } from "@/lib/api";
 import { TabProvider } from "@/contexts/TabContext";
-import { ThemeProvider } from "@/contexts/ThemeContext";
 import { TodoProvider } from "@/contexts/TodoContext";
-import { DebugProvider } from "@/contexts/DebugContext";
 import { UnifiedSettingsProvider } from "@/lib/settings";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ProjectList, ProjectDetail } from "@/components/projects";
 import { RunningClaudeSessions } from "@/components/sessions/RunningClaudeSessions";
-import { Topbar, TabManager, TabContent } from "@/components/common";
+import { Topbar, TabManager, TabContent, ThemeApplier } from "@/components/common";
 import { ClaudeFileEditor, ClaudeBinaryDialog } from "@/components/claude";
 import { logger } from "@/lib/logger";
 import { formatSessionIdCompact } from "@/lib/sessionUtils";
@@ -106,12 +104,11 @@ function AppContent() {
     (window as any).toggleDebug = async () => {
       try {
         // Get current debug mode from settings
-        const currentDebugStr = await api.loadClaudioAppSetting("debugMode");
-        const currentDebug = currentDebugStr === "true";
+        const currentDebug = await api.loadClaudioAppSetting<boolean>("debugMode");
         const newDebugMode = !currentDebug;
 
         // Save to settings
-        await api.saveClaudioAppSetting("debugMode", newDebugMode.toString());
+        await api.saveClaudioAppSetting("debugMode", newDebugMode);
         logger.log(`Debug mode ${newDebugMode ? "enabled" : "disabled"}`);
 
         // Trigger a custom event to notify debug components
@@ -670,15 +667,13 @@ function AppContent() {
 function App() {
   return (
     <UnifiedSettingsProvider>
-      <DebugProvider>
-        <ThemeProvider>
+      <ThemeApplier>
             <TabProvider>
               <TodoProvider>
                 <AppContent />
               </TodoProvider>
             </TabProvider>
-        </ThemeProvider>
-      </DebugProvider>
+      </ThemeApplier>
     </UnifiedSettingsProvider>
   );
 }

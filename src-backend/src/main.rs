@@ -50,7 +50,7 @@ use commands::storage::{
     storage_list_tables, storage_read_table, storage_update_row, storage_delete_row,
     storage_insert_row, storage_execute_sql, storage_reset_database,
 };
-use commands::claudio_app_settings::{get_proxy_settings, save_proxy_settings, apply_proxy_settings, load_claudio_app_setting, save_claudio_app_setting};
+use commands::claudio_app_settings::{get_proxy_settings, save_proxy_settings, apply_proxy_settings, load_claudio_app_setting, save_claudio_app_setting, start_settings_flush_task, shutdown_flush_settings};
 use commands::window::{save_window_state, load_window_state, get_current_window_state, restore_window_state, setup_window_state_tracking};
 use commands::claude_sdk_simple::{start_claude_sdk_session, continue_claude_sdk_session, resume_claude_sdk_session, terminate_claude_sdk_session};
 use commands::claude_direct::{start_claude_direct_session};
@@ -205,6 +205,9 @@ fn main() {
                 log::warn!("Failed to setup window state tracking: {}", e);
             }
 
+            // Start settings cache flush task
+            start_settings_flush_task();
+
             // Run orphan cleanup on startup to ensure data integrity
             tauri::async_runtime::spawn(async move {
                 match cleanup_orphaned_files().await {
@@ -245,7 +248,11 @@ fn main() {
         .on_window_event(|_window, event| {
             match event {
                 tauri::WindowEvent::CloseRequested { .. } => {
-                    log::info!("🛑 Window close requested, saving settings...");
+                    log::info!("🛑 Window close requested, flushing settings cache...");
+                    // Force flush settings cache before closing
+                    tauri::async_runtime::block_on(async {
+                        shutdown_flush_settings().await;
+                    });
                 }
                 _ => {}
             }

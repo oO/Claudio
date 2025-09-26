@@ -1,7 +1,7 @@
 import React from "react";
 import { Prism as PrismSyntaxHighlighter } from "react-syntax-highlighter";
 import { getClaudeSyntaxTheme } from "@/lib/claudeSyntaxTheme";
-import { useTheme } from "@/hooks";
+import { useThemeUnified } from "@/hooks";
 import { cn } from "@/lib/utils";
 
 interface SyntaxHighlighterProps {
@@ -21,7 +21,7 @@ export const SyntaxHighlighter: React.FC<SyntaxHighlighterProps> = ({
   className,
   showLineNumbers = false
 }) => {
-  const { theme } = useTheme();
+  const { theme } = useThemeUnified();
   const syntaxTheme = getClaudeSyntaxTheme(theme);
   
   // Provide fallback styling if theme is empty

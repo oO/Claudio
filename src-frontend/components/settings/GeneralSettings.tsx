@@ -4,63 +4,31 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ClaudeVersionSelector } from "@/components/claude";
-import { useTheme } from "@/hooks";
+import { useThemeUnified } from "@/hooks";
 import { useClaudeBinaryConfig } from "@/hooks/useClaudeBinaryConfig";
+import { useTabContext } from "@/contexts/TabContext";
 import type { ClaudeSettings } from "@/lib/api";
-import { api } from "@/lib/api";
 import { THEMES } from "@/lib/themes";
 import { DebugLabel } from "@/components/ui/atoms";
 import { logger } from "@/lib/logger";
 
 /**
- * Panel Min Width Setting Component - uses ClaudioAppSettings
+ * Panel Min Width Setting Component - uses TabContext
  */
 const PanelMinWidthSetting: React.FC = () => {
-  const [panelMinWidth, setPanelMinWidth] = useState<number>(500);
-  const [loading, setLoading] = useState(true);
+  const { panelMinWidth, setPanelMinWidth } = useTabContext();
+  const [inputValue, setInputValue] = useState<string>(panelMinWidth.toString());
 
+  // Update input value when context value changes
   useEffect(() => {
-    const loadPanelMinWidth = async () => {
-      try {
-        const saved = await api.loadClaudioAppSetting("panelMinWidth");
-        if (saved) {
-          const value = parseInt(saved);
-          setPanelMinWidth(isNaN(value) ? 500 : Math.max(300, Math.min(800, value)));
-        }
-      } catch (error) {
-        logger.error("Failed to load panel min width:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    setInputValue(panelMinWidth.toString());
+  }, [panelMinWidth]);
 
-    loadPanelMinWidth();
-  }, []);
-
-  const handleChange = async (newValue: number) => {
-    const clampedValue = Math.max(300, Math.min(800, newValue));
-    setPanelMinWidth(clampedValue);
-
-    try {
-      await api.saveClaudioAppSetting("panelMinWidth", clampedValue.toString());
-      logger.info("Panel min width saved:", clampedValue);
-    } catch (error) {
-      logger.error("Failed to save panel min width:", error);
-      // Revert on error
-      const saved = await api.loadClaudioAppSetting("panelMinWidth");
-      if (saved) {
-        const value = parseInt(saved);
-        setPanelMinWidth(isNaN(value) ? 500 : value);
-      }
-    }
+  const handleSave = (value: number) => {
+    const parsedValue = value || 500;
+    setPanelMinWidth(parsedValue); // TabContext handles clamping
+    setInputValue(parsedValue.toString());
   };
-
-  if (loading) {
-    return <div className="space-y-2">
-      <Label>Panel Minimum Width (pixels)</Label>
-      <div className="h-10 bg-muted rounded animate-pulse w-24" />
-    </div>;
-  }
 
   return (
     <div className="space-y-2">
@@ -70,13 +38,24 @@ const PanelMinWidthSetting: React.FC = () => {
       </p>
       <Input
         id="panelMinWidth"
-        type="number"
-        min="300"
-        max="800"
-        value={panelMinWidth}
+        type="text"
+        placeholder="500"
+        value={inputValue}
         onChange={(e) => {
+          // Only allow digits
+          const value = e.target.value.replace(/[^0-9]/g, '');
+          setInputValue(value);
+        }}
+        onBlur={(e) => {
           const value = parseInt(e.target.value) || 500;
-          handleChange(value);
+          handleSave(value);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            const value = parseInt(e.currentTarget.value) || 500;
+            handleSave(value);
+            e.currentTarget.blur();
+          }
         }}
         className="w-24"
       />
@@ -95,7 +74,7 @@ export const GeneralSettings: React.FC<GeneralSettingsProps> = ({
   onUpdateSetting,
   onBinaryPathChanged,
 }) => {
-  const { theme, setTheme, customColors, setCustomColors } = useTheme();
+  const { theme, setTheme, customColors, setCustomColors } = useThemeUnified();
   const {
     currentBinaryPath,
     selectedInstallation,

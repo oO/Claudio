@@ -5,7 +5,7 @@ import {
   oneLight,
   oneDark,
 } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { useTheme } from "@/hooks";
+import { useThemeUnified } from "@/hooks";
 import { ToolWidgetTemplate } from "./ToolWidgetTemplate";
 
 // Constants
@@ -21,7 +21,7 @@ export const FileWidget: React.FC<{
   content?: string;
   result?: any;
 }> = ({ type, filePath, content, result }) => {
-  const { theme } = useTheme();
+  const { theme } = useThemeUnified();
 
   // Customize oneLight theme to have better contrast
   const customLightTheme = {

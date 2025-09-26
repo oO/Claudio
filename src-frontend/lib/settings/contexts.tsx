@@ -1,223 +1,37 @@
 /**
- * React contexts for the new settings system
+ * Unified Settings Context - Single Merged Provider
  *
- * These contexts provide settings state throughout the React component tree
- * with automatic project awareness and handle management
+ * This context provides ONLY global settings:
+ * 1. ClaudioAppSettings - theme, debug, telemetry (from ~/.claudio/settings.json)
+ * 2. ClaudeCodeSettings.user - user-level model, permissions (from ~/.claude/settings.json)
+ *
+ * Project-specific settings (team/local levels) are handled by components receiving
+ * projectPath as props and calling useCachedClaudeCodeSettings(projectPath) directly.
  */
 
-import React, { createContext, useContext, useEffect, useState, ReactNode, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, ReactNode, useMemo, useCallback } from 'react';
 import { logger } from '@/lib/logger';
-import type {
-  ClaudioSettings,
-  ClaudeCodeSettings,
-  SettingsError,
-  ProjectContext,
-} from './types';
-import {
-  useProjectContext,
-} from './hooks';
-import {
-  useCachedClaudeCodeSettings,
-} from './useCachedClaudeCodeSettings';
-
-// ===== Project Context =====
-
-interface ProjectContextState {
-  currentProject: string | null;
-  setCurrentProject: (projectPath: string | null) => void;
-  projectContext: ProjectContext | null;
-  loading: boolean;
-  error: SettingsError | null;
-}
-
-const ProjectSettingsContext = createContext<ProjectContextState | undefined>(undefined);
-
-interface ProjectSettingsProviderProps {
-  children: ReactNode;
-  initialProject?: string | null;
-}
-
-export function ProjectSettingsProvider({
-  children,
-  initialProject = null
-}: ProjectSettingsProviderProps) {
-  const [currentProject, setCurrentProject] = useState<string | null>(initialProject);
-
-  const {
-    context: projectContext,
-    loading,
-    error,
-    refresh
-  } = useProjectContext(currentProject);
-
-  // Refresh context when project changes
-  useEffect(() => {
-    refresh();
-  }, [currentProject, refresh]);
-
-  const contextValue = useMemo(() => ({
-    currentProject,
-    setCurrentProject,
-    projectContext,
-    loading,
-    error,
-  }), [currentProject, projectContext, loading, error]);
-
-  return (
-    <ProjectSettingsContext.Provider value={contextValue}>
-      {children}
-    </ProjectSettingsContext.Provider>
-  );
-}
-
-export function useProjectSettingsContext() {
-  const context = useContext(ProjectSettingsContext);
-  if (context === undefined) {
-    throw new Error('useProjectSettingsContext must be used within a ProjectSettingsProvider');
-  }
-  return context;
-}
-
-// ===== Claudio Settings Context =====
-
-interface ClaudioSettingsContextState {
-  settings: ClaudioSettings | null;
-  updateSetting: (key: string, value: any) => Promise<void>;
-  loading: boolean;
-  error: SettingsError | null;
-  theme: string;
-  setTheme: (theme: string) => Promise<void>;
-}
-
-const ClaudioSettingsContext = createContext<ClaudioSettingsContextState | undefined>(undefined);
-
-interface ClaudioSettingsProviderProps {
-  children: ReactNode;
-  projectPath?: string;
-}
-
-export function ClaudioSettingsProvider({
-  children,
-  projectPath
-}: ClaudioSettingsProviderProps) {
-  const {
-    settings,
-    updateSetting,
-    loading,
-    error
-  } = { settings: null, updateSetting: async () => {}, loading: false, error: null }; // Claudio settings use direct API now
-
-  // Theme settings use direct Claudio API now
-  const theme = 'system';
-  const setTheme = async () => {};
-
-  const contextValue = useMemo(() => ({
-    settings,
-    updateSetting,
-    loading,
-    error,
-    theme,
-    setTheme,
-  }), [settings, updateSetting, loading, error, theme, setTheme]);
-
-  return (
-    <ClaudioSettingsContext.Provider value={contextValue}>
-      {children}
-    </ClaudioSettingsContext.Provider>
-  );
-}
-
-export function useClaudioSettingsContext() {
-  const context = useContext(ClaudioSettingsContext);
-  if (context === undefined) {
-    throw new Error('useClaudioSettingsContext must be used within a ClaudioSettingsProvider');
-  }
-  return context;
-}
-
-// ===== ClaudeCode Settings Context =====
-
-interface ClaudeCodeSettingsContextState {
-  settings: ClaudeCodeSettings | null;
-  updateSetting: (key: string, value: any) => Promise<void>;
-  loading: boolean;
-  error: SettingsError | null;
-  model: string;
-  setModel: (model: string) => Promise<void>;
-  allSettings: ClaudeCodeSettings | null;
-}
-
-const ClaudeCodeSettingsContext = createContext<ClaudeCodeSettingsContextState | undefined>(undefined);
-
-interface ClaudeCodeSettingsProviderProps {
-  children: ReactNode;
-  projectPath?: string;
-}
-
-export function ClaudeCodeSettingsProvider({
-  children,
-  projectPath
-}: ClaudeCodeSettingsProviderProps) {
-  const {
-    settings,
-    updateSetting,
-    loading,
-    error
-  } = useCachedClaudeCodeSettings(projectPath);
-
-  // Extract model from settings instead of separate hook
-  const model = settings?.effective?.model || null;
-
-  const setModel = useCallback(async (newModel: string) => {
-    try {
-      await updateSetting('model', newModel);
-    } catch (error) {
-      logger.error('Failed to update model setting:', error);
-      throw error;
-    }
-  }, [updateSetting]);
-
-  const contextValue = useMemo(() => ({
-    settings,
-    updateSetting,
-    loading,
-    error,
-    model,
-    setModel,
-    allSettings: settings,
-  }), [settings, updateSetting, loading, error, model, setModel]);
-
-  return (
-    <ClaudeCodeSettingsContext.Provider value={contextValue}>
-      {children}
-    </ClaudeCodeSettingsContext.Provider>
-  );
-}
-
-export function useClaudeCodeSettingsContext() {
-  const context = useContext(ClaudeCodeSettingsContext);
-  if (context === undefined) {
-    throw new Error('useClaudeCodeSettingsContext must be used within a ClaudeCodeSettingsProvider');
-  }
-  return context;
-}
+import type { ClaudioSettings, ClaudeCodeSettings } from './types';
+import { SettingsError } from './types';
+import { useClaudioAppSettings, type ClaudioAppSettings } from '@/lib/claudio-app-settings';
+import { useCachedClaudeCodeSettings } from './useCachedClaudeCodeSettings';
 
 // ===== Unified Settings Context =====
 
 interface UnifiedSettingsContextState {
-  // Project state
-  currentProject: string | null;
-  setCurrentProject: (projectPath: string | null) => void;
-
-  // Claudio settings
+  // Claudio app settings (global only)
   claudioSettings: ClaudioSettings | null;
   updateClaudioSetting: (key: string, value: any) => Promise<void>;
+
+  // Theme (extracted from Claudio settings for convenience)
   theme: string;
   setTheme: (theme: string) => Promise<void>;
 
-  // ClaudeCode settings
+  // ClaudeCode user-level settings (global only, no project context)
   claudecodeSettings: ClaudeCodeSettings | null;
   updateClaudecodeSetting: (key: string, value: any) => Promise<void>;
+
+  // Model (extracted from ClaudeCode user settings for convenience)
   model: string;
   setModel: (model: string) => Promise<void>;
 
@@ -226,7 +40,7 @@ interface UnifiedSettingsContextState {
   claudecodeLoading: boolean;
   loading: boolean;
 
-  // Errors
+  // Error states
   claudioError: SettingsError | null;
   claudecodeError: SettingsError | null;
   error: SettingsError | null;
@@ -236,98 +50,127 @@ const UnifiedSettingsContext = createContext<UnifiedSettingsContextState | undef
 
 interface UnifiedSettingsProviderProps {
   children: ReactNode;
-  initialProject?: string | null;
 }
 
-export function UnifiedSettingsProvider({
-  children,
-  initialProject = null
-}: UnifiedSettingsProviderProps) {
-  return (
-    <ProjectSettingsProvider initialProject={initialProject}>
-      <UnifiedSettingsProviderInner>
-        {children}
-      </UnifiedSettingsProviderInner>
-    </ProjectSettingsProvider>
-  );
-}
-
-function UnifiedSettingsProviderInner({ children }: { children: ReactNode }) {
-  const { currentProject, setCurrentProject } = useProjectSettingsContext();
-
-  return (
-    <ClaudioSettingsProvider projectPath={currentProject || undefined}>
-      <ClaudeCodeSettingsProvider projectPath={currentProject || undefined}>
-        <UnifiedSettingsProviderCore>
-          {children}
-        </UnifiedSettingsProviderCore>
-      </ClaudeCodeSettingsProvider>
-    </ClaudioSettingsProvider>
-  );
-}
-
-function UnifiedSettingsProviderCore({ children }: { children: ReactNode }) {
-  const { currentProject, setCurrentProject } = useProjectSettingsContext();
-
+export function UnifiedSettingsProvider({ children }: UnifiedSettingsProviderProps) {
+  // Global Claudio app settings
   const {
-    settings: claudioSettings,
-    updateSetting: updateClaudioSetting,
-    loading: claudioLoading,
-    error: claudioError,
-    theme,
-    setTheme,
-  } = useClaudioSettingsContext();
+    settings: appSettings,
+    updateSetting: updateAppSetting,
+    loading: appLoading,
+    error: appStringError
+  } = useClaudioAppSettings();
 
+  // Global ClaudeCode user settings (no projectPath = user level only)
   const {
-    settings: claudecodeSettings,
-    updateSetting: updateClaudecodeSetting,
-    loading: claudecodeLoading,
-    error: claudecodeError,
-    model,
-    setModel,
-  } = useClaudeCodeSettingsContext();
+    settings: userClaudeCodeSettings,
+    updateSetting: updateUserClaudeCodeSetting,
+    loading: userClaudeCodeLoading,
+    error: userClaudeCodeError
+  } = useCachedClaudeCodeSettings(); // No projectPath = user-level settings only
+
+  // Convert ClaudioAppSettings to ClaudioSettings format
+  const claudioSettings: ClaudioSettings | null = appSettings ? {
+    telemetry: appSettings.telemetry,
+    auto_update: appSettings.auto_update,
+    window_state: appSettings.window_state ? {
+      width: appSettings.window_state.width,
+      height: appSettings.window_state.height,
+      x: appSettings.window_state.x ?? 0,
+      y: appSettings.window_state.y ?? 0,
+      maximized: appSettings.window_state.maximized,
+    } : undefined,
+    debug_mode: appSettings.debug_mode,
+    claude_binary_path: appSettings.claude_binary_path,
+    tabs_session: appSettings.tabs_session,
+    proxy: appSettings.proxy,
+  } : null;
+
+  // Convert string error to SettingsError format
+  const claudioError: SettingsError | null = appStringError ?
+    new SettingsError(appStringError, 'IO_ERROR') : null;
+
+  // Extract theme from Claudio settings with fallback
+  const theme = appSettings?.theme_preference || 'neutral_dark';
+
+  // Extract model from ClaudeCode user settings with fallback
+  const model = userClaudeCodeSettings?.effective?.model || 'sonnet';
+
+  // Wrapper for Claudio settings updates
+  const updateClaudioSetting = useCallback(async (key: string, value: any) => {
+    try {
+      await updateAppSetting(key as keyof ClaudioAppSettings, value);
+    } catch (err) {
+      logger.error('Failed to update Claudio setting:', { key, value, error: err });
+      throw err;
+    }
+  }, [updateAppSetting]);
+
+  // Theme setter
+  const setTheme = useCallback(async (newTheme: string) => {
+    try {
+      await updateAppSetting('theme_preference', newTheme);
+    } catch (err) {
+      logger.error('Failed to update theme:', err);
+      throw err;
+    }
+  }, [updateAppSetting]);
+
+  // ClaudeCode user settings wrapper
+  const updateClaudecodeSetting = useCallback(async (key: string, value: any) => {
+    try {
+      await updateUserClaudeCodeSetting(key, value);
+    } catch (err) {
+      logger.error('Failed to update ClaudeCode user setting:', { key, value, error: err });
+      throw err;
+    }
+  }, [updateUserClaudeCodeSetting]);
+
+  // Model setter
+  const setModel = useCallback(async (newModel: string) => {
+    try {
+      await updateUserClaudeCodeSetting('model', newModel);
+    } catch (err) {
+      logger.error('Failed to update model:', err);
+      throw err;
+    }
+  }, [updateUserClaudeCodeSetting]);
 
   const contextValue = useMemo(() => ({
-    // Project state
-    currentProject,
-    setCurrentProject,
-
     // Claudio settings
     claudioSettings,
     updateClaudioSetting,
     theme,
     setTheme,
 
-    // ClaudeCode settings
-    claudecodeSettings,
+    // ClaudeCode user settings
+    claudecodeSettings: userClaudeCodeSettings,
     updateClaudecodeSetting,
     model,
     setModel,
 
     // Loading states
-    claudioLoading,
-    claudecodeLoading,
-    loading: claudioLoading || claudecodeLoading,
+    claudioLoading: appLoading,
+    claudecodeLoading: userClaudeCodeLoading,
+    loading: appLoading || userClaudeCodeLoading,
 
-    // Errors
+    // Error states
     claudioError,
-    claudecodeError,
-    error: claudioError || claudecodeError,
+    claudecodeError: userClaudeCodeError,
+    error: claudioError || userClaudeCodeError,
   }), [
-    currentProject,
-    setCurrentProject,
     claudioSettings,
     updateClaudioSetting,
     theme,
     setTheme,
-    claudecodeSettings,
+    userClaudeCodeSettings,
     updateClaudecodeSetting,
     model,
     setModel,
-    claudioLoading,
-    claudecodeLoading,
+    appLoading,
+    userClaudeCodeLoading,
     claudioError,
-    claudecodeError,
+    userClaudeCodeError,
   ]);
 
   return (
@@ -345,173 +188,36 @@ export function useUnifiedSettingsContext() {
   return context;
 }
 
-// ===== Settings Router Context =====
-
-interface SettingsRouterContextState {
-  // Multi-project management
-  activeProjects: Set<string>;
-  addProject: (projectPath: string) => void;
-  removeProject: (projectPath: string) => void;
-  switchToProject: (projectPath: string) => void;
-
-  // Settings for specific projects
-  getProjectSettings: <T = any>(projectPath: string, settingsType: 'claudio' | 'claudecode') => T | null;
-  updateProjectSetting: (projectPath: string, settingsType: 'claudio' | 'claudecode', key: string, value: any) => Promise<void>;
-}
-
-const SettingsRouterContext = createContext<SettingsRouterContextState | undefined>(undefined);
-
-interface SettingsRouterProviderProps {
-  children: ReactNode;
-}
-
-export function SettingsRouterProvider({ children }: SettingsRouterProviderProps) {
-  const [activeProjects, setActiveProjects] = useState<Set<string>>(new Set());
-  const { setCurrentProject } = useProjectSettingsContext();
-
-  const addProject = useMemo(() => (projectPath: string) => {
-    setActiveProjects(prev => new Set([...prev, projectPath]));
-  }, []);
-
-  const removeProject = useMemo(() => (projectPath: string) => {
-    setActiveProjects(prev => {
-      const next = new Set(prev);
-      next.delete(projectPath);
-      return next;
-    });
-  }, []);
-
-  const switchToProject = useMemo(() => (projectPath: string) => {
-    setCurrentProject(projectPath);
-  }, [setCurrentProject]);
-
-  // For MVP, these will be simplified
-  const getProjectSettings = useMemo(() => <T = any>(
-    projectPath: string,
-    settingsType: 'claudio' | 'claudecode'
-  ): T | null => {
-    // TODO: Implement proper project-specific settings lookup
-    // TODO: Implement proper project-specific settings lookup - removed console.log
-    return null;
-  }, []);
-
-  const updateProjectSetting = useMemo(() => async (
-    projectPath: string,
-    settingsType: 'claudio' | 'claudecode',
-    key: string,
-    value: any
-  ) => {
-    // TODO: Implement proper project-specific settings update
-    console.log(`Updating ${settingsType}.${key} = ${value} for ${projectPath}`);
-  }, []);
-
-  const contextValue = useMemo(() => ({
-    activeProjects,
-    addProject,
-    removeProject,
-    switchToProject,
-    getProjectSettings,
-    updateProjectSetting,
-  }), [
-    activeProjects,
-    addProject,
-    removeProject,
-    switchToProject,
-    getProjectSettings,
-    updateProjectSetting,
-  ]);
-
-  return (
-    <SettingsRouterContext.Provider value={contextValue}>
-      {children}
-    </SettingsRouterContext.Provider>
-  );
-}
-
-export function useSettingsRouterContext() {
-  const context = useContext(SettingsRouterContext);
-  if (context === undefined) {
-    throw new Error('useSettingsRouterContext must be used within a SettingsRouterProvider');
-  }
-  return context;
-}
-
-// ===== Convenience Hooks =====
+// ===== Convenience Hooks for Backward Compatibility =====
 
 /**
- * Get current model setting from context
+ * Get current model setting from user-level settings
  */
 export function useCurrentModel(): string {
-  const { model } = useClaudeCodeSettingsContext();
+  const { model } = useUnifiedSettingsContext();
   return model;
 }
 
 /**
- * Get current theme setting from context
+ * Get current theme setting from Claudio settings
  */
 export function useCurrentTheme(): string {
-  const { theme } = useClaudioSettingsContext();
+  const { theme } = useUnifiedSettingsContext();
   return theme;
-}
-
-/**
- * Direct access to cached model setting (bypasses context)
- */
-export function useDirectCachedModel(projectPath?: string): string {
-  const { model } = useCachedClaudeCodeModelSetting(projectPath);
-  return model;
-}
-
-/**
- * Direct access to cached theme setting (bypasses context)
- */
-export function useDirectCachedTheme(projectPath?: string): string {
-  const theme = 'system'; // Theme settings use direct Claudio API now
-  return theme;
-}
-
-/**
- * Get current project path from context
- */
-export function useCurrentProject(): string | null {
-  const { currentProject } = useProjectSettingsContext();
-  return currentProject;
 }
 
 /**
  * Check if settings are loading
  */
 export function useSettingsLoading(): boolean {
-  try {
-    const { loading } = useUnifiedSettingsContext();
-    return loading;
-  } catch {
-    // If unified context not available, check individual contexts
-    try {
-      const claudioContext = useClaudioSettingsContext();
-      const claudecodeContext = useClaudeCodeSettingsContext();
-      return claudioContext.loading || claudecodeContext.loading;
-    } catch {
-      return false;
-    }
-  }
+  const { loading } = useUnifiedSettingsContext();
+  return loading;
 }
 
 /**
  * Get any settings errors
  */
 export function useSettingsError(): SettingsError | null {
-  try {
-    const { error } = useUnifiedSettingsContext();
-    return error;
-  } catch {
-    // If unified context not available, check individual contexts
-    try {
-      const claudioContext = useClaudioSettingsContext();
-      const claudecodeContext = useClaudeCodeSettingsContext();
-      return claudioContext.error || claudecodeContext.error;
-    } catch {
-      return null;
-    }
-  }
+  const { error } = useUnifiedSettingsContext();
+  return error;
 }
