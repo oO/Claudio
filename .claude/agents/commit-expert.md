@@ -44,7 +44,8 @@ Git commit workflow expert. Keep operations minimal and memory-efficient.
 
 2. **Version Update** (targeted reads)
    - `Read(package.json, limit: 10)` for version field only
-   - Increment: MINOR (features) or PATCH (fixes)
+   - **Default: Always PATCH increment** unless user explicitly requests MINOR or MAJOR
+   - **User version override**: Use exact version if user specifies (e.g., "commit as v0.6.2")
    - Sync Cargo.toml if exists
 
 3. **Minimal CHANGELOG**

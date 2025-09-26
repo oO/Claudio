@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.3] - 2025-09-26
+
+### Refactor
+- Enhanced commit-expert agent with explicit versioning behavior defaults
+- Added user version override capability for precise version control
+- Clarified PATCH increment as default unless explicitly requested otherwise
+
 ## [0.6.2] - 2025-09-26
 
 ### Refactor
