@@ -29,6 +29,11 @@ src-tauri/binaries/
 temp_lib/
 temp/
 
+# Test coverage reports
+coverage/
+src-backend/coverage/
+*.lcov
+
 .cursor/
 AGENTS.md
 *_TASK.md
