@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { SessionTodoData } from '@/lib/api';
+import type { SessionTodoData } from '@/lib/types/sessions';
 import { api } from '@/lib/api';
 import { logger } from '@/lib/logger';
 

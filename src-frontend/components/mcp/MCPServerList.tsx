@@ -216,10 +216,10 @@ export const MCPServerList: React.FC<MCPServerListProps> = ({
             <div className="flex-1 min-w-0 space-y-1">
               <div className="flex items-center gap-2">
                 <div className="p-1.5 bg-primary/10 rounded">
-                  {getTransportIcon(server.transport)}
+                  {getTransportIcon(server.transport || 'stdio')}
                 </div>
                 <h4 className="font-medium truncate">{server.name}</h4>
-                {server.status?.running && (
+                {server.status === 'running' && (
                   <Badge variant="outline" className="gap-1 flex-shrink-0 border-green-500/50 text-green-600 bg-green-500/10">
                     <CheckCircle className="h-3 w-3" />
                     Running

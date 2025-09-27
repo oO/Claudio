@@ -89,6 +89,7 @@ export const useClaudeBinaryConfig = (
       // This is a bit hacky but we need to reset the selection
       const mockInstallation: ClaudeInstallation = {
         path: currentBinaryPath,
+        is_current: true,
         version: "current",
         source: "current",
         installation_type: "System"

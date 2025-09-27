@@ -9,7 +9,7 @@ import { useScreenTracking } from '@/hooks/useAnalytics';
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 import { Tab } from '@/contexts/TabContext';
 import { DebugLabel } from '@/components/ui/atoms';
-import { api } from "@/lib/api";
+import { claudeApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { logger } from '@/lib/logger';
 
@@ -44,7 +44,7 @@ export const ClaudeMdTab: React.FC<ClaudeMdTabProps> = ({ tab, isActive }) => {
     try {
       setLoading(true);
       setError(null);
-      const prompt = await api.getSystemPrompt();
+      const prompt = await claudeApi.getSystemPrompt();
       setContent(prompt);
       setOriginalContent(prompt);
     } catch (err) {
@@ -60,10 +60,10 @@ export const ClaudeMdTab: React.FC<ClaudeMdTabProps> = ({ tab, isActive }) => {
       setSaving(true);
       setError(null);
       setToast(null);
-      await api.saveSystemPrompt(content);
+      await claudeApi.saveSystemPrompt(content);
       setOriginalContent(content);
       markAsSaved(); // Clear the unsaved changes flag
-      setToast({ message: "CLAUDE.md saved successfully", type: "success" });
+      setToast({ message: "CLAUDE.md saved", type: "success" });
     } catch (err) {
       logger.error("Failed to save system prompt:", err);
       setError("Failed to save CLAUDE.md file");

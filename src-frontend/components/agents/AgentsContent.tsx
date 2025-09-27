@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Plus, Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { api, type Agent } from "@/lib/api";
+import { agentsApi, type Agent } from "@/lib/api";
 import { AgentCard } from "./AgentCard";
 import { DebugLabel } from "@/components/ui/atoms";
 import { logger } from '@/lib/logger';
@@ -64,7 +64,7 @@ export const AgentsContent: React.FC<AgentsContentProps> = ({
     try {
       setLoading(true);
       setError(null);
-      const foundAgents = await api.listAgents(projectPath);
+      const foundAgents = await agentsApi.listAgents(projectPath);
       setAgents(foundAgents);
     } catch (err) {
       logger.error("Failed to load agents:", err);

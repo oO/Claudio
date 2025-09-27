@@ -38,13 +38,10 @@ export function useProjectListWatcher({
 
   // Handle project file events from backend
   const handleProjectFileEvent = useCallback(async (event: ProjectFileEvent) => {
-    logger.debug(`🎯 handleProjectFileEvent called with event:`, event);
     
     // All project events should trigger a refresh of the project list
     try {
-      logger.debug(`📋 Project list watcher - refreshing on project change`);
       await onProjectListChanged();
-      logger.debug(`✅ Project list refreshed successfully`);
     } catch (error) {
       logger.error('Failed to refresh project list after file change:', error);
     }
@@ -54,7 +51,6 @@ export function useProjectListWatcher({
   useEffect(() => {
     if (!enabled) {
       if (isStartedRef.current) {
-        logger.debug(`Stopping project watcher`);
         invoke('stop_project_watching').catch((error) => {
           logger.error('Failed to stop project watching:', error);
         });
@@ -80,7 +76,6 @@ export function useProjectListWatcher({
         unlisten = await listen<ProjectFileEvent>('project_file_event', (event) => {
           handleProjectFileEvent(event.payload);
         });
-        // Event listener established (debug only on errors)
       } catch (error) {
         logger.error('Failed to setup project file event listener:', error);
       }
@@ -92,7 +87,6 @@ export function useProjectListWatcher({
     return () => {
       if (unlisten) {
         unlisten();
-        // Event listener removed
       }
     };
   }, [enabled, handleProjectFileEvent]);
@@ -113,7 +107,6 @@ export function useProjectListWatcher({
   const forceRefresh = useCallback(async () => {
     try {
       await onProjectListChanged();
-      logger.debug(`🔄 Manual project list refresh completed`);
     } catch (error) {
       logger.error('Failed to force refresh project list:', error);
     }

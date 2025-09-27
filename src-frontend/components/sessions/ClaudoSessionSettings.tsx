@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Settings, Save, RotateCcw } from "lucide-react";
-import { api, type ClaudioSession, type ClaudioClaudeSettings } from "@/lib/api";
+import { api, type ClaudioSession, type ClaudeSettings } from "@/lib/api";
 import { logger } from "@/lib/logger";
 
 interface ClaudoSessionSettingsProps {
@@ -41,7 +41,7 @@ export function ClaudoSessionSettings({
   isNewSession = false,
   onSettingsSaved 
 }: ClaudoSessionSettingsProps) {
-  const [settings, setSettings] = useState<ClaudioClaudeSettings>({
+  const [settings, setSettings] = useState<ClaudeSettings>({
     model: undefined,
     max_turns: undefined,
     system_prompt: undefined,
@@ -67,7 +67,6 @@ export function ClaudoSessionSettings({
       setSession(data);
       // Note: Settings removed from session metadata in v0.5+
       // setSettings(data.settings);
-      logger.info('Loaded session metadata:', data);
     } catch (error) {
       logger.error('Failed to load session metadata:', error);
     } finally {
@@ -84,7 +83,6 @@ export function ClaudoSessionSettings({
       if (isNewSession || !session) {
         // Create new session metadata
         result = await api.createSessionMetadata(sessionId, projectPath, settings);
-        logger.info('Created new session metadata');
       } else {
         // Update existing session
         const updatedSession = {
@@ -92,7 +90,6 @@ export function ClaudoSessionSettings({
           settings: settings,
         };
         result = await api.updateSessionMetadata(sessionId, projectPath, updatedSession);
-        logger.info('Updated session metadata');
       }
       
       setSession(result);
@@ -126,7 +123,7 @@ export function ClaudoSessionSettings({
     if (currentTools.includes(tool)) {
       setSettings({
         ...settings,
-        tools: currentTools.filter(t => t !== tool)
+        tools: currentTools.filter((t: any) => t !== tool)
       });
     } else {
       setSettings({
@@ -295,7 +292,7 @@ export function ClaudoSessionSettings({
         
         {session && (
           <div className="text-sm text-muted-foreground pt-2 border-t">
-            <p>Session ID: {session.claudio_id.slice(0, 8)}...</p>
+            <p>Session ID: {session.claudio_id?.slice(0, 8)}...</p>
             <p>Status: <span className="capitalize">{session.status.toLowerCase()}</span></p>
           </div>
         )}

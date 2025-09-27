@@ -74,55 +74,97 @@ use process::ProcessRegistryState;
 use tauri::Manager;
 use std::io::Write;
 
+// Custom writer that duplicates output to both file and stdout/stderr
+struct DualWriter {
+    file: std::fs::File,
+    stdout: std::io::Stdout,
+}
+
+impl DualWriter {
+    fn new(file: std::fs::File) -> Self {
+        Self {
+            file,
+            stdout: std::io::stdout(),
+        }
+    }
+}
+
+impl std::io::Write for DualWriter {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        // Write to file first
+        let file_result = self.file.write(buf);
+        // Always try to write to stdout regardless of file result
+        let _ = self.stdout.write(buf);
+        let _ = self.stdout.flush();
+        file_result
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        let file_result = self.file.flush();
+        let _ = self.stdout.flush();
+        file_result
+    }
+}
+
 fn setup_logging() {
     use env_logger::{Builder, Target};
     use std::fs::OpenOptions;
-    
+
     let mut builder = Builder::from_default_env();
-    
-    // Check if we should log to file
-    if std::env::var("CLAUDIO_LOG_FILE").is_ok() {
-        // Create logs directory in home/.claude/
-        if let Some(home_dir) = dirs::home_dir() {
-            let log_dir = home_dir.join(".claude").join("logs");
-            if let Err(e) = std::fs::create_dir_all(&log_dir) {
-                eprintln!("Failed to create log directory: {}", e);
-                env_logger::init();
-                return;
-            }
-            
-            let log_file_path = log_dir.join("claudio.log");
-            
-            match OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(&log_file_path)
-            {
-                Ok(file) => {
-                    println!("Logging to: {:?}", log_file_path);
-                    builder.target(Target::Pipe(Box::new(file)));
-                    builder.format(|buf, record| {
-                        writeln!(buf, "{} [{}] {} - {}", 
-                            chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f"),
-                            record.level(),
-                            record.target(),
-                            record.args()
-                        )
-                    });
-                }
-                Err(e) => {
-                    eprintln!("Failed to open log file: {}", e);
-                    env_logger::init();
-                    return;
-                }
-            }
-        } else {
-            eprintln!("Could not find home directory for logging");
+
+    // Always log to both file and console
+    if let Some(home_dir) = dirs::home_dir() {
+        // Use macOS standard log location: ~/Library/Logs/Claudio/
+        let log_dir = home_dir.join("Library").join("Logs").join("Claudio");
+        if let Err(e) = std::fs::create_dir_all(&log_dir) {
+            eprintln!("Failed to create log directory: {}", e);
             env_logger::init();
             return;
         }
+
+        let current_log_path = log_dir.join("claudio.log");
+        let previous_log_path = log_dir.join("claudio.prev.log");
+
+        // Rotate logs: current -> prev, then create new current
+        if current_log_path.exists() {
+            if let Err(e) = std::fs::rename(&current_log_path, &previous_log_path) {
+                eprintln!("Failed to rotate log file: {}", e);
+            }
+        }
+
+        match OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)  // Overwrite instead of append
+            .open(&current_log_path)
+        {
+            Ok(file) => {
+                println!("Logging to file: {:?} and console", current_log_path);
+                let dual_writer = DualWriter::new(file);
+                builder.target(Target::Pipe(Box::new(dual_writer)));
+                builder.format(|buf, record| {
+                    writeln!(buf, "{} [{}] {} - {}",
+                        chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f"),
+                        record.level(),
+                        record.target(),
+                        record.args()
+                    )
+                });
+            }
+            Err(e) => {
+                eprintln!("Failed to open log file: {}", e);
+                // Fallback to console-only logging
+                env_logger::init();
+                return;
+            }
+        }
+    } else {
+        eprintln!("Could not find home directory for logging");
+        // Fallback to console-only logging
+        env_logger::init();
+        return;
     }
-    
+
     builder.init();
 }
 

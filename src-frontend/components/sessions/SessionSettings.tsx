@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DebugLabel } from '@/components/ui/atoms';
-import type { Session } from '@/lib/api';
+import type { Session } from '@/lib/types/sessions';
 
 interface SessionSettingsProps {
   // Fork dialog state

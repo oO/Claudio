@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ThemedMDEditor } from "@/components/ui";
-import { api, type ClaudeMdFile } from "@/lib/api";
+import { claudeApi, type ClaudeMdFile } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { DebugLabel } from "@/components/ui/atoms";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
@@ -91,7 +91,7 @@ export const ClaudeFileEditor: React.FC<ClaudeFileEditorProps> = ({
     try {
       setLoading(true);
       setError(null);
-      const fileContent = await api.readClaudeMdFile(file.absolute_path);
+      const fileContent = await claudeApi.readClaudeMdFile(file.absolute_path);
       setContent(fileContent);
       setOriginalContent(fileContent);
     } catch (err) {
@@ -107,10 +107,10 @@ export const ClaudeFileEditor: React.FC<ClaudeFileEditorProps> = ({
       setSaving(true);
       setError(null);
       setToast(null);
-      await api.saveClaudeMdFile(file.absolute_path, content);
+      await claudeApi.saveClaudeMdFile(file.absolute_path, content);
       setOriginalContent(content);
       markAsSaved(); // Clear the unsaved changes flag
-      setToast({ message: "File saved successfully", type: "success" });
+      setToast({ message: "File saved", type: "success" });
     } catch (err) {
       logger.error("Failed to save file:", err);
       setError("Failed to save CLAUDE.md file");
@@ -144,12 +144,12 @@ export const ClaudeFileEditor: React.FC<ClaudeFileEditorProps> = ({
   const handleDeleteConfirm = async () => {
     setDeleting(true);
     try {
-      await api.deleteFile(file.absolute_path);
+      await claudeApi.deleteFile(file.absolute_path);
       setDeleteDialogOpen(false);
       onDelete?.();
       onBack(); // Go back after successful deletion
     } catch (error) {
-      logger.error("Failed to delete memory file:", error);
+      logger.error("Failed to delete file:", error);
       setToast({ message: "Failed to delete file", type: "error" });
     } finally {
       setDeleting(false);

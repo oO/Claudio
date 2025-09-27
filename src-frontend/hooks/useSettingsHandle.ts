@@ -57,7 +57,7 @@ export const useSettingsHandle = (
         setLoading(false);
 
       } catch (err) {
-        logger.error("❌ Failed to initialize settings handle:", err);
+        logger.error("Failed to initialize settings handle:", err);
         setError(err instanceof Error ? err.message : String(err));
         setLoading(false);
       }
@@ -116,14 +116,6 @@ export function useModelSetting(projectPath?: string) {
 
   const currentModel = useMemo(() => {
     const model = settings?.effective?.model || 'default';
-    logger.debug('🔍 useModelSetting computed model:', {
-      projectPath,
-      rawSettings: settings,
-      effectiveModel: settings?.effective?.model,
-      finalModel: model,
-      loading,
-      error
-    });
     return model;
   }, [settings, projectPath, loading, error]);
 

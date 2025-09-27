@@ -160,10 +160,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
 
     setIsDeleting(true);
     try {
-      await api.deleteSession(
-        sessionToDelete.project_id,
-        sessionToDelete.id,
-      );
+      await api.deleteSession(sessionToDelete.id);
       // Session deleted successfully
       onSessionDeleted?.(sessionToDelete.id);
       setDeleteDialogOpen(false);
@@ -182,8 +179,6 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
   };
 
   const handleStartNewSession = () => {
-    logger.log('Starting new Claudio session for project:', projectPath);
-    
     if (onStartNewClaudioSession) {
       // Use callback to delegate to parent (App.tsx -> handleNewClaudioSessionFromProject)
       onStartNewClaudioSession(projectPath);
@@ -240,7 +235,6 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
 
               // Trigger parent to reload sessions
               onSessionsDeleted?.();
-              logger.log("Sessions deleted, parent should refresh");
             }}
             onSessionsRefresh={onSessionsRefresh}
             onToast={onToast}

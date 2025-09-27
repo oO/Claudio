@@ -36,7 +36,7 @@ export function useCachedClaudeCodeSettings(
   const updateSetting = useCallback(async (key: string, value: any) => {
     try {
       await updateCachedSetting(projectPath || null, key, value);
-      logger.debug('✅ Setting updated via cache', { projectPath, key, value });
+      logger.debug('Setting updated via cache', { projectPath, key, value });
     } catch (error) {
       const settingsError = error instanceof SettingsError ? error : new SettingsError(String(error));
       setState(prev => ({ ...prev, error: settingsError }));

@@ -375,7 +375,7 @@ pub async fn update_claudio_session_permission_mode(
         }
     });
 
-    log::info!("✅ Permission mode updated for session: {} -> {}", claudio_id, permission_mode);
+    log::info!("Permission mode updated for session: {} -> {}", claudio_id, permission_mode);
     Ok(updated_session)
 }
 
@@ -413,7 +413,7 @@ pub async fn delete_claudio_session(
     fs::remove_file(&session_file).await
         .map_err(|e| format!("Failed to delete Claudio session: {}", e))?;
 
-    log::info!("✅ Successfully deleted Claudio session: {} ({:.2} KB freed)",
+    log::info!("Successfully deleted Claudio session: {} ({:.2} KB freed)",
                claudio_session_id, file_size as f64 / 1024.0);
 
     Ok(serde_json::json!({

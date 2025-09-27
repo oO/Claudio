@@ -85,9 +85,9 @@ export function AutoSaveInput({
         setSaveState(prev => prev === 'saved' ? 'idle' : prev);
       }, 1000);
 
-      logger.debug('AutoSaveInput: successfully saved value', { type, newValue });
+      logger.debug('Value saved', { type, newValue });
     } catch (error) {
-      logger.error('AutoSaveInput: failed to save value', { type, newValue, error });
+      logger.error('Failed to save value', { type, newValue, error });
       setSaveState('error');
 
       // Rollback to original value on error

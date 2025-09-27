@@ -40,7 +40,7 @@ export const useLinkNotification = (): ((url: string) => void) => {
   if (!context) {
     // Graceful degradation - if no provider, just log
     return (url: string) => {
-      logger.log('Link detected but no notification handler:', url);
+      logger.info('Link detected but no notification handler:', url);
     };
   }
   return context.notifyLinkDetected;

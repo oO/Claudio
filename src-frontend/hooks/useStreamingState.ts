@@ -61,14 +61,12 @@ export const useStreamingState = (
         sessionState.current_claude_session_id
       ) {
         const claudeSessionId = sessionState.current_claude_session_id;
-        logger.info(`🔍 Querying initial state for native session: ${claudeSessionId?.substring(0, 8)}`);
         queryInitialSessionState(claudeSessionId);
       } else if (
         sessionState?.session_type.type === SESSION_TYPES.CLAUDIO &&
         (sessionState.session_type.data as any)?.claudio_id
       ) {
         const claudiaId = (sessionState.session_type.data as any)?.claudio_id;
-        logger.info(`🔍 Querying initial state for Claudio session: ${claudiaId?.substring(0, 8)}`);
         queryInitialSessionState(claudiaId);
       }
     }
@@ -87,10 +85,6 @@ export const useStreamingState = (
             "get_random_thinking_content",
           );
           setThinkingContent({ title, message });
-          logger.debug("🧠 Fetched random thinking content:", {
-            title,
-            message,
-          });
         } catch (error) {
           logger.error("Failed to fetch thinking content:", error);
           // Keep default content on error
@@ -107,10 +101,6 @@ export const useStreamingState = (
       const claudeSessionId = sessionState.current_claude_session_id;
       // Only log when state actually changes, not on every render
       if (effectiveIsStreaming) {
-        logger.log(
-          "🧠 Native session THINKING:",
-          claudeSessionId?.substring(0, 8),
-        );
       }
     }
   }, [

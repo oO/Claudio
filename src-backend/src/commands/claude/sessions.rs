@@ -182,7 +182,7 @@ pub async fn get_session_todos(session_id: String) -> Result<serde_json::Value, 
                             }));
                         }
                         Err(e) => {
-                            log::warn!("❌ Failed to parse todo file {}: {}", file_name, e);
+                            log::warn!("Failed to parse todo file {}: {}", file_name, e);
                         }
                     }
                 }

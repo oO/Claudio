@@ -229,7 +229,7 @@ pub async fn start_claude_direct_session(
         .map_err(|e| format!("Failed to find Claude binary: {}", e))?;
 
     // 🚨 COMPREHENSIVE COMMAND LOGGING 🚨 (before consuming prompt)
-    log::info!("🔥 Claude CLI Command Execution Details:");
+    log::info!("Claude CLI Command Execution Details:");
     log::info!("   📂 Working Directory: {}", options.working_directory.as_ref().unwrap_or(&project_path));
     log::info!("   🎯 Claudio Session ID: {}", claudio_session_id);
     log::info!("   🔗 Resume Session ID: {:?}", options.session_id);

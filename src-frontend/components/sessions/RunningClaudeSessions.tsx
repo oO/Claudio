@@ -51,7 +51,6 @@ export const RunningClaudeSessions: React.FC<RunningClaudeSessionsProps> = ({
           loadRunningSessions();
         });
 
-        logger.debug('Session file watcher listener set up successfully');
       } catch (error) {
         logger.error('Failed to set up session file watcher listener:', error);
         // No fallback polling - if file watcher fails, there's a bigger problem
@@ -95,7 +94,7 @@ export const RunningClaudeSessions: React.FC<RunningClaudeSessionsProps> = ({
       };
       
       // Emit event to navigate to the session
-      logger.log('🚀 RunningClaudeSessions dispatching claude-session-selected for session:', session.id);
+      logger.log('Dispatching claude-session-selected for session:', session.id);
       const event = new CustomEvent('claude-session-selected', { 
         detail: { session, projectPath: processInfo.project_path } 
       });

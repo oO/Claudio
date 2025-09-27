@@ -91,7 +91,6 @@ export function useClaudioAppSettings() {
     try {
       // Persist to backend
       await invoke('save_claudio_app_setting', { key, value });
-      logger.debug('Updated Claudio app setting:', { key, value });
     } catch (err) {
       // Revert on failure
       setSettings(prev => ({ ...prev, [key]: previousValue }));
@@ -127,7 +126,6 @@ export async function getClaudioAppSetting<T = any>(key: string): Promise<T | nu
 export async function setClaudioAppSetting(key: string, value: any): Promise<void> {
   try {
     await invoke('save_claudio_app_setting', { key, value });
-    logger.debug('Set Claudio app setting:', { key, value });
   } catch (err) {
     logger.error('Failed to set Claudio app setting:', { key, value, error: err });
     throw err;

@@ -164,11 +164,7 @@ export const Settings: React.FC<SettingsProps> = ({ className }) => {
               <TabsContent value="proxy">
                 <Card className="p-6">
                   <ProxySettings
-                    setToast={(toast) => {
-                      if (toast) {
-                        logger.info('Proxy settings:', toast.message);
-                      }
-                    }}
+                    setToast={() => {}}
                   />
                 </Card>
               </TabsContent>

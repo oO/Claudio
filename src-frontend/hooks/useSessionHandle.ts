@@ -62,23 +62,11 @@ export const useSessionHandle = (
         setError(null);
         setLoading(true);
 
-        if (sessionId) {
-        } else {
-        }
-
-
         // Get session handle from manager
         const handle = await SessionHandleManager.getHandle(sessionId, projectPath);
 
         // Get initial state
         const state = await handle.getState();
-        logger.info("🔍 useSessionHandle received sessionState:", {
-          sessionId: sessionId,
-          handleId: state.handle_id,
-          sessionType: state.session_type,
-          sessionTypeType: state.session_type?.type,
-          isClaudiaSession: state.session_type?.type === SESSION_TYPES.CLAUDIO
-        });
 
         // For new sessions (no current Claude session), skip loading messages entirely
         // They don't exist yet and we should show empty UI immediately
@@ -91,9 +79,7 @@ export const useSessionHandle = (
             logger.error("Failed to load messages for existing session:", err);
             initialMessages = [];
           }
-        } else {
         }
-
 
         // Batch state updates to prevent multiple re-renders
         setSessionHandle(handle);
@@ -162,7 +148,6 @@ export const useSessionHandle = (
             );
 
             // Store the unsubscribe function (we'll need to modify cleanup later)
-            logger.info("All session listeners setup complete for handle:", state.handle_id);
           } catch (err) {
             logger.error("Failed to setup process event listener:", err);
           }
@@ -174,11 +159,6 @@ export const useSessionHandle = (
               
               // Only handle events for our specific session and project
               if (claudio_id === sessionId && project_path === projectPath) {
-                logger.info("🔄 Claude session ready - updating session state with native session ID:", {
-                  claudio_id,
-                  session_id,
-                  project_path
-                });
                 
                 // Update the session state with the new Claude session ID
                 setSessionState(prevState => {
@@ -193,7 +173,6 @@ export const useSessionHandle = (
             
             // Store cleanup function
             sessionUnlistenRef.current = sessionReadyUnlisten;
-            logger.info("Claude session ready listener setup complete");
           } catch (err) {
             logger.error("Failed to setup Claude session ready listener:", err);
           }
@@ -233,10 +212,6 @@ export const useSessionHandle = (
   useEffect(() => {
     return () => {
       if (sessionHandle && sessionState) {
-        logger.info(
-          "🗑️ Component unmounting - requesting handle cleanup:",
-          sessionState.handle_id,
-        );
         // Let the SessionHandleManager decide if it should actually destroy or keep the handle
         SessionHandleManager.destroyHandle(sessionState.handle_id, projectPath);
       }

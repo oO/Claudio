@@ -345,7 +345,7 @@ const PromptInputInner = (
     }
 
     if (atPosition === -1) {
-      logger.error('[FloatingPromptInput] @ position not found');
+      logger.error('@ position not found');
       return;
     }
 
@@ -387,7 +387,7 @@ const PromptInputInner = (
     }
 
     if (slashPosition === -1) {
-      logger.error('[FloatingPromptInput] / position not found');
+      logger.error('/ position not found');
       return;
     }
 
@@ -396,23 +396,23 @@ const PromptInputInner = (
     const afterCursor = prompt.substring(cursorPosition);
     
     if (command.accepts_arguments) {
-      const newPrompt = `${beforeSlash}${command.full_command} `;
+      const newPrompt = `${beforeSlash}${command.full_command || command.command} `;
       setPrompt(newPrompt);
       closeSlashCommandPicker();
 
       setTimeout(() => {
         textarea.focus();
-        const newCursorPos = beforeSlash.length + command.full_command.length + 1;
+        const newCursorPos = beforeSlash.length + (command.full_command || command.command).length + 1;
         textarea.setSelectionRange(newCursorPos, newCursorPos);
       }, 0);
     } else {
-      const newPrompt = `${beforeSlash}${command.full_command} ${afterCursor}`;
+      const newPrompt = `${beforeSlash}${command.full_command || command.command} ${afterCursor}`;
       setPrompt(newPrompt);
       closeSlashCommandPicker();
 
       setTimeout(() => {
         textarea.focus();
-        const newCursorPos = beforeSlash.length + command.full_command.length + 1;
+        const newCursorPos = beforeSlash.length + (command.full_command || command.command).length + 1;
         textarea.setSelectionRange(newCursorPos, newCursorPos);
       }, 0);
     }

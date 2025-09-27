@@ -73,7 +73,7 @@ export async function getCachedSettings(
 
     return settings;
   } catch (error) {
-    logger.error('❌ Failed to load settings', {
+    logger.error('Failed to load settings', {
       cacheKey,
       errorMessage: error instanceof Error ? error.message : String(error),
       errorCode: error instanceof SettingsError ? error.code : undefined,
@@ -100,7 +100,7 @@ export function invalidateSettingsCache(projectPath: string | null, settingsType
       safeDestroyHandle(cached.handleId);
     }
 
-    logger.debug('🗑️ Settings cache invalidated', { cacheKey, handleId: cached.handleId });
+    logger.debug('Settings cache invalidated', { cacheKey, handleId: cached.handleId });
   }
 }
 
@@ -108,7 +108,7 @@ export function invalidateSettingsCache(projectPath: string | null, settingsType
  * Clear all cache (useful for debugging)
  */
 export function clearSettingsCache() {
-  logger.debug('🧹 Clearing all settings cache');
+  logger.debug('Clearing all settings cache');
 
   // Clean up all handles
   for (const handleId of ACTIVE_HANDLES) {
@@ -132,7 +132,7 @@ export async function updateCachedSetting(
 
   if (!cached || !ACTIVE_HANDLES.has(cached.handleId)) {
     // No cached handle, create fresh one
-    logger.debug('🔄 No cached handle for update, creating fresh one', { cacheKey, key, value });
+    logger.debug('No cached handle for update, creating fresh one', { cacheKey, key, value });
     await getCachedSettings(projectPath);
     const newCached = SETTINGS_CACHE.get(cacheKey);
     if (!newCached) {
@@ -145,7 +145,7 @@ export async function updateCachedSetting(
   }
 
   // Refresh the cached data
-  logger.debug('🔄 Refreshing cache after update', { cacheKey, key, value });
+  logger.debug('Refreshing cache after update', { cacheKey, key, value });
   invalidateSettingsCache(projectPath, 'claudecode');
   await getCachedSettings(projectPath);
 }

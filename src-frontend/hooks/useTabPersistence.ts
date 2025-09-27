@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { api } from '@/lib/api';
+import { systemApi } from '@/lib/api/system';
 import { Tab } from '@/contexts/TabContext';
 import { logger } from '@/lib/logger';
 
@@ -59,7 +59,7 @@ export const useTabPersistence = () => {
 
       if (tabsToSave.length === 0) {
         // Save empty session if no tabs
-        await api.saveClaudioAppSetting(STORAGE_KEY, DEFAULT_EMPTY_SESSION);
+        await systemApi.saveClaudioAppSetting(STORAGE_KEY, DEFAULT_EMPTY_SESSION);
         return;
       }
 
@@ -70,7 +70,7 @@ export const useTabPersistence = () => {
         panelMinWidth,
       };
 
-      await api.saveClaudioAppSetting(STORAGE_KEY, sessionData);
+      await systemApi.saveClaudioAppSetting(STORAGE_KEY, sessionData);
     } catch (error) {
       logger.error('Failed to save tab session:', error);
     }
@@ -81,11 +81,11 @@ export const useTabPersistence = () => {
    */
   const loadTabs = useCallback(async (): Promise<PersistedTabSession> => {
     try {
-      logger.info('📂 Loading tab session from API...');
-      const parsed = await api.loadClaudioAppSetting<PersistedTabSession>(STORAGE_KEY);
+      logger.info('Loading tab session from API');
+      const parsed = await systemApi.loadClaudioAppSetting<PersistedTabSession>(STORAGE_KEY);
 
       if (!parsed) {
-        logger.info('📂 No saved tabs found');
+        logger.info('No saved tabs found');
         return DEFAULT_EMPTY_SESSION;
       }
       
@@ -115,7 +115,7 @@ export const useTabPersistence = () => {
    */
   const clearSavedTabs = useCallback(async () => {
     try {
-      await api.saveClaudioAppSetting(STORAGE_KEY, DEFAULT_EMPTY_SESSION);
+      await systemApi.saveClaudioAppSetting(STORAGE_KEY, DEFAULT_EMPTY_SESSION);
     } catch (error) {
       logger.error('Failed to clear tab session:', error);
     }

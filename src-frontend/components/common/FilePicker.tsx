@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { DebugLabel } from "@/components/ui/atoms";
-import { api } from "@/lib/api";
+import { systemApi } from "@/lib/api";
 import { logger } from '@/lib/logger';
 import { 
   X, 
@@ -290,7 +290,7 @@ export const FilePicker: React.FC<FilePickerProps> = ({
       }
       
       // Always fetch fresh data in background
-      const contents = await api.listDirectoryContents(path);
+      const contents = await systemApi.listDirectoryContents(path);
       
       // Cache the results
       globalDirectoryCache.set(path, contents);
@@ -300,8 +300,7 @@ export const FilePicker: React.FC<FilePickerProps> = ({
       setIsShowingCached(false);
       setError(null);
     } catch (err) {
-      logger.error('[FilePicker] Failed to load directory:', path, err);
-      logger.error('[FilePicker] Error details:', err);
+      logger.error('Failed to load directory:', path, err);
       // Only set error if we don't have cached data to show
       if (!globalDirectoryCache.has(path)) {
         setError(err instanceof Error ? err.message : 'Failed to load directory');
@@ -328,7 +327,7 @@ export const FilePicker: React.FC<FilePickerProps> = ({
       }
       
       // Always fetch fresh results in background
-      const results = await api.searchFiles(basePath, query);
+      const results = await systemApi.searchFiles(basePath, query);
       
       // Cache the results
       globalSearchCache.set(cacheKey, results);
@@ -338,7 +337,7 @@ export const FilePicker: React.FC<FilePickerProps> = ({
       setIsShowingCached(false);
       setError(null);
     } catch (err) {
-      logger.error('[FilePicker] Search failed:', query, err);
+      logger.error('Search failed:', query, err);
       // Only set error if we don't have cached data to show
       const cacheKey = `${basePath}:${query}`;
       if (!globalSearchCache.has(cacheKey)) {

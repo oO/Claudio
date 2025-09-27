@@ -53,7 +53,7 @@ export const ProjectMemoriesTab: React.FC<ProjectMemoriesTabProps> = ({
     try {
       const files = await api.findClaudeMdFiles(projectPath);
       // Sort by relative path for consistent ordering
-      const sortedFiles = files.sort((a, b) =>
+      const sortedFiles = files.sort((a: any, b: any) =>
         a.relative_path.localeCompare(b.relative_path),
       );
       setClaudeFiles(sortedFiles);
@@ -119,9 +119,6 @@ export const ProjectMemoriesTab: React.FC<ProjectMemoriesTabProps> = ({
       // Check if this directory already has a CLAUDE.md file
       if (hasExistingMemory(entry.path)) {
         // Show error or prevent selection, but don't close picker
-        logger.warn(
-          `Directory ${entry.path} already contains a CLAUDE.md file`,
-        );
         return;
       }
 

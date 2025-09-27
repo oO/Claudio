@@ -125,10 +125,10 @@ export const SlashCommandPicker: React.FC<SlashCommandPickerProps> = ({
     } else {
       filtered = filteredByTab.filter(cmd => {
         // Match against command name
-        if (cmd.name.toLowerCase().includes(query)) return true;
-        
+        if (cmd.name?.toLowerCase().includes(query)) return true;
+
         // Match against full command
-        if (cmd.full_command.toLowerCase().includes(query)) return true;
+        if (cmd.full_command?.toLowerCase().includes(query)) return true;
         
         // Match against namespace
         if (cmd.namespace && cmd.namespace.toLowerCase().includes(query)) return true;
@@ -142,19 +142,19 @@ export const SlashCommandPicker: React.FC<SlashCommandPickerProps> = ({
       // Sort by relevance
       filtered.sort((a, b) => {
         // Exact name match first
-        const aExact = a.name.toLowerCase() === query;
-        const bExact = b.name.toLowerCase() === query;
+        const aExact = a.name?.toLowerCase() === query;
+        const bExact = b.name?.toLowerCase() === query;
         if (aExact && !bExact) return -1;
         if (!aExact && bExact) return 1;
-        
+
         // Then by name starts with
-        const aStarts = a.name.toLowerCase().startsWith(query);
-        const bStarts = b.name.toLowerCase().startsWith(query);
+        const aStarts = a.name?.toLowerCase().startsWith(query);
+        const bStarts = b.name?.toLowerCase().startsWith(query);
         if (aStarts && !bStarts) return -1;
         if (!aStarts && bStarts) return 1;
-        
+
         // Then alphabetically
-        return a.name.localeCompare(b.name);
+        return (a.name || '').localeCompare(b.name || '');
       });
     }
     
@@ -178,7 +178,7 @@ export const SlashCommandPicker: React.FC<SlashCommandPickerProps> = ({
           if (filteredCommands.length > 0 && selectedIndex < filteredCommands.length) {
             const command = filteredCommands[selectedIndex];
             trackEvent.slashCommandSelected({
-              command_name: command.name,
+              command_name: command.name || command.command,
               selection_method: 'keyboard'
             });
             slashCommandFeatureTracking.trackUsage();
@@ -218,7 +218,7 @@ export const SlashCommandPicker: React.FC<SlashCommandPickerProps> = ({
       setError(null);
       
       // Always load fresh commands from filesystem
-      const loadedCommands = await api.slashCommandsList(projectPath);
+      const loadedCommands = await api.slashCommandsList();
       setCommands(loadedCommands);
     } catch (err) {
       logger.error("Failed to load slash commands:", err);
@@ -231,7 +231,7 @@ export const SlashCommandPicker: React.FC<SlashCommandPickerProps> = ({
   
   const handleCommandClick = (command: SlashCommand) => {
     trackEvent.slashCommandSelected({
-      command_name: command.name,
+      command_name: command.name || command.command,
       selection_method: 'click'
     });
     slashCommandFeatureTracking.trackUsage();
@@ -350,7 +350,7 @@ export const SlashCommandPicker: React.FC<SlashCommandPickerProps> = ({
                         
                         return (
                           <button
-                            key={command.id}
+                            key={command.id || command.command}
                             data-index={index}
                             onClick={() => handleCommandClick(command)}
                             onMouseEnter={() => setSelectedIndex(index)}
@@ -414,7 +414,7 @@ export const SlashCommandPicker: React.FC<SlashCommandPickerProps> = ({
                           
                           return (
                             <button
-                              key={command.id}
+                              key={command.id || command.command}
                               data-index={index}
                               onClick={() => handleCommandClick(command)}
                               onMouseEnter={() => setSelectedIndex(index)}
@@ -446,7 +446,7 @@ export const SlashCommandPicker: React.FC<SlashCommandPickerProps> = ({
                                 )}
                                 
                                 <div className="flex items-center gap-3 mt-1">
-                                  {command.allowed_tools.length > 0 && (
+                                  {command.allowed_tools && command.allowed_tools.length > 0 && (
                                     <span className="text-xs text-muted-foreground">
                                       {command.allowed_tools.length} tool{command.allowed_tools.length === 1 ? '' : 's'}
                                     </span>
@@ -488,7 +488,7 @@ export const SlashCommandPicker: React.FC<SlashCommandPickerProps> = ({
                                 
                                 return (
                                   <button
-                                    key={command.id}
+                                    key={command.id || command.command}
                                     data-index={globalIndex}
                                     onClick={() => handleCommandClick(command)}
                                     onMouseEnter={() => setSelectedIndex(globalIndex)}
@@ -520,7 +520,7 @@ export const SlashCommandPicker: React.FC<SlashCommandPickerProps> = ({
                                       )}
                                       
                                       <div className="flex items-center gap-3 mt-1">
-                                        {command.allowed_tools.length > 0 && (
+                                        {command.allowed_tools && command.allowed_tools.length > 0 && (
                                           <span className="text-xs text-muted-foreground">
                                             {command.allowed_tools.length} tool{command.allowed_tools.length === 1 ? '' : 's'}
                                           </span>

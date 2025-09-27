@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { api } from '@/lib/api';
+import { systemApi } from '@/lib/api/system';
 import { logger } from '@/lib/logger';
 
 export interface SessionCreationOptions {
@@ -14,7 +14,7 @@ export interface SessionCreationOptions {
 export const useSessionCreation = () => {
   const createClaudioSession = useCallback(async (options: SessionCreationOptions): Promise<string> => {
     try {
-      const claudioId = await api.createClaudioSession(options.projectPath, options.settings || {});
+      const claudioId = await systemApi.createClaudioSession(options.projectPath, options.settings || {});
       return claudioId;
     } catch (error) {
       logger.error("Failed to create Claudio session:", error);

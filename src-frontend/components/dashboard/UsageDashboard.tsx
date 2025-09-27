@@ -72,11 +72,7 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({}) => {
           startDate.toISOString(),
           endDate.toISOString()
         );
-        sessionData = await api.getSessionStats(
-            formatDateForApi(startDate),
-            formatDateForApi(endDate),
-            'desc'
-        );
+        sessionData = await api.getSessionStats();
       }
       
       setStats(statsData);
@@ -196,7 +192,7 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({}) => {
                   <div>
                     <p className="text-xs text-muted-foreground">Total Sessions</p>
                     <p className="text-2xl font-bold mt-1">
-                      {formatNumber(stats.total_sessions)}
+                      {formatNumber(stats.total_sessions || stats.session_count)}
                     </p>
                   </div>
                   <FileText className="h-8 w-8 text-muted-foreground/20 rotating-symbol" />
@@ -223,8 +219,8 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({}) => {
                     <p className="text-xs text-muted-foreground">Avg Cost/Session</p>
                     <p className="text-2xl font-bold mt-1">
                       {formatCurrency(
-                        stats.total_sessions > 0 
-                          ? stats.total_cost / stats.total_sessions 
+                        (stats.total_sessions || stats.session_count) > 0
+                          ? stats.total_cost / (stats.total_sessions || stats.session_count) 
                           : 0
                       )}
                     </p>
@@ -273,7 +269,7 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({}) => {
                   <Card className="p-6">
                     <h3 className="text-sm font-semibold mb-4">Most Used Models</h3>
                     <div className="space-y-3">
-                      {stats.by_model.slice(0, 3).map((model) => (
+                      {stats.by_model?.slice(0, 3).map((model) => (
                         <div key={model.model} className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">
                             <Badge variant="outline" className={cn("text-xs", getModelColor(model.model))}>
@@ -319,7 +315,7 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({}) => {
                 <Card className="p-6">
                   <h3 className="text-sm font-semibold mb-4">Usage by Model</h3>
                   <div className="space-y-4">
-                    {stats.by_model.map((model) => (
+                    {stats.by_model?.map((model) => (
                       <div key={model.model} className="space-y-2">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">
@@ -340,19 +336,19 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({}) => {
                         <div className="grid grid-cols-4 gap-2 text-xs">
                           <div>
                             <span className="text-muted-foreground">Input: </span>
-                            <span className="font-medium">{formatTokens(model.input_tokens)}</span>
+                            <span className="font-medium">{formatTokens(model.input_tokens || 0)}</span>
                           </div>
                           <div>
                             <span className="text-muted-foreground">Output: </span>
-                            <span className="font-medium">{formatTokens(model.output_tokens)}</span>
+                            <span className="font-medium">{formatTokens(model.output_tokens || 0)}</span>
                           </div>
                           <div>
                             <span className="text-muted-foreground">Cache W: </span>
-                            <span className="font-medium">{formatTokens(model.cache_creation_tokens)}</span>
+                            <span className="font-medium">{formatTokens(model.cache_creation_tokens || 0)}</span>
                           </div>
                           <div>
                             <span className="text-muted-foreground">Cache R: </span>
-                            <span className="font-medium">{formatTokens(model.cache_read_tokens)}</span>
+                            <span className="font-medium">{formatTokens(model.cache_read_tokens || 0)}</span>
                           </div>
                         </div>
                       </div>
@@ -430,8 +426,8 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({}) => {
                     <Calendar className="h-4 w-4" />
                     <span>Daily Usage</span>
                   </h3>
-                  {stats.by_date.length > 0 ? (() => {
-                    const maxCost = Math.max(...stats.by_date.map(d => d.total_cost), 0);
+                  {stats.by_date && stats.by_date.length > 0 ? (() => {
+                    const maxCost = Math.max(...stats.by_date.map((d: any) => d.total_cost), 0);
                     const halfMaxCost = maxCost / 2;
 
                     return (
@@ -445,7 +441,7 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({}) => {
                         
                         {/* Chart container */}
                         <div className="flex items-end space-x-2 h-64 border-l border-b border-border pl-4">
-                          {stats.by_date.slice().reverse().map((day) => {
+                          {stats.by_date?.slice().reverse().map((day: any) => {
                             const heightPercent = maxCost > 0 ? (day.total_cost / maxCost) * 100 : 0;
                             const date = new Date(day.date.replace(/-/g, '/'));
                             const formattedDate = date.toLocaleDateString('en-US', {

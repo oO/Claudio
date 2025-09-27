@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Toast, ToastContainer } from "@/components/ui/toast";
-import { api, type Agent } from "@/lib/api";
+import { agentsApi, type Agent } from "@/lib/api";
 import { AGENT_COLORS, AGENT_COLOR_OPTIONS, getAgentColor, type AgentColorName } from "@/lib/agentColors";
 import { cn } from "@/lib/utils";
 import { ThemedMDEditor } from "@/components/ui";
@@ -295,7 +295,7 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
     if (isEditMode && name !== agent?.name) {
       try {
         // Get list of existing agents to check for conflicts
-        const existingAgents = await api.listAgents();
+        const existingAgents = await agentsApi.listAgents();
         const nameExists = existingAgents.some(a => a.name.toLowerCase() === name.toLowerCase());
         if (nameExists) {
           setError(`An agent named "${name}" already exists. Please choose a different name.`);
@@ -307,7 +307,7 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
     } else if (!isEditMode) {
       // For new agents, always check for conflicts
       try {
-        const existingAgents = await api.listAgents();
+        const existingAgents = await agentsApi.listAgents();
         const nameExists = existingAgents.some(a => a.name.toLowerCase() === name.toLowerCase());
         if (nameExists) {
           setError(`An agent named "${name}" already exists. Please choose a different name.`);
@@ -325,7 +325,7 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
       const toolsString = getToolsString();
       
       if (isEditMode && agent?.id) {
-        await api.updateAgent(
+        await agentsApi.updateAgent(
           agent.id, 
           name, 
           systemPrompt, 
@@ -336,7 +336,7 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
           color
         );
       } else {
-        await api.createAgent(
+        await agentsApi.createAgent(
           name, 
           systemPrompt, 
           undefined, // default_task not supported by Claude Native Agents

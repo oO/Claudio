@@ -65,16 +65,15 @@ export const useTabState = (): UseTabStateReturn => {
   const sessionTabCount = useMemo(() => getTabsByType('project-session').length, [getTabsByType]);
 
   const createSessionTab = useCallback((initialProjectPath?: string, title?: string, sessionId?: string): string => {
-    logger.log('🔥 createSessionTab called with:', { initialProjectPath, title, sessionId });
+    logger.log('createSessionTab called with:', { initialProjectPath, title, sessionId });
 
     // Check if tab already exists for this session
     if (sessionId) {
       const currentTabs = getTabsByType('project-session');
       const existingTab = currentTabs.find(tab => tab.sessionId === sessionId);
-      logger.log('🔍 Checking for existing tab with sessionId:', sessionId, 'found:', existingTab?.id);
 
       if (existingTab) {
-        logger.log('✅ Found existing tab, switching to:', existingTab.id);
+        logger.log('Found existing tab, switching to:', existingTab.id);
         setActiveTab(existingTab.id);
         return existingTab.id;
       }
@@ -90,7 +89,6 @@ export const useTabState = (): UseTabStateReturn => {
       tabTitle = `Session ${sessionTabCount + 1}`;
     }
 
-    logger.log('📝 Creating new tab with title:', tabTitle, 'sessionId:', sessionId);
 
     const newTabId = addTab({
       type: 'project-session',
@@ -102,7 +100,7 @@ export const useTabState = (): UseTabStateReturn => {
       icon: 'messages-square',
     });
 
-    logger.log('✨ Created new tab with ID:', newTabId);
+    logger.log('Created new tab with ID:', newTabId);
     return newTabId;
   }, [addTab, sessionTabCount, getTabsByType, setActiveTab]);
 

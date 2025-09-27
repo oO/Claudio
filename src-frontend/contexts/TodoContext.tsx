@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { SessionTodoData } from '@/lib/api';
+import type { SessionTodoData } from '@/lib/types/sessions';
 import { logger } from '@/lib/logger';
 import { listen } from '@tauri-apps/api/event';
 
@@ -35,7 +35,6 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
   const [todosBySession, setTodosBySession] = useState<Map<string, SessionTodoData>>(new Map());
 
 
-  // Set up event listener for todo changes
   useEffect(() => {
     let unlisten: (() => void) | null = null;
 
@@ -78,11 +77,13 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
                 // Recalculate total counts
                 const total_counts = updatedAgentTodos.reduce(
                   (acc, agent) => ({
-                    open: acc.open + agent.counts.open,
+                    pending: acc.pending + agent.counts.pending,
+                    in_progress: acc.in_progress + agent.counts.in_progress,
                     completed: acc.completed + agent.counts.completed,
-                    total: acc.total + agent.counts.total
+                    total: acc.total + agent.counts.total,
+                    open: acc.open + agent.counts.open
                   }),
-                  { open: 0, completed: 0, total: 0 }
+                  { pending: 0, in_progress: 0, completed: 0, total: 0, open: 0 }
                 );
                 
                 const updated: SessionTodoData = {
@@ -113,10 +114,7 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
               return newMap;
             });
           } else if (eventData.type === 'TodoRemoved') {
-            const { session_id, agent_id } = eventData.data;
-            
-            
-            setTodosBySession(prev => {
+            const { session_id, agent_id } = eventData.data;setTodosBySession(prev => {
               const newMap = new Map(prev);
               const existing = newMap.get(session_id);
               
@@ -132,11 +130,13 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
                   // Update session with remaining agents
                   const total_counts = updatedAgentTodos.reduce(
                     (acc, agent) => ({
-                      open: acc.open + agent.counts.open,
+                      pending: acc.pending + agent.counts.pending,
+                      in_progress: acc.in_progress + agent.counts.in_progress,
                       completed: acc.completed + agent.counts.completed,
-                      total: acc.total + agent.counts.total
+                      total: acc.total + agent.counts.total,
+                      open: acc.open + agent.counts.open
                     }),
-                    { open: 0, completed: 0, total: 0 }
+                    { pending: 0, in_progress: 0, completed: 0, total: 0, open: 0 }
                   );
                   
                   const updated: SessionTodoData = {
@@ -156,12 +156,10 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
         });
         
         
-        // Also start the todo watcher on the backend
         try {
           const { invoke } = await import('@tauri-apps/api/core');
           await invoke('start_todo_watching');
           
-          // Check watcher status to verify it's running
           await invoke('get_todo_watching_status');
         } catch (error) {
           logger.error('Failed to start todo watcher:', error);
@@ -182,8 +180,6 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
 
   const getTodoData = (sessionId: string): SessionTodoData | null => {
     const data = todosBySession.get(sessionId) || null;
-    if (data) {
-    }
     return data;
   };
 

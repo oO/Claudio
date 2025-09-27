@@ -151,10 +151,9 @@ export const ToolCallRenderer: React.FC<ToolCallRendererProps> = ({
     
     // ExitPlanMode tool
     if (toolName === "exitplanmode" && input?.plan) {
-      logger.debug("ToolCallRenderer: ExitPlanMode match", { toolName, input });
       // Use the original message instead of creating a fake one
       // This preserves UUID information for clipboard functionality
-      const message = originalMessage || {
+      const message = React.useMemo(() => originalMessage || {
         message: {
           content: [
             {
@@ -168,10 +167,10 @@ export const ToolCallRenderer: React.FC<ToolCallRendererProps> = ({
         // Add UUIDs if we have them from toolCall
         uuid: toolCall.id,
         _contributingMessageUuids: toolCall.id ? [toolCall.id] : []
-      };
-      
+      }, [originalMessage, toolCall.id, input]);
+
       // Create tool result message if available
-      const toolResultMessage = toolResult ? {
+      const toolResultMessage = React.useMemo(() => toolResult ? {
         message: {
           content: [
             {
@@ -185,15 +184,15 @@ export const ToolCallRenderer: React.FC<ToolCallRendererProps> = ({
         // Add result UUID if available
         uuid: toolResult?.uuid,
         _contributingMessageUuids: toolResult?.uuid ? [toolResult.uuid] : []
-      } : undefined;
-      
+      } : undefined, [toolResult, toolCall.id]);
+
       return <ExitPlanModeWidget message={message as any} toolResult={toolResultMessage as any} />;
     }
     
     // Fallback - use generic tool widget for unknown tools
     if (toolCall.name) {
       // Use the original message instead of creating a fake one
-      const message = originalMessage || {
+      const message = React.useMemo(() => originalMessage || {
         message: {
           content: [
             {
@@ -207,9 +206,9 @@ export const ToolCallRenderer: React.FC<ToolCallRendererProps> = ({
         // Add UUIDs if we have them from toolCall
         uuid: toolCall.id,
         _contributingMessageUuids: toolCall.id ? [toolCall.id] : []
-      };
-      
-      const toolResultMessage = toolResult ? {
+      }, [originalMessage, toolCall.id, toolCall.name, input]);
+
+      const toolResultMessage = React.useMemo(() => toolResult ? {
         message: {
           content: [
             {
@@ -223,8 +222,8 @@ export const ToolCallRenderer: React.FC<ToolCallRendererProps> = ({
         // Add result UUID if available
         uuid: toolResult?.uuid,
         _contributingMessageUuids: toolResult?.uuid ? [toolResult.uuid] : []
-      } : undefined;
-      
+      } : undefined, [toolResult, toolCall.id]);
+
       return <ToolWithResultWidget message={message as any} toolResult={toolResultMessage as any} />;
     }
     

@@ -329,10 +329,10 @@ pub fn get_project_path_from_sessions(project_dir: &PathBuf) -> Result<String, S
                             log::error!("Failed to parse JSON from session file first line");
                         }
                     } else {
-                        log::warn!("📝 Session file exists but has no content or failed to read first line: {:?}", path);
+                        log::warn!("Session file exists but has no content or failed to read first line: {:?}", path);
                     }
                 } else {
-                    log::error!("🚫 Failed to open session file: {:?}", path);
+                    log::error!("Failed to open session file: {:?}", path);
                 }
             }
         }

@@ -169,7 +169,6 @@ export const WelcomeScreen: React.FC = () => {
           "get_random_thinking_content",
         );
         setHaiku(message);
-        //logger.debug("🌸 Fetched random haiku:", message);
       } catch (error) {
         logger.error("Failed to fetch thinking haiku:", error);
         // Keep default message on error
@@ -196,7 +195,7 @@ export const WelcomeScreen: React.FC = () => {
           await clearSavedTabs();
         }
       } catch (error) {
-        logger.error("Failed to auto-restore tabs", error);
+        logger.error("Failed to auto-restore tabs:", error);
       }
     };
 
@@ -218,7 +217,7 @@ export const WelcomeScreen: React.FC = () => {
       if (autoRestoreTimerRef.current) {
         clearTimeout(autoRestoreTimerRef.current);
         autoRestoreTimerRef.current = null;
-        logger.debug("🚫 Auto-restore cancelled - user opened tab manually");
+        logger.debug("Auto-restore cancelled - user opened tab manually");
       }
     }
   }, [tabs.length, restoreBlocked]);

@@ -41,21 +41,21 @@ export const MCPImportExport: React.FC<MCPImportExportProps> = ({
       
       // Show detailed results if available
       if (result.servers && result.servers.length > 0) {
-        const successfulServers = result.servers.filter(s => s.success);
-        const failedServers = result.servers.filter(s => !s.success);
-        
+        const successfulServers = result.servers.filter((s: any) => s.success);
+        const failedServers = result.servers.filter((s: any) => !s.success);
+
         if (successfulServers.length > 0) {
-          const successMessage = `Successfully imported: ${successfulServers.map(s => s.name).join(", ")}`;
+          const successMessage = `Successfully imported: ${successfulServers.map((s: any) => s.name).join(", ")}`;
           onImportCompleted(result.imported_count, result.failed_count);
           // Show success details
           if (failedServers.length === 0) {
             onError(successMessage);
           }
         }
-        
+
         if (failedServers.length > 0) {
           const failureDetails = failedServers
-            .map(s => `${s.name}: ${s.error || "Unknown error"}`)
+            .map((s: any) => `${s.name}: ${s.error || "Unknown error"}`)
             .join("\n");
           onError(`Failed to import some servers:\n${failureDetails}`);
         }

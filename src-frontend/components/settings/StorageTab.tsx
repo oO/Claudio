@@ -67,9 +67,10 @@ export const StorageTab: React.FC = () => {
       setLoading(true);
       setError(null);
       const result = await api.storageListTables();
-      setTables(result);
+      const tableInfos = result.map((name: string) => ({ name, rowCount: 0, row_count: 0, columns: [] }));
+      setTables(tableInfos);
       if (result.length > 0 && !selectedTable) {
-        setSelectedTable(result[0].name);
+        setSelectedTable(result[0]);
       }
     } catch (err) {
       logger.error("Failed to load tables:", err);
@@ -88,13 +89,16 @@ export const StorageTab: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const result = await api.storageReadTable(
-        selectedTable,
-        page,
-        pageSize,
-        search || searchQuery || undefined
-      );
-      setTableData(result);
+      const result = await api.storageReadTable(selectedTable);
+      setTableData({
+        table_name: selectedTable,
+        columns: [],
+        rows: result,
+        total_rows: result.length,
+        page: 1,
+        page_size: 50,
+        total_pages: Math.ceil(result.length / 50)
+      });
       setCurrentPage(page);
     } catch (err) {
       logger.error("Failed to load table data:", err);
@@ -140,7 +144,7 @@ export const StorageTab: React.FC = () => {
     try {
       setLoading(true);
       const pkValues = getPrimaryKeyValues(editingRow);
-      await api.storageUpdateRow(selectedTable, pkValues, updates);
+      await api.storageUpdateRow(selectedTable, Object.values(pkValues)[0] as number, updates);
       await loadTableData(currentPage);
       setEditingRow(null);
       setToast({
@@ -168,7 +172,7 @@ export const StorageTab: React.FC = () => {
     try {
       setLoading(true);
       const pkValues = getPrimaryKeyValues(deletingRow);
-      await api.storageDeleteRow(selectedTable, pkValues);
+      await api.storageDeleteRow(selectedTable, Object.values(pkValues)[0] as number);
       await loadTableData(currentPage);
       setDeletingRow(null);
       setToast({

@@ -131,7 +131,7 @@ export const SlashCommandsManager: React.FC<SlashCommandsManagerProps> = ({
     try {
       setLoading(true);
       setError(null);
-      const loadedCommands = await api.slashCommandsList(projectPath);
+      const loadedCommands = await api.slashCommandsList();
       setCommands(loadedCommands);
     } catch (err) {
       logger.error("Failed to load slash commands:", err);
@@ -157,11 +157,11 @@ export const SlashCommandsManager: React.FC<SlashCommandsManagerProps> = ({
   const handleEdit = (command: SlashCommand) => {
     setEditingCommand(command);
     setCommandForm({
-      name: command.name,
+      name: command.name || '',
       namespace: command.namespace || "",
-      content: command.content,
+      content: command.content || '',
       description: command.description || "",
-      allowedTools: command.allowed_tools,
+      allowedTools: command.allowed_tools || [],
       scope: command.scope as 'project' | 'user'
     });
     setEditDialogOpen(true);
@@ -172,15 +172,16 @@ export const SlashCommandsManager: React.FC<SlashCommandsManagerProps> = ({
       setSaving(true);
       setError(null);
 
-      await api.slashCommandSave(
-        commandForm.scope,
-        commandForm.name,
-        commandForm.namespace || undefined,
-        commandForm.content,
-        commandForm.description || undefined,
-        commandForm.allowedTools,
-        commandForm.scope === 'project' ? projectPath : undefined
-      );
+      await api.slashCommandSave({
+        command: commandForm.name,
+        prompt: commandForm.content,
+        description: commandForm.description || undefined,
+        allowed_tools: commandForm.allowedTools,
+        scope: commandForm.scope,
+        name: commandForm.name,
+        namespace: commandForm.namespace || undefined,
+        content: commandForm.content
+      });
       
       // Track command creation
       trackEvent.slashCommandCreated({
@@ -209,7 +210,7 @@ export const SlashCommandsManager: React.FC<SlashCommandsManagerProps> = ({
     try {
       setDeleting(true);
       setError(null);
-      await api.slashCommandDelete(commandToDelete.id, projectPath);
+      await api.slashCommandDelete(commandToDelete.name || commandToDelete.command);
       setDeleteDialogOpen(false);
       setCommandToDelete(null);
       await loadCommands();
@@ -279,8 +280,8 @@ export const SlashCommandsManager: React.FC<SlashCommandsManagerProps> = ({
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       return (
-        cmd.name.toLowerCase().includes(query) ||
-        cmd.full_command.toLowerCase().includes(query) ||
+        (cmd.name?.toLowerCase().includes(query)) ||
+        (cmd.full_command?.toLowerCase().includes(query)) ||
         (cmd.description && cmd.description.toLowerCase().includes(query)) ||
         (cmd.namespace && cmd.namespace.toLowerCase().includes(query))
       );
@@ -395,10 +396,10 @@ export const SlashCommandsManager: React.FC<SlashCommandsManagerProps> = ({
               <div className="divide-y">
                 {groupCommands.map((command) => {
                   const Icon = getCommandIcon(command);
-                  const isExpanded = expandedCommands.has(command.id);
+                  const isExpanded = expandedCommands.has(command.id || command.command);
                   
                   return (
-                    <div key={command.id}>
+                    <div key={command.id || command.command}>
                       <div className="p-4">
                         <div className="flex items-start gap-4">
                           <Icon className="h-5 w-5 mt-0.5 text-muted-foreground flex-shrink-0" />
@@ -422,7 +423,7 @@ export const SlashCommandsManager: React.FC<SlashCommandsManagerProps> = ({
                             )}
                             
                             <div className="flex items-center gap-4 text-xs">
-                              {command.allowed_tools.length > 0 && (
+                              {command.allowed_tools && command.allowed_tools.length > 0 && (
                                 <span className="text-muted-foreground">
                                   {command.allowed_tools.length} tool{command.allowed_tools.length === 1 ? '' : 's'}
                                 </span>
@@ -441,7 +442,7 @@ export const SlashCommandsManager: React.FC<SlashCommandsManagerProps> = ({
                               )}
                               
                               <button
-                                onClick={() => toggleExpanded(command.id)}
+                                onClick={() => toggleExpanded(command.id || command.command)}
                                 className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
                               >
                                 {isExpanded ? (

@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.7.1] - 2025-09-27
+
+### Refactor
+- Massive logging standards cleanup across entire codebase (82 files modified)
+- Removed ALL emoji violations from logs (🧠🚀🔍📊✅❌🔄⚙️📝💡🔥✨ etc.)
+- Eliminated progress narration in favor of essential error/state logging only
+- Session orchestrator no longer spams debug info on every file change
+- Thin API wrappers now only log errors, not redundant success messages
+- Net reduction of 1700+ lines while preserving essential error handling
+- Added Claude Code wrapper infrastructure for advanced session management
+
 ## [0.6.3] - 2025-09-26
 
 ### Refactor

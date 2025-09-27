@@ -81,18 +81,16 @@ export const useNativeClaudeSessions = () => {
         unsubscribe = await eventManager.subscribe<ClaudeThinkingEvent>('claude-session-thinking', (thinkingEvent) => {
           const { session_id, status } = thinkingEvent;
           
-          logger.info(`🧠 Claude thinking event received:`, { session_id, status });
+          logger.info(`Claude thinking event received:`, { session_id, status });
           
           if (status === 'active') {
             // Set thinking state to true
-            logger.debug(`Setting thinking state for session ${session_id}`);
             setThinkingSessions(prev => ({
               ...prev,
               [session_id]: true
             }));
           } else {
             // Remove thinking state
-            logger.debug(`Removing thinking state for session ${session_id} (status: ${status})`);
             setThinkingSessions(prev => {
               const updated = { ...prev };
               delete updated[session_id];
@@ -101,7 +99,6 @@ export const useNativeClaudeSessions = () => {
           }
         });
         
-        logger.debug('Claude thinking listener setup complete');
       } catch (err) {
         logger.error('Failed to setup Claude thinking listener:', err);
       }
@@ -135,7 +132,6 @@ export const useNativeClaudeSessions = () => {
   const queryInitialSessionState = useCallback(async (sessionId: string): Promise<void> => {
     // Don't query if we already have state for this session
     if (sessionId in thinkingSessions) {
-      logger.debug(`🧠 Session ${sessionId} already has cached thinking state`);
       return;
     }
     
@@ -147,9 +143,8 @@ export const useNativeClaudeSessions = () => {
           ...prev,
           [sessionId]: true
         }));
-        logger.info(`🧠 Initial query: Session ${sessionId} is active (thinking)`);
+        logger.info(`Initial query: Session ${sessionId} is active (thinking)`);
       } else {
-        logger.debug(`🧠 Initial query: Session ${sessionId} is idle or not found`);
       }
     } catch (error) {
       logger.error(`Failed to query initial session status for ${sessionId}:`, error);

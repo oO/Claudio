@@ -26,7 +26,6 @@ export const UserMessageNavigation: React.FC<UserMessageNavigationProps> = ({
   const { userMessages = [] } = useSessionContext();
 
   const handleNavigate = (messageIndex: number) => {
-    logger.log("🔸 Navigating to user message at index:", messageIndex);
     onNavigate(messageIndex);
   };
 

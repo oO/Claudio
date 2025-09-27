@@ -1,5 +1,5 @@
 import React, { createContext, useContext } from 'react';
-import type { Session } from '@/lib/api';
+import type { Session } from '@/lib/types/sessions';
 import type { SessionTypeValue } from '@/lib/sessionHandleApi';
 
 export interface UserMessageItem {

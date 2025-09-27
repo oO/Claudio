@@ -76,8 +76,8 @@ export function useClaudeMessages(options: UseClaudeMessagesOptions = {}) {
       
       outputs.forEach(output => {
         if (output.jsonl) {
-          const lines = output.jsonl.split('\n').filter(line => line.trim());
-          lines.forEach(line => {
+          const lines = output.jsonl.split('\n').filter((line: string) => line.trim());
+          lines.forEach((line: string) => {
             try {
               const msg = JSON.parse(line);
               loadedMessages.push(msg);

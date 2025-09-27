@@ -1,5 +1,4 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
-import { logger } from '@/lib/logger';
 
 interface UseScrollPinningOptions {
   messageCount: number;
@@ -47,21 +46,10 @@ export function useScrollPinning({
       document.documentElement.clientHeight
     );
     
-    logger.log('=== SCROLL TO BOTTOM DEBUG ===');
-    logger.log('document.documentElement.scrollHeight:', document.documentElement.scrollHeight);
-    logger.log('document.body.scrollHeight:', document.body.scrollHeight);
-    logger.log('Max scroll height:', scrollHeight);
-    logger.log('Current scroll position:', window.pageYOffset);
-    logger.log('Window height:', window.innerHeight);
-    logger.log('Can scroll?', scrollHeight > window.innerHeight);
-    
     // Calculate the maximum scrollable distance
     const maxScroll = scrollHeight - window.innerHeight;
-    logger.log('Max scrollable distance:', maxScroll);
-    
+
     if (maxScroll > 0) {
-      // Try different scroll methods
-      logger.log('Attempting to scroll to:', maxScroll);
       
       // Method 1: window.scrollTo
       window.scrollTo({
@@ -72,26 +60,21 @@ export function useScrollPinning({
       // Method 2: Direct property assignment (fallback)
       setTimeout(() => {
         document.documentElement.scrollTop = maxScroll;
-        logger.log('After scroll attempt, position:', window.pageYOffset);
       }, 500);
-    } else {
-      logger.log('Content is not tall enough to scroll');
     }
     
     setIsPinnedToBottom(true);
   }, []);
 
-  // Scroll to top smoothly  
+  // Scroll to top smoothly
   const scrollToTop = useCallback(() => {
-    logger.log('Scrolling to top');
-    logger.log('Current scroll position:', window.pageYOffset);
     
     // Try multiple scroll methods
     window.scrollTo({
       top: 0,
       behavior: 'smooth'
     });
-    
+
     // Fallback methods
     setTimeout(() => {
       document.documentElement.scrollTop = 0;

@@ -4,7 +4,7 @@ import { ChevronDown, Edit, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { api, type ClaudeMdFile } from "@/lib/api";
+import { claudeApi, type ClaudeMdFile } from "@/lib/api";
 import { formatUnixTimestamp } from "@/lib/date-utils";
 import { DebugLabel } from "@/components/ui/atoms";
 import { logger } from '@/lib/logger';
@@ -54,7 +54,7 @@ export const ClaudeMemoriesDropdown: React.FC<ClaudeMemoriesDropdownProps> = ({
     try {
       setLoading(true);
       setError(null);
-      const foundFiles = await api.findClaudeMdFiles(projectPath);
+      const foundFiles = await claudeApi.findClaudeMdFiles(projectPath);
       setFiles(foundFiles);
     } catch (err) {
       logger.error("Failed to load CLAUDE.md files:", err);

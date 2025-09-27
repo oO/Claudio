@@ -4,7 +4,7 @@ import { Edit, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Agent } from "@/lib/api";
+import type { Agent } from "@/lib/types/agents";
 import { getAgentColor, type AgentColorName } from "@/lib/agentColors";
 import { ICON_MAP } from "@/components/common";
 import { DebugLabel } from "@/components/ui/atoms";

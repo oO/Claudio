@@ -92,7 +92,7 @@ export class SessionHandle {
     
     // Set up session state change listener immediately (always needed)
     this.setupSessionStateChangeListener().catch(error => {
-      logger.error('❌ Failed to setup session state change listener:', error);
+      logger.error('Failed to setup session state change listener:', error);
     });
   }
 

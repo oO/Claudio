@@ -36,12 +36,10 @@ export const ExitPlanModeWidget: React.FC<ExitPlanModeWidgetProps> = ({
   message,
   toolResult,
 }) => {
-  logger.debug("ExitPlanModeWidget render", { message, toolResult });
   
   // Find the ExitPlanMode tool call in the message content
   const toolCall = React.useMemo(() => {
     if (!message.message?.content || !Array.isArray(message.message.content)) {
-      logger.debug("ExitPlanModeWidget: no content", { message });
       return null;
     }
 
@@ -55,11 +53,8 @@ export const ExitPlanModeWidget: React.FC<ExitPlanModeWidgetProps> = ({
   const toolStatus = useToolStatus(toolCall?.id);
 
   if (!toolCall || !toolCall.input.plan) {
-    logger.debug("ExitPlanModeWidget: no toolCall or plan", { toolCall });
     return null;
   }
-  
-  logger.debug("ExitPlanModeWidget: rendering plan", { planLength: toolCall.input.plan.length });
 
   const planContent = toolCall.input.plan;
   const lineCount = planContent.split("\n").length;

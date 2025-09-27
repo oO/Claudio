@@ -73,7 +73,7 @@ export function useGlobalEvent<T = any>(
               // Use ref to get latest callback
               callbackRef.current(payload);
             } catch (error) {
-              logger.error(`❌ useGlobalEvent callback error for '${eventName}':`, error);
+              logger.error(`useGlobalEvent callback error for '${eventName}':`, error);
             }
           },
           filter
@@ -82,7 +82,7 @@ export function useGlobalEvent<T = any>(
         unsubscribeRef.current = unsubscribe;
         // Subscription active
       } catch (error) {
-        logger.error(`❌ useGlobalEvent failed to subscribe to '${eventName}':`, error);
+        logger.error(`useGlobalEvent failed to subscribe to '${eventName}':`, error);
       }
     };
     
@@ -189,6 +189,6 @@ export function useEventManagerDebug(): {
   subscriptions: Record<string, number>;
 } {
   const debugInfo = eventManager.getDebugInfo();
-  logger.log('🔍 Event Manager Debug Info:', debugInfo);
+  logger.debug('Event Manager Debug Info:', debugInfo);
   return debugInfo;
 }

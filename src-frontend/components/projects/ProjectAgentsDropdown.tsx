@@ -46,7 +46,7 @@ interface ProjectAgentsDropdownProps {
  * @example
  * <ProjectAgentsDropdown
  *   projectPath="/Users/example/project"
- *   onEditAgent={(agent) => logger.log('Edit agent:', agent)}
+ *   onEditAgent={(agent) => setSelectedAgent(agent)}
  * />
  */
 export const ProjectAgentsDropdown: React.FC<ProjectAgentsDropdownProps> = ({

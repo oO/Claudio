@@ -189,7 +189,7 @@ export const MCPAddServer: React.FC<MCPAddServerProps> = ({
       const result = await api.mcpAdd(
         sseName,
         "sse",
-        undefined,
+        "",
         [],
         env,
         sseUrl,

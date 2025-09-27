@@ -49,7 +49,7 @@ export function useSettings<T = any>(options: UseSettingsOptions): UseSettingsRe
   // Create handle on mount
   useEffect(() => {
     if (!autoCreate) {
-      logger.debug('⏸️ autoCreate is false, skipping handle creation');
+      logger.debug('autoCreate is false, skipping handle creation');
       return;
     }
 
@@ -61,23 +61,23 @@ export function useSettings<T = any>(options: UseSettingsOptions): UseSettingsRe
         setError(null);
 
         const newHandleId = await createSettingsHandle(projectPath || null);
-        logger.debug('✅ Claude Code settings handle created successfully', { newHandleId, projectPath });
+        logger.debug('Claude Code settings handle created successfully', { newHandleId, projectPath });
 
         if (cancelled || !mountedRef.current) {
           // Component unmounted, clean up
-          logger.debug('🗑️ Component unmounted during handle creation, cleaning up', { newHandleId });
+          logger.debug('Component unmounted during handle creation, cleaning up', { newHandleId });
           await safeDestroyHandle(newHandleId);
           return;
         }
 
         setHandleId(newHandleId);
         handleRef.current = newHandleId;
-        logger.debug('📌 Handle ID set in state', { newHandleId });
+        logger.debug('Handle ID set in state', { newHandleId });
 
         // Load initial settings
-        logger.debug('🔄 About to load initial settings', { newHandleId });
+        logger.debug('About to load initial settings', { newHandleId });
         const initialSettings = await getSettingsForHandle(newHandleId);
-        logger.debug('✅ Initial settings loaded successfully', { newHandleId, settingsKeys: Object.keys(initialSettings || {}) });
+        logger.debug('Initial settings loaded successfully', { newHandleId, settingsKeys: Object.keys(initialSettings || {}) });
         if (!cancelled && mountedRef.current) {
           setSettings(initialSettings);
         }

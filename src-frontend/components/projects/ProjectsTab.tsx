@@ -141,7 +141,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
           // Restore project from path
           try {
             const projectList = await api.listProjects();
-            const project = projectList.find(p => p.path === tab.initialProjectPath);
+            const project = projectList.find((p: any) => p.path === tab.initialProjectPath);
 
             if (project) {
               setSelectedProject(project);
@@ -151,7 +151,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
               const projectName = getProjectName(project.path);
               updateTab(tab.id, { title: projectName });
 
-              logger.debug('Restored project from path:', project?.path, 'with title:', projectName);
+              logger.debug('Restored project from path:', project.path);
             } else {
               logger.warn(`Project not found for restoration: ${tab.initialProjectPath}`);
               setError(`Project not found: ${tab.initialProjectPath}`);
@@ -175,11 +175,11 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
           // Restore session from sessionId and path
           try {
             const projectList = await api.listProjects();
-            const project = projectList.find(p => p.path === tab.initialProjectPath);
+            const project = projectList.find((p: any) => p.path === tab.initialProjectPath);
 
             if (project && project.id) {
               const projectSessions = await api.getProjectSessions(project.id);
-              const session = projectSessions.find(s => s.id === tab.sessionId);
+              const session = projectSessions.find((s: any) => s.id === tab.sessionId);
 
               if (session) {
                 setSelectedProject(project);
@@ -191,10 +191,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                     activeTab: "sessions"
                   }
                 });
-                logger.debug('Restored session from sessionId and path:', {
-                  project: project?.path,
-                  session: session?.id
-                });
+                logger.debug('Restored session from sessionId and path');
               } else {
                 logger.warn(`Session not found: ${tab.sessionId}`);
               }
@@ -216,13 +213,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
     const newViewLevel = viewingSession ? 'session' : selectedProject ? 'project' : 'projects';
 
     if (newViewLevel !== viewLevel) {
-      logger.debug('📊 View level changing:', {
-        from: viewLevel,
-        to: newViewLevel,
-        selectedProject: selectedProject?.path,
-        viewingSession: viewingSession?.session?.id,
-        tabType: tab.type
-      });
+      logger.debug('View level changing from', viewLevel, 'to', newViewLevel);
       setViewLevel(newViewLevel);
     }
   }, [viewingSession, selectedProject, viewLevel]);
@@ -275,25 +266,20 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   };
 
   const handleBack = () => {
-    logger.debug('🔙 handleBack clicked - current state:', {
-      viewLevel,
-      selectedProject: selectedProject?.path,
-      viewingSession: viewingSession?.session?.id,
-      tabType: tab.type
-    });
+    logger.debug('handleBack clicked:', viewLevel);
 
     // Simple state-based navigation - KISS approach
     if (viewLevel === 'session') {
-      logger.debug('🔙 Session -> Project navigation');
+      logger.debug('Session to Project navigation');
       // Session -> Project: Clear viewing session
       setViewingSession(null);
       if (selectedProject) {
         const projectName = getProjectName(selectedProject.path);
         updateTab(tab.id, { title: projectName, type: 'project', displayId: undefined });
-        logger.debug('🔙 Updated tab to project:', { title: projectName, type: 'project' });
+        logger.debug('Updated tab to project:', projectName);
       }
     } else if (viewLevel === 'project') {
-      logger.debug('🔙 Project -> Projects navigation');
+      logger.debug('Project to Projects navigation');
       // Project -> Projects: Always works - where else would a project come from?
       setSelectedProject(null);
       setActiveProjectTab("sessions");
@@ -303,9 +289,9 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
         restoreProjectState: undefined,  // Clear restore state so it doesn't restore project again
         initialProjectPath: undefined    // Clear this too
       });
-      logger.debug('🔙 Updated tab to projects list');
+      logger.debug('Updated tab to projects list');
     } else {
-      logger.debug('🔙 Already at projects level, no navigation needed');
+      logger.debug('Already at projects level');
     }
   };
 
@@ -371,7 +357,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
     try {
 
       // Call the deletion API and get the results
-      const result = await api.deleteClaudeProject(projectId, deleteOptions);
+      const result = await api.deleteClaudeProject(projectId);
 
       // Deletion summary logged by backend API
 
@@ -523,13 +509,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
 
   // Handle back navigation from session view - simple approach
   const handleBackFromSession = () => {
-    logger.debug('🔙 handleBackFromSession clicked - current state:', {
-      viewLevel,
-      selectedProject: selectedProject?.path,
-      viewingSession: viewingSession?.session?.id,
-      backStateProject: viewingSession?.backState?.selectedProject?.path,
-      tabType: tab.type
-    });
+    logger.debug('handleBackFromSession clicked:', viewLevel);
 
     if (viewingSession) {
       // Restore previous state from backState
@@ -541,7 +521,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
       if (viewingSession.backState.selectedProject) {
         const projectName = getProjectName(viewingSession.backState.selectedProject.path);
         updateTab(tab.id, { title: projectName, type: 'project', displayId: undefined });
-        logger.debug('🔙 Session -> Project: Updated tab:', { title: projectName, type: 'project' });
+        logger.debug('Session to Project updated tab:', projectName);
       }
     }
   };
@@ -558,7 +538,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
 
       // Get updated session data directly from API
       const updatedSessions = await api.getProjectSessions(viewingSession.backState.selectedProject.id);
-      const updatedSession = updatedSessions.find(s => s.id === claudioId);
+      const updatedSession = updatedSessions.find((s: any) => s.id === claudioId);
 
       if (!updatedSession) {
         logger.error('Could not find resumed session with claudio_id:', claudioId);

@@ -2,7 +2,6 @@ import React, { createContext, useState, useContext, useCallback, useEffect, use
 import type { NavigationStack } from './NavigationContext';
 import { useTabPersistence, type PersistedTabSession } from '@/hooks/useTabPersistence';
 import { useSettingsState } from '@/hooks/useSettingsState';
-import { api } from '@/lib/api';
 import { logger } from '@/lib/logger';
 
 export interface Tab {
@@ -257,7 +256,6 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Auto-restore tabs on app startup (independent of Welcome screen)
   useEffect(() => {
     const attemptInitialRestore = async () => {
-      // logger.info('🚀 RESTORATION USEEFFECT FIRED', { tabsLength: tabs.length });
       
       // Only attempt restoration once - React Strict Mode safe
       if (restorationAttempted) {
@@ -269,13 +267,10 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setRestorationAttempted(true);
 
       try {
-        // Removed log - log the result, not the attempt
         const sessionData = await loadTabs();
 
-        // Removed verbose session data logging
 
         if (sessionData.tabs.length > 0) {
-          // Restoring tabs from saved session
           
           // Simple restoration - just recreate tabs from saved data
           const restoredTabs: Tab[] = sessionData.tabs.map((savedTab, index) => ({
@@ -368,7 +363,6 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       saveTabs(tabsRef.current, panelBreaksRef.current, activePanelIndexRef.current, panelMinWidthRef.current);
     };
 
-    // logger.info('🎧 Setting up quit/shutdown listeners...');
     window.addEventListener('beforeunload', handleBeforeUnload);
 
     // Also listen for Tauri app close events (more reliable for Tauri apps)
@@ -379,10 +373,6 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         // Listen for Tauri app close event
         const unlisten = await listen('tauri://close-requested', () => {
-          // logger.info('🛑 APP RECEIVED TAURI CLOSE EVENT - saving tabs...', {
-          //   tabCount: tabsRef.current.length,
-          //   reason: 'tauri-close'
-          // });
           // Clear any pending debounced save and save immediately
           if (saveTimeoutRef.current) {
             clearTimeout(saveTimeoutRef.current);
@@ -391,7 +381,6 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           saveTabs(tabsRef.current, panelBreaksRef.current, activePanelIndexRef.current, panelMinWidthRef.current);
         });
 
-        // logger.info('🎧 Tauri close listener set up successfully');
         return unlisten;
       } catch (error) {
         logger.warn('Failed to set up Tauri listeners (might be in dev mode):', error);
@@ -405,10 +394,6 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     return () => {
-      // logger.info('🛑 APP COMPONENT UNMOUNTING - saving tabs...', {
-      //   tabCount: tabsRef.current.length,
-      //   reason: 'component-unmount'
-      // });
       window.removeEventListener('beforeunload', handleBeforeUnload);
       if (tauriUnlisten) tauriUnlisten();
 

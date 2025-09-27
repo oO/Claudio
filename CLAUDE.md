@@ -34,9 +34,10 @@ Co-authored-by: Claude.AI <noreply@anthropic.com>
 - User needs to see logs and control the development process
 - If restart is needed, ask the user to restart manually
 - Use `cargo check` for compilation verification, not `cargo run` or `npm run tauri dev`
-- the user starts the application in dev more with
-  `RUST_LOG=debug npm run tauri dev 2>&1 | tee claudio-dev.log`
-  so both of you can parse the log
+- the user starts the application in dev mode with
+  `RUST_LOG=debug npm run tauri dev`
+  logs are automatically written to `~/Library/Logs/Claudio/claudio.log`
+  (previous session logs saved as `claudio.prev.log`)
 
 ## Project Architecture
 
@@ -211,3 +212,4 @@ Agent prompt content here...
 
 ### Agent Collaboration
 Always delegate to the best available sub-agent for the task using Claude Code's native Task tool.
+- add the info about the log file to the logging section

@@ -70,9 +70,8 @@ export function ClaudioAppSettings() {
   const handleFieldChange = async (field: FieldConfig, value: any) => {
     try {
       await updateSetting(field.key, value);
-      logger.debug(`ClaudioAppSettings: successfully updated setting ${field.key}`);
     } catch (error) {
-      logger.error(`ClaudioAppSettings: failed to update setting ${field.key}:`, error);
+      logger.error(`Failed to update setting ${field.key}:`, error);
       throw error;
     }
   };
@@ -178,7 +177,7 @@ export function ClaudioAppSettings() {
 
       <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
         <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
-          ✨ Direct API - No Orchestrator!
+          Direct API - No Orchestrator!
         </h3>
         <p className="text-blue-700 dark:text-blue-300 text-sm">
           Your settings are saved directly to ~/.claudio/settings.json with optimistic updates for instant UI response.

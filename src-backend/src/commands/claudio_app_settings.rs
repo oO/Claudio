@@ -214,10 +214,10 @@ pub async fn save_proxy_settings(settings: ProxySettings) -> Result<(), String> 
     save_claudio_app_setting("proxySettings".to_string(), proxy_json_value).await?;
 
     // Apply the proxy settings immediately to the current process
-    log::info!("🌐 Applying proxy settings to current process...");
+    log::info!("Applying proxy settings to current process");
     apply_proxy_settings(&settings);
 
-    log::info!("✅ Proxy settings saved successfully");
+    log::info!("Proxy settings saved successfully");
     Ok(())
 }
 

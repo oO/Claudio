@@ -40,7 +40,7 @@ export const useThinkingScrollSync = ({
 
     if (shouldAutoScroll && messagesRef.current?.forceScrollToBottom) {
       const action = thinkingStarted ? 'started' : 'stopped';
-      logger.info(`🧠 Thinking ${action}, user was pinned to bottom, force scrolling to maintain position`);
+      logger.info(`Thinking ${action}, user was pinned to bottom, force scrolling to maintain position`);
       
       // Delay ensures DOM has updated with ThinkingIndicator changes
       // 150ms gives enough time for animations and layout shifts
@@ -51,10 +51,10 @@ export const useThinkingScrollSync = ({
           messagesRef.current.forceScrollToBottom();
           // Scroll completed successfully
         } else {
-          logger.error(`❌ forceScrollToBottom method not found on messagesRef.current`);
+          logger.error('forceScrollToBottom method not found on messagesRef.current');
           // Fallback to regular scrollToBottom if it exists
           if (messagesRef.current?.scrollToBottom) {
-            logger.info(`🔄 Falling back to regular scrollToBottom`);
+            logger.info('Falling back to regular scrollToBottom');
             messagesRef.current.scrollToBottom();
           }
         }
@@ -72,7 +72,7 @@ export const useThinkingScrollSync = ({
   useEffect(() => {
     // If we mount with thinking active and we're pinned, ensure we're at bottom
     if (isThinking && isPinnedToBottom && messagesRef.current?.forceScrollToBottom) {
-      logger.info('🧠 Mounted with thinking active and pinned, ensuring scroll position');
+      logger.info('Mounted with thinking active and pinned, ensuring scroll position');
       setTimeout(() => {
         messagesRef.current?.forceScrollToBottom();
       }, 100);

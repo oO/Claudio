@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { api, type Session } from '@/lib/api';
+import type { Session } from '@/lib/types/sessions';
 import { DebugLabel } from '@/components/ui/atoms';
 import type { ClaudeStreamMessage } from "@/lib/outputCache";
 import { logger } from '@/lib/logger';

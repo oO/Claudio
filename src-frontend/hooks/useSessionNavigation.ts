@@ -33,7 +33,6 @@ export const useSessionNavigation = () => {
       return;
     }
 
-    logger.log("🧭 Navigating to ui_index:", ui_index);
 
     // Use the scrollToMessage method that handles filtering
     messagesRef.current.scrollToMessage(ui_index);

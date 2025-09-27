@@ -350,8 +350,6 @@ impl SessionHandle {
 
                     // Only process events for sessions we're tracking
                     if let SessionFileEvent::Modified { session_id, project_id: event_project_id, .. } = &event {
-                        log::debug!("File event received in process_file_events: session_id={}, event_project_id={}, our_project_id={}, handle_id={}",
-                                   session_id, event_project_id, project_id, handle_id);
                         if event_project_id == &project_id {
                             // Check if this file change is relevant to our session handle
                             // For Claudio sessions, always read fresh Claude session ID from memory cache
@@ -365,7 +363,7 @@ impl SessionHandle {
                                         claudio_session.current_session.map(|s| s.session_id)
                                     },
                                     Err(e) => {
-                                        log::debug!("❌ Failed to get Claudio session from cache: claudio_id={}, error={}", handle_id, e);
+                                        log::debug!("Failed to get Claudio session from cache: claudio_id={}, error={}", handle_id, e);
                                         None // Session might not exist yet
                                     }
                                 }
@@ -375,11 +373,9 @@ impl SessionHandle {
                                 guard.clone()
                             };
 
-                            log::debug!("Session ID matching: file_event_session_id={}, current_session_id={:?}, handle_id={}", session_id, current_session, handle_id);
 
                             if let Some(current_session_id) = current_session {
                                 if session_id == &current_session_id {
-                                    log::debug!("Session ID matches, processing new messages for handle={}, session={}", handle_id, session_id);
                                     // This is our tracked session - process new messages
                                     if let Err(e) = Self::process_new_messages(
                                         &handle_id,
@@ -502,7 +498,6 @@ impl SessionHandle {
                 *guard
             };
 
-            log::debug!("Native session count: {} messages ({} processed)", all_messages.len(), last_count);
 
             if all_messages.len() > last_count {
                 all_messages[last_count..].iter().collect()
@@ -511,12 +506,8 @@ impl SessionHandle {
             }
         };
 
-        log::debug!("process_new_messages: handle_id={}, session_id={}, total_messages={}, new_messages={}, last_uuid_search={}",
-                   handle_id, session_id, all_messages.len(), new_messages.len(),
-                   if handle_id.starts_with(CLAUDIO_SESSION_PREFIX) { "claudio_mode" } else { "count_mode" });
 
         if !new_messages.is_empty() {
-            log::debug!("Streaming {} new messages for handle {} (session: {})", new_messages.len(), handle_id, session_id);
 
             // Emit each new message
             for message in new_messages {

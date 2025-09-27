@@ -200,11 +200,11 @@ export const TabContent: React.FC = () => {
   useEffect(() => {
     const handleOpenSessionInTab = (event: CustomEvent) => {
       const { session } = event.detail;
-      logger.log('🎯 handleOpenSessionInTab called with session:', session.id);
+      logger.log('Opening session in tab:', session.id);
 
       // Check if tab already exists for this session
       const existingTab = findTabBySessionId(session.id);
-      logger.log('🔍 TabContent deduplication check - existing tab:', existingTab?.id);
+      logger.debug('TabContent deduplication check - existing tab:', existingTab?.id);
       
       if (existingTab) {
         // Update existing tab with session data and switch to it
@@ -270,11 +270,11 @@ export const TabContent: React.FC = () => {
 
     const handleClaudeSessionSelected = (event: CustomEvent) => {
       const { session } = event.detail;
-      logger.log('🎯 handleClaudeSessionSelected called with session:', session.id);
+      logger.log('Claude session selected:', session.id);
       
       // Reuse same logic as handleOpenSessionInTab
       const existingTab = findTabBySessionId(session.id);
-      logger.log('🔍 TabContent claude session deduplication check - existing tab:', existingTab?.id);
+      logger.debug('Claude session deduplication check - existing tab:', existingTab?.id);
       
       if (existingTab) {
         // Update existing tab with session data and switch to it

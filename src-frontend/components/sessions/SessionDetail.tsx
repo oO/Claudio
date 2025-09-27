@@ -57,14 +57,14 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
   // Tool visibility state management
   const [isToolsVisible, setIsToolsVisible] = useState(true);
   const toggleToolsVisibility = () => {
-    logger.log("🔧 Toggling tools visibility:", !isToolsVisible);
+    logger.log("Toggling tools visibility:", !isToolsVisible);
     setIsToolsVisible(!isToolsVisible);
   };
 
   // System message visibility state management
   const [isSystemVisible, setIsSystemVisible] = useState(false);
   const toggleSystemVisibility = () => {
-    logger.log("⚙️ Toggling system messages visibility:", !isSystemVisible);
+    logger.log("Toggling system messages visibility:", !isSystemVisible);
     setIsSystemVisible(!isSystemVisible);
   };
 
@@ -74,7 +74,7 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
   
   const toggleAssistantFilter = () => {
     const newMode = !isAssistantFilterLast;
-    logger.log("🤖 Toggling assistant filter mode:", newMode);
+    logger.log("Toggling assistant filter mode:", newMode);
     
     if (newMode) {
       // Switching to "last" mode - save current tool visibility and hide tools + system messages
@@ -177,13 +177,13 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
 
   // Loading state
   if (sessionData.loading) {
-    logger.info("🔄 SessionDetail in loading state");
+    logger.info("SessionDetail in loading state");
     return <SessionLoadingState />;
   }
 
   // Error state
   if (sessionData.error) {
-    logger.info("❌ SessionDetail in error state:", { error: sessionData.error });
+    logger.info("SessionDetail in error state:", sessionData.error);
     return <SessionErrorState error={sessionData.error} onBack={onBack} />;
   }
 
@@ -227,12 +227,12 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
           totalTokens={totalTokens}
           hasMessages={displayableMessages.length > 0}
           onBack={onBack}
-          onExportAsJson={() =>
-            logger.info("Export as JSON (not implemented yet)")
-          }
-          onExportAsMarkdown={() =>
-            logger.info("Export as Markdown (not implemented yet)")
-          }
+          onExportAsJson={() => {
+            // Export functionality not implemented yet
+          }}
+          onExportAsMarkdown={() => {
+            // Export functionality not implemented yet
+          }}
           isReadOnly={isReadOnly}
           displayableMessageCount={displayableMessages.length}
           collapsedMessageUuids={collapsedMessageUuids}

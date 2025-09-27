@@ -1,0 +1,34 @@
+[package]
+name = "claude-code-wrapper"
+version = "0.3.32"
+edition = "2021"
+
+[dependencies]
+# Terminal and PTY handling
+expectrl = "0.7"
+pty-process = "0.4"
+tokio = { version = "1.0", features = ["full"] }
+
+# CLI and terminal manipulation
+clap = { version = "4.0", features = ["derive"] }
+crossterm = "0.27"
+ratatui = "0.24"
+
+# Async and utilities
+futures = "0.3"
+anyhow = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+uuid = { version = "1.0", features = ["serde", "v4"] }
+regex = "1.0"
+
+# Optional: HTTP client for potential API integration
+reqwest = { version = "0.11", features = ["json"], optional = true }
+chrono = { version = "0.4.41", features = ["serde"] }
+atty = "0.2"
+
+[features]
+default = []
+api = ["reqwest"]

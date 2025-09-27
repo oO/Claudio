@@ -32,22 +32,19 @@ export class ResourceMonitor {
    */
   startMonitoring(intervalMs: number = 60000): void {
     if (this.isMonitoring) {
-      logger.warn('Resource monitoring is already active');
       return;
     }
-    
+
     this.isMonitoring = true;
     this.sampleCount = 0;
-    
+
     // Initial sample
     this.collectAndReportMetrics();
-    
+
     // Set up periodic sampling
     this.monitoringInterval = setInterval(() => {
       this.collectAndReportMetrics();
     }, intervalMs);
-    
-    logger.log(`Resource monitoring started with ${intervalMs}ms interval`);
   }
   
   /**
@@ -59,7 +56,6 @@ export class ResourceMonitor {
       this.monitoringInterval = null;
     }
     this.isMonitoring = false;
-    logger.log('Resource monitoring stopped');
   }
   
   /**

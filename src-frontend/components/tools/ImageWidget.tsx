@@ -40,12 +40,11 @@ export const ImageWidget: React.FC<ImageWidgetProps> = ({ content, className }) 
 
   const handleImageLoad = () => {
     setIsLoaded(true);
-    logger.debug('ImageWidget: Image loaded successfully');
   };
 
   const handleImageError = () => {
     setHasError(true);
-    logger.error('ImageWidget: Failed to load image');
+    logger.error('Failed to load image');
   };
 
   const toggleFullscreen = () => {

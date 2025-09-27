@@ -183,11 +183,11 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
               message: title, // Use the actual random message!
               icon: Brain
             });
-            logger.debug("🧠 Fetched thinking content:", title);
+            logger.debug("Fetched thinking content:", title);
           } else {
             // For other statuses, use the predefined messages
             setSessionStatus(currentStatus);
-            logger.debug("📊 Using session status:", currentStatus);
+            logger.debug("Using session status:", currentStatus);
           }
         } catch (error) {
           logger.error("Failed to fetch session status:", error);
@@ -206,13 +206,10 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
   // Debug: Log the streaming state
   React.useEffect(() => {
     if (liveSessionType === SESSION_TYPES.NATIVE) {
-      logger.log("🧠 Native session status debug:", {
+      logger.log("Native session status:", {
         liveSessionType,
         isStreaming,
-        sessionId: sessionId?.substring(0, 8),
-        hasMessages,
-        sessionStatus: sessionStatus.type,
-        message: sessionStatus.message
+        sessionId: sessionId?.substring(0, 8)
       });
     }
   }, [isStreaming, liveSessionType, sessionId, hasMessages, sessionStatus]);
@@ -238,7 +235,6 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
         };
         const sessionJson = JSON.stringify(sessionInfo, null, 2);
         await navigator.clipboard.writeText(sessionJson);
-        logger.log("Copied session info JSON to clipboard:", sessionInfo);
       } catch (error) {
         logger.error("Failed to copy session info:", error);
       }
@@ -247,9 +243,6 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
       try {
         const uuidList = collapsedMessageUuids.join("\n");
         await navigator.clipboard.writeText(uuidList);
-        logger.log(
-          `Copied ${collapsedMessageUuids.length} collapsed message UUIDs to clipboard`,
-        );
       } catch (error) {
         logger.error("Failed to copy UUID list:", error);
       }
@@ -264,7 +257,6 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
 
     try {
       const result = await api.deleteClaudioSession(sessionId, projectPath);
-      logger.log("Successfully exited Claudio session:", result);
 
       // Navigate back to project view since session is now archived
       onBack();
@@ -281,7 +273,7 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
 
     try {
       const claudio_id = await api.resumeClaudioSession(sessionId, projectPath);
-      logger.log("Successfully resumed archived session, new claudio_id:", claudio_id);
+      logger.log("Successfully resumed archived session:", claudio_id);
 
       // Call the parent callback with the new claudio_id to update the session
       if (onSessionResumed && claudio_id) {

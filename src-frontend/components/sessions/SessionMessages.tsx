@@ -180,7 +180,7 @@ export const SessionMessages = forwardRef<
             });
             setCurrentVisibleUiIndex(prevUserMsg.ui_index);
             setIsPinnedToBottom(false);
-            logger.log("🔼 Scrolled to previous user message ui_index:", prevUserMsg.ui_index);
+            logger.log("Scrolled to previous user message ui_index:", prevUserMsg.ui_index);
           }
         }
       },
@@ -204,7 +204,7 @@ export const SessionMessages = forwardRef<
             // Check if this is the last message to determine pinned state
             const isLastMessage = filteredIndex === filteredMessages.length - 1;
             setIsPinnedToBottom(isLastMessage);
-            logger.log("🔽 Scrolled to next user message ui_index:", nextUserMsg.ui_index);
+            logger.log("Scrolled to next user message ui_index:", nextUserMsg.ui_index);
           }
         }
       },
@@ -219,7 +219,7 @@ export const SessionMessages = forwardRef<
           return;
         }
 
-        logger.log(`🎯 Scrolling to message ui_index ${ui_index} at filtered index ${filteredIndex}`);
+        logger.log(`Scrolling to message ui_index ${ui_index} at filtered index ${filteredIndex}`);
         virtuosoRef.current?.scrollToIndex({
           index: filteredIndex,
           align: "center",
@@ -273,7 +273,7 @@ export const SessionMessages = forwardRef<
           setCurrentVisibleUiIndex(prevUserMsg.ui_index);
           setIsPinnedToBottom(false);
           setIsAtTop(filteredIndex === 0);
-          logger.log("🔼 Scrolled to previous user message ui_index:", prevUserMsg.ui_index);
+          logger.log("Scrolled to previous user message ui_index:", prevUserMsg.ui_index);
         }
       }
     };
@@ -299,7 +299,7 @@ export const SessionMessages = forwardRef<
           const isLastMessage = filteredIndex === filteredMessages.length - 1;
           setIsPinnedToBottom(isLastMessage);
           setIsAtTop(false);
-          logger.log("🔽 Scrolled to next user message ui_index:", nextUserMsg.ui_index);
+          logger.log("Scrolled to next user message ui_index:", nextUserMsg.ui_index);
         }
       }
     };

@@ -84,9 +84,9 @@ export const useTriLevelSettings = (
         const teamSettingsPath = `${projectPath}/.claude/settings.json`;
         const teamContent = await api.readClaudeMdFile(teamSettingsPath);
         teamSettings = JSON.parse(teamContent);
-        logger.log("✅ Team settings loaded successfully from:", teamSettingsPath);
+        logger.log('Team settings loaded successfully from:', teamSettingsPath);
       } catch (err) {
-        logger.log("⚠️ Team settings not found, using empty settings. Error:", err);
+        logger.log('Team settings not found, using empty settings. Error:', err);
       }
       
       // Load local settings (<project>/.claude/settings.local.json)
@@ -95,11 +95,9 @@ export const useTriLevelSettings = (
         const localSettingsPath = `${projectPath}/.claude/settings.local.json`;
         const localContent = await api.readClaudeMdFile(localSettingsPath);
         localSettings = JSON.parse(localContent);
-        logger.log("✅ Local settings loaded successfully from:", localSettingsPath);
-        logger.log("  Local content:", localContent);
-        logger.log("  Parsed local settings:", localSettings);
+        logger.log('Local settings loaded successfully from:', localSettingsPath);
       } catch (err) {
-        logger.log("⚠️ Local settings not found, using empty settings. Error:", err);
+        logger.log('Local settings not found, using empty settings. Error:', err);
       }
       
       // Store settings for later saving

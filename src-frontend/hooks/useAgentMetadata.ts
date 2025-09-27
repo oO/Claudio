@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { api, type AgentMetadata } from '@/lib/api';
+import { agentsApi } from '@/lib/api/agents';
+import type { AgentMetadata } from '@/lib/types/agents';
 import { logger } from '@/lib/logger';
 
 /**
@@ -41,7 +42,7 @@ export function useAgentMetadata(agentType: string | undefined) {
       try {
         // Try to load agent file metadata
         // This would need a new API endpoint to parse .md files
-        const agents = await api.listAgents();
+        const agents = await agentsApi.listAgents();
         const agent = agents.find(a => a.name === agentType);
         
         if (agent) {

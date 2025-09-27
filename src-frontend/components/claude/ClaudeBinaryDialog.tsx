@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { api, type ClaudeInstallation } from "@/lib/api";
+import { claudeApi, type ClaudeInstallation } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ExternalLink, FileQuestion, Terminal, AlertCircle, Loader2 } from "lucide-react";
@@ -29,7 +29,7 @@ export function ClaudeBinaryDialog({ open, onOpenChange, onSuccess, onError }: C
   const checkInstallations = async () => {
     try {
       setCheckingInstallations(true);
-      const installations = await api.listClaudeInstallations();
+      const installations = await claudeApi.findClaudeInstallations();
       setHasInstallations(installations.length > 0);
     } catch (error) {
       // If the API call fails, it means no installations found
@@ -47,7 +47,7 @@ export function ClaudeBinaryDialog({ open, onOpenChange, onSuccess, onError }: C
 
     setIsValidating(true);
     try {
-      await api.setClaudeBinaryPath(selectedInstallation.path);
+      await claudeApi.setClaudeBinaryPath(selectedInstallation.path);
       onSuccess();
       onOpenChange(false);
     } catch (error) {

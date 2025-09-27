@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { logger } from "@/lib/logger";
 import { processMessagesWithAgentInfo } from "@/lib/messageProcessor";
 import type { ClaudeStreamMessage } from "@/lib/outputCache";
 import type { UserMessageItem, ToolMessageItem, AssistantMessageItem, SystemMessageItem } from "@/contexts/SessionContext";
@@ -154,7 +153,6 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
 
   // Helper function: Filter unwanted messages
   const filterMessages = (rawMessages: ClaudeStreamMessage[]): ClaudeStreamMessage[] => {
-    logger.info(`🔧 filterMessages starting with ${rawMessages.length} raw messages`);
     const filteredUuids: string[] = [];
 
     const filtered = rawMessages.filter((message, index) => {
@@ -425,10 +423,6 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
         msg._contributingMessageUuids || (msg.uuid ? [msg.uuid] : []),
     }));
 
-    const totalTime = performance.now() - startTime;
-    logger.info(
-      `🔄 Processed ${messages.length} raw → ${filteredMessages.length} filtered → ${bundledMessages.length} bundled → ${messagesWithUuids.length} displayable (${totalTime.toFixed(2)}ms)`,
-    );
 
     return messagesWithUuids;
   }, [processedMessages]);

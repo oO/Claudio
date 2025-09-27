@@ -3,13 +3,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Loader2, Bot, FolderCode } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
-import {
-  api,
-  type Project,
-  type Session,
-  type ClaudeMdFile,
-  type Agent,
-} from "@/lib/api";
+import { projectsApi } from "@/lib/api/projects";
+import { agentsApi } from "@/lib/api/agents";
+import { claudeApi } from "@/lib/api/claude";
+import { systemApi } from "@/lib/api/system";
+import type { Project } from "@/lib/types/projects";
+import type { Session } from "@/lib/types/sessions";
+import type { ClaudeMdFile } from "@/lib/types/claude";
+import type { Agent } from "@/lib/types/agents";
 import { TabProvider } from "@/contexts/TabContext";
 import { TodoProvider } from "@/contexts/TodoContext";
 import { UnifiedSettingsProvider } from "@/lib/settings";
@@ -83,8 +84,8 @@ function AppContent() {
 
         // Restore window state
         try {
-          await api.restoreWindowState();
-          logger.log("Window state restored successfully");
+          await systemApi.restoreWindowState();
+          logger.log("Window state restored");
         } catch (error) {
           logger.warn("Failed to restore window state, using defaults:", error);
         }
@@ -104,11 +105,11 @@ function AppContent() {
     (window as any).toggleDebug = async () => {
       try {
         // Get current debug mode from settings
-        const currentDebug = await api.loadClaudioAppSetting<boolean>("debugMode");
+        const currentDebug = await systemApi.loadClaudioAppSetting<boolean>("debugMode");
         const newDebugMode = !currentDebug;
 
         // Save to settings
-        await api.saveClaudioAppSetting("debugMode", newDebugMode);
+        await systemApi.saveClaudioAppSetting("debugMode", newDebugMode);
         logger.log(`Debug mode ${newDebugMode ? "enabled" : "disabled"}`);
 
         // Trigger a custom event to notify debug components
@@ -128,9 +129,9 @@ function AppContent() {
   useEffect(() => {
     const handleBeforeUnload = async () => {
       try {
-        const currentState = await api.getCurrentWindowState();
-        await api.saveWindowState(currentState);
-        logger.log("Window state saved before close");
+        const currentState = await systemApi.getCurrentWindowState();
+        await systemApi.saveWindowState(currentState);
+        logger.log("Window state saved");
       } catch (error) {
         logger.warn("Failed to save window state on close:", error);
       }
@@ -239,7 +240,7 @@ function AppContent() {
     try {
       setLoading(true);
       setError(null);
-      const projectList = await api.listProjects();
+      const projectList = await projectsApi.listProjects();
       setProjects(projectList);
     } catch (err) {
       logger.error("Failed to load projects:", err);
@@ -264,10 +265,7 @@ function AppContent() {
    */
   const handleNewSession = async () => {
     try {
-      // First, create the session via backend (Smart Backend)
-      logger.log("Creating new Claudio session via backend...");
-      const claudioId = await api.createClaudioSession("", {}); // Empty project path for now
-      logger.log("Backend created Claudio session:", claudioId);
+      const claudioId = await systemApi.createClaudioSession("", {});
       
       // Switch to tabs view
       handleViewChange("tabs");
@@ -275,7 +273,7 @@ function AppContent() {
       // Create a chat tab with the real session ID (Dumb Frontend just displays what backend tells it)
       const sessionShort = formatSessionIdCompact(claudioId.replace('claudio-', ''));
       const tabId = createSessionTab("", `Session:${sessionShort}`, claudioId);
-      logger.log("Created chat tab with Claudio ID:", claudioId, "Tab ID:", tabId);
+      logger.log("Chat tab created:", claudioId);
     } catch (error) {
       logger.error("Failed to create new session:", error);
       setToast({ message: "Failed to create new session", type: "error" });
@@ -288,8 +286,7 @@ function AppContent() {
    */
   const handleNewClaudioSessionFromProject = async (projectPath: string) => {
     try {
-      // DEBUG: This should appear in logs if my function is called
-      logger.log("handleNewClaudioSessionFromProject called with:", projectPath);
+      logger.log("Creating session for project:", projectPath);
       
       // Use shared session creation hook
       const claudioId = await createClaudioSession({ projectPath });
@@ -301,7 +298,7 @@ function AppContent() {
       const projectName = projectPath.split("/").pop() || "Project";
       const sessionShort = formatSessionIdCompact(claudioId.replace('claudio-', ''));
       const tabId = createSessionTab(projectPath, `${projectName}:${sessionShort}`, claudioId);
-      logger.log("Created chat tab for project with Claudio ID:", claudioId, "Tab ID:", tabId);
+      logger.log("Project chat tab created:", claudioId);
     } catch (error) {
       logger.error("Failed to create new session for project:", error);
       setToast({ message: "Failed to create new session", type: "error" });

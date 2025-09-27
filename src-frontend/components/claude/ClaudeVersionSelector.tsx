@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { api, type ClaudeInstallation } from "@/lib/api";
+import { claudeApi, type ClaudeInstallation } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { CheckCircle, HardDrive, Settings } from "lucide-react";
 import { DebugLabel } from "@/components/ui/atoms";
@@ -78,7 +78,7 @@ export const ClaudeVersionSelector: React.FC<ClaudeVersionSelectorProps> = ({
     try {
       setLoading(true);
       setError(null);
-      const foundInstallations = await api.listClaudeInstallations();
+      const foundInstallations = await claudeApi.findClaudeInstallations();
       setInstallations(foundInstallations);
       
       // If we have a selected path, find and select it
