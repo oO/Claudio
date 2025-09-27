@@ -55,7 +55,7 @@ jobs:
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri
+          workspaces: src-backend
       
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -96,8 +96,8 @@ jobs:
         with:
           name: macos-${{ matrix.arch }}
           path: |
-            src-tauri/target/release/bundle/macos/Claudia.app
-            src-tauri/target/release/bundle/dmg/*.dmg
+            src-backend/target/release/bundle/macos/Claudia.app
+            src-backend/target/release/bundle/dmg/*.dmg
           retention-days: 1
   
   universal:
@@ -220,7 +220,7 @@ jobs:
             --options runtime \
             --force \
             --deep \
-            --entitlements src-tauri/entitlements.plist \
+            --entitlements src-backend/entitlements.plist \
             dmg_temp/Claudia.app
       
       - name: Create DMG

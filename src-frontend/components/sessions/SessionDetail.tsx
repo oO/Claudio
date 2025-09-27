@@ -1,0 +1,270 @@
+import React, { useState } from "react";
+import { motion } from "framer-motion";
+import { logger } from "@/lib/logger";
+import { DebugLabel } from "@/components/ui/atoms";
+import { SESSION_TYPES } from "@/lib/sessionHandleApi";
+import { SessionProvider } from "@/contexts/SessionContext";
+import { SessionHeader } from "./SessionHeader";
+import { SessionMessages } from "./SessionMessages";
+import { PromptInput } from "@/components/prompt/PromptInput";
+import { SessionLoadingState } from "./SessionLoadingState";
+import { SessionErrorState } from "./SessionErrorState";
+import { ThinkingIndicator } from "./ThinkingIndicator";
+import { useNativeClaudeSessions } from "@/hooks/useNativeClaudeSessions";
+import { useSessionFileWatcher } from "@/hooks/useSessionFileWatcher";
+import { useSessionHandle } from "@/hooks/useSessionHandle";
+import { useMessageProcessing } from "@/hooks/useMessageProcessing";
+import { useStreamingState } from "@/hooks/useStreamingState";
+import { useSessionNavigation } from "@/hooks/useSessionNavigation";
+import { useThinkingScrollSync } from "@/hooks/useThinkingScrollSync";
+import type { Session } from "@/lib/api";
+import type { PermissionMode } from "@/components/prompt/PermissionModeSelector";
+
+interface SessionDetailProps {
+  session: Session;
+  projectPath: string;
+  onBack: () => void;
+  onSessionsDeleted?: () => void;
+  onToast?: (message: string, type: "success" | "error") => void;
+  tabId?: string; // Tab ID for activity notifications
+  isActive?: boolean; // Whether the tab is currently active
+  onSetTabActivity?: () => void; // Callback to trigger tab activity flash
+  onSessionResumed?: (claudioId: string) => void; // Callback when session is resumed with new claudio ID
+}
+
+/**
+ * Detailed session view using the new SessionHandle architecture
+ * This replaces the complex ClaudeCodeSession with a clean, handle-based approach
+ */
+export const SessionDetail: React.FC<SessionDetailProps> = ({
+  session,
+  projectPath,
+  onBack,
+  onSessionsDeleted,
+  onToast,
+  tabId,
+  isActive = true,
+  onSetTabActivity,
+  onSessionResumed,
+}) => {
+
+  // Native Claude session thinking state hook
+  const { isSessionThinking, queryInitialSessionState } = useNativeClaudeSessions();
+
+  // Navigation and UI state management
+  const navigation = useSessionNavigation();
+
+  // Tool visibility state management
+  const [isToolsVisible, setIsToolsVisible] = useState(true);
+  const toggleToolsVisibility = () => {
+    logger.log("🔧 Toggling tools visibility:", !isToolsVisible);
+    setIsToolsVisible(!isToolsVisible);
+  };
+
+  // System message visibility state management
+  const [isSystemVisible, setIsSystemVisible] = useState(false);
+  const toggleSystemVisibility = () => {
+    logger.log("⚙️ Toggling system messages visibility:", !isSystemVisible);
+    setIsSystemVisible(!isSystemVisible);
+  };
+
+  // Assistant filter state management
+  const [isAssistantFilterLast, setIsAssistantFilterLast] = useState(false);
+  const [toolsVisibilityBeforeAssistant, setToolsVisibilityBeforeAssistant] = useState(true);
+  
+  const toggleAssistantFilter = () => {
+    const newMode = !isAssistantFilterLast;
+    logger.log("🤖 Toggling assistant filter mode:", newMode);
+    
+    if (newMode) {
+      // Switching to "last" mode - save current tool visibility and hide tools + system messages
+      setToolsVisibilityBeforeAssistant(isToolsVisible);
+      setIsToolsVisible(false);
+      setIsSystemVisible(false);
+    } else {
+      // Switching to "all" mode - restore previous tool visibility
+      setIsToolsVisible(toolsVisibilityBeforeAssistant);
+      setIsSystemVisible(true);
+    }
+    
+    setIsAssistantFilterLast(newMode);
+  };
+
+  // Session handle and core state management
+  const sessionData = useSessionHandle(session, projectPath, navigation.setIsStreaming);
+
+  // Message processing pipeline
+  const messageData = useMessageProcessing(sessionData.messages);
+
+  // Streaming state management
+  const streamingData = useStreamingState(sessionData.sessionState, isSessionThinking, queryInitialSessionState);
+
+  // Session file watcher - ensures backend watches this project for file changes
+  const projectId = sessionData.sessionState?.project_id;
+  useSessionFileWatcher({
+    session,
+    projectId,
+    onSessionChanged: async () => {
+      // Reload messages from backend when session file changes
+      if (sessionData.sessionHandle) {
+        try {
+          await sessionData.sessionHandle.getMessages();
+        } catch (error) {
+          logger.error("Failed to reload messages after file change:", error);
+        }
+      }
+
+      // Trigger activity indicator for tab
+      if (onSetTabActivity && tabId) {
+        onSetTabActivity();
+      }
+    },
+    enabled: !!projectId && !!session?.id,
+    tabId: session?.id ? `session-handle-${session?.id}` : 'no-session',
+  });
+
+  // All streaming state logic is now handled by useStreamingState hook
+
+  // All refs and navigation state are now handled by useSessionNavigation hook
+
+  // All message processing logic is now handled by useMessageProcessing hook
+
+  // All session initialization and management logic is now handled by useSessionHandle hook
+
+  // All navigation handlers are now handled by useSessionNavigation hook
+
+  // All prompt submission logic is now handled by useSessionHandle hook
+
+  // Permission mode state management
+  const [permissionMode, setPermissionMode] = useState<PermissionMode>("default");
+
+  // Initialize permission mode from session state
+  React.useEffect(() => {
+    if (sessionData.sessionState?.permission_mode) {
+      setPermissionMode(sessionData.sessionState.permission_mode as PermissionMode);
+    }
+  }, [sessionData.sessionState?.permission_mode]);
+
+  // Handler to update permission mode
+  const handlePermissionModeChange = React.useCallback(async (mode: PermissionMode) => {
+    try {
+      setPermissionMode(mode);
+      // Update the session via backend
+      if (sessionData.sessionHandle) {
+        await sessionData.sessionHandle.updatePermissionMode(mode);
+      }
+    } catch (error) {
+      logger.error("Failed to update permission mode:", error);
+      // Revert on error
+      if (sessionData.sessionState?.permission_mode) {
+        setPermissionMode(sessionData.sessionState.permission_mode as PermissionMode);
+      }
+    }
+  }, [sessionData.sessionHandle, sessionData.sessionState?.permission_mode]);
+
+  // Get computed values from hooks (must be before early returns for hook order)
+  const { isReadOnly } = sessionData;
+  const { displayableMessages, collapsedMessageUuids, totalTokens, userMessages, toolMessages, assistantMessages, systemMessages, lastInTurnCount } = messageData;
+  const { effectiveIsStreaming, thinkingContent } = streamingData;
+
+  // Sync scroll position when thinking state changes (must be before early returns)
+  useThinkingScrollSync({
+    isThinking: effectiveIsStreaming,
+    isPinnedToBottom: navigation.isPinnedToBottom,
+    messagesRef: navigation.messagesRef,
+    messageCount: displayableMessages.length,
+  });
+
+  // Loading state
+  if (sessionData.loading) {
+    logger.info("🔄 SessionDetail in loading state");
+    return <SessionLoadingState />;
+  }
+
+  // Error state
+  if (sessionData.error) {
+    logger.info("❌ SessionDetail in error state:", { error: sessionData.error });
+    return <SessionErrorState error={sessionData.error} onBack={onBack} />;
+  }
+
+
+  return (
+    <SessionProvider
+      projectId={sessionData.sessionState?.project_id}
+      sessionId={sessionData.sessionState?.handle_id}
+      sessionFilePath={sessionData.sessionState?.session_file_path || undefined}
+      projectPath={sessionData.sessionState?.project_path}
+      sessionData={session}
+      liveSessionType={sessionData.sessionState?.session_type.type}
+      isStreaming={effectiveIsStreaming}
+      userMessages={userMessages}
+      toolMessages={toolMessages}
+      assistantMessages={assistantMessages}
+      systemMessages={systemMessages}
+      lastInTurnCount={lastInTurnCount}
+      isToolsVisible={isToolsVisible}
+      isSystemVisible={isSystemVisible}
+      isAssistantFilterLast={isAssistantFilterLast}
+      toggleToolsVisibility={toggleToolsVisibility}
+      toggleSystemVisibility={toggleSystemVisibility}
+      toggleAssistantFilter={toggleAssistantFilter}
+    >
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="flex flex-col h-full relative"
+      >
+        <DebugLabel label="SessionDetail" />
+
+        <SessionHeader
+          claudeSessionId={sessionData.sessionState?.current_claude_session_id || null}
+          claudioId={
+            sessionData.sessionState?.session_type.type === SESSION_TYPES.CLAUDIO
+              ? (sessionData.sessionState?.session_type.data as any)?.claudio_id
+              : null
+          }
+          totalTokens={totalTokens}
+          hasMessages={displayableMessages.length > 0}
+          onBack={onBack}
+          onExportAsJson={() =>
+            logger.info("Export as JSON (not implemented yet)")
+          }
+          onExportAsMarkdown={() =>
+            logger.info("Export as Markdown (not implemented yet)")
+          }
+          isReadOnly={isReadOnly}
+          displayableMessageCount={displayableMessages.length}
+          collapsedMessageUuids={collapsedMessageUuids}
+          onNavigateToMessage={navigation.navigateToMessage}
+          onSessionResumed={onSessionResumed}
+        />
+
+        <div className="flex-1 flex flex-col min-h-0">
+          <SessionMessages
+            ref={navigation.messagesRef}
+            displayableMessages={displayableMessages}
+            messages={sessionData.messages}
+            isLoading={effectiveIsStreaming}
+            error={sessionData.error}
+            onPinnedStateChange={navigation.setIsPinnedToBottom}
+            showNavigation={displayableMessages.length > 0}
+          />
+
+          <ThinkingIndicator content={thinkingContent} />
+
+          {sessionData.sessionState?.session_type.type === SESSION_TYPES.CLAUDIO && (
+            <PromptInput
+              onSend={sessionData.handlePromptSubmit}
+              isLoading={effectiveIsStreaming}
+              disabled={false}
+              projectPath={projectPath}
+              permissionMode={permissionMode}
+              onPermissionModeChange={handlePermissionModeChange}
+            />
+          )}
+        </div>
+      </motion.div>
+    </SessionProvider>
+  );
+};

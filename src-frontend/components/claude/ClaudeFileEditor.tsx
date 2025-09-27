@@ -1,0 +1,351 @@
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { ArrowLeft, Save, Loader2, Eye, Edit, Split, Trash2, AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Toast, ToastContainer } from "@/components/ui/toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ThemedMDEditor } from "@/components/ui";
+import { api, type ClaudeMdFile } from "@/lib/api";
+import { cn } from "@/lib/utils";
+import { DebugLabel } from "@/components/ui/atoms";
+import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
+import { logger } from '@/lib/logger';
+
+type PreviewMode = "edit" | "preview" | "live";
+
+interface ClaudeFileEditorProps {
+  /**
+   * The CLAUDE.md file to edit
+   */
+  file: ClaudeMdFile;
+  /**
+   * Callback to go back to the previous view
+   */
+  onBack: () => void;
+  /**
+   * Initial display mode for the editor
+   * @default "edit"
+   */
+  initialMode?: PreviewMode;
+  /**
+   * Whether the editor should start in read-only mode
+   * @default false
+   */
+  viewMode?: boolean;
+  /**
+   * Callback when the file is deleted
+   */
+  onDelete?: () => void;
+  /**
+   * Optional className for styling
+   */
+  className?: string;
+}
+
+/**
+ * ClaudeFileEditor component for editing project-specific CLAUDE.md files
+ * 
+ * @example
+ * <ClaudeFileEditor 
+ *   file={claudeMdFile} 
+ *   onBack={() => setEditingFile(null)} 
+ * />
+ */
+export const ClaudeFileEditor: React.FC<ClaudeFileEditorProps> = ({
+  file,
+  onBack,
+  initialMode = "preview",
+  viewMode = false,
+  onDelete,
+  className,
+}) => {
+  const [content, setContent] = useState<string>("");
+  const [originalContent, setOriginalContent] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [currentMode, setCurrentMode] = useState<PreviewMode>(initialMode);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [unsavedDialogOpen, setUnsavedDialogOpen] = useState(false);
+  
+  const hasChanges = content !== originalContent;
+  
+  // Automatically sync unsaved changes state with the tab
+  const { markAsSaved } = useUnsavedChanges(hasChanges);
+  
+  // Load the file content on mount
+  useEffect(() => {
+    loadFileContent();
+  }, [file.absolute_path]);
+  
+  const loadFileContent = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const fileContent = await api.readClaudeMdFile(file.absolute_path);
+      setContent(fileContent);
+      setOriginalContent(fileContent);
+    } catch (err) {
+      logger.error("Failed to load file:", err);
+      setError("Failed to load CLAUDE.md file");
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      setError(null);
+      setToast(null);
+      await api.saveClaudeMdFile(file.absolute_path, content);
+      setOriginalContent(content);
+      markAsSaved(); // Clear the unsaved changes flag
+      setToast({ message: "File saved successfully", type: "success" });
+    } catch (err) {
+      logger.error("Failed to save file:", err);
+      setError("Failed to save CLAUDE.md file");
+      setToast({ message: "Failed to save file", type: "error" });
+    } finally {
+      setSaving(false);
+    }
+  };
+  
+  const handleBack = () => {
+    if (hasChanges) {
+      setUnsavedDialogOpen(true);
+    } else {
+      onBack();
+    }
+  };
+
+  const handleConfirmLeave = () => {
+    setUnsavedDialogOpen(false);
+    onBack();
+  };
+
+  const handleCancelLeave = () => {
+    setUnsavedDialogOpen(false);
+  };
+  
+  const handleDeleteClick = () => {
+    setDeleteDialogOpen(true);
+  };
+  
+  const handleDeleteConfirm = async () => {
+    setDeleting(true);
+    try {
+      await api.deleteFile(file.absolute_path);
+      setDeleteDialogOpen(false);
+      onDelete?.();
+      onBack(); // Go back after successful deletion
+    } catch (error) {
+      logger.error("Failed to delete memory file:", error);
+      setToast({ message: "Failed to delete file", type: "error" });
+    } finally {
+      setDeleting(false);
+    }
+  };
+  
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+  };
+  
+  return (
+    <div className={cn("relative flex flex-col h-full bg-background", className)}>
+      <DebugLabel label="ClaudeFileEditor" />
+      <div className="w-full max-w-5xl mx-auto flex flex-col h-full">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="flex items-center justify-between p-4 border-b border-border"
+        >
+          <div className="flex items-center space-x-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleBack}
+              className="h-8 w-8"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-semibold truncate">{file.relative_path}</h2>
+              <p className="text-xs text-muted-foreground">
+                Edit project-specific Claude Code system prompt
+              </p>
+            </div>
+          </div>
+          
+          {/* Controls - Mode Toggle and Actions */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center border border-border rounded-lg overflow-hidden">
+              <Button
+                variant={currentMode === "preview" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setCurrentMode("preview")}
+                className="h-8 px-3 text-xs rounded-none rounded-l-md border-0"
+              >
+                <Eye className="h-3 w-3 mr-1" />
+                View
+              </Button>
+              <Button
+                variant={currentMode === "edit" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setCurrentMode("edit")}
+                className="h-8 px-3 text-xs rounded-none border-0 border-l border-r border-border/50"
+              >
+                <Edit className="h-3 w-3 mr-1" />
+                Edit
+              </Button>
+              <Button
+                variant={currentMode === "live" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setCurrentMode("live")}
+                className="h-8 px-3 text-xs rounded-none rounded-r-md border-0"
+              >
+                <Split className="h-3 w-3 mr-1" />
+                Live
+              </Button>
+            </div>
+            
+            <Button
+              onClick={handleSave}
+              disabled={!hasChanges || saving || viewMode}
+              size="sm"
+              className="h-8"
+            >
+              {saving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="mr-2 h-4 w-4" />
+              )}
+              {saving ? "Saving..." : "Save"}
+            </Button>
+            
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDeleteClick}
+              className="h-8"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </Button>
+          </div>
+        </motion.div>
+        
+        {/* Error display */}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mx-4 mt-4 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-xs text-destructive"
+          >
+            {error}
+          </motion.div>
+        )}
+        
+        {/* Editor */}
+        <div className="flex-1 p-4 overflow-hidden">
+          {loading ? (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <ThemedMDEditor
+              value={content}
+              onChange={viewMode ? undefined : (val) => setContent(val || "")}
+              preview={currentMode}
+            />
+          )}
+        </div>
+      </div>
+      
+      {/* Toast Notification */}
+      <ToastContainer>
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onDismiss={() => setToast(null)}
+          />
+        )}
+      </ToastContainer>
+      
+      {/* Delete confirmation dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Delete Memory
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{file.relative_path}"?
+              <br />
+              <span className="text-destructive font-medium">This action cannot be undone.</span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleDeleteCancel}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteConfirm}
+              disabled={deleting}
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Unsaved Changes Dialog */}
+      <Dialog open={unsavedDialogOpen} onOpenChange={setUnsavedDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Unsaved Changes</DialogTitle>
+            <DialogDescription>
+              You have unsaved changes. Are you sure you want to leave?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelLeave}>
+              Stay
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmLeave}>
+              Leave
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}; 

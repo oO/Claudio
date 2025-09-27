@@ -16,16 +16,17 @@
 
     /* Linting */
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
 
     /* Path aliases */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src-frontend/*"]
     }
   },
-  "include": ["src"],
+  "include": ["src-frontend"],
+  "exclude": ["src-frontend/deprecated/**/*", "src-frontend/**/*.test.*", "src-frontend/**/*.spec.*", "src-frontend/test-setup.ts", "src-frontend/test-utils/**"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

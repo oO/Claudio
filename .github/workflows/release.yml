@@ -98,7 +98,7 @@ jobs:
           files: release-assets/*
           body: |
             <div align="center">
-              <img src="https://raw.githubusercontent.com/${{ github.repository }}/${{ steps.version.outputs.version }}/src-tauri/icons/icon.png" alt="Claudia Logo" width="128" height="128">
+              <img src="https://raw.githubusercontent.com/${{ github.repository }}/${{ steps.version.outputs.version }}/src-backend/icons/icon.png" alt="Claudia Logo" width="128" height="128">
               
               # Claudia ${{ steps.version.outputs.version }}
               

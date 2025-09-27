@@ -27,13 +27,20 @@ src-tauri/binaries/
 *.sln
 *.sw?
 temp_lib/
+temp/
+
+# Test coverage reports
+coverage/
+src-backend/coverage/
+*.lcov
 
 .cursor/
 AGENTS.md
-CLAUDE.md
 *_TASK.md
 
 # Claude project-specific files
-.claude/
+.claude/settings.local.json
+.claude/shell-snapshots/
+.claude/todos/
 
 .env

@@ -1,0 +1,2105 @@
+import { invoke } from "@tauri-apps/api/core";
+import type { HooksConfiguration } from '@/types/hooks';
+import { logger } from '@/lib/logger';
+
+
+/** Process type for tracking in ProcessRegistry */
+export type ProcessType = 
+  | { ClaudeSession: { session_id: string } };
+
+/** Information about a running process */
+export interface ProcessInfo {
+  run_id: number;
+  process_type: ProcessType;
+  pid: number;
+  started_at: string;
+  project_path: string;
+  task: string;
+  model: string;
+}
+
+/**
+ * Represents a project in the ~/.claude/projects directory
+ */
+export interface Project {
+  /** The project ID (derived from the directory name) */
+  id: string;
+  /** The original project path (decoded from the directory name) */
+  path: string;
+  /** Number of sessions (JSONL files) in this project */
+  session_count: number;
+  /** Unix timestamp when the project directory was created */
+  created_at: number;
+  /** Total size of all project files in bytes */
+  total_size_bytes?: number;
+  /** Last activity timestamp (most recent session) */
+  last_active?: number;
+}
+
+/**
+ * Represents a session with its metadata
+ */
+export interface Session {
+  /** The session ID (UUID) */
+  id: string;
+  /** The project ID this session belongs to */
+  project_id: string;
+  /** The project path */
+  project_path: string;
+  /** Optional todo data associated with this session */
+  todo_data?: any;
+  /** Aggregated todo counts from all agent executions in this session */
+  todo_counts?: {
+    /** Number of open todos (pending + in_progress) */
+    open: number;
+    /** Number of completed todos */
+    completed: number;
+    /** Total number of todos */
+    total: number;
+  };
+  /** Unix timestamp when the session file was created */
+  created_at: number;
+  /** Unix timestamp when the session file was last modified */
+  modified_at: number;
+  /** First user message content (if available) */
+  first_message?: string;
+  /** Timestamp of the first user message (if available) */
+  message_timestamp?: string;
+  /** Session file size in bytes */
+  size_bytes?: number;
+  /** Token count for this session */
+  token_count?: number;
+  /** Estimated cost for this session in USD */
+  cost_usd?: number;
+  /** Message count in this session */
+  message_count?: number;
+  /** Live session type if this is an active session */
+  live_session_type?: "NATIVE" | "CLAUDIO";
+}
+
+export interface SessionWithContent {
+  /** Session metadata */
+  session: Session;
+  /** Full path to the session file */
+  file_path: string;
+  /** Parsed JSONL content */
+  content: any[];
+}
+
+/**
+ * Represents the settings from ~/.claude/settings.json
+ */
+export interface ClaudeSettings {
+  [key: string]: any;
+}
+
+/**
+ * Session status for Claudio-managed sessions
+ */
+export type ClaudioSessionStatus = 'Active' | 'Idle' | 'Completed' | 'Notification' | 'Compact';
+
+/**
+ * Claude CLI controllable settings per session
+ */
+export interface ClaudioClaudeSettings {
+  /** Model to use (sonnet, haiku, opus) */
+  model?: string;
+  /** Maximum number of conversation turns */
+  max_turns?: number;
+  /** System prompt or path to file */
+  system_prompt?: string;
+  /** Append system prompt content */
+  append_system_prompt?: string;
+  /** Tool allowlist */
+  tools?: string[];
+  /** Working directory override */
+  working_directory?: string;
+}
+
+/**
+ * Individual session information (current or historical)
+ */
+export interface SessionInfo {
+  /** Claude CLI session ID */
+  session_id: string;
+  /** UUID of the last message in this session */
+  last_message_uuid: string;
+  /** Timestamp of the last message in this session */
+  last_message_timestamp: string;
+}
+
+/**
+ * Session metadata stored in ~/.claudio/projects/<project_id>/<session_id>.json
+ */
+export interface ClaudioSession {
+  /** Unique identifier for this Claudio session */
+  claudio_id: string;
+  /** Project path this session belongs to */
+  project_path: string;
+  /** Current active session (None if no session is active) */
+  current_session?: SessionInfo;
+  /** Session status */
+  status: ClaudioSessionStatus;
+  /** History of previous sessions (newest first) */
+  session_history: SessionInfo[];
+}
+
+/**
+ * Claude CLI session decorated with optional Claudio metadata
+ */
+export interface DecoratedSession extends Session {
+  /** Claudio metadata if this session is managed by Claudio */
+  claudio?: ClaudioSession;
+}
+
+/**
+ * Agent customization settings for message display
+ */
+export interface AgentSettings {
+  /** Name for the primary agent (default: "CloCo") */
+  primaryAgentName?: string;
+  /** Icon/emoji for the primary agent (default: "🤖") */
+  primaryAgentIcon?: string;
+  /** Color for the primary agent messages (hex color) */
+  primaryAgentColor?: string;
+  /** Whether to show agent names in messages */
+  showAgentNames?: boolean;
+  /** Whether to color-code messages by agent */
+  colorCodeAgents?: boolean;
+}
+
+/**
+ * Agent metadata from .md files
+ */
+export interface AgentMetadata {
+  name: string;
+  description?: string;
+  subagent_type: string;
+  icon?: string;
+  color?: string;
+  tools?: string[];
+}
+
+/**
+ * Represents the Claude Code version status
+ */
+export interface ClaudeVersionStatus {
+  /** Whether Claude Code is installed and working */
+  is_installed: boolean;
+  /** The version string if available */
+  version?: string;
+  /** The full output from the command */
+  output: string;
+}
+
+/**
+ * Window state for persistence
+ */
+export interface WindowState {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  maximized: boolean;
+}
+
+
+/**
+ * Represents a CLAUDE.md file found in the project
+ */
+export interface ClaudeMdFile {
+  /** Relative path from the project root */
+  relative_path: string;
+  /** Absolute path to the file */
+  absolute_path: string;
+  /** File size in bytes */
+  size: number;
+  /** Last modified timestamp */
+  modified: number;
+}
+
+/**
+ * Represents a file or directory entry
+ */
+export interface FileEntry {
+  name: string;
+  path: string;
+  is_directory: boolean;
+  size: number;
+  extension?: string;
+}
+
+/**
+ * Represents a Claude installation found on the system
+ */
+export interface ClaudeInstallation {
+  /** Full path to the Claude binary */
+  path: string;
+  /** Version string if available */
+  version?: string;
+  /** Source of discovery (e.g., "nvm", "system", "homebrew", "which") */
+  source: string;
+  /** Type of installation */
+  installation_type: "System" | "Custom";
+}
+
+// Agent API types
+export interface Agent {
+  id?: number;
+  name: string;
+  icon: string;
+  system_prompt: string;
+  default_task?: string;
+  model: string;
+  enable_file_read: boolean;
+  enable_file_write: boolean;
+  enable_network: boolean;
+  hooks?: string; // JSON string of HooksConfiguration
+  created_at: string;
+  updated_at: string;
+  description?: string;
+  tools?: string;
+  color?: string;
+}
+
+export interface AgentExport {
+  version: number;
+  exported_at: string;
+  agent: {
+    name: string;
+    icon: string;
+    system_prompt: string;
+    default_task?: string;
+    model: string;
+    hooks?: string;
+  };
+}
+
+export interface GitHubAgentFile {
+  name: string;
+  path: string;
+  download_url: string;
+  size: number;
+  sha: string;
+}
+
+
+
+
+// Usage Dashboard types
+export interface UsageEntry {
+  project: string;
+  timestamp: string;
+  model: string;
+  input_tokens: number;
+  output_tokens: number;
+  cache_write_tokens: number;
+  cache_read_tokens: number;
+  cost: number;
+}
+
+export interface ModelUsage {
+  model: string;
+  total_cost: number;
+  total_tokens: number;
+  input_tokens: number;
+  output_tokens: number;
+  cache_creation_tokens: number;
+  cache_read_tokens: number;
+  session_count: number;
+}
+
+export interface DailyUsage {
+  date: string;
+  total_cost: number;
+  total_tokens: number;
+  models_used: string[];
+}
+
+export interface ProjectUsage {
+  project_path: string;
+  project_name: string;
+  total_cost: number;
+  total_tokens: number;
+  session_count: number;
+  last_used: string;
+}
+
+export interface UsageStats {
+  total_cost: number;
+  total_tokens: number;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  total_cache_creation_tokens: number;
+  total_cache_read_tokens: number;
+  total_sessions: number;
+  by_model: ModelUsage[];
+  by_date: DailyUsage[];
+  by_project: ProjectUsage[];
+}
+
+
+/**
+ * Represents an MCP server configuration
+ */
+export interface MCPServer {
+  /** Server name/identifier */
+  name: string;
+  /** Transport type: "stdio" or "sse" */
+  transport: string;
+  /** Command to execute (for stdio) */
+  command?: string;
+  /** Command arguments (for stdio) */
+  args: string[];
+  /** Environment variables */
+  env: Record<string, string>;
+  /** URL endpoint (for SSE) */
+  url?: string;
+  /** Configuration scope: "local", "project", or "user" */
+  scope: string;
+  /** Whether the server is currently active */
+  is_active: boolean;
+  /** Server status */
+  status: ServerStatus;
+}
+
+/**
+ * Server status information
+ */
+export interface ServerStatus {
+  /** Whether the server is running */
+  running: boolean;
+  /** Last error message if any */
+  error?: string;
+  /** Last checked timestamp */
+  last_checked?: number;
+}
+
+/**
+ * MCP configuration for project scope (.mcp.json)
+ */
+export interface MCPProjectConfig {
+  mcpServers: Record<string, MCPServerConfig>;
+}
+
+/**
+ * Individual server configuration in .mcp.json
+ */
+export interface MCPServerConfig {
+  command: string;
+  args: string[];
+  env: Record<string, string>;
+}
+
+/**
+ * Represents a custom slash command
+ */
+export interface SlashCommand {
+  /** Unique identifier for the command */
+  id: string;
+  /** Command name (without prefix) */
+  name: string;
+  /** Full command with prefix (e.g., "/project:optimize") */
+  full_command: string;
+  /** Command scope: "project" or "user" */
+  scope: string;
+  /** Optional namespace (e.g., "frontend" in "/project:frontend:component") */
+  namespace?: string;
+  /** Path to the markdown file */
+  file_path: string;
+  /** Command content (markdown body) */
+  content: string;
+  /** Optional description from frontmatter */
+  description?: string;
+  /** Allowed tools from frontmatter */
+  allowed_tools: string[];
+  /** Whether the command has bash commands (!) */
+  has_bash_commands: boolean;
+  /** Whether the command has file references (@) */
+  has_file_references: boolean;
+  /** Whether the command uses $ARGUMENTS placeholder */
+  accepts_arguments: boolean;
+}
+
+/**
+ * Todo item structure
+ */
+export interface TodoItem {
+  content: string;
+  status: "pending" | "in_progress" | "completed";
+  activeForm: string;
+}
+
+/**
+ * Todo counts by status
+ */
+export interface TodoCounts {
+  /** Number of open todos (pending + in_progress) */
+  open: number;
+  /** Number of completed todos */
+  completed: number;
+  /** Total number of todos */
+  total: number;
+}
+
+/**
+ * Agent-specific todo data
+ */
+export interface AgentTodos {
+  agent_id: string;
+  file_path: string;
+  todos: TodoItem[];
+  counts: TodoCounts;
+}
+
+/**
+ * Complete session todo data
+ */
+export interface SessionTodoData {
+  session_id: string;
+  agent_todos: AgentTodos[];
+  total_counts: TodoCounts;
+  agent_count: number;
+}
+
+/**
+ * Result of adding a server
+ */
+export interface AddServerResult {
+  success: boolean;
+  message: string;
+  server_name?: string;
+}
+
+/**
+ * Import result for multiple servers
+ */
+export interface ImportResult {
+  imported_count: number;
+  failed_count: number;
+  servers: ImportServerResult[];
+}
+
+/**
+ * Result for individual server import
+ */
+export interface ImportServerResult {
+  name: string;
+  success: boolean;
+  error?: string;
+}
+
+/**
+ * API client for interacting with the Rust backend
+ */
+export const api = {
+  /**
+   * Lists all projects in the ~/.claude/projects directory
+   * @returns Promise resolving to an array of projects
+   */
+  async listProjects(): Promise<Project[]> {
+    try {
+      return await invoke<Project[]>("list_projects");
+    } catch (error) {
+      logger.error("Failed to list projects:", error);
+      throw error;
+    }
+  },
+
+
+  /**
+   * Retrieves sessions for a specific project
+   * @param projectId - The ID of the project to retrieve sessions for
+   * @returns Promise resolving to an array of sessions
+   */
+  async getProjectSessions(projectId: string): Promise<DecoratedSession[]> {
+    try {
+      return await invoke<DecoratedSession[]>('get_project_sessions', { projectId });
+    } catch (error) {
+      logger.error("Failed to get project sessions:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Fetch list of agents from GitHub repository
+   * @returns Promise resolving to list of available agents on GitHub
+   */
+  async fetchGitHubAgents(): Promise<GitHubAgentFile[]> {
+    try {
+      return await invoke<GitHubAgentFile[]>('fetch_github_agents');
+    } catch (error) {
+      logger.error("Failed to fetch GitHub agents:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Fetch and preview a specific agent from GitHub
+   * @param downloadUrl - The download URL for the agent file
+   * @returns Promise resolving to the agent export data
+   */
+  async fetchGitHubAgentContent(downloadUrl: string): Promise<AgentExport> {
+    try {
+      return await invoke<AgentExport>('fetch_github_agent_content', { downloadUrl });
+    } catch (error) {
+      logger.error("Failed to fetch GitHub agent content:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Import an agent directly from GitHub
+   * @param downloadUrl - The download URL for the agent file
+   * @returns Promise resolving to the imported agent
+   */
+  async importAgentFromGitHub(downloadUrl: string): Promise<Agent> {
+    try {
+      return await invoke<Agent>('import_agent_from_github', { downloadUrl });
+    } catch (error) {
+      logger.error("Failed to import agent from GitHub:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Reads the Claude settings file
+   * @returns Promise resolving to the settings object
+   */
+  async getClaudeSettings(): Promise<ClaudeSettings> {
+    try {
+      const result = await invoke<{ data: ClaudeSettings }>("get_claude_settings");
+      // Settings retrieved successfully
+      
+      // The Rust backend returns ClaudeSettings { data: ... }
+      // We need to extract the data field
+      if (result && typeof result === 'object' && 'data' in result) {
+        return result.data;
+      }
+      
+      // If the result is already the settings object, return it
+      return result as ClaudeSettings;
+    } catch (error) {
+      logger.error("Failed to get Claude settings:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Opens a new Claude Code session
+   * @param path - Optional path to open the session in
+   * @returns Promise resolving when the session is opened
+   */
+  async openNewSession(path?: string): Promise<string> {
+    try {
+      return await invoke<string>("open_new_session", { path });
+    } catch (error) {
+      logger.error("Failed to open new session:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Reads the CLAUDE.md system prompt file
+   * @returns Promise resolving to the system prompt content
+   */
+  async getSystemPrompt(): Promise<string> {
+    try {
+      return await invoke<string>("get_system_prompt");
+    } catch (error) {
+      logger.error("Failed to get system prompt:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Checks if Claude Code is installed and gets its version
+   * @returns Promise resolving to the version status
+   */
+  async checkClaudeVersion(): Promise<ClaudeVersionStatus> {
+    try {
+      return await invoke<ClaudeVersionStatus>("check_claude_version");
+    } catch (error) {
+      logger.error("Failed to check Claude version:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Saves the CLAUDE.md system prompt file
+   * @param content - The new content for the system prompt
+   * @returns Promise resolving when the file is saved
+   */
+  async saveSystemPrompt(content: string): Promise<string> {
+    try {
+      return await invoke<string>("save_system_prompt", { content });
+    } catch (error) {
+      logger.error("Failed to save system prompt:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Saves the Claude settings file
+   * @param settings - The settings object to save
+   * @returns Promise resolving when the settings are saved
+   */
+  async saveClaudeSettings(settings: ClaudeSettings): Promise<string> {
+    try {
+      return await invoke<string>("save_claude_settings", { settings });
+    } catch (error) {
+      logger.error("Failed to save Claude settings:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Starts watching the Claude settings file for changes
+   * @returns Promise resolving when the watcher is started
+   */
+  async startSettingsWatcher(): Promise<string> {
+    try {
+      return await invoke<string>("start_settings_watcher");
+    } catch (error) {
+      logger.error("Failed to start settings watcher:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Deletes a file from the filesystem
+   * @param filePath - The absolute path to the file to delete
+   * @returns Promise resolving when the file is deleted
+   */
+  async deleteFile(filePath: string): Promise<string> {
+    try {
+      return await invoke<string>("delete_file", { filePath });
+    } catch (error) {
+      logger.error("Failed to delete file:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Finds all CLAUDE.md files in a project directory
+   * @param projectPath - The absolute path to the project
+   * @returns Promise resolving to an array of CLAUDE.md files
+   */
+  async findClaudeMdFiles(projectPath: string): Promise<ClaudeMdFile[]> {
+    try {
+      return await invoke<ClaudeMdFile[]>("find_claude_md_files", { projectPath });
+    } catch (error) {
+      logger.error("Failed to find CLAUDE.md files:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Reads a specific CLAUDE.md file
+   * @param filePath - The absolute path to the file
+   * @returns Promise resolving to the file content
+   */
+  async readClaudeMdFile(filePath: string): Promise<string> {
+    try {
+      return await invoke<string>("read_claude_md_file", { filePath });
+    } catch (error) {
+      logger.error("Failed to read CLAUDE.md file:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Saves a specific CLAUDE.md file
+   * @param filePath - The absolute path to the file
+   * @param content - The new content for the file
+   * @returns Promise resolving when the file is saved
+   */
+  async saveClaudeMdFile(filePath: string, content: string): Promise<string> {
+    try {
+      return await invoke<string>("save_claude_md_file", { filePath, content });
+    } catch (error) {
+      logger.error("Failed to save CLAUDE.md file:", error);
+      throw error;
+    }
+  },
+
+  // Agent API methods
+  
+  /**
+   * Lists all global agents from ~/.claude/agents/
+   * @returns Promise resolving to an array of agents
+   */
+  async listAgents(projectPath?: string): Promise<Agent[]> {
+    try {
+      // Pass projectPath to get project-specific agents, or empty string for global agents
+      return await invoke<Agent[]>('list_agents', { 
+        projectPath: projectPath || "" 
+      });
+    } catch (error) {
+      logger.error("Failed to list agents:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Creates a new agent
+   * @param name - The agent name
+   * @param icon - The icon identifier
+   * @param system_prompt - The system prompt for the agent
+   * @param default_task - Optional default task
+   * @param model - Optional model (defaults to 'sonnet')
+   * @param hooks - Optional hooks configuration as JSON string
+   * @returns Promise resolving to the created agent
+   */
+  async createAgent(
+    name: string, 
+    system_prompt: string, 
+    default_task?: string, 
+    model?: string,
+    description?: string,
+    tools?: string,
+    color?: string,
+    hooks?: string
+  ): Promise<Agent> {
+    try {
+      return await invoke<Agent>('create_agent', { 
+        name, 
+        icon: "🤖", // Temporary default for backend compatibility
+        systemPrompt: system_prompt,
+        defaultTask: default_task,
+        model: model || 'inherit',
+        enableFileRead: true,
+        enableFileWrite: true,
+        enableNetwork: false,
+        hooks,
+        description: description || null,
+        tools: tools || null,
+        color: color || null
+      });
+    } catch (error) {
+      logger.error("Failed to create agent:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Updates an existing agent
+   * @param id - The agent ID
+   * @param name - The updated name
+   * @param icon - The updated icon
+   * @param system_prompt - The updated system prompt
+   * @param default_task - Optional default task
+   * @param model - Optional model
+   * @param hooks - Optional hooks configuration as JSON string
+   * @returns Promise resolving to the updated agent
+   */
+  async updateAgent(
+    _id: number, 
+    name: string, 
+    system_prompt: string, 
+    default_task?: string, 
+    model?: string,
+    description?: string,
+    tools?: string,
+    color?: string,
+    hooks?: string
+  ): Promise<Agent> {
+    try {
+      return await invoke<Agent>('update_agent', { 
+        name, 
+        icon: "🤖", // Temporary default for backend compatibility
+        systemPrompt: system_prompt,
+        defaultTask: default_task,
+        model: model || 'inherit',
+        enableFileRead: true,
+        enableFileWrite: true,
+        enableNetwork: false,
+        hooks,
+        description: description || null,
+        tools: tools || null,
+        color: color || null
+      });
+    } catch (error) {
+      logger.error("Failed to update agent:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Deletes an agent
+   * @param id - The agent ID to delete
+   * @returns Promise resolving when the agent is deleted
+   */
+  async deleteAgent(id: number): Promise<void> {
+    try {
+      // For file-based agents, we need to get the agent name first
+      const agents = await this.listAgents();
+      const agent = agents.find(a => a.id === id);
+      if (!agent) {
+        throw new Error('Agent not found');
+      }
+      return await invoke('delete_agent', { name: agent.name });
+    } catch (error) {
+      logger.error("Failed to delete agent:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Gets a single agent by ID
+   * @param id - The agent ID
+   * @returns Promise resolving to the agent
+   */
+  async getAgent(id: number): Promise<Agent> {
+    try {
+      // For file-based agents, we need to get the agent by name
+      const agents = await this.listAgents();
+      const agent = agents.find(a => a.id === id);
+      if (!agent) {
+        throw new Error('Agent not found');
+      }
+      return await invoke<Agent>('get_agent', { name: agent.name });
+    } catch (error) {
+      logger.error("Failed to get agent:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Exports a single agent to JSON format
+   * @param id - The agent ID to export
+   * @returns Promise resolving to the JSON string
+   */
+  async exportAgent(id: number): Promise<string> {
+    try {
+      // For file-based agents, we need to export by name
+      const agents = await this.listAgents();
+      const agent = agents.find(a => a.id === id);
+      if (!agent) {
+        throw new Error('Agent not found');
+      }
+      return await invoke<string>('export_agent', { name: agent.name });
+    } catch (error) {
+      logger.error("Failed to export agent:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Imports an agent from JSON data
+   * @param jsonData - The JSON string containing the agent export
+   * @returns Promise resolving to the imported agent
+   */
+  async importAgent(jsonData: string): Promise<Agent> {
+    try {
+      return await invoke<Agent>('import_agent', { jsonData });
+    } catch (error) {
+      logger.error("Failed to import agent:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Imports an agent from a file
+   * @param filePath - The path to the JSON file
+   * @returns Promise resolving to the imported agent
+   */
+  async importAgentFromFile(filePath: string): Promise<Agent> {
+    try {
+      return await invoke<Agent>('import_agent_from_file', { filePath });
+    } catch (error) {
+      logger.error("Failed to import agent from file:", error);
+      throw error;
+    }
+  },
+
+
+
+
+
+
+
+  /**
+   * Gets the status of a specific agent session
+   * @param runId - The run ID to check
+   * @returns Promise resolving to the session status or null if not found
+   */
+  async getSessionStatus(runId: number): Promise<string | null> {
+    try {
+      return await invoke<string | null>('get_session_status', { runId });
+    } catch (error) {
+      logger.error("Failed to get session status:", error);
+      throw new Error(`Failed to get session status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  },
+
+  /**
+   * Cleanup finished processes and update their status
+   * @returns Promise resolving to list of run IDs that were cleaned up
+   */
+  async cleanupFinishedProcesses(): Promise<number[]> {
+    try {
+      return await invoke<number[]>('cleanup_finished_processes');
+    } catch (error) {
+      logger.error("Failed to cleanup finished processes:", error);
+      throw new Error(`Failed to cleanup finished processes: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  },
+
+  /**
+   * Get real-time output for a running session (with live output fallback)
+   * @param runId - The run ID to get output for
+   * @returns Promise resolving to the current session output (JSONL format)
+   */
+  async getSessionOutput(runId: number): Promise<string> {
+    try {
+      return await invoke<string>('get_session_output', { runId });
+    } catch (error) {
+      logger.error("Failed to get session output:", error);
+      throw new Error(`Failed to get session output: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  },
+
+  /**
+   * Get live output directly from process stdout buffer
+   * @param runId - The run ID to get live output for
+   * @returns Promise resolving to the current live output
+   */
+  async getLiveSessionOutput(runId: number): Promise<string> {
+    try {
+      return await invoke<string>('get_live_session_output', { runId });
+    } catch (error) {
+      logger.error("Failed to get live session output:", error);
+      throw new Error(`Failed to get live session output: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  },
+
+  /**
+   * Start streaming real-time output for a running session
+   * @param runId - The run ID to stream output for
+   * @returns Promise that resolves when streaming starts
+   */
+  async streamSessionOutput(runId: number): Promise<void> {
+    try {
+      return await invoke<void>('stream_session_output', { runId });
+    } catch (error) {
+      logger.error("Failed to start streaming session output:", error);
+      throw new Error(`Failed to start streaming session output: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  },
+
+  /**
+   * Loads the JSONL history for a specific session with full metadata
+   */
+  async loadSessionHistory(sessionId: string, projectId: string): Promise<SessionWithContent> {
+    return invoke("load_session_history", { sessionId, projectId });
+  },
+
+  /**
+   * Loads the JSONL history for a specific agent session
+   * Similar to loadSessionHistory but searches across all project directories
+   * @param sessionId - The session ID (UUID)
+   * @returns Promise resolving to session history with messages and file path
+   */
+  async loadAgentSessionHistory(sessionId: string): Promise<{messages: any[], session_file_path: string}> {
+    try {
+      return await invoke<{messages: any[], session_file_path: string}>('load_agent_session_history', { sessionId });
+    } catch (error) {
+      logger.error("Failed to load agent session history:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Executes a new interactive Claude Code session with streaming output
+   */
+  async executeClaudeCode(projectPath: string, prompt: string, model: string): Promise<void> {
+    return invoke("execute_claude_code", { projectPath, prompt, model });
+  },
+
+  /**
+   * Continues an existing Claude Code conversation with streaming output
+   */
+  async continueClaudeCode(projectPath: string, prompt: string, model: string): Promise<void> {
+    return invoke("continue_claude_code", { projectPath, prompt, model });
+  },
+
+  /**
+   * Resumes an existing Claude Code session by ID with streaming output
+   */
+  async resumeClaudeCode(projectPath: string, sessionId: string, prompt: string, model: string): Promise<void> {
+    return invoke("resume_claude_code", { projectPath, sessionId, prompt, model });
+  },
+
+  /**
+   * Cancels the currently running Claude Code execution
+   * @param sessionId - Optional session ID to cancel a specific session
+   */
+  async cancelClaudeExecution(sessionId?: string): Promise<void> {
+    return invoke("cancel_claude_execution", { sessionId });
+  },
+
+  /**
+   * Lists all currently running Claude sessions
+   * @returns Promise resolving to list of running Claude sessions
+   */
+  async listRunningClaudeSessions(): Promise<any[]> {
+    return invoke("list_running_claude_sessions");
+  },
+
+  /**
+   * Gets live output from a Claude session
+   * @param sessionId - The session ID to get output for
+   * @returns Promise resolving to the current live output
+   */
+  async getClaudeSessionOutput(sessionId: string): Promise<string> {
+    return invoke("get_claude_session_output", { sessionId });
+  },
+
+  /**
+   * Lists files and directories in a given path
+   */
+  async listDirectoryContents(directoryPath: string): Promise<FileEntry[]> {
+    return invoke("list_directory_contents", { directoryPath });
+  },
+
+  /**
+   * Searches for files and directories matching a pattern
+   */
+  async searchFiles(basePath: string, query: string): Promise<FileEntry[]> {
+    return invoke("search_files", { basePath, query });
+  },
+
+  /**
+   * Gets overall usage statistics
+   * @returns Promise resolving to usage statistics
+   */
+  async getUsageStats(): Promise<UsageStats> {
+    try {
+      return await invoke<UsageStats>("get_usage_stats");
+    } catch (error) {
+      logger.error("Failed to get usage stats:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Gets usage statistics filtered by date range
+   * @param startDate - Start date (ISO format)
+   * @param endDate - End date (ISO format)
+   * @returns Promise resolving to usage statistics
+   */
+  async getUsageByDateRange(startDate: string, endDate: string): Promise<UsageStats> {
+    try {
+      return await invoke<UsageStats>("get_usage_by_date_range", { startDate, endDate });
+    } catch (error) {
+      logger.error("Failed to get usage by date range:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Gets usage statistics grouped by session
+   * @param since - Optional start date (YYYYMMDD)
+   * @param until - Optional end date (YYYYMMDD)
+   * @param order - Optional sort order ('asc' or 'desc')
+   * @returns Promise resolving to an array of session usage data
+   */
+  async getSessionStats(
+    since?: string,
+    until?: string,
+    order?: "asc" | "desc"
+  ): Promise<ProjectUsage[]> {
+    try {
+      return await invoke<ProjectUsage[]>("get_session_stats", {
+        since,
+        until,
+        order,
+      });
+    } catch (error) {
+      logger.error("Failed to get session stats:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Gets detailed usage entries with optional filtering
+   * @param limit - Optional limit for number of entries
+   * @returns Promise resolving to array of usage entries
+   */
+  async getUsageDetails(limit?: number): Promise<UsageEntry[]> {
+    try {
+      return await invoke<UsageEntry[]>("get_usage_details", { limit });
+    } catch (error) {
+      logger.error("Failed to get usage details:", error);
+      throw error;
+    }
+  },
+
+
+  /**
+   * Adds a new MCP server
+   */
+  async mcpAdd(
+    name: string,
+    transport: string,
+    command?: string,
+    args: string[] = [],
+    env: Record<string, string> = {},
+    url?: string,
+    scope: string = "local"
+  ): Promise<AddServerResult> {
+    try {
+      return await invoke<AddServerResult>("mcp_add", {
+        name,
+        transport,
+        command,
+        args,
+        env,
+        url,
+        scope
+      });
+    } catch (error) {
+      logger.error("Failed to add MCP server:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Lists all configured MCP servers
+   */
+  async mcpList(): Promise<MCPServer[]> {
+    try {
+      const result = await invoke<MCPServer[]>("mcp_list");
+      return result;
+    } catch (error) {
+      logger.error("API: Failed to list MCP servers:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Gets details for a specific MCP server
+   */
+  async mcpGet(name: string): Promise<MCPServer> {
+    try {
+      return await invoke<MCPServer>("mcp_get", { name });
+    } catch (error) {
+      logger.error("Failed to get MCP server:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Removes an MCP server
+   */
+  async mcpRemove(name: string): Promise<string> {
+    try {
+      return await invoke<string>("mcp_remove", { name });
+    } catch (error) {
+      logger.error("Failed to remove MCP server:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Adds an MCP server from JSON configuration
+   */
+  async mcpAddJson(name: string, jsonConfig: string, scope: string = "local"): Promise<AddServerResult> {
+    try {
+      return await invoke<AddServerResult>("mcp_add_json", { name, jsonConfig, scope });
+    } catch (error) {
+      logger.error("Failed to add MCP server from JSON:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Imports MCP servers from Claude Desktop
+   */
+  async mcpAddFromClaudeDesktop(scope: string = "local"): Promise<ImportResult> {
+    try {
+      return await invoke<ImportResult>("mcp_add_from_claude_desktop", { scope });
+    } catch (error) {
+      logger.error("Failed to import from Claude Desktop:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Starts Claude Code as an MCP server
+   */
+  async mcpServe(): Promise<string> {
+    try {
+      return await invoke<string>("mcp_serve");
+    } catch (error) {
+      logger.error("Failed to start MCP server:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Tests connection to an MCP server
+   */
+  async mcpTestConnection(name: string): Promise<string> {
+    try {
+      return await invoke<string>("mcp_test_connection", { name });
+    } catch (error) {
+      logger.error("Failed to test MCP connection:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Resets project-scoped server approval choices
+   */
+  async mcpResetProjectChoices(): Promise<string> {
+    try {
+      return await invoke<string>("mcp_reset_project_choices");
+    } catch (error) {
+      logger.error("Failed to reset project choices:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Gets the status of MCP servers
+   */
+  async mcpGetServerStatus(): Promise<Record<string, ServerStatus>> {
+    try {
+      return await invoke<Record<string, ServerStatus>>("mcp_get_server_status");
+    } catch (error) {
+      logger.error("Failed to get server status:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Reads .mcp.json from the current project
+   */
+  async mcpReadProjectConfig(projectPath: string): Promise<MCPProjectConfig> {
+    try {
+      return await invoke<MCPProjectConfig>("mcp_read_project_config", { projectPath });
+    } catch (error) {
+      logger.error("Failed to read project MCP config:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Saves .mcp.json to the current project
+   */
+  async mcpSaveProjectConfig(projectPath: string, config: MCPProjectConfig): Promise<string> {
+    try {
+      return await invoke<string>("mcp_save_project_config", { projectPath, config });
+    } catch (error) {
+      logger.error("Failed to save project MCP config:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get the stored Claude binary path from settings
+   * @returns Promise resolving to the path if set, null otherwise
+   */
+  async getClaudeBinaryPath(): Promise<string | null> {
+    try {
+      return await invoke<string | null>("get_claude_binary_path");
+    } catch (error) {
+      logger.error("Failed to get Claude binary path:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Set the Claude binary path in settings
+   * @param path - The absolute path to the Claude binary
+   * @returns Promise resolving when the path is saved
+   */
+  async setClaudeBinaryPath(path: string): Promise<void> {
+    try {
+      return await invoke<void>("set_claude_binary_path", { path });
+    } catch (error) {
+      logger.error("Failed to set Claude binary path:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * List all available Claude installations on the system
+   * @returns Promise resolving to an array of Claude installations
+   */
+  async listClaudeInstallations(): Promise<ClaudeInstallation[]> {
+    try {
+      return await invoke<ClaudeInstallation[]>("list_claude_installations");
+    } catch (error) {
+      logger.error("Failed to list Claude installations:", error);
+      throw error;
+    }
+  },
+
+  // Storage API methods
+
+  /**
+   * Lists all tables in the SQLite database
+   * @returns Promise resolving to an array of table information
+   */
+  async storageListTables(): Promise<any[]> {
+    try {
+      return await invoke<any[]>("storage_list_tables");
+    } catch (error) {
+      logger.error("Failed to list tables:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Reads table data with pagination
+   * @param tableName - Name of the table to read
+   * @param page - Page number (1-indexed)
+   * @param pageSize - Number of rows per page
+   * @param searchQuery - Optional search query
+   * @returns Promise resolving to table data with pagination info
+   */
+  async storageReadTable(
+    tableName: string,
+    page: number,
+    pageSize: number,
+    searchQuery?: string
+  ): Promise<any> {
+    try {
+      return await invoke<any>("storage_read_table", {
+        tableName,
+        page,
+        pageSize,
+        searchQuery,
+      });
+    } catch (error) {
+      logger.error("Failed to read table:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Updates a row in a table
+   * @param tableName - Name of the table
+   * @param primaryKeyValues - Map of primary key column names to values
+   * @param updates - Map of column names to new values
+   * @returns Promise resolving when the row is updated
+   */
+  async storageUpdateRow(
+    tableName: string,
+    primaryKeyValues: Record<string, any>,
+    updates: Record<string, any>
+  ): Promise<void> {
+    try {
+      return await invoke<void>("storage_update_row", {
+        tableName,
+        primaryKeyValues,
+        updates,
+      });
+    } catch (error) {
+      logger.error("Failed to update row:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Deletes a row from a table
+   * @param tableName - Name of the table
+   * @param primaryKeyValues - Map of primary key column names to values
+   * @returns Promise resolving when the row is deleted
+   */
+  async storageDeleteRow(
+    tableName: string,
+    primaryKeyValues: Record<string, any>
+  ): Promise<void> {
+    try {
+      return await invoke<void>("storage_delete_row", {
+        tableName,
+        primaryKeyValues,
+      });
+    } catch (error) {
+      logger.error("Failed to delete row:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Inserts a new row into a table
+   * @param tableName - Name of the table
+   * @param values - Map of column names to values
+   * @returns Promise resolving to the last insert row ID
+   */
+  async storageInsertRow(
+    tableName: string,
+    values: Record<string, any>
+  ): Promise<number> {
+    try {
+      return await invoke<number>("storage_insert_row", {
+        tableName,
+        values,
+      });
+    } catch (error) {
+      logger.error("Failed to insert row:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Executes a raw SQL query
+   * @param query - SQL query string
+   * @returns Promise resolving to query result
+   */
+  async storageExecuteSql(query: string): Promise<any> {
+    try {
+      return await invoke<any>("storage_execute_sql", { query });
+    } catch (error) {
+      logger.error("Failed to execute SQL:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Resets the entire database
+   * @returns Promise resolving when the database is reset
+   */
+  async storageResetDatabase(): Promise<void> {
+    try {
+      return await invoke<void>("storage_reset_database");
+    } catch (error) {
+      logger.error("Failed to reset database:", error);
+      throw error;
+    }
+  },
+
+  // Theme settings helpers
+
+  /**
+   * Loads a setting from the Claudio app settings file
+   * @param key - The setting key
+   * @returns Promise resolving to the setting value, or null if not found
+   */
+  async loadClaudioAppSetting<T = any>(key: string): Promise<T | null> {
+    try {
+      const jsonString = await invoke<string | null>("load_claudio_app_setting", { key });
+      return jsonString ? JSON.parse(jsonString) : null;
+    } catch (error) {
+      logger.error(`Failed to load Claudio app setting ${key}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Saves a setting to the Claudio app settings file
+   * @param key - The setting key
+   * @param value - The setting value (any JSON-serializable type)
+   * @returns Promise resolving when the setting is saved
+   */
+  async saveClaudioAppSetting(key: string, value: any): Promise<void> {
+    try {
+      await invoke<void>("save_claudio_app_setting", { key, value });
+    } catch (error) {
+      logger.error(`Failed to save Claudio app setting ${key}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get hooks configuration for a specific scope
+   * @param scope - The configuration scope: 'user', 'project', or 'local'
+   * @param projectPath - Project path (required for project and local scopes)
+   * @returns Promise resolving to the hooks configuration
+   */
+  async getHooksConfig(scope: 'user' | 'project' | 'local', projectPath?: string): Promise<HooksConfiguration> {
+    try {
+      return await invoke<HooksConfiguration>("get_hooks_config", { scope, projectPath });
+    } catch (error) {
+      logger.error("Failed to get hooks config:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Update hooks configuration for a specific scope
+   * @param scope - The configuration scope: 'user', 'project', or 'local'
+   * @param hooks - The hooks configuration to save
+   * @param projectPath - Project path (required for project and local scopes)
+   * @returns Promise resolving to success message
+   */
+  async updateHooksConfig(
+    scope: 'user' | 'project' | 'local',
+    hooks: HooksConfiguration,
+    projectPath?: string
+  ): Promise<string> {
+    try {
+      return await invoke<string>("update_hooks_config", { scope, projectPath, hooks });
+    } catch (error) {
+      logger.error("Failed to update hooks config:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Validate a hook command syntax
+   * @param command - The shell command to validate
+   * @returns Promise resolving to validation result
+   */
+  async validateHookCommand(command: string): Promise<{ valid: boolean; message: string }> {
+    try {
+      return await invoke<{ valid: boolean; message: string }>("validate_hook_command", { command });
+    } catch (error) {
+      logger.error("Failed to validate hook command:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get merged hooks configuration (respecting priority)
+   * @param projectPath - The project path
+   * @returns Promise resolving to merged hooks configuration
+   */
+  async getMergedHooksConfig(projectPath: string): Promise<HooksConfiguration> {
+    try {
+      const [userHooks, projectHooks, localHooks] = await Promise.all([
+        this.getHooksConfig('user'),
+        this.getHooksConfig('project', projectPath),
+        this.getHooksConfig('local', projectPath)
+      ]);
+
+      // Import HooksManager for merging
+      const { HooksManager } = await import('@/lib/hooksManager');
+      return HooksManager.mergeConfigs(userHooks, projectHooks, localHooks);
+    } catch (error) {
+      logger.error("Failed to get merged hooks config:", error);
+      throw error;
+    }
+  },
+
+  // Slash Commands API methods
+
+  /**
+   * Lists all available slash commands
+   * @param projectPath - Optional project path to include project-specific commands
+   * @returns Promise resolving to array of slash commands
+   */
+  async slashCommandsList(projectPath?: string): Promise<SlashCommand[]> {
+    try {
+      return await invoke<SlashCommand[]>("slash_commands_list", { projectPath });
+    } catch (error) {
+      logger.error("Failed to list slash commands:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Gets a single slash command by ID
+   * @param commandId - Unique identifier of the command
+   * @returns Promise resolving to the slash command
+   */
+  async slashCommandGet(commandId: string): Promise<SlashCommand> {
+    try {
+      return await invoke<SlashCommand>("slash_command_get", { commandId });
+    } catch (error) {
+      logger.error("Failed to get slash command:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Creates or updates a slash command
+   * @param scope - Command scope: "project" or "user"
+   * @param name - Command name (without prefix)
+   * @param namespace - Optional namespace for organization
+   * @param content - Markdown content of the command
+   * @param description - Optional description
+   * @param allowedTools - List of allowed tools for this command
+   * @param projectPath - Required for project scope commands
+   * @returns Promise resolving to the saved command
+   */
+  async slashCommandSave(
+    scope: string,
+    name: string,
+    namespace: string | undefined,
+    content: string,
+    description: string | undefined,
+    allowedTools: string[],
+    projectPath?: string
+  ): Promise<SlashCommand> {
+    try {
+      return await invoke<SlashCommand>("slash_command_save", {
+        scope,
+        name,
+        namespace,
+        content,
+        description,
+        allowedTools,
+        projectPath
+      });
+    } catch (error) {
+      logger.error("Failed to save slash command:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Deletes a slash command
+   * @param commandId - Unique identifier of the command to delete
+   * @param projectPath - Optional project path for deleting project commands
+   * @returns Promise resolving to deletion message
+   */
+  async slashCommandDelete(commandId: string, projectPath?: string): Promise<string> {
+    try {
+      return await invoke<string>("slash_command_delete", { commandId, projectPath });
+    } catch (error) {
+      logger.error("Failed to delete slash command:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Checks if a project has settings files (settings.json, settings.local.json)
+   * @param projectPath - The absolute path to the project
+   * @returns Promise resolving to the number of settings files found
+   */
+  async checkProjectSettings(projectPath: string): Promise<number> {
+    try {
+      return await invoke<number>("check_project_settings", { projectPath });
+    } catch (error) {
+      logger.error("Failed to check project settings:", error);
+      return 0;
+    }
+  },
+
+  /**
+   * Previews session deletion by age for a project
+   * @param projectId - The project ID
+   * @param daysOld - Sessions older than this many days will be deleted
+   * @returns Promise resolving to deletion preview
+   */
+  async previewSessionDeletionByAge(projectId: string, daysOld: number): Promise<{
+    sessions_to_delete: Session[];
+    sessions_to_keep: Session[];
+    total_sessions: number;
+    sessions_to_delete_count: number;
+    sessions_to_keep_count: number;
+    size_to_free_mb: number;
+  }> {
+    try {
+      return await invoke("preview_session_deletion_by_age", { projectId, daysOld });
+    } catch (error) {
+      logger.error("Failed to preview session deletion:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Deletes sessions older than specified days for a project
+   * @param projectId - The project ID
+   * @param daysOld - Sessions older than this many days will be deleted
+   * @returns Promise resolving to deletion summary
+   */
+  async deleteSessionsByAge(projectId: string, daysOld: number): Promise<{
+    success: boolean;
+    project_id: string;
+    sessions_deleted: number;
+    claudio_sessions_deleted: number;
+    todos_deleted: number;
+    timelines_deleted: number;
+    sessions_remaining: number;
+    size_freed_mb: number;
+    days_old: number;
+    message: string;
+  }> {
+    try {
+      return await invoke("delete_sessions_by_age", { projectId, daysOld });
+    } catch (error) {
+      logger.error("Failed to delete sessions by age:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Gets the age range of sessions in a project (newest to oldest in days)
+   * @param projectId - The project ID
+   * @returns Promise resolving to age range information
+   */
+  async getSessionAgeRange(projectId: string): Promise<{
+    newest_age_days: number;
+    oldest_age_days: number;
+    total_sessions: number;
+    has_sessions: boolean;
+  }> {
+    try {
+      return await invoke("get_session_age_range", { projectId });
+    } catch (error) {
+      logger.error("Failed to get session age range:", error);
+      throw error;
+    }
+  },
+
+  // ===== PROJECT AND SESSION MANAGEMENT =====
+
+  /**
+   * Deletes a Claude project and all its associated data including todos and timelines
+   * @param projectId - The project ID (encoded directory name)
+   * @param options - Optional deletion options for agents, memories, and settings
+   * @returns Promise resolving to deletion summary
+   */
+  async deleteClaudeProject(projectId: string, options?: {
+    sessions: boolean;
+    agents: boolean;
+    memories: boolean;
+    settings: boolean;
+  }): Promise<{
+    success: boolean;
+    project_id: string;
+    sessions_deleted: number;
+    claudio_sessions_deleted: number;
+    todos_deleted: number;
+    timelines_deleted: number;
+    agents_deleted: number;
+    memories_deleted: number;
+    settings_deleted: number;
+    size_mb: number;
+    message: string;
+  }> {
+    try {
+      return await invoke("delete_claude_project", { projectId, options });
+    } catch (error) {
+      logger.error("Failed to delete Claude project:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Deletes a specific session from a project and all associated data
+   * @param projectId - The project ID (encoded directory name)
+   * @param sessionId - The session ID (UUID)
+   * @returns Promise resolving to deletion summary
+   */
+  async deleteSession(projectId: string, sessionId: string): Promise<{
+    success: boolean;
+    session_id: string;
+    project_id: string;
+    claudio_sessions_deleted: number;
+    todos_deleted: number;
+    timelines_deleted: number;
+    size_kb: number;
+    message: string;
+  }> {
+    try {
+      return await invoke("delete_session", { projectId, sessionId });
+    } catch (error) {
+      logger.error("Failed to delete session:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Prunes old sessions based on age and minimum count to keep
+   * @param projectId - Optional project ID to limit pruning to specific project
+   * @param daysOld - Delete sessions older than this many days
+   * @param keepMin - Keep at least this many sessions (newest first)
+   * @returns Promise resolving to pruning summary
+   */
+  async pruneOldSessions(
+    projectId: string | undefined,
+    daysOld: number,
+    keepMin: number
+  ): Promise<{
+    success: boolean;
+    total_sessions_deleted: number;
+    total_size_freed_mb: number;
+    projects_processed: Array<{
+      project_id: string;
+      sessions_deleted: number;
+      size_freed_mb: number;
+    }>;
+    message: string;
+  }> {
+    try {
+      return await invoke("prune_old_sessions", { projectId, daysOld, keepMin });
+    } catch (error) {
+      logger.error("Failed to prune old sessions:", error);
+      throw error;
+    }
+  },
+
+  // === Window Management ===
+
+  /**
+   * Saves the current window state to persistence
+   */
+  async saveWindowState(state: WindowState): Promise<void> {
+    try {
+      await invoke("save_window_state", { state });
+    } catch (error) {
+      logger.error("Failed to save window state:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Loads the saved window state
+   */
+  async loadWindowState(): Promise<WindowState> {
+    try {
+      return await invoke<WindowState>("load_window_state");
+    } catch (error) {
+      logger.error("Failed to load window state:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Gets the current window state
+   */
+  async getCurrentWindowState(): Promise<WindowState> {
+    try {
+      return await invoke<WindowState>("get_current_window_state");
+    } catch (error) {
+      logger.error("Failed to get current window state:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Restores the window to the saved state
+   */
+  async restoreWindowState(): Promise<void> {
+    try {
+      await invoke("restore_window_state");
+    } catch (error) {
+      logger.error("Failed to restore window state:", error);
+      throw error;
+    }
+  },
+
+  // === System Information ===
+
+
+  // === Claudio Session Storage ===
+
+  /**
+   * Creates a new Claudio session and returns the claudio_id
+   * @param projectPath - Project path
+   * @param settings - Claude CLI settings (optional)
+   * @returns Promise resolving to the new claudio_id
+   */
+  async createClaudioSession(
+    projectPath: string,
+    settings?: ClaudioClaudeSettings
+  ): Promise<string> {
+    try {
+      return await invoke<string>("create_claudio_session", {
+        projectPath,
+        sessionId: null, // New session (not resuming)
+      });
+    } catch (error) {
+      logger.error("Failed to create Claudio session:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get Claudio session metadata
+   * @param claudioSessionId - Unique Claudio session ID  
+   * @param projectPath - Project path
+   * @returns Promise resolving to the session metadata
+   */
+  async getClaudioSession(
+    claudioSessionId: string,
+    projectPath: string
+  ): Promise<ClaudioSession> {
+    try {
+      return await invoke<ClaudioSession>("get_claudio_session", {
+        claudioSessionId,
+        projectPath
+      });
+    } catch (error) {
+      logger.error("Failed to get Claudio session:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Updates session metadata file
+   * @param claudoSessionId - Unique Claudio session ID
+   * @param projectPath - Project path
+   * @param claudeSettings - Claude CLI settings
+   * @returns Promise resolving to the created metadata
+   */
+  async createSessionMetadata(
+    sessionId: string, 
+    projectPath: string, 
+    claudeSettings: ClaudioClaudeSettings
+  ): Promise<ClaudioSession> {
+    try {
+      return await invoke<ClaudioSession>("create_session_metadata", {
+        claudoSessionId: sessionId,
+        projectPath,
+        claudeSettings
+      });
+    } catch (error) {
+      logger.error("Failed to create session metadata:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Updates session metadata
+   * @param sessionId - Session ID
+   * @param projectPath - Project path
+   * @param updates - Updated session data
+   * @returns Promise resolving to the updated session
+   */
+  async updateSessionMetadata(
+    sessionId: string,
+    projectPath: string,
+    updates: ClaudioSession
+  ): Promise<ClaudioSession> {
+    try {
+      return await invoke<ClaudioSession>("update_claudio_session", {
+        claudoSessionId: sessionId,
+        projectPath,
+        updates
+      });
+    } catch (error) {
+      logger.error("Failed to update session metadata:", error);
+      throw error;
+    }
+  },
+
+
+  /**
+   * Lists all Claudio sessions for a project
+   * @param projectPath - Project path
+   * @returns Promise resolving to array of Claudio sessions
+   */
+  async listClaudioSessions(projectPath: string): Promise<ClaudioSession[]> {
+    try {
+      return await invoke<ClaudioSession[]>("list_claudio_sessions", {
+        projectPath
+      });
+    } catch (error) {
+      logger.error("Failed to list Claudio sessions:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Deletes session metadata
+   * @param sessionId - Session ID
+   * @param projectPath - Project path
+   * @returns Promise resolving when deletion is complete
+   */
+  async deleteSessionMetadata(
+    sessionId: string,
+    projectPath: string
+  ): Promise<void> {
+    try {
+      await invoke<void>("delete_claudio_session", {
+        claudioSessionId: sessionId,
+        projectPath
+      });
+    } catch (error) {
+      logger.error("Failed to delete session metadata:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Delete a Claudio session wrapper
+   * This removes the Claudio wrapper metadata, effectively archiving the session
+   * while preserving the underlying Claude session JSONL file for history
+   * @param claudioSessionId The Claudio session ID to delete
+   * @param projectPath The project path
+   * @returns Promise resolving with deletion result details
+   */
+  async deleteClaudioSession(
+    claudioSessionId: string,
+    projectPath: string
+  ): Promise<{
+    success: boolean;
+    claudio_session_id: string;
+    project_path: string;
+    size_freed_kb: number;
+    message: string;
+  }> {
+    try {
+      return await invoke("delete_claudio_session", {
+        claudioSessionId: claudioSessionId,
+        projectPath: projectPath
+      });
+    } catch (error) {
+      logger.error("Failed to delete Claudio session:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Resume an archived session by creating a Claudio wrapper
+   * This converts an archived session back into an active Claudio session
+   * @param archivedSessionId The UUID of the archived session to resume
+   * @param projectPath The project path
+   * @returns Promise resolving with the new claudio_id
+   */
+  async resumeClaudioSession(
+    archivedSessionId: string,
+    projectPath: string
+  ): Promise<string> {
+    try {
+      return await invoke("create_claudio_session", {
+        projectPath: projectPath,
+        sessionId: archivedSessionId, // Pass the session to resume
+      });
+    } catch (error) {
+      logger.error("Failed to resume Claudio session:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Gets decorated sessions - Claude CLI sessions with optional Claudio metadata
+   * @param projectPath - Project path 
+   * @returns Promise resolving to decorated sessions
+   */
+  async getDecoratedSessions(projectPath: string): Promise<DecoratedSession[]> {
+    try {
+      // 1. Get all Claude CLI sessions (source of truth)
+      const claudeSessions = await this.getProjectSessions(projectPath);
+      
+      // 2. Get Claudio metadata for decoration
+      const claudioSessions = await this.listClaudioSessions(projectPath);
+      
+      // 3. Create lookup map for fast decoration
+      const claudioMap = new Map(
+        claudioSessions.map(session => [session.current_session?.session_id, session])
+      );
+      
+      // 4. Decorate Claude sessions with Claudio metadata
+      return claudeSessions.map(session => ({
+        ...session,
+        claudio: claudioMap.get(session.id), // undefined if not managed by Claudio
+      }));
+    } catch (error) {
+      logger.error("Failed to get decorated sessions:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Gets todo data for a specific session
+   * @param sessionId - The session ID
+   * @returns Promise resolving to the todo data
+   */
+  async getSessionTodos(sessionId: string): Promise<SessionTodoData> {
+    try {
+      return await invoke<SessionTodoData>('get_session_todos', { sessionId });
+    } catch (error) {
+      logger.error("Failed to get session todos:", error);
+      throw error;
+    }
+  }
+};

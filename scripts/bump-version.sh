@@ -19,13 +19,13 @@ echo "Bumping version to $VERSION..."
 sed -i.bak "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" package.json && rm package.json.bak
 
 # Update Cargo.toml
-sed -i.bak "s/^version = \".*\"/version = \"$VERSION\"/" src-tauri/Cargo.toml && rm src-tauri/Cargo.toml.bak
+sed -i.bak "s/^version = \".*\"/version = \"$VERSION\"/" src-backend/Cargo.toml && rm src-backend/Cargo.toml.bak
 
 # Update tauri.conf.json
-sed -i.bak "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" src-tauri/tauri.conf.json && rm src-tauri/tauri.conf.json.bak
+sed -i.bak "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" src-backend/tauri.conf.json && rm src-backend/tauri.conf.json.bak
 
 # Update Info.plist
-sed -i.bak "s/<string>.*<\/string><!-- VERSION -->/<string>$VERSION<\/string><!-- VERSION -->/" src-tauri/Info.plist && rm src-tauri/Info.plist.bak
+sed -i.bak "s/<string>.*<\/string><!-- VERSION -->/<string>$VERSION<\/string><!-- VERSION -->/" src-backend/Info.plist && rm src-backend/Info.plist.bak
 
 echo "✅ Version bumped to $VERSION in all files"
 echo ""

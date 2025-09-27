@@ -1,0 +1,9 @@
+/* === SWITCH COMPONENT === */
+/* Dynamic switch styling using CSS classes instead of inline styles */
+.switch {
+    background-color: var(--color-muted);
+}
+
+.switch-checked {
+    background-color: var(--color-primary);
+}

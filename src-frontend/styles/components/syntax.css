@@ -1,0 +1,84 @@
+/* === SYNTAX HIGHLIGHTING === */
+/* Theme-aware syntax highlighting using CSS classes instead of JS objects */
+
+/* Base syntax styles */
+.syntax-highlight {
+    color: var(--color-foreground);
+    background: transparent;
+}
+
+/* Dark theme syntax colors */
+.theme-dark .syntax-comment {
+    color: rgb(107, 114, 128);
+}
+.theme-dark .syntax-punctuation {
+    color: rgb(156, 163, 175);
+}
+.theme-dark .syntax-property {
+    color: rgb(245, 158, 11);
+} /* Amber */
+.theme-dark .syntax-tag {
+    color: rgb(139, 92, 246);
+} /* Violet */
+.theme-dark .syntax-string {
+    color: rgb(16, 185, 129);
+} /* Emerald */
+.theme-dark .syntax-function {
+    color: rgb(129, 140, 248);
+} /* Indigo */
+.theme-dark .syntax-keyword {
+    color: rgb(192, 132, 252);
+} /* Light violet */
+.theme-dark .syntax-variable {
+    color: rgb(167, 139, 250);
+} /* Light purple */
+.theme-dark .syntax-operator {
+    color: rgb(156, 163, 175);
+}
+.theme-dark .syntax-number {
+    color: rgb(251, 191, 36);
+} /* Yellow */
+.theme-dark .syntax-boolean {
+    color: rgb(248, 113, 113);
+} /* Red */
+.theme-dark .syntax-regex {
+    color: rgb(34, 197, 94);
+} /* Green */
+
+/* Light theme syntax colors */
+.theme-light .syntax-comment {
+    color: rgb(107, 114, 128);
+}
+.theme-light .syntax-punctuation {
+    color: rgb(75, 85, 99);
+}
+.theme-light .syntax-property {
+    color: rgb(217, 119, 27);
+} /* Darker amber */
+.theme-light .syntax-tag {
+    color: rgb(109, 40, 217);
+} /* Darker violet */
+.theme-light .syntax-string {
+    color: rgb(5, 150, 105);
+} /* Darker emerald */
+.theme-light .syntax-function {
+    color: rgb(67, 56, 202);
+} /* Darker indigo */
+.theme-light .syntax-keyword {
+    color: rgb(147, 51, 234);
+} /* Darker violet */
+.theme-light .syntax-variable {
+    color: rgb(124, 58, 237);
+} /* Darker purple */
+.theme-light .syntax-operator {
+    color: rgb(75, 85, 99);
+}
+.theme-light .syntax-number {
+    color: rgb(180, 83, 9);
+} /* Darker yellow */
+.theme-light .syntax-boolean {
+    color: rgb(220, 38, 38);
+} /* Darker red */
+.theme-light .syntax-regex {
+    color: rgb(21, 128, 61);
+} /* Darker green */

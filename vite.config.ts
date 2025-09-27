@@ -22,7 +22,7 @@ export default defineConfig(async () => ({
   // Path resolution
   resolve: {
     alias: {
-      "@": fileURLToPath(new URL("./src", import.meta.url)),
+      "@": fileURLToPath(new URL("./src-frontend", import.meta.url)),
     },
   },
 
@@ -43,8 +43,8 @@ export default defineConfig(async () => ({
         }
       : undefined,
     watch: {
-      // 3. tell vite to ignore watching `src-tauri`
-      ignored: ["**/src-tauri/**"],
+      // 3. tell vite to ignore watching `src-backend` and other projects
+      ignored: ["**/src-backend/**", "**/claudio-css/**", "**/src-tauri/**"],
     },
   },
 
