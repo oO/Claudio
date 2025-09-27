@@ -3,7 +3,6 @@ import { Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DebugLabel } from "@/components/ui/atoms";
 import { cn } from "@/lib/utils";
-import { logger } from "@/lib/logger";
 import { useSessionContext } from "@/contexts/SessionContext";
 
 /**
@@ -23,10 +22,6 @@ export const AssistantMessageFilter: React.FC = () => {
   const hasAssistants = assistantMessageCount > 0;
 
   const handleToggle = () => {
-    logger.log(
-      "🤖 Toggling assistant messages filter:",
-      !isAssistantFilterLast,
-    );
     toggleAssistantFilter?.();
   };
 

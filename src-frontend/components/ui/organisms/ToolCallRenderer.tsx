@@ -1,6 +1,6 @@
 import React from "react";
 import { Terminal } from "lucide-react";
-import { 
+import {
   TasksWidget,
   LSWidget,
   GlobWidget,
@@ -16,7 +16,8 @@ import {
   MultiEditWidget,
   CommandWidget,
   ExitPlanModeWidget,
-  ToolWithResultWidget
+  ToolWithResultWidget,
+  ContextWidget
 } from "@/components/tools/ToolWidgets";
 import { logger } from '@/lib/logger';
 
@@ -62,9 +63,14 @@ export const ToolCallRenderer: React.FC<ToolCallRendererProps> = ({
 
   // Handle command content
   if (commandContent) {
+    // Special handling for /context command
+    if (commandContent.commandName === '/context' && commandContent.output) {
+      return <ContextWidget output={commandContent.output} />;
+    }
+
     return (
-      <CommandWidget 
-        commandName={commandContent.commandName} 
+      <CommandWidget
+        commandName={commandContent.commandName}
         commandMessage={commandContent.commandMessage}
         commandArgs={commandContent.commandArgs}
         output={commandContent.output}

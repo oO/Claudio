@@ -31,6 +31,7 @@ pub async fn start_claude_sdk_session(
         working_directory: options.working_directory,
         session_id: options.previous_session_id,
         claudio_id: options.claudio_id, // Pass through the existing claudio_id
+        permission_mode: None, // SDK doesn't support permission mode yet
     };
     
     // Call the direct CLI function instead of the broken Node.js approach

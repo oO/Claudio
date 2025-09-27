@@ -88,7 +88,7 @@ export const useSessionHandle = (
           try {
             initialMessages = await handle.getMessages();
           } catch (err) {
-            logger.error("❌ Failed to load messages for existing session:", err);
+            logger.error("Failed to load messages for existing session:", err);
             initialMessages = [];
           }
         } else {
@@ -134,14 +134,12 @@ export const useSessionHandle = (
           });
 
           messageUnsubscribeRef.current = unsubscribe;
-          logger.info("✅ Message listener setup complete for handle:", state.handle_id);
 
           // Setup process event listener for thinking messages
           try {
-            logger.info("🔗 Setting up process event listener for handle:", state.handle_id);
             const processUnsubscribe = handle.onProcessEvent(
               (processEvent: ClaudeProcessEvent) => {
-                logger.info("📻 SessionDetail received process event:", {
+                logger.info("SessionDetail received process event:", {
                   handleId: state.handle_id,
                   status: processEvent.status.type,
                   title: processEvent.title,
@@ -156,7 +154,7 @@ export const useSessionHandle = (
                   processEvent.status.type === "Failed"
                 ) {
                   logger.info(
-                    "✅ Process completed/failed - thinking message handled by render state",
+                    "Process completed/failed - thinking message handled by render state",
                   );
                   // Note: don't set isStreaming to false here - let message updates handle that
                 }
@@ -164,12 +162,9 @@ export const useSessionHandle = (
             );
 
             // Store the unsubscribe function (we'll need to modify cleanup later)
-            logger.info(
-              "✅ Process event listener setup complete for handle:",
-              state.handle_id,
-            );
+            logger.info("All session listeners setup complete for handle:", state.handle_id);
           } catch (err) {
-            logger.error("❌ Failed to setup process event listener:", err);
+            logger.error("Failed to setup process event listener:", err);
           }
 
           // Setup listener for Claude session ready events (new session ID notifications)
@@ -198,12 +193,12 @@ export const useSessionHandle = (
             
             // Store cleanup function
             sessionUnlistenRef.current = sessionReadyUnlisten;
-            logger.info("✅ Claude session ready listener setup complete");
+            logger.info("Claude session ready listener setup complete");
           } catch (err) {
-            logger.error("❌ Failed to setup Claude session ready listener:", err);
+            logger.error("Failed to setup Claude session ready listener:", err);
           }
         } catch (err) {
-          logger.error("❌ Failed to setup message listener:", err);
+          logger.error("Failed to setup message listener:", err);
         }
       } catch (err) {
         logger.error("Failed to initialize session handle:", {
@@ -254,7 +249,7 @@ export const useSessionHandle = (
       try {
         
         if (!sessionHandle) {
-          logger.error("❌ Cannot send prompt: no session handle available");
+          logger.error("Cannot send prompt: no session handle available");
           return;
         }
         setIsStreaming(true);

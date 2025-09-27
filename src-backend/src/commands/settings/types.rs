@@ -3,7 +3,7 @@ use tokio::sync::RwLock;
 
 /// Types of settings that can be managed - CLAUDE CODE SETTINGS ONLY
 /// Claudio app settings handled separately via claudio_app_settings module
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type")]
 pub enum SettingsType {
     /// CLI Claude Code settings (multi-level precedence)

@@ -170,10 +170,10 @@ tx.commit()?;
 
 **Structured Logging:**
 ```rust
-// Use contextual information in logs
-log::info!("🔍 Looking for last message UUID {} in session {}", uuid, session_id);
-log::error!("❌ Failed to process session {}: {}", session_id, error);
-log::debug!("📊 Session metrics: messages={}, tokens={}", msg_count, tokens);
+// Keep messages short and direct, no emojis
+log::info!("Looking for last message UUID {} in session {}", uuid, session_id);
+log::error!("Failed to process session {}: {}", session_id, error);
+log::debug!("Session metrics: messages={}, tokens={}", msg_count, tokens);
 ```
 
 **Log Levels:**
@@ -181,6 +181,12 @@ log::debug!("📊 Session metrics: messages={}, tokens={}", msg_count, tokens);
 - `warn!()`: Recoverable errors, deprecations
 - `error!()`: Unrecoverable errors, failures
 - `debug!()`: Detailed execution flow, debugging data
+
+**Rules:**
+- Keep messages short and direct
+- No emojis, no ALL CAPS, no excessive punctuation
+- One success log per operation, not progress narration
+- Include essential context: what happened, why, with what data
 
 ## Performance Considerations
 

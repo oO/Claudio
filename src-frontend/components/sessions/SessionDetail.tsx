@@ -6,7 +6,7 @@ import { SESSION_TYPES } from "@/lib/sessionHandleApi";
 import { SessionProvider } from "@/contexts/SessionContext";
 import { SessionHeader } from "./SessionHeader";
 import { SessionMessages } from "./SessionMessages";
-import { PromptInput } from "./PromptInput";
+import { PromptInput } from "@/components/prompt/PromptInput";
 import { SessionLoadingState } from "./SessionLoadingState";
 import { SessionErrorState } from "./SessionErrorState";
 import { ThinkingIndicator } from "./ThinkingIndicator";
@@ -18,6 +18,7 @@ import { useStreamingState } from "@/hooks/useStreamingState";
 import { useSessionNavigation } from "@/hooks/useSessionNavigation";
 import { useThinkingScrollSync } from "@/hooks/useThinkingScrollSync";
 import type { Session } from "@/lib/api";
+import type { PermissionMode } from "@/components/prompt/PermissionModeSelector";
 
 interface SessionDetailProps {
   session: Session;
@@ -134,6 +135,33 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
 
   // All prompt submission logic is now handled by useSessionHandle hook
 
+  // Permission mode state management
+  const [permissionMode, setPermissionMode] = useState<PermissionMode>("default");
+
+  // Initialize permission mode from session state
+  React.useEffect(() => {
+    if (sessionData.sessionState?.permission_mode) {
+      setPermissionMode(sessionData.sessionState.permission_mode as PermissionMode);
+    }
+  }, [sessionData.sessionState?.permission_mode]);
+
+  // Handler to update permission mode
+  const handlePermissionModeChange = React.useCallback(async (mode: PermissionMode) => {
+    try {
+      setPermissionMode(mode);
+      // Update the session via backend
+      if (sessionData.sessionHandle) {
+        await sessionData.sessionHandle.updatePermissionMode(mode);
+      }
+    } catch (error) {
+      logger.error("Failed to update permission mode:", error);
+      // Revert on error
+      if (sessionData.sessionState?.permission_mode) {
+        setPermissionMode(sessionData.sessionState.permission_mode as PermissionMode);
+      }
+    }
+  }, [sessionData.sessionHandle, sessionData.sessionState?.permission_mode]);
+
   // Get computed values from hooks (must be before early returns for hook order)
   const { isReadOnly } = sessionData;
   const { displayableMessages, collapsedMessageUuids, totalTokens, userMessages, toolMessages, assistantMessages, systemMessages, lastInTurnCount } = messageData;
@@ -231,6 +259,8 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
               isLoading={effectiveIsStreaming}
               disabled={false}
               projectPath={projectPath}
+              permissionMode={permissionMode}
+              onPermissionModeChange={handlePermissionModeChange}
             />
           )}
         </div>

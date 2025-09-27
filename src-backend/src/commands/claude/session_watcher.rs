@@ -197,7 +197,6 @@ impl SessionWatcherManager {
                     if let Ok(mut timers) = pending_timers.lock() {
                         if let Some(existing_timer) = timers.remove(&key) {
                             existing_timer.abort();
-                            log::debug!("Cancelled existing debounce timer for {}", key);
                         }
                     }
                     
@@ -217,7 +216,6 @@ impl SessionWatcherManager {
                         
                         // After debounce period, check for session cleanup opportunities
                         if let SessionFileEvent::Modified { session_id, project_id, .. } = &session_event {
-                            log::debug!("Checking session {} in project {} for cleanup opportunities", session_id, project_id);
                             if let Err(e) = Self::check_and_cleanup_previous_sessions(session_id, project_id).await {
                                 log::error!("Failed to cleanup previous sessions: {}", e);
                             }
@@ -265,7 +263,7 @@ impl SessionWatcherManager {
     }
 
     /// Create a SessionFileEvent from a notify Event (new API)
-    fn create_session_event_from_notify(
+    pub fn create_session_event_from_notify(
         event: &Event,
         project_id: &str,
     ) -> Option<SessionFileEvent> {
@@ -283,7 +281,6 @@ impl SessionWatcherManager {
                 // Only handle native session files (claude-<session_id>.json) from hook scripts
                 // Ignore claudio wrapper files (<claudio_id>.json) to prevent circular dependencies
                 if !filename.starts_with("claude-") {
-                    log::debug!("Ignoring non-native JSON file to prevent circular dependency: {}", filename);
                     return None;
                 }
             }
@@ -414,7 +411,7 @@ impl SessionWatcherManager {
     }
 
     /// Get random thinking content (copied from claude_session_tracking.rs)
-    fn get_thinking_content() -> (String, String) {
+    pub fn get_thinking_content() -> (String, String) {
         use rand::seq::SliceRandom;
         
         let titles = vec![

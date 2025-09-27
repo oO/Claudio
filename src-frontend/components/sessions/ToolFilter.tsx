@@ -3,7 +3,6 @@ import { Drill } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DebugLabel } from "@/components/ui/atoms";
 import { cn } from "@/lib/utils";
-import { logger } from "@/lib/logger";
 import { useSessionContext } from "@/contexts/SessionContext";
 
 /**
@@ -25,12 +24,8 @@ export const ToolFilter: React.FC = () => {
 
   const handleToggle = () => {
     if (isAssistantFilterLast) {
-      logger.log(
-        "🔧 Tool filter disabled due to assistant filter being in Last mode",
-      );
       return;
     }
-    logger.log("🔧 Toggling tool messages visibility:", !isToolsVisible);
     toggleToolsVisibility?.();
   };
 

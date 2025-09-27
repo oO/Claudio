@@ -10,7 +10,7 @@ use crate::commands::session_orchestrator::{SESSION_TYPE_CLAUDIO, SESSION_TYPE_N
 use crate::paths::{claudio_home_dir, CLAUDE_PROJECTS_DIR, SESSION_FILE_EXTENSION, JSON_EXTENSION};
 
 /// Fast line counting without JSON parsing
-fn count_lines_fast(file_path: &PathBuf) -> Result<u64, std::io::Error> {
+pub fn count_lines_fast(file_path: &PathBuf) -> Result<u64, std::io::Error> {
     use std::io::{BufRead, BufReader};
     let file = fs::File::open(file_path)?;
     let reader = BufReader::new(file);

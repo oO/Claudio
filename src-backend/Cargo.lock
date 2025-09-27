@@ -634,7 +634,7 @@ dependencies = [
 
 [[package]]
 name = "claudio"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -643,6 +643,7 @@ dependencies = [
  "cocoa",
  "dirs 5.0.1",
  "env_logger",
+ "filetime",
  "futures",
  "glob",
  "libc",

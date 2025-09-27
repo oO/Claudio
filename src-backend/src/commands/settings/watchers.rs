@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Runtime};
 use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher, EventKind};
 use std::time::Duration;
 use std::path::Path;
@@ -15,8 +15,8 @@ use crate::paths::{
 };
 
 /// Coordinates file watchers for settings files across multiple projects
-pub struct SettingsWatcherCoordinator {
-    app_handle: AppHandle,
+pub struct SettingsWatcherCoordinator<R: Runtime> {
+    app_handle: AppHandle<R>,
     active_watchers: Arc<RwLock<HashMap<String, SettingsWatcher>>>,
     project_ref_counts: Arc<RwLock<HashMap<String, usize>>>,
 }
@@ -27,8 +27,8 @@ struct SettingsWatcher {
 }
 
 
-impl SettingsWatcherCoordinator {
-    pub fn new(app_handle: AppHandle) -> Self {
+impl<R: Runtime> SettingsWatcherCoordinator<R> {
+    pub fn new(app_handle: AppHandle<R>) -> Self {
         Self {
             app_handle,
             active_watchers: Arc::new(RwLock::new(HashMap::new())),

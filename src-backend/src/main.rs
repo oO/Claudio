@@ -57,6 +57,7 @@ use commands::claude_direct::{start_claude_direct_session};
 use commands::claudio_storage::{
     create_claudio_session, update_claudio_session, get_claudio_session,
     list_claudio_sessions, delete_claudio_session, cleanup_orphaned_files,
+    update_claudio_session_permission_mode,
 };
 use commands::claude_session_tracking::{
     start_claude_thinking, end_claude_thinking, get_live_claude_sessions,
@@ -377,6 +378,7 @@ fn main() {
             list_claudio_sessions,
             delete_claudio_session,
             cleanup_orphaned_files,
+            update_claudio_session_permission_mode,
             
             // Session File Watching
             start_session_watching,

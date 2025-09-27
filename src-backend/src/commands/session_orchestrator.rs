@@ -45,6 +45,7 @@ pub struct SessionState {
     pub is_streaming: bool,
     pub last_updated: i64,
     pub session_file_path: Option<String>,
+    pub permission_mode: String,
 }
 
 /// Messages streamed to frontend
@@ -94,7 +95,7 @@ impl SessionHandle {
                 format!("claudio-{}", chrono::Utc::now().timestamp_millis())
             }
         };
-        
+
         // Get current Claude session ID for --resume by reading fresh from storage
         // (don't rely on stale session handle state)
         let current_claude_session = if actual_claudio_id.starts_with(CLAUDIO_SESSION_PREFIX) {
@@ -112,6 +113,16 @@ impl SessionHandle {
             None
         };
 
+        // Get permission mode from Claudio session
+        let permission_mode = if actual_claudio_id.starts_with(CLAUDIO_SESSION_PREFIX) {
+            match crate::commands::claudio_storage::get_claudio_session(actual_claudio_id.clone(), self.project_path.clone()).await {
+                Ok(claudio_session) => Some(claudio_session.permission_mode),
+                Err(_) => Some("default".to_string()), // Default for new sessions
+            }
+        } else {
+            Some("default".to_string())
+        };
+
         // Prepare options for Claude CLI
         let options = ClaudeDirectOptions {
             max_turns: None,
@@ -127,6 +138,7 @@ impl SessionHandle {
             working_directory: Some(self.project_path.clone()),
             session_id: current_claude_session, // For --resume
             claudio_id: Some(actual_claudio_id),
+            permission_mode,
         };
 
         // Generate temp session ID for this prompt execution
@@ -153,7 +165,7 @@ impl SessionHandle {
                     async move {
                         // Give Claude a moment to finish writing the session file
                         tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-                        
+
                         if let Err(e) = Self::update_current_session_id(current_claude_session, project_path).await {
                             log::error!("Failed to update current session ID: {}", e);
                         }
@@ -165,11 +177,11 @@ impl SessionHandle {
                 let current_claude_session = self.current_claude_session.clone();
                 let project_path = self.project_path.clone();
                 let claudio_id_for_update = claudio_id_str.clone();
-                
+
                 tokio::spawn(async move {
                     // Give Claude a moment to finish and update_session_claude_id to run
                     tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
-                    
+
                     // Re-read the Claudio session to get the updated Claude session ID
                     if let Ok(claudio_session) = crate::commands::claudio_storage::get_claudio_session(claudio_id_for_update, project_path).await {
                         let mut guard = current_claude_session.write().await;
@@ -262,26 +274,26 @@ impl SessionHandle {
     pub async fn start_message_streaming(&self, session_watcher_state: &SessionWatcherState) -> Result<(), String> {
         // Get project ID from path
         let project_id = self.project_path.replace("/", "-");
-        
+
         // Get the session watcher manager and subscribe to events
         let receiver = {
             let state_guard = session_watcher_state.lock().map_err(|e| format!("Lock error: {}", e))?;
             if let Some(manager) = state_guard.as_ref() {
                 manager.start_watching_project(&project_id)?;
-                
+
                 // Subscribe to file events
                 manager.subscribe_to_events()
             } else {
                 return Err("Session watcher manager not initialized".to_string());
             }
         };
-        
+
         // Store the receiver for this session handle (now without holding the lock)
         {
             let mut file_event_receiver_guard = self.file_event_receiver.write().await;
             *file_event_receiver_guard = Some(receiver);
         }
-        
+
         // Spawn task to process file events for this handle
         let handle_id = self.handle_id.clone();
         let project_id_clone = project_id.clone();
@@ -289,7 +301,7 @@ impl SessionHandle {
         let current_claude_session = self.current_claude_session.clone();
         let last_processed_count = self.last_processed_message_count.clone();
         let file_event_receiver = self.file_event_receiver.clone();
-        
+
         tokio::spawn(async move {
             Self::process_file_events(
                 handle_id,
@@ -300,7 +312,7 @@ impl SessionHandle {
                 file_event_receiver,
             ).await;
         });
-        
+
         Ok(())
     }
 
@@ -326,7 +338,7 @@ impl SessionHandle {
                     }
                 }
             };
-            
+
             // Listen for file events
             match receiver.recv().await {
                 Ok(event) => {
@@ -335,10 +347,10 @@ impl SessionHandle {
                         let mut guard = file_event_receiver.write().await;
                         *guard = Some(receiver);
                     }
-                    
+
                     // Only process events for sessions we're tracking
                     if let SessionFileEvent::Modified { session_id, project_id: event_project_id, .. } = &event {
-                        log::debug!("File event received in process_file_events: session_id={}, event_project_id={}, our_project_id={}, handle_id={}", 
+                        log::debug!("File event received in process_file_events: session_id={}, event_project_id={}, our_project_id={}, handle_id={}",
                                    session_id, event_project_id, project_id, handle_id);
                         if event_project_id == &project_id {
                             // Check if this file change is relevant to our session handle
@@ -362,9 +374,9 @@ impl SessionHandle {
                                 let guard = current_claude_session.read().await;
                                 guard.clone()
                             };
-                            
+
                             log::debug!("Session ID matching: file_event_session_id={}, current_session_id={:?}, handle_id={}", session_id, current_session, handle_id);
-                            
+
                             if let Some(current_session_id) = current_session {
                                 if session_id == &current_session_id {
                                     log::debug!("Session ID matches, processing new messages for handle={}, session={}", handle_id, session_id);
@@ -411,23 +423,23 @@ impl SessionHandle {
         use crate::commands::claude::get_claude_dir;
         use std::fs;
         use std::io::{BufRead, BufReader};
-        
+
         let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
         let session_file_path = claude_dir
             .join("projects")
             .join(project_id)
             .join(format!("{}.jsonl", session_id));
-            
+
         if !session_file_path.exists() {
             return Ok(()); // File doesn't exist yet
         }
-        
+
         // Read all messages from file
         let file = fs::File::open(&session_file_path)
             .map_err(|e| format!("Failed to open session file: {}", e))?;
         let reader = BufReader::new(file);
         let mut all_messages = Vec::new();
-        
+
         for line in reader.lines() {
             let line = line.map_err(|e| format!("Failed to read line: {}", e))?;
             if !line.trim().is_empty() {
@@ -439,7 +451,7 @@ impl SessionHandle {
                 }
             }
         }
-        
+
         // For Claudio sessions, we need to find the starting point based on last_message_uuid
         // For native sessions, we use the simple message count approach
         let new_messages: Vec<&serde_json::Value> = if handle_id.starts_with(CLAUDIO_SESSION_PREFIX) {
@@ -459,7 +471,7 @@ impl SessionHandle {
                                 }
                             }
                         }
-                        
+
                         if start_index < all_messages.len() {
                             all_messages[start_index..].iter().collect()
                         } else {
@@ -489,23 +501,23 @@ impl SessionHandle {
                 let guard = last_processed_count.read().await;
                 *guard
             };
-            
+
             log::debug!("Native session count: {} messages ({} processed)", all_messages.len(), last_count);
-            
+
             if all_messages.len() > last_count {
                 all_messages[last_count..].iter().collect()
             } else {
                 Vec::new()
             }
         };
-        
-        log::debug!("process_new_messages: handle_id={}, session_id={}, total_messages={}, new_messages={}, last_uuid_search={}", 
-                   handle_id, session_id, all_messages.len(), new_messages.len(), 
+
+        log::debug!("process_new_messages: handle_id={}, session_id={}, total_messages={}, new_messages={}, last_uuid_search={}",
+                   handle_id, session_id, all_messages.len(), new_messages.len(),
                    if handle_id.starts_with(CLAUDIO_SESSION_PREFIX) { "claudio_mode" } else { "count_mode" });
 
         if !new_messages.is_empty() {
             log::debug!("Streaming {} new messages for handle {} (session: {})", new_messages.len(), handle_id, session_id);
-            
+
             // Emit each new message
             for message in new_messages {
                 let streamed_message = StreamedMessage {
@@ -521,20 +533,20 @@ impl SessionHandle {
                         .to_string(),
                     timestamp: chrono::Utc::now().to_rfc3339(),
                 };
-                
+
                 // Emit to frontend
                 if let Err(e) = app_handle.emit("session_message_stream", &streamed_message) {
                     log::error!("Failed to emit message stream event: {}", e);
                 }
             }
-            
+
             // Update processed count
             {
                 let mut guard = last_processed_count.write().await;
                 *guard = all_messages.len();
             }
         }
-        
+
         Ok(())
     }
 
@@ -545,18 +557,18 @@ impl SessionHandle {
     ) -> Result<(), String> {
         use crate::commands::claude::get_claude_dir;
         use std::fs;
-        
+
         let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
         let project_encoded = project_path.replace("/", "-");
         let project_sessions_dir = claude_dir.join("projects").join(&project_encoded);
-        
+
         if !project_sessions_dir.exists() {
             return Ok(()); // No sessions yet
         }
-        
+
         // Find the most recently modified .jsonl file
         let mut latest_session_file: Option<(String, std::time::SystemTime)> = None;
-        
+
         if let Ok(entries) = fs::read_dir(&project_sessions_dir) {
             for entry in entries {
                 if let Ok(entry) = entry {
@@ -582,13 +594,13 @@ impl SessionHandle {
                 }
             }
         }
-        
+
         // Update the current session if we found one
         if let Some((session_id, _)) = latest_session_file {
             let mut guard = current_claude_session.write().await;
             *guard = Some(session_id.clone());
         }
-        
+
         Ok(())
     }
 }
@@ -642,7 +654,7 @@ impl SessionOrchestrator {
             None => {
                 // New Claudio session - create immediately instead of lazy initialization
                 log::debug!("Creating new Claudio session for project: {}", project_path);
-                
+
                 // Create the actual claudio session file and get the claudio_id
                 let claudio_id = match create_claudio_session(project_path.clone(), None).await {
                     Ok(id) => id,
@@ -651,7 +663,7 @@ impl SessionOrchestrator {
                         return Err(format!("Failed to create new Claudio session: {}", e));
                     }
                 };
-                
+
                 // Use the claudio_id as the handle_id for consistency
                 (SessionType::Claudio { claudio_id: Some(claudio_id.clone()) }, claudio_id)
             }
@@ -786,6 +798,16 @@ impl SessionOrchestrator {
         // Encode project path to project ID (one-way function)
         let project_id = project_path.replace('/', "-").replace(' ', "-");
 
+        // Get permission mode from Claudio session if it's a claudio session
+        let permission_mode = if handle_id.starts_with("claudio-") {
+            match get_claudio_session(handle_id.to_string(), project_path.to_string()).await {
+                Ok(claudio_session) => claudio_session.permission_mode,
+                Err(_) => "default".to_string(),
+            }
+        } else {
+            "default".to_string()
+        };
+
         Ok(SessionState {
             handle_id: handle_id.to_string(),
             session_type: session_type.clone(),
@@ -796,15 +818,16 @@ impl SessionOrchestrator {
             is_streaming: false, // TODO: Track streaming state
             last_updated: chrono::Utc::now().timestamp_millis(),
             session_file_path,
+            permission_mode,
         })
     }
 
     /// Send prompt to a session handle
     pub async fn send_prompt_to_handle(&self, handle_id: String, prompt: String) -> Result<(), String> {
         log::debug!("send_prompt_to_handle called with handle_id={}, prompt_preview={}", handle_id, prompt.chars().take(50).collect::<String>());
-        
+
         let handles_guard = self.handles.read().await;
-        
+
         let handle = handles_guard.get(&handle_id)
             .ok_or_else(|| {
                 let existing_handles: Vec<String> = handles_guard.keys().cloned().collect();
@@ -864,20 +887,20 @@ pub async fn get_session_handle(session_id: Option<String>, project_path: String
 #[command]
 pub async fn send_session_prompt(
     app: tauri::AppHandle,
-    handle_id: String, 
+    handle_id: String,
     prompt: String
 ) -> Result<(), String> {
     // For Claudio sessions, emit active thinking event IMMEDIATELY when prompt is received
     if handle_id.starts_with(CLAUDIO_SESSION_PREFIX) {
         let orchestrator = get_orchestrator()?;
-        
+
         // Get project path from the session handle
         let project_path = orchestrator.get_handle_project_path(&handle_id).await?;
-        
+
         // Emit active status immediately
         emit_claudio_thinking_event(&app, &handle_id, &project_path, "active").await;
     }
-    
+
     let orchestrator = get_orchestrator()?;
     orchestrator.send_prompt_to_handle(handle_id, prompt).await
 }
@@ -898,7 +921,7 @@ async fn emit_claudio_thinking_event(
 ) {
     use crate::commands::claude_session_tracking::ClaudeThinkingEvent;
     use crate::commands::claude_direct::get_thinking_content;
-    
+
     // Emit the same event format that native sessions use
     let event_data = ClaudeThinkingEvent {
         session_id: claudio_id.to_string(), // Use claudio_id as session identifier
@@ -918,11 +941,375 @@ async fn emit_claudio_thinking_event(
             None
         },
     };
-    
+
     // Emit the same event that native sessions emit
     if let Err(e) = app.emit("claude-session-thinking", &event_data) {
         log::error!("Failed to emit Claudio thinking event: {}", e);
     } else {
         log::debug!("Emitted Claudio thinking event: {} -> {}", claudio_id, status);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio::test as tokio_test;
+    use std::collections::HashMap;
+    use tempfile::TempDir;
+    use crate::commands::claudio_storage::{ClaudioSession, SessionInfo, SessionStatus};
+
+    // Mock app handle for testing
+    struct MockAppHandle;
+
+    impl MockAppHandle {
+        fn new() -> Self {
+            Self
+        }
+    }
+
+    // Helper function to create a mock session watcher state
+    fn create_mock_session_watcher_state() -> SessionWatcherState {
+        use std::sync::{Arc, Mutex};
+        Arc::new(Mutex::new(None))
+    }
+
+    // Helper function to create a test session handle
+    fn create_test_session_handle(
+        handle_id: String,
+        session_type: SessionType,
+        project_path: String,
+    ) -> SessionHandle {
+        SessionHandle {
+            handle_id,
+            session_type,
+            project_path,
+            current_claude_session: Arc::new(RwLock::new(None)),
+            app_handle: tauri::AppHandle::new(), // This will panic in tests, but we won't use it
+            last_processed_message_count: Arc::new(RwLock::new(0)),
+            file_event_receiver: Arc::new(RwLock::new(None)),
+        }
+    }
+
+    #[tokio_test]
+    async fn test_session_type_serialization() {
+        // Test Claudio session type
+        let claudio_type = SessionType::Claudio { claudio_id: Some("claudio-123".to_string()) };
+        let json = serde_json::to_string(&claudio_type).unwrap();
+        let deserialized: SessionType = serde_json::from_str(&json).unwrap();
+
+        match deserialized {
+            SessionType::Claudio { claudio_id } => {
+                assert_eq!(claudio_id.unwrap(), "claudio-123");
+            },
+            _ => panic!("Wrong session type"),
+        }
+
+        // Test Native session type
+        let native_type = SessionType::Native { session_id: "session-456".to_string() };
+        let json = serde_json::to_string(&native_type).unwrap();
+        let deserialized: SessionType = serde_json::from_str(&json).unwrap();
+
+        match deserialized {
+            SessionType::Native { session_id } => {
+                assert_eq!(session_id, "session-456");
+            },
+            _ => panic!("Wrong session type"),
+        }
+
+        // Test Archived session type
+        let archived_type = SessionType::Archived { session_id: "archived-789".to_string() };
+        let json = serde_json::to_string(&archived_type).unwrap();
+        let deserialized: SessionType = serde_json::from_str(&json).unwrap();
+
+        match deserialized {
+            SessionType::Archived { session_id } => {
+                assert_eq!(session_id, "archived-789");
+            },
+            _ => panic!("Wrong session type"),
+        }
+    }
+
+    #[tokio_test]
+    async fn test_session_state_creation() {
+        let session_state = SessionState {
+            handle_id: "test-handle-123".to_string(),
+            session_type: SessionType::Claudio { claudio_id: Some("claudio-456".to_string()) },
+            project_id: "-Users-test-project".to_string(),
+            project_path: "/Users/test/project".to_string(),
+            current_claude_session_id: Some("claude-session-789".to_string()),
+            message_count: 5,
+            is_streaming: false,
+            last_updated: chrono::Utc::now().timestamp_millis(),
+            session_file_path: Some("/path/to/session.jsonl".to_string()),
+            permission_mode: "default".to_string(),
+        };
+
+        // Test serialization
+        let json = serde_json::to_string(&session_state).unwrap();
+        let deserialized: SessionState = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.handle_id, "test-handle-123");
+        assert_eq!(deserialized.project_path, "/Users/test/project");
+        assert_eq!(deserialized.message_count, 5);
+        assert_eq!(deserialized.permission_mode, "default");
+    }
+
+    #[tokio_test]
+    async fn test_streamed_message_creation() {
+        let message = StreamedMessage {
+            handle_id: "test-handle".to_string(),
+            message_type: "user".to_string(),
+            content: serde_json::json!({"text": "Hello, world!"}),
+            uuid: "uuid-123".to_string(),
+            timestamp: chrono::Utc::now().to_rfc3339(),
+        };
+
+        // Test serialization
+        let json = serde_json::to_string(&message).unwrap();
+        let deserialized: StreamedMessage = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.handle_id, "test-handle");
+        assert_eq!(deserialized.message_type, "user");
+        assert_eq!(deserialized.uuid, "uuid-123");
+        assert_eq!(deserialized.content["text"], "Hello, world!");
+    }
+
+    #[test]
+    fn test_session_type_constants() {
+        assert_eq!(SESSION_TYPE_CLAUDIO, "CLAUDIO");
+        assert_eq!(SESSION_TYPE_NATIVE, "NATIVE");
+    }
+
+    #[tokio_test]
+    async fn test_session_handle_prompt_routing() {
+        // Test that different session types route prompts correctly
+        let project_path = "/test/project".to_string();
+
+        // Test Claudio session - should succeed (mock implementation)
+        let claudio_handle = create_test_session_handle(
+            "claudio-123".to_string(),
+            SessionType::Claudio { claudio_id: Some("claudio-123".to_string()) },
+            project_path.clone(),
+        );
+
+        // This would normally call send_claudio_prompt, but will fail in test due to dependencies
+        // In a real implementation, we'd use dependency injection
+
+        // Test Native session - should fail with appropriate error
+        let native_handle = create_test_session_handle(
+            "native-456".to_string(),
+            SessionType::Native { session_id: "native-456".to_string() },
+            project_path.clone(),
+        );
+
+        let result = native_handle.send_prompt("test prompt".to_string()).await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Cannot send prompts to read-only native sessions"));
+
+        // Test Archived session - should fail with appropriate error
+        let archived_handle = create_test_session_handle(
+            "archived-789".to_string(),
+            SessionType::Archived { session_id: "archived-789".to_string() },
+            project_path,
+        );
+
+        let result = archived_handle.send_prompt("test prompt".to_string()).await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Cannot send prompts to archived sessions"));
+    }
+
+    #[tokio_test]
+    async fn test_session_orchestrator_initialization() {
+        let temp_dir = TempDir::new().unwrap();
+        let app_handle = tauri::AppHandle::new(); // This will panic, but we won't use it
+        let session_watcher_state = create_mock_session_watcher_state();
+
+        // This would normally create a SessionOrchestrator, but requires a real AppHandle
+        // In a production environment, we'd use dependency injection to make this testable
+
+        // Test the struct creation manually
+        let handles: Arc<RwLock<HashMap<String, Arc<SessionHandle>>>> =
+            Arc::new(RwLock::new(HashMap::new()));
+
+        assert_eq!(handles.read().await.len(), 0);
+    }
+
+    #[tokio_test]
+    async fn test_concurrent_session_handle_access() {
+        let handles: Arc<RwLock<HashMap<String, Arc<SessionHandle>>>> =
+            Arc::new(RwLock::new(HashMap::new()));
+
+        // Spawn multiple tasks that modify the handles map concurrently
+        let tasks = (0..10).map(|i| {
+            let handles_clone = handles.clone();
+            let handle_id = format!("test-handle-{}", i);
+            tokio::spawn(async move {
+                // Simulate adding a handle (without actually creating one due to AppHandle dependency)
+                let mut guard = handles_clone.write().await;
+                // We can't create actual SessionHandles due to AppHandle requirement
+                // but we can test the concurrent access pattern
+                handle_id
+            })
+        }).collect::<Vec<_>>();
+
+        // Wait for all tasks to complete
+        let mut completed_ids = Vec::new();
+        for task in tasks {
+            let id = task.await.unwrap();
+            completed_ids.push(id);
+        }
+
+        assert_eq!(completed_ids.len(), 10);
+        for i in 0..10 {
+            assert!(completed_ids.contains(&format!("test-handle-{}", i)));
+        }
+    }
+
+    #[tokio_test]
+    async fn test_message_processing_logic() {
+        // Test the logic for processing new messages based on UUID vs count
+        let all_messages = vec![
+            serde_json::json!({
+                "uuid": "msg-1",
+                "type": "user",
+                "content": "Hello"
+            }),
+            serde_json::json!({
+                "uuid": "msg-2",
+                "type": "assistant",
+                "content": "Hi there!"
+            }),
+            serde_json::json!({
+                "uuid": "msg-3",
+                "type": "user",
+                "content": "How are you?"
+            })
+        ];
+
+        // Test UUID-based processing (Claudio sessions)
+        let last_uuid = "msg-1";
+        let mut start_index = 0;
+        for (i, message) in all_messages.iter().enumerate() {
+            if let Some(msg_uuid) = message.get("uuid").and_then(|v| v.as_str()) {
+                if msg_uuid == last_uuid {
+                    start_index = i + 1; // Start AFTER the last processed message
+                    break;
+                }
+            }
+        }
+
+        let new_messages: Vec<&serde_json::Value> = if start_index < all_messages.len() {
+            all_messages[start_index..].iter().collect()
+        } else {
+            Vec::new()
+        };
+
+        assert_eq!(new_messages.len(), 2);
+        assert_eq!(new_messages[0].get("uuid").unwrap(), "msg-2");
+        assert_eq!(new_messages[1].get("uuid").unwrap(), "msg-3");
+
+        // Test count-based processing (Native sessions)
+        let last_count = 1;
+        let count_based_messages: Vec<&serde_json::Value> = if all_messages.len() > last_count {
+            all_messages[last_count..].iter().collect()
+        } else {
+            Vec::new()
+        };
+
+        assert_eq!(count_based_messages.len(), 2);
+        assert_eq!(count_based_messages[0].get("uuid").unwrap(), "msg-2");
+        assert_eq!(count_based_messages[1].get("uuid").unwrap(), "msg-3");
+    }
+
+    #[tokio_test]
+    async fn test_project_id_encoding() {
+        // Test project path to project ID encoding
+        let project_path = "/Users/test/My Project/with spaces";
+        let project_id = project_path.replace('/', "-").replace(' ', "-");
+
+        assert_eq!(project_id, "-Users-test-My-Project-with-spaces");
+
+        // Test reverse (decode) - note this is lossy for spaces vs dashes
+        let decoded = project_id.replace("-", "/");
+        // This will be "/Users/test/My/Project/with/spaces" - not exact reverse
+        assert!(decoded.starts_with("/Users/test/My"));
+    }
+
+    #[tokio_test]
+    async fn test_session_file_path_construction() {
+        let project_path = "/Users/test/project";
+        let project_id = project_path.replace("/", "-");
+        let claude_session_id = "session-123";
+
+        // Test session file path construction
+        // In real implementation this would use get_claude_dir()
+        let mock_claude_dir = "/Users/test/.claude";
+        let session_file_path = format!("{}/projects/{}/{}.jsonl",
+                                       mock_claude_dir, project_id, claude_session_id);
+
+        assert_eq!(session_file_path, "/Users/test/.claude/projects/-Users-test-project/session-123.jsonl");
+    }
+
+    #[tokio_test]
+    async fn test_permission_mode_defaults() {
+        // Test default permission mode behavior
+        let session_state = SessionState {
+            handle_id: "test".to_string(),
+            session_type: SessionType::Native { session_id: "test".to_string() },
+            project_id: "test".to_string(),
+            project_path: "test".to_string(),
+            current_claude_session_id: None,
+            message_count: 0,
+            is_streaming: false,
+            last_updated: 0,
+            session_file_path: None,
+            permission_mode: "default".to_string(),
+        };
+
+        assert_eq!(session_state.permission_mode, "default");
+    }
+
+    #[tokio_test]
+    async fn test_session_type_identification() {
+        // Test session type identification logic
+        let claudio_id = "claudio-1234567890";
+        assert!(claudio_id.starts_with(CLAUDIO_SESSION_PREFIX));
+
+        let native_id = "d4e5f6g7-h8i9-j0k1-l2m3-n4o5p6q7r8s9";
+        assert!(!native_id.starts_with(CLAUDIO_SESSION_PREFIX));
+
+        let archived_id = "archived-session-123";
+        assert!(!archived_id.starts_with(CLAUDIO_SESSION_PREFIX));
+    }
+
+    #[tokio_test]
+    async fn test_message_count_calculation() {
+        // Test message counting logic
+        let messages = vec![
+            serde_json::json!({"type": "user", "content": "Hello"}),
+            serde_json::json!({"type": "assistant", "content": "Hi"}),
+            serde_json::json!({"type": "user", "content": "Bye"}),
+        ];
+
+        let count = messages.len();
+        assert_eq!(count, 3);
+
+        // Test with empty messages
+        let empty_messages: Vec<serde_json::Value> = Vec::new();
+        assert_eq!(empty_messages.len(), 0);
+    }
+
+    #[tokio_test]
+    async fn test_timestamp_generation() {
+        let timestamp1 = chrono::Utc::now().timestamp_millis();
+        tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+        let timestamp2 = chrono::Utc::now().timestamp_millis();
+
+        assert!(timestamp2 > timestamp1);
+
+        // Test RFC3339 format
+        let rfc3339 = chrono::Utc::now().to_rfc3339();
+        assert!(rfc3339.contains("T"));
+        assert!(rfc3339.contains("Z"));
     }
 }

@@ -36,6 +36,7 @@ export interface SessionState {
   is_streaming: boolean;
   last_updated: number;
   session_file_path: string | null;
+  permission_mode: string;
 }
 
 /**
@@ -153,6 +154,26 @@ export class SessionHandle {
       logger.error('Failed to send prompt:', error);
       // Remove execution lock on error
       SessionHandleManager.removeExecutionLock(this.handleId, this.projectPath);
+      throw error;
+    }
+  }
+
+  /**
+   * Update the permission mode for this session
+   */
+  async updatePermissionMode(permissionMode: string): Promise<void> {
+    try {
+      logger.info('Updating permission mode for session:', permissionMode);
+
+      await invoke('update_claudio_session_permission_mode', {
+        claudioId: this.handleId,
+        projectPath: this.projectPath,
+        permissionMode,
+      });
+
+      logger.info('Permission mode updated successfully');
+    } catch (error) {
+      logger.error('Failed to update permission mode:', error);
       throw error;
     }
   }

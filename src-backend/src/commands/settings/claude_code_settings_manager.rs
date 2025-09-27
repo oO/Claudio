@@ -17,7 +17,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tauri::{command, AppHandle, Emitter};
+use tauri::{command, AppHandle, Emitter, Runtime};
 use uuid::Uuid;
 use chrono;
 
@@ -28,15 +28,15 @@ use super::watchers::SettingsWatcherCoordinator;
 
 /// Main Claude Code settings manager with handle-based access and file watchers
 /// Manages shared .claude/ configuration files with multi-level precedence
-pub struct ClaudeCodeManager {
+pub struct ClaudeCodeManager<R: Runtime> {
     handles: Arc<RwLock<HashMap<String, Arc<SettingsHandle>>>>,
-    app_handle: AppHandle,
+    app_handle: AppHandle<R>,
 
     // Claude Code settings manager with file watchers
-    claudecode_manager: Arc<ClaudeCodeSettingsManager>,
+    claudecode_manager: Arc<ClaudeCodeSettingsManager<R>>,
 
     // Settings-specific watchers
-    watcher_coordinator: Arc<SettingsWatcherCoordinator>,
+    watcher_coordinator: Arc<SettingsWatcherCoordinator<R>>,
 
     // Multiple projects can be active simultaneously
     active_projects: Arc<RwLock<HashMap<String, SettingsProjectContext>>>,
@@ -49,8 +49,8 @@ struct SettingsProjectContext {
     last_accessed: std::time::Instant,
 }
 
-impl ClaudeCodeManager {
-    pub fn new(app_handle: AppHandle) -> Self {
+impl<R: Runtime> ClaudeCodeManager<R> {
+    pub fn new(app_handle: AppHandle<R>) -> Self {
         Self {
             handles: Arc::new(RwLock::new(HashMap::new())),
             app_handle: app_handle.clone(),
@@ -255,7 +255,9 @@ impl ClaudeCodeManager {
 
 // Global Claude Code settings manager instance
 use std::sync::OnceLock;
-static GLOBAL_CLAUDE_CODE_MANAGER: OnceLock<Arc<ClaudeCodeManager>> = OnceLock::new();
+
+type ClaudeCodeManagerType = ClaudeCodeManager<tauri::Wry>;
+static GLOBAL_CLAUDE_CODE_MANAGER: OnceLock<Arc<ClaudeCodeManagerType>> = OnceLock::new();
 
 pub fn initialize_claude_code_settings_manager(app_handle: AppHandle) {
     let manager = Arc::new(ClaudeCodeManager::new(app_handle));
@@ -264,7 +266,7 @@ pub fn initialize_claude_code_settings_manager(app_handle: AppHandle) {
     }
 }
 
-pub fn get_claude_code_settings_manager() -> Result<Arc<ClaudeCodeManager>, String> {
+pub fn get_claude_code_settings_manager() -> Result<Arc<ClaudeCodeManagerType>, String> {
     GLOBAL_CLAUDE_CODE_MANAGER
         .get()
         .ok_or_else(|| "ClaudeCodeManager not initialized".to_string())
@@ -315,4 +317,410 @@ pub async fn update_setting_for_handle(
 pub async fn destroy_settings_handle(handle_id: String) -> Result<(), String> {
     let manager = get_claude_code_settings_manager()?;
     manager.destroy_handle(handle_id).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+    use tauri::test::mock_app;
+    use std::fs;
+    use tokio::time::{sleep, Duration};
+
+    /// Helper to create test manager and app
+    async fn create_test_setup() -> (Arc<ClaudeCodeManager>, TempDir) {
+        let app = mock_app();
+        let manager = Arc::new(ClaudeCodeManager::new(app.handle().clone()));
+        let temp_dir = TempDir::new().unwrap();
+        (manager, temp_dir)
+    }
+
+    /// Helper to setup temp settings files
+    fn setup_settings_file(path: &std::path::Path, content: &str) {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).unwrap();
+        }
+        fs::write(path, content).unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_handle_creation_and_destruction() {
+        let (manager, temp_dir) = create_test_setup().await;
+        let project_path = temp_dir.path().to_str().unwrap();
+
+        // Create handle
+        let state = manager.get_settings_handle(Some(project_path.to_string())).await.unwrap();
+        assert!(state.handle_id.starts_with("settings-"));
+        assert_eq!(state.settings_type, SettingsType::ClaudeCode);
+        assert_eq!(state.project_path, Some(project_path.to_string()));
+
+        // Verify handle is stored
+        {
+            let handles = manager.handles.read().await;
+            assert!(handles.contains_key(&state.handle_id));
+        }
+
+        // Destroy handle
+        manager.destroy_handle(state.handle_id.clone()).await.unwrap();
+
+        // Verify handle is removed
+        {
+            let handles = manager.handles.read().await;
+            assert!(!handles.contains_key(&state.handle_id));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_settings_update_through_handle() {
+        let (manager, temp_dir) = create_test_setup().await;
+        let project_path = temp_dir.path().to_str().unwrap();
+
+        // Create handle
+        let state = manager.get_settings_handle(Some(project_path.to_string())).await.unwrap();
+
+        // Update setting through handle
+        manager.update_setting(
+            state.handle_id.clone(),
+            "model".to_string(),
+            serde_json::Value::String("opus".to_string()),
+            Some(SettingsLevel::Project)
+        ).await.unwrap();
+
+        // Verify setting was updated
+        let settings = manager.get_settings_for_handle(state.handle_id).await.unwrap();
+        assert_eq!(settings["effective"]["model"], "opus");
+    }
+
+    #[tokio::test]
+    async fn test_multiple_handles_same_project() {
+        let (manager, temp_dir) = create_test_setup().await;
+        let project_path = temp_dir.path().to_str().unwrap();
+
+        // Create multiple handles for same project
+        let state1 = manager.get_settings_handle(Some(project_path.to_string())).await.unwrap();
+        let state2 = manager.get_settings_handle(Some(project_path.to_string())).await.unwrap();
+
+        // Both should be different handles
+        assert_ne!(state1.handle_id, state2.handle_id);
+        assert_eq!(state1.project_path, state2.project_path);
+
+        // Update through one handle
+        manager.update_setting(
+            state1.handle_id.clone(),
+            "model".to_string(),
+            serde_json::Value::String("sonnet".to_string()),
+            Some(SettingsLevel::Project)
+        ).await.unwrap();
+
+        // Both handles should see the update
+        let settings1 = manager.get_settings_for_handle(state1.handle_id).await.unwrap();
+        let settings2 = manager.get_settings_for_handle(state2.handle_id).await.unwrap();
+
+        assert_eq!(settings1["effective"]["model"], "sonnet");
+        assert_eq!(settings2["effective"]["model"], "sonnet");
+    }
+
+    #[tokio::test]
+    async fn test_project_context_management() {
+        let (manager, temp_dir) = create_test_setup().await;
+        let project_path = temp_dir.path().to_str().unwrap();
+
+        // Initially no project context
+        {
+            let projects = manager.active_projects.read().await;
+            assert!(projects.is_empty());
+        }
+
+        // Create first handle
+        let state1 = manager.get_settings_handle(Some(project_path.to_string())).await.unwrap();
+
+        // Should create project context
+        {
+            let projects = manager.active_projects.read().await;
+            let context = projects.get(project_path).unwrap();
+            assert_eq!(context.ref_count, 1);
+            assert_eq!(context.handle_ids.len(), 1);
+            assert!(context.handle_ids.contains(&state1.handle_id));
+        }
+
+        // Create second handle
+        let state2 = manager.get_settings_handle(Some(project_path.to_string())).await.unwrap();
+
+        // Should update project context
+        {
+            let projects = manager.active_projects.read().await;
+            let context = projects.get(project_path).unwrap();
+            assert_eq!(context.ref_count, 2);
+            assert_eq!(context.handle_ids.len(), 2);
+            assert!(context.handle_ids.contains(&state1.handle_id));
+            assert!(context.handle_ids.contains(&state2.handle_id));
+        }
+
+        // Destroy first handle
+        manager.destroy_handle(state1.handle_id.clone()).await.unwrap();
+
+        // Should update but not remove project context
+        {
+            let projects = manager.active_projects.read().await;
+            let context = projects.get(project_path).unwrap();
+            assert_eq!(context.ref_count, 1);
+            assert_eq!(context.handle_ids.len(), 1);
+            assert!(!context.handle_ids.contains(&state1.handle_id));
+            assert!(context.handle_ids.contains(&state2.handle_id));
+        }
+
+        // Destroy second handle
+        manager.destroy_handle(state2.handle_id).await.unwrap();
+
+        // Should remove project context completely
+        {
+            let projects = manager.active_projects.read().await;
+            assert!(!projects.contains_key(project_path));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_multiple_projects() {
+        let (manager, temp_dir) = create_test_setup().await;
+        let project1_path = temp_dir.path().join("project1").to_str().unwrap().to_string();
+        let project2_path = temp_dir.path().join("project2").to_str().unwrap().to_string();
+
+        // Create handles for different projects
+        let state1 = manager.get_settings_handle(Some(project1_path.clone())).await.unwrap();
+        let state2 = manager.get_settings_handle(Some(project2_path.clone())).await.unwrap();
+
+        // Both projects should be tracked
+        {
+            let projects = manager.active_projects.read().await;
+            assert!(projects.contains_key(&project1_path));
+            assert!(projects.contains_key(&project2_path));
+        }
+
+        // Update settings in each project
+        manager.update_setting(
+            state1.handle_id.clone(),
+            "model".to_string(),
+            serde_json::Value::String("project1-model".to_string()),
+            Some(SettingsLevel::Project)
+        ).await.unwrap();
+
+        manager.update_setting(
+            state2.handle_id.clone(),
+            "model".to_string(),
+            serde_json::Value::String("project2-model".to_string()),
+            Some(SettingsLevel::Project)
+        ).await.unwrap();
+
+        // Settings should be isolated
+        let settings1 = manager.get_settings_for_handle(state1.handle_id).await.unwrap();
+        let settings2 = manager.get_settings_for_handle(state2.handle_id).await.unwrap();
+
+        assert_eq!(settings1["effective"]["model"], "project1-model");
+        assert_eq!(settings2["effective"]["model"], "project2-model");
+    }
+
+    #[tokio::test]
+    async fn test_global_settings_handle() {
+        let (manager, _temp_dir) = create_test_setup().await;
+
+        // Create global handle (no project path)
+        let state = manager.get_settings_handle(None).await.unwrap();
+        assert_eq!(state.project_path, None);
+
+        // Update global setting
+        manager.update_setting(
+            state.handle_id.clone(),
+            "global_setting".to_string(),
+            serde_json::Value::String("global_value".to_string()),
+            Some(SettingsLevel::Global)
+        ).await.unwrap();
+
+        // Verify global setting
+        let settings = manager.get_settings_for_handle(state.handle_id).await.unwrap();
+        assert_eq!(settings["effective"]["global_setting"], "global_value");
+    }
+
+    #[tokio::test]
+    async fn test_handle_validation() {
+        let (manager, temp_dir) = create_test_setup().await;
+        let project_path = temp_dir.path().to_str().unwrap();
+
+        // Test invalid handle ID
+        let result = manager.get_settings_for_handle("invalid-handle".to_string()).await;
+        assert!(result.is_err());
+        assert!(result.err().unwrap().contains("Settings handle not found"));
+
+        // Test update with invalid handle
+        let result = manager.update_setting(
+            "invalid-handle".to_string(),
+            "model".to_string(),
+            serde_json::Value::String("test".to_string()),
+            Some(SettingsLevel::Project)
+        ).await;
+        assert!(result.is_err());
+        assert!(result.err().unwrap().contains("Settings handle not found"));
+
+        // Test destroy invalid handle
+        let result = manager.destroy_handle("invalid-handle".to_string()).await;
+        assert!(result.is_ok()); // Should not error, just be a no-op
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_handle_operations() {
+        let (manager, temp_dir) = create_test_setup().await;
+        let project_path = temp_dir.path().to_str().unwrap();
+
+        let mut handles = vec![];
+
+        // Create multiple handles concurrently
+        for i in 0..10 {
+            let manager_clone = manager.clone();
+            let project_path_clone = project_path.to_string();
+
+            let handle = tokio::spawn(async move {
+                let state = manager_clone.get_settings_handle(Some(project_path_clone)).await.unwrap();
+
+                // Update a unique setting
+                manager_clone.update_setting(
+                    state.handle_id.clone(),
+                    format!("setting_{}", i),
+                    serde_json::Value::String(format!("value_{}", i)),
+                    Some(SettingsLevel::Project)
+                ).await.unwrap();
+
+                state.handle_id
+            });
+            handles.push(handle);
+        }
+
+        // Wait for all operations to complete
+        let mut handle_ids = vec![];
+        for handle in handles {
+            let handle_id = handle.await.unwrap();
+            handle_ids.push(handle_id);
+        }
+
+        // Verify all settings were applied
+        let first_handle = &handle_ids[0];
+        let settings = manager.get_settings_for_handle(first_handle.clone()).await.unwrap();
+
+        for i in 0..10 {
+            assert_eq!(
+                settings["effective"][format!("setting_{}", i)],
+                format!("value_{}", i)
+            );
+        }
+
+        // Clean up all handles
+        for handle_id in handle_ids {
+            manager.destroy_handle(handle_id).await.unwrap();
+        }
+
+        // Project context should be cleaned up
+        {
+            let projects = manager.active_projects.read().await;
+            assert!(!projects.contains_key(project_path));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_timestamp_updates() {
+        let (manager, temp_dir) = create_test_setup().await;
+        let project_path = temp_dir.path().to_str().unwrap();
+
+        // Create handle
+        let state = manager.get_settings_handle(Some(project_path.to_string())).await.unwrap();
+        let initial_timestamp = state.last_updated;
+
+        // Wait a bit
+        sleep(Duration::from_millis(10)).await;
+
+        // Update setting
+        manager.update_setting(
+            state.handle_id.clone(),
+            "model".to_string(),
+            serde_json::Value::String("test".to_string()),
+            Some(SettingsLevel::Project)
+        ).await.unwrap();
+
+        // Get handle again to check timestamp
+        let handle = {
+            let handles = manager.handles.read().await;
+            handles.get(&state.handle_id).unwrap().clone()
+        };
+
+        let updated_timestamp = {
+            let timestamp = handle.last_updated.read().await;
+            *timestamp
+        };
+
+        // Timestamp should be updated
+        assert!(updated_timestamp > initial_timestamp);
+    }
+
+    #[tokio::test]
+    async fn test_settings_level_defaulting() {
+        let (manager, temp_dir) = create_test_setup().await;
+        let project_path = temp_dir.path().to_str().unwrap();
+
+        // Create handle
+        let state = manager.get_settings_handle(Some(project_path.to_string())).await.unwrap();
+
+        // Update setting without specifying level (should default to Project)
+        manager.update_setting(
+            state.handle_id.clone(),
+            "model".to_string(),
+            serde_json::Value::String("default-level".to_string()),
+            None
+        ).await.unwrap();
+
+        // Verify setting was applied at project level
+        let settings = manager.get_settings_for_handle(state.handle_id).await.unwrap();
+        assert_eq!(settings["effective"]["model"], "default-level");
+        assert_eq!(settings["layers"]["project"]["model"], "default-level");
+    }
+
+    #[tokio::test]
+    async fn test_watcher_coordination() {
+        let (manager, temp_dir) = create_test_setup().await;
+        let project_path = temp_dir.path().to_str().unwrap();
+
+        // Create handle - should start watchers
+        let state = manager.get_settings_handle(Some(project_path.to_string())).await.unwrap();
+
+        // Verify project context was created
+        {
+            let projects = manager.active_projects.read().await;
+            assert!(projects.contains_key(project_path));
+        }
+
+        // Create second handle for same project - should not duplicate watchers
+        let state2 = manager.get_settings_handle(Some(project_path.to_string())).await.unwrap();
+
+        // Verify ref count increased
+        {
+            let projects = manager.active_projects.read().await;
+            let context = projects.get(project_path).unwrap();
+            assert_eq!(context.ref_count, 2);
+        }
+
+        // Destroy first handle
+        manager.destroy_handle(state.handle_id).await.unwrap();
+
+        // Context should remain (still has one handle)
+        {
+            let projects = manager.active_projects.read().await;
+            let context = projects.get(project_path).unwrap();
+            assert_eq!(context.ref_count, 1);
+        }
+
+        // Destroy second handle
+        manager.destroy_handle(state2.handle_id).await.unwrap();
+
+        // Context should be completely removed
+        {
+            let projects = manager.active_projects.read().await;
+            assert!(!projects.contains_key(project_path));
+        }
+    }
 }

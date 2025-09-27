@@ -12,7 +12,7 @@ type: brief description (vX.X.X)
 - Bullet point describing change 1
 - Bullet point describing change 2
 
-Designed with ❤️ by oO. Coded with ✨ by Claude Sonnet 4
+Designed with ❤️ by oO. Coded with ✨ by Claude Opus 4.1
 Co-authored-by: Claude.AI <noreply@anthropic.com>
 ```
 
@@ -79,7 +79,6 @@ Claudio is a **Claude Code Native Agent Manager** built on Tauri (Rust backend +
 - **`commands/agents.rs`** - Agent CRUD operations and execution management
 - **`commands/usage.rs`** - Usage analytics and session statistics
 - **`commands/mcp.rs`** - Model Context Protocol server management
-- **`checkpoint/`** - Session checkpoint management and timeline features
 
 ### Frontend Component Architecture
 Components follow entity-based organization with Atomic Design patterns:
@@ -103,11 +102,18 @@ src-frontend/components/
 
 ### Data Flow Patterns
 1. **Agent Management**: File-based storage with dual-level discovery (user/project)
-2. **Session Streaming**: Real-time JSONL parsing with checkpoint support
+2. **Session Streaming**: Real-time JSONL parsing with UUID-based deduplication
 3. **Claude Integration**: Native Task tool delegation via Tauri commands
 4. **Analytics**: PostHog integration with resource monitoring
 
 ## Project Standards
+
+### Logging Standards
+- Keep log messages short and direct
+- No emojis, no ALL CAPS, no excessive punctuation
+- One success log per operation, not progress narration
+- Include essential context: what happened, why, with what data
+- Use appropriate levels: ERROR, WARN, INFO, DEBUG
 
 ### Code Conventions
 - **Rust backend**: `snake_case` for functions and parameters

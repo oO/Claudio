@@ -15,6 +15,7 @@ pub struct ClaudeDirectOptions {
     pub working_directory: Option<String>,
     pub session_id: Option<String>,    // Claude CLI session ID for --resume
     pub claudio_id: Option<String>,    // Claudio wrapper session ID
+    pub permission_mode: Option<String>, // Permission mode for --permission-mode flag
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -146,13 +147,14 @@ pub async fn start_claude_direct_session(
             // Case 1: Fresh start - create new Claudio session
             // Fresh start
             let new_claudio_id = format!("claudio-{}", chrono::Utc::now().timestamp_millis());
-            
+
             let new_session = ClaudioSession {
                 claudio_id: new_claudio_id.clone(),
                 project_path: project_path.clone(),
                 current_session: None, // Will be populated when turn completes
                 status: SessionStatus::Active,
                 session_history: Vec::new(),
+                permission_mode: options.permission_mode.clone().unwrap_or_else(|| "default".to_string()),
             };
             
             update_claudio_session(new_claudio_id.clone(), project_path.clone(), new_session).await
@@ -165,13 +167,14 @@ pub async fn start_claude_direct_session(
             // Bonus Case: Fork existing Claude session - create new Claudio session but use --resume
             // Forking existing session
             let new_claudio_id = format!("claudio-{}", chrono::Utc::now().timestamp_millis());
-            
+
             let new_session = ClaudioSession {
                 claudio_id: new_claudio_id.clone(),
                 project_path: project_path.clone(),
                 current_session: None, // Will be populated when turn completes
                 status: SessionStatus::Active,
                 session_history: Vec::new(),
+                permission_mode: options.permission_mode.clone().unwrap_or_else(|| "default".to_string()),
             };
             
             update_claudio_session(new_claudio_id.clone(), project_path.clone(), new_session).await
@@ -214,15 +217,32 @@ pub async fn start_claude_direct_session(
         log::debug!("Fresh start - no resume");
     }
 
-    // Add the prompt
-    claude_args.push("--".to_string());
-    claude_args.push(prompt);
-
-    log::debug!("Executing: claude {}", claude_args.join(" "));
+    // Add permission mode if specified
+    if let Some(permission_mode) = &options.permission_mode {
+        claude_args.push("--permission-mode".to_string());
+        claude_args.push(permission_mode.clone());
+        log::debug!("Using permission mode: {}", permission_mode);
+    }
 
     // Use Claudio's existing claude binary detection (async version to avoid runtime conflict)
     let claude_binary_path = crate::claude_binary::find_claude_binary_async(&app).await
         .map_err(|e| format!("Failed to find Claude binary: {}", e))?;
+
+    // 🚨 COMPREHENSIVE COMMAND LOGGING 🚨 (before consuming prompt)
+    log::info!("🔥 Claude CLI Command Execution Details:");
+    log::info!("   📂 Working Directory: {}", options.working_directory.as_ref().unwrap_or(&project_path));
+    log::info!("   🎯 Claudio Session ID: {}", claudio_session_id);
+    log::info!("   🔗 Resume Session ID: {:?}", options.session_id);
+    log::info!("   🛡️  Permission Mode: {:?}", options.permission_mode);
+    log::info!("   📥 Prompt Preview: {}", prompt.chars().take(100).collect::<String>());
+
+    // Add the prompt (this consumes the prompt value)
+    claude_args.push("--".to_string());
+    claude_args.push(prompt);
+
+    // Log final command after adding prompt
+    log::info!("   ⚡ Full Command: {} {}", claude_binary_path, claude_args.join(" "));
+    log::info!("   🏁 Args Count: {} | Resume: {} | Fresh Start: {}", claude_args.len(), use_resume, !use_resume);
     
 
     // Execute claude CLI directly using the determined path

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tauri::AppHandle;
+use tauri::{AppHandle, Runtime};
 use serde_json;
 use std::fs;
 use std::path::Path;
@@ -17,14 +17,16 @@ use super::types::{ClaudeCodeSettings, ClaudeCodeConfig, ClaudeCodeLayers, Setti
 
 /// Manager for Claude Code CLI settings with multi-level precedence
 /// Handles global, project, local, and environment variable layers
-pub struct ClaudeCodeSettingsManager {
+pub struct ClaudeCodeSettingsManager<R: Runtime> {
     settings_cache: Arc<RwLock<HashMap<String, ClaudeCodeSettings>>>, // Key: project_path or "global"
+    _app_handle: AppHandle<R>,
 }
 
-impl ClaudeCodeSettingsManager {
-    pub fn new(_app_handle: AppHandle) -> Self {
+impl<R: Runtime> ClaudeCodeSettingsManager<R> {
+    pub fn new(app_handle: AppHandle<R>) -> Self {
         Self {
             settings_cache: Arc::new(RwLock::new(HashMap::new())),
+            _app_handle: app_handle,
         }
     }
 

@@ -3,7 +3,6 @@ import { Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DebugLabel } from "@/components/ui/atoms";
 import { cn } from "@/lib/utils";
-import { logger } from "@/lib/logger";
 import { useSessionContext } from "@/contexts/SessionContext";
 
 /**
@@ -25,12 +24,8 @@ export const SystemFilter: React.FC = () => {
 
   const handleToggle = () => {
     if (isAssistantFilterLast) {
-      logger.log(
-        "⚙️ System filter disabled due to assistant filter being in Last mode",
-      );
       return;
     }
-    logger.log("⚙️ Toggling system messages visibility:", !isSystemVisible);
     toggleSystemVisibility?.();
   };
 

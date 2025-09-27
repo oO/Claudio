@@ -23,3 +23,4 @@ export * from './SystemInitializedWidget';
 export * from './ThinkingWidget';
 export * from './ExitPlanModeWidget';
 export * from './ToolWithResultWidget';
+export * from './ContextWidget';

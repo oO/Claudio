@@ -22,6 +22,12 @@ mod session_watcher;
 mod todo_watcher;
 mod project_watcher;
 
+// Test modules
+#[cfg(test)]
+mod session_watcher_tests;
+#[cfg(test)]
+mod sessions_tests;
+
 // Re-export everything from the modular structure for backward compatibility
 pub use types::*;
 pub use projects::*;
