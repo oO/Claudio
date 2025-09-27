@@ -18,6 +18,7 @@ export interface QueuedPrompt {
 // Import our extracted components and hooks
 import { PromptTextarea } from "./PromptTextarea";
 import { ModelSelector, type ModelId } from "./ModelSelector";
+import { PermissionModeSelector, type PermissionMode } from "./PermissionModeSelector";
 import { ThinkingModeSelector, type ThinkingMode, THINKING_MODES } from "./ThinkingModeSelector";
 import { PromptControls } from "./PromptControls";
 import {
@@ -56,7 +57,11 @@ interface PromptInputProps {
    * Callback when cancel is clicked (only during loading)
    */
   onCancel?: () => void;
-  
+
+  // Permission mode props
+  permissionMode?: PermissionMode;
+  onPermissionModeChange?: (mode: PermissionMode) => void;
+
   // Queued prompts props
   queuedPrompts?: QueuedPrompt[];
   queuedPromptsCollapsed?: boolean;
@@ -91,6 +96,8 @@ const PromptInputInner = (
     projectPath,
     className,
     onCancel,
+    permissionMode = "default",
+    onPermissionModeChange,
     queuedPrompts = [],
     queuedPromptsCollapsed = true,
     onToggleQueuedPromptsCollapsed,
@@ -583,12 +590,18 @@ const PromptInputInner = (
               />
             </div>
 
-            {/* Line 2: Model Selector + Thinking Mode Selector */}
+            {/* Line 2: Model Selector + Permission Mode Selector + Thinking Mode Selector */}
             <div className="flex items-center gap-4">
               <ModelSelector
                 selectedModel={selectedModel}
                 onModelSelect={setSelectedModel}
                 disabled={disabled || selectedModel === null}
+              />
+
+              <PermissionModeSelector
+                selectedMode={permissionMode}
+                onModeSelect={onPermissionModeChange || (() => {})}
+                disabled={disabled || !onPermissionModeChange}
               />
 
               <ThinkingModeSelector
