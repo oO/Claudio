@@ -30,6 +30,13 @@ export interface SystemMessageItem {
   subtype?: string;
 }
 
+export interface CwdChangeItem {
+  index: number;
+  cwd: string;
+  ui_index: number;
+  timestamp: string;
+}
+
 interface SessionContextValue {
   projectId?: string;
   sessionId?: string;
@@ -42,6 +49,7 @@ interface SessionContextValue {
   toolMessages?: ToolMessageItem[];
   assistantMessages?: AssistantMessageItem[];
   systemMessages?: SystemMessageItem[];
+  cwdChanges?: CwdChangeItem[];
   lastInTurnCount?: number;
   isToolsVisible?: boolean;
   isSystemVisible?: boolean;
@@ -64,6 +72,7 @@ interface SessionProviderProps {
   toolMessages?: ToolMessageItem[];
   assistantMessages?: AssistantMessageItem[];
   systemMessages?: SystemMessageItem[];
+  cwdChanges?: CwdChangeItem[];
   lastInTurnCount?: number;
   isToolsVisible?: boolean;
   isSystemVisible?: boolean;
@@ -92,6 +101,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
   toolMessages = [],
   assistantMessages = [],
   systemMessages = [],
+  cwdChanges = [],
   lastInTurnCount = 0,
   isToolsVisible = true,
   isSystemVisible = false,
@@ -112,6 +122,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
     toolMessages,
     assistantMessages,
     systemMessages,
+    cwdChanges,
     lastInTurnCount,
     isToolsVisible,
     isSystemVisible,

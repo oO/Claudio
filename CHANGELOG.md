@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.8.1] - 2025-09-28
+
+### Feature
+- Add CWD tracking and navigation system for Claude sessions
+- Created CwdNavigation widget with dropdown history for working directory changes
+- Enhanced SessionContext with CwdChangeItem interface for tracking directory navigation
+- Integrated CWD widget into SessionHeader replacing static path display
+
+### Fix
+- Fixed TodoContext bug where unreachable code after early return discarded actual todo data
+- Removed dead code in TodoContext that set empty arrays after valid data processing
+- Fixed dropdown menu alignment to be left-aligned for both CWD and Todo widgets
+
 ## [0.8.0] - 2025-09-28
 
 ### Feature

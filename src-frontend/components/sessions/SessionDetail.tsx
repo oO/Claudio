@@ -164,7 +164,7 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
 
   // Get computed values from hooks (must be before early returns for hook order)
   const { isReadOnly } = sessionData;
-  const { displayableMessages, collapsedMessageUuids, totalTokens, userMessages, toolMessages, assistantMessages, systemMessages, lastInTurnCount } = messageData;
+  const { displayableMessages, collapsedMessageUuids, totalTokens, userMessages, toolMessages, assistantMessages, systemMessages, cwdChanges, lastInTurnCount } = messageData;
   const { effectiveIsStreaming, thinkingContent } = streamingData;
 
   // Sync scroll position when thinking state changes (must be before early returns)
@@ -201,6 +201,7 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
       toolMessages={toolMessages}
       assistantMessages={assistantMessages}
       systemMessages={systemMessages}
+      cwdChanges={cwdChanges}
       lastInTurnCount={lastInTurnCount}
       isToolsVisible={isToolsVisible}
       isSystemVisible={isSystemVisible}

@@ -45,6 +45,7 @@ import { useSessionContext } from "@/contexts/SessionContext";
 import { useTodoContext } from "@/contexts/TodoContext";
 import { SESSION_TYPES } from "@/lib/sessionHandleApi";
 import { UserMessageNavigation } from "./UserMessageNavigation";
+import { CwdNavigation } from "./CwdNavigation";
 import { InProgressTodoWidget } from "./InProgressTodoWidget";
 import { ToolFilter } from "./ToolFilter";
 import { SystemFilter } from "./SystemFilter";
@@ -315,10 +316,11 @@ export const SessionHeader: React.FC<SessionHeaderProps> = ({
               </p>
             )}
             {projectPath && (
-              <p className="mt-1 text-sm text-muted-foreground flex items-center gap-2">
-                <FolderOpen className="h-4 w-4" />
-                <span className="font-mono truncate">{projectPath}</span>
-              </p>
+              <div className="mt-1">
+                <CwdNavigation
+                  onNavigate={onNavigateToMessage || (() => {})}
+                />
+              </div>
             )}
 
             {/* Session metadata */}

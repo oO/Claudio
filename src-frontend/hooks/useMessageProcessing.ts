@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { processMessagesWithAgentInfo } from "@/lib/messageProcessor";
 import type { ClaudeStreamMessage } from "@/lib/outputCache";
-import type { UserMessageItem, ToolMessageItem, AssistantMessageItem, SystemMessageItem } from "@/contexts/SessionContext";
+import type { UserMessageItem, ToolMessageItem, AssistantMessageItem, SystemMessageItem, CwdChangeItem } from "@/contexts/SessionContext";
 
 /**
  * Hook for processing raw messages into displayable format
@@ -428,14 +428,28 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
   }, [processedMessages]);
 
   // Extract all message types with simple turn detection
-  const { userMessages, toolMessages, assistantMessages, systemMessages, lastInTurnCount } = useMemo(() => {
+  const { userMessages, toolMessages, assistantMessages, systemMessages, cwdChanges, lastInTurnCount } = useMemo(() => {
     // Create fresh assistant messages with array positions and mark last in turn
     const userMessages: UserMessageItem[] = [];
     const toolMessages: ToolMessageItem[] = [];
     const assistantMessages: AssistantMessageItem[] = [];
     const systemMessages: SystemMessageItem[] = [];
+    const cwdChanges: CwdChangeItem[] = [];
+    let lastCwd: string | null = null;
     
     displayableMessages.forEach((message, arrayIndex) => {
+      // Track CWD changes
+      const currentCwd = (message as any).cwd;
+      if (currentCwd && currentCwd !== lastCwd) {
+        cwdChanges.push({
+          index: arrayIndex,
+          cwd: currentCwd,
+          ui_index: arrayIndex + 1,
+          timestamp: (message as any).timestamp || ''
+        });
+        lastCwd = currentCwd;
+      }
+
       // Extract user messages
       if (message.type === "user" && message.message) {
         const msg = message.message;
@@ -567,7 +581,7 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
     const subagentResponseCount = assistantMessages.filter(a => a.isSubAgentResponse).length;
     
     
-    return { userMessages, toolMessages, assistantMessages, systemMessages, lastInTurnCount };
+    return { userMessages, toolMessages, assistantMessages, systemMessages, cwdChanges, lastInTurnCount };
   }, [displayableMessages]);
 
   // Calculate total tokens from displayable messages
@@ -588,6 +602,7 @@ export const useMessageProcessing = (messages: ClaudeStreamMessage[]) => {
     toolMessages,
     assistantMessages,
     systemMessages,
+    cwdChanges,
     lastInTurnCount,
   };
 };
