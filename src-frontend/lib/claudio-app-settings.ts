@@ -12,7 +12,7 @@ import { logger } from '@/lib/logger';
 
 // Claudio app settings interface
 export interface ClaudioAppSettings {
-  window_state?: {
+  windowState?: {
     width: number;
     height: number;
     x?: number;
@@ -20,19 +20,22 @@ export interface ClaudioAppSettings {
     maximized: boolean;
     fullscreen: boolean;
   };
-  tabs_session?: any;
+  tabsState?: any;
   proxy?: {
-    http_proxy?: string;
-    https_proxy?: string;
-    no_proxy?: string;
-    all_proxy?: string;
+    httpProxy?: string;
+    httpsProxy?: string;
+    noProxy?: string;
+    allProxy?: string;
     enabled: boolean;
   };
-  claude_binary_path?: string;
-  theme_preference?: string;
+  claudeBinaryPath?: string;
+  theme?: {
+    name: string;
+    rgb?: string;
+  };
   telemetry?: boolean;
-  auto_update?: boolean;
-  debug_mode?: boolean;
+  autoUpdate?: boolean;
+  debugMode?: boolean;
 }
 
 /**
@@ -52,24 +55,24 @@ export function useClaudioAppSettings() {
         setError(null);
 
         // Load settings from backend memory cache (fast!)
-        const windowState = await getClaudioAppSetting('window_state');
-        const tabsSession = await getClaudioAppSetting('tabs_session');
+        const windowState = await getClaudioAppSetting('windowState');
+        const tabsSession = await getClaudioAppSetting('tabsState');
         const proxy = await getClaudioAppSetting('proxy');
-        const binaryPath = await getClaudioAppSetting('claude_binary_path');
-        const theme = await getClaudioAppSetting('theme_preference');
+        const binaryPath = await getClaudioAppSetting('claudeBinaryPath');
+        const theme = await getClaudioAppSetting('theme');
         const telemetry = await getClaudioAppSetting('telemetry');
-        const autoUpdate = await getClaudioAppSetting('auto_update');
-        const debugMode = await getClaudioAppSetting('debug_mode');
+        const autoUpdate = await getClaudioAppSetting('autoUpdate');
+        const debugMode = await getClaudioAppSetting('debugMode');
 
         setSettings({
-          window_state: windowState,
-          tabs_session: tabsSession,
+          windowState: windowState,
+          tabsState: tabsSession,
           proxy: proxy,
-          claude_binary_path: binaryPath,
-          theme_preference: theme,
+          claudeBinaryPath: binaryPath,
+          theme: theme,
           telemetry: telemetry,
-          auto_update: autoUpdate,
-          debug_mode: debugMode,
+          autoUpdate: autoUpdate,
+          debugMode: debugMode,
         });
       } catch (err) {
         logger.error('Failed to load Claudio app settings:', err);
@@ -112,8 +115,9 @@ export function useClaudioAppSettings() {
  */
 export async function getClaudioAppSetting<T = any>(key: string): Promise<T | null> {
   try {
-    const jsonString = await invoke<string | null>('load_claudio_app_setting', { key });
-    return jsonString ? JSON.parse(jsonString) : null;
+    // Backend now returns serde_json::Value directly (no JSON string)
+    const value = await invoke<T | null>('load_claudio_app_setting', { key });
+    return value;
   } catch (err) {
     logger.error('Failed to get Claudio app setting:', { key, error: err });
     return null;

@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.8.0] - 2025-09-28
+
+### Feature
+- Complete custom theme system with dynamic color detection
+- Added color picker UI for custom background themes
+- Implemented luminance-based light/dark mode detection
+- Extended theme architecture from string to object format
+- Enhanced settings serialization with proper object handling
+- Fixed tab/theme restoration race conditions during startup
+
 ## [0.7.1] - 2025-09-27
 
 ### Refactor

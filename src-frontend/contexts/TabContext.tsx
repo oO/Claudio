@@ -112,6 +112,12 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Debouncing for save operations to prevent rapid-fire saves during restoration/shutdown
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const debouncedSave = useCallback((tabs: Tab[], panelBreaks: number[], activePanelIndex: number, panelMinWidth: number) => {
+    // Double-check: Don't save during initial restoration
+    if (isInitialRestoration) {
+      logger.debug('Skipping save during initial restoration');
+      return;
+    }
+
     // Clear any pending save
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
@@ -119,10 +125,11 @@ export const TabProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Schedule save with debounce
     saveTimeoutRef.current = setTimeout(() => {
+      logger.debug('Saving tabs state:', { tabCount: tabs.length, panelBreaks, activePanelIndex, panelMinWidth });
       saveTabs(tabs, panelBreaks, activePanelIndex, panelMinWidth);
       saveTimeoutRef.current = null;
     }, 500); // 500ms debounce for in-memory store (much lighter now)
-  }, [saveTabs]);
+  }, [saveTabs, isInitialRestoration]);
 
   // Keep refs in sync with state for event listeners
   useEffect(() => {

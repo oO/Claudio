@@ -174,9 +174,9 @@ pub struct ProxySettings {
 pub async fn get_proxy_settings() -> Result<ProxySettings, String> {
     // Load the entire ProxySettings as JSON or return defaults
     match load_claudio_app_setting("proxySettings".to_string()).await {
-        Ok(Some(json_str)) => {
-            // Try to deserialize the stored JSON
-            serde_json::from_str(&json_str)
+        Ok(Some(value)) => {
+            // Try to deserialize the stored JSON value
+            serde_json::from_value(value)
                 .map_err(|e| format!("Failed to parse proxy settings JSON: {}", e))
         }
         Ok(None) => {
@@ -224,7 +224,7 @@ pub async fn save_proxy_settings(settings: ProxySettings) -> Result<(), String> 
 
 /// Load a setting from memory cache (fast!)
 #[tauri::command]
-pub async fn load_claudio_app_setting(key: String) -> Result<Option<String>, String> {
+pub async fn load_claudio_app_setting(key: String) -> Result<Option<serde_json::Value>, String> {
     ensure_cache_loaded().await?;
 
     let cache_guard = SETTINGS_CACHE.read().unwrap();
@@ -233,9 +233,8 @@ pub async fn load_claudio_app_setting(key: String) -> Result<Option<String>, Str
             if value.is_null() {
                 Ok(None)
             } else {
-                let value_string = serde_json::to_string(value)
-                    .map_err(|e| format!("Failed to serialize value: {}", e))?;
-                Ok(Some(value_string))
+                // Return the actual value - let Tauri handle serialization
+                Ok(Some(value.clone()))
             }
         } else {
             Ok(None)

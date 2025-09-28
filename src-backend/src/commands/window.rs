@@ -59,9 +59,9 @@ pub async fn save_window_state(_app_handle: AppHandle, state: WindowState) -> Re
 pub async fn load_window_state() -> Result<WindowState, String> {
     // Load the entire WindowState as JSON or return defaults
     match load_claudio_app_setting("windowState".to_string()).await {
-        Ok(Some(json_str)) => {
-            // Try to deserialize the stored JSON
-            serde_json::from_str(&json_str)
+        Ok(Some(value)) => {
+            // Try to deserialize the stored JSON value
+            serde_json::from_value(value)
                 .map_err(|e| format!("Failed to parse window state JSON: {}", e))
         }
         Ok(None) => {

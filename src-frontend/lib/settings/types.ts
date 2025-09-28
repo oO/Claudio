@@ -22,11 +22,11 @@ export interface WindowState {
 
 export interface ClaudioSettings {
   telemetry?: boolean;
-  auto_update?: boolean;
-  default_project_path?: string;
-  window_state?: WindowState;
-  debug_mode?: boolean;
-  log_level?: string;
+  autoUpdate?: boolean;
+  defaultProjectPath?: string;
+  windowState?: WindowState;
+  debugMode?: boolean;
+  logLevel?: string;
   // Additional dynamic fields
   [key: string]: any;
 }
@@ -179,11 +179,11 @@ export interface ThemeConfig {
 
 export interface ClaudioSettingsUpdate {
   telemetry?: boolean;
-  auto_update?: boolean;
-  default_project_path?: string;
-  debug_mode?: boolean;
-  log_level?: string;
-  window_state?: Partial<WindowState>;
+  autoUpdate?: boolean;
+  defaultProjectPath?: string;
+  debugMode?: boolean;
+  logLevel?: string;
+  windowState?: Partial<WindowState>;
   [key: string]: any;
 }
 
@@ -232,9 +232,9 @@ export type SettingsKeys<T> = keyof T extends string ? keyof T : never;
 export const DEFAULT_CLAUDIO_SETTINGS: ClaudioSettings = {
   theme: 'system',
   telemetry: false,
-  auto_update: true,
-  debug_mode: false,
-  log_level: 'info',
+  autoUpdate: true,
+  debugMode: false,
+  logLevel: 'info',
 };
 
 export const DEFAULT_CLAUDECODE_SETTINGS: ClaudeCodeSettings = {
@@ -263,7 +263,7 @@ export const VALID_THEMES: ThemeConfig[] = [
 
 export function isClaudioSettings(settings: any): settings is ClaudioSettings {
   return settings && typeof settings === 'object' &&
-    (settings.telemetry !== undefined || settings.auto_update !== undefined);
+    (settings.telemetry !== undefined || settings.autoUpdate !== undefined);
 }
 
 export function isClaudeCodeSettings(settings: any): settings is ClaudeCodeSettings {

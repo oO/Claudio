@@ -25,7 +25,7 @@ interface UnifiedSettingsContextState {
 
   // Theme (extracted from Claudio settings for convenience)
   theme: string;
-  setTheme: (theme: string) => Promise<void>;
+  setTheme: (theme: string | { name: string, rgb?: string }) => Promise<void>;
 
   // ClaudeCode user-level settings (global only, no project context)
   claudecodeSettings: ClaudeCodeSettings | null;
@@ -72,18 +72,19 @@ export function UnifiedSettingsProvider({ children }: UnifiedSettingsProviderPro
   // Convert ClaudioAppSettings to ClaudioSettings format
   const claudioSettings: ClaudioSettings | null = appSettings ? {
     telemetry: appSettings.telemetry,
-    auto_update: appSettings.auto_update,
-    window_state: appSettings.window_state ? {
-      width: appSettings.window_state.width,
-      height: appSettings.window_state.height,
-      x: appSettings.window_state.x ?? 0,
-      y: appSettings.window_state.y ?? 0,
-      maximized: appSettings.window_state.maximized,
+    autoUpdate: appSettings.autoUpdate,
+    windowState: appSettings.windowState ? {
+      width: appSettings.windowState.width,
+      height: appSettings.windowState.height,
+      x: appSettings.windowState.x ?? 0,
+      y: appSettings.windowState.y ?? 0,
+      maximized: appSettings.windowState.maximized,
     } : undefined,
-    debug_mode: appSettings.debug_mode,
-    claude_binary_path: appSettings.claude_binary_path,
-    tabs_session: appSettings.tabs_session,
+    debugMode: appSettings.debugMode,
+    claudeBinaryPath: appSettings.claudeBinaryPath,
+    tabsSession: appSettings.tabsState,
     proxy: appSettings.proxy,
+    theme: appSettings.theme,
   } : null;
 
   // Convert string error to SettingsError format
@@ -91,7 +92,8 @@ export function UnifiedSettingsProvider({ children }: UnifiedSettingsProviderPro
     new SettingsError(appStringError, 'IO_ERROR') : null;
 
   // Extract theme from Claudio settings with fallback
-  const theme = appSettings?.theme_preference || 'neutral_dark';
+  const themeObject = appSettings?.theme;
+  const theme = themeObject?.name || 'neutral_dark';
 
   // Extract model from ClaudeCode user settings with fallback
   const model = userClaudeCodeSettings?.effective?.model || 'sonnet';
@@ -106,10 +108,20 @@ export function UnifiedSettingsProvider({ children }: UnifiedSettingsProviderPro
     }
   }, [updateAppSetting]);
 
-  // Theme setter
-  const setTheme = useCallback(async (newTheme: string) => {
+  // Theme setter - handles both string themes and theme objects
+  const setTheme = useCallback(async (newTheme: string | { name: string, rgb?: string }) => {
     try {
-      await updateAppSetting('theme_preference', newTheme);
+      let themeToSave: { name: string, rgb?: string };
+
+      if (typeof newTheme === 'string') {
+        // Convert string theme to object
+        themeToSave = { name: newTheme };
+      } else {
+        // Already a theme object
+        themeToSave = newTheme;
+      }
+
+      await updateAppSetting('theme', themeToSave);
     } catch (err) {
       logger.error('Failed to update theme:', err);
       throw err;

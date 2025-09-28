@@ -88,10 +88,13 @@ export const useTabPersistence = () => {
         logger.info('No saved tabs found');
         return DEFAULT_EMPTY_SESSION;
       }
-      
-      // Basic validation
+
+      logger.debug('Loaded tab session data:', parsed, 'Type:', typeof parsed);
+
+      // Backend should handle serialization/deserialization - we expect a proper object
       if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.tabs)) {
-        logger.warn('Invalid tab session data, starting fresh');
+        logger.warn('Backend returned invalid tab session data. Type:', typeof parsed, 'Data:', parsed);
+        logger.warn('This suggests a backend serialization issue - backend should return object, not string');
         return DEFAULT_EMPTY_SESSION;
       }
 

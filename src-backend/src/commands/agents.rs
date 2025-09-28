@@ -624,7 +624,17 @@ pub async fn import_agent_from_file(
 pub async fn get_claude_binary_path() -> Result<Option<String>, String> {
     use crate::commands::claudio_app_settings::load_claudio_app_setting;
 
-    load_claudio_app_setting("claudeBinaryPath".to_string()).await
+    match load_claudio_app_setting("claudeBinaryPath".to_string()).await {
+        Ok(Some(value)) => {
+            if let Some(path_str) = value.as_str() {
+                Ok(Some(path_str.to_string()))
+            } else {
+                Ok(None)
+            }
+        }
+        Ok(None) => Ok(None),
+        Err(e) => Err(e),
+    }
 }
 
 #[tauri::command]

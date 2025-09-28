@@ -7,7 +7,7 @@ import { useUnifiedSettingsContext } from '@/lib/settings/contexts';
 import { logger } from '@/lib/logger';
 import { useState, useCallback, useEffect } from 'react';
 import type { CustomThemeColors, ThemeMode } from '@/lib/themeTypes';
-import { getThemeBackgroundColor, getThemeById } from '@/lib/themes';
+import { getThemeBackgroundColor, getThemeById, isColorDark } from '@/lib/themes';
 
 // Default custom theme colors (copied from ThemeContext)
 const DEFAULT_CUSTOM_COLORS: CustomThemeColors = {
@@ -40,11 +40,22 @@ export function useThemeUnified() {
     claudioError
   } = useUnifiedSettingsContext();
 
+  // Get theme object from settings for custom RGB access
+  const themeObject = claudioSettings?.theme;
+  const customRgb = themeObject?.rgb;
+
   // Custom colors state (simplified for now - could be moved to settings later)
   const [customColors, setCustomColorsState] = useState<CustomThemeColors>(DEFAULT_CUSTOM_COLORS);
 
+  // Update customColors.background when we have custom RGB from settings
+  useEffect(() => {
+    if (theme === 'custom' && customRgb && customColors.background !== customRgb) {
+      setCustomColorsState(prev => ({ ...prev, background: customRgb }));
+    }
+  }, [theme, customRgb, customColors.background]);
+
   // Apply theme to DOM (copied from ThemeProvider)
-  const applyTheme = useCallback((themeMode: ThemeMode, colors: CustomThemeColors) => {
+  const applyTheme = useCallback((themeMode: ThemeMode, colors: CustomThemeColors, customRgbColor?: string) => {
     const root = document.documentElement;
 
     // Remove theme classes
@@ -54,7 +65,8 @@ export function useThemeUnified() {
     let backgroundColor: string;
 
     if (themeMode === 'custom') {
-      backgroundColor = colors.background;
+      // Use custom RGB from settings if available, otherwise fall back to colors.background
+      backgroundColor = customRgbColor || customRgb || colors.background;
     } else {
       backgroundColor = getThemeBackgroundColor(themeMode);
     }
@@ -63,15 +75,17 @@ export function useThemeUnified() {
     root.style.setProperty('--color-background', backgroundColor);
 
     // Determine theme class
-    const getThemeClass = (themeMode: ThemeMode, customColors: CustomThemeColors): string => {
+    const getThemeClass = (themeMode: ThemeMode, customColors: CustomThemeColors, customRgb?: string): string => {
       if (themeMode === 'custom') {
-        return 'theme-dark'; // Assume custom themes are dark
+        // Dynamically detect if custom color is dark
+        const colorToCheck = customRgb || colors.background;
+        return isColorDark(colorToCheck) ? 'theme-dark' : 'theme-light';
       }
       const theme = getThemeById(themeMode);
       return theme?.isDark ? 'theme-dark' : 'theme-light';
     };
 
-    const themeClass = getThemeClass(themeMode, colors);
+    const themeClass = getThemeClass(themeMode, colors, customRgbColor || customRgb);
     root.classList.add(themeClass);
 
     // Add dark class for Tailwind compatibility
@@ -84,29 +98,40 @@ export function useThemeUnified() {
   useEffect(() => {
     if (theme && !claudioLoading) {
       // Apply theme immediately - same path as enhancedSetTheme for DRY compliance
-      applyTheme(theme as ThemeMode, customColors);
+      applyTheme(theme as ThemeMode, customColors, customRgb);
     }
-  }, [theme, customColors, claudioLoading, applyTheme]);
+  }, [theme, customRgb, customColors, claudioLoading, applyTheme]);
 
   // Get debug mode from cached settings
-  const debugMode = claudioSettings?.debug_mode || false;
+  const debugMode = claudioSettings?.debugMode || false;
 
   // Toggle debug mode
   const toggleDebug = async () => {
     try {
       const newDebugMode = !debugMode;
-      await updateClaudioSetting('debug_mode', newDebugMode);
+      await updateClaudioSetting('debugMode', newDebugMode);
       logger.info(`Debug mode ${newDebugMode ? 'enabled' : 'disabled'}`);
     } catch (error) {
       logger.error('Failed to toggle debug mode:', error);
     }
   };
 
-  // Override setTheme to apply theme immediately
-  const enhancedSetTheme = useCallback(async (newTheme: string) => {
+  // Override setTheme to handle both preset themes and custom colors
+  const enhancedSetTheme = useCallback(async (newTheme: string | { name: string, rgb?: string }) => {
     try {
+      let themeToApply: string;
+
+      if (typeof newTheme === 'string') {
+        // Preset theme
+        themeToApply = newTheme;
+      } else {
+        // Theme object with custom color
+        themeToApply = newTheme.name;
+      }
+
       // Apply theme immediately
-      applyTheme(newTheme as ThemeMode, customColors);
+      const rgbToUse = typeof newTheme === 'object' ? newTheme.rgb : undefined;
+      applyTheme(themeToApply as ThemeMode, customColors, rgbToUse);
 
       // Save to settings via UnifiedSettings
       await setTheme(newTheme);
@@ -117,23 +142,25 @@ export function useThemeUnified() {
     }
   }, [setTheme, applyTheme, customColors]);
 
-  // Set custom colors (simplified implementation)
+  // Set custom colors (now saves to theme object when on custom theme)
   const setCustomColors = useCallback(async (colors: Partial<CustomThemeColors>) => {
     try {
       const newColors = { ...customColors, ...colors };
       setCustomColorsState(newColors);
 
-      // Re-apply theme with new colors
-      if (theme) {
-        applyTheme(theme as ThemeMode, newColors);
+      // If on custom theme and background color changed, save to settings
+      if (theme === 'custom' && colors.background) {
+        await enhancedSetTheme({ name: 'custom', rgb: colors.background });
+      } else if (theme) {
+        // Re-apply theme with new colors for preview
+        applyTheme(theme as ThemeMode, newColors, customRgb);
       }
 
-      // TODO: Save custom colors to settings if needed
       logger.debug('Custom colors updated');
     } catch (error) {
       logger.error('Failed to update custom colors:', error);
     }
-  }, [customColors, theme, applyTheme]);
+  }, [customColors, theme, applyTheme, enhancedSetTheme]);
 
   return {
     // Theme functionality

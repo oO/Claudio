@@ -25,7 +25,7 @@ export function ClaudioAppSettings() {
 
   const fields: FieldConfig[] = [
     {
-      key: 'theme_preference',
+      key: 'theme',
       label: 'Theme',
       description: 'Choose your preferred color scheme',
       type: 'select',
@@ -44,14 +44,14 @@ export function ClaudioAppSettings() {
       section: 'Privacy',
     },
     {
-      key: 'auto_update',
+      key: 'autoUpdate',
       label: 'Auto Update',
       description: 'Automatically download and install updates',
       type: 'boolean',
       section: 'Updates',
     },
     {
-      key: 'claude_binary_path',
+      key: 'claudeBinaryPath',
       label: 'Claude Binary Path',
       description: 'Path to Claude Code binary (leave empty for auto-detection)',
       type: 'text',
@@ -59,7 +59,7 @@ export function ClaudioAppSettings() {
       section: 'Developer',
     },
     {
-      key: 'debug_mode',
+      key: 'debugMode',
       label: 'Debug Mode',
       description: 'Enable detailed logging for troubleshooting',
       type: 'boolean',
@@ -83,10 +83,10 @@ export function ClaudioAppSettings() {
 
   const getDefaultValue = (field: FieldConfig) => {
     switch (field.key) {
-      case 'theme_preference': return 'system';
+      case 'theme': return { name: 'neutral_dark' };
       case 'telemetry': return true;
-      case 'auto_update': return true;
-      case 'debug_mode': return false;
+      case 'autoUpdate': return true;
+      case 'debugMode': return false;
       default: return undefined;
     }
   };

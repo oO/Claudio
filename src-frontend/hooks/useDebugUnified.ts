@@ -15,13 +15,13 @@ export function useDebugUnified() {
   } = useUnifiedSettingsContext();
 
   // Get debug mode from cached settings - no API call needed!
-  const isDebugMode = claudioSettings?.debug_mode || false;
+  const isDebugMode = claudioSettings?.debugMode || false;
 
   // Toggle debug mode
   const toggleDebug = async () => {
     try {
       const newDebugMode = !isDebugMode;
-      await updateClaudioSetting('debug_mode', newDebugMode);
+      await updateClaudioSetting('debugMode', newDebugMode);
 
       // Dispatch event for components that still listen to this
       window.dispatchEvent(new CustomEvent('debugModeChanged', { detail: newDebugMode }));
