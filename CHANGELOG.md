@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.8.2] - 2025-09-29
+
+### Feature
+- Added "Ask" permission support alongside "allow" and "deny" for tools and permissions
+- Renamed Permissions tab to Tools with consistent Shield icon across global and project levels
+- Reorganized settings tabs from 7 to 5 tabs for better icon sizing and layout
+
+### Fix
+- Fixed critical tri-level merging bug where global permissions weren't appearing in project view
+- Updated useTriLevelSettings to use correct API that handles backend response wrapper
+- Fixed Settings.tsx tab layout grid from grid-cols-7 to grid-cols-5 to prevent icon shrinking
+
+### Refactor
+- Merged Environment and Proxy into Advanced tab for cleaner organization
+- Refactored AdvancedSettings component into single scrollable interface instead of multiple cards
+- Updated TriLevelPermissionsManager to include yellow-themed Ask Rules section
+- Enhanced useSettingsState hook with askRules support for parsing, saving, and change detection
+
 ## [0.8.1] - 2025-09-28
 
 ### Feature

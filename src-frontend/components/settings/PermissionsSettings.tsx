@@ -6,14 +6,16 @@ import { DebugLabel } from "@/components/ui/atoms";
 
 interface PermissionsSettingsProps {
   allowRules: PermissionRule[];
+  askRules: PermissionRule[];
   denyRules: PermissionRule[];
-  onAddRule: (type: "allow" | "deny") => void;
-  onUpdateRule: (type: "allow" | "deny", id: string, value: string) => void;
-  onRemoveRule: (type: "allow" | "deny", id: string) => void;
+  onAddRule: (type: "allow" | "ask" | "deny") => void;
+  onUpdateRule: (type: "allow" | "ask" | "deny", id: string, value: string) => void;
+  onRemoveRule: (type: "allow" | "ask" | "deny", id: string) => void;
 }
 
 export const PermissionsSettings: React.FC<PermissionsSettingsProps> = ({
   allowRules,
+  askRules,
   denyRules,
   onAddRule,
   onUpdateRule,
@@ -21,7 +23,7 @@ export const PermissionsSettings: React.FC<PermissionsSettingsProps> = ({
 }) => {
   // Convert PermissionRule[] to TriLevelRule[] for user-only context
   const convertToTriLevelRules = (): TriLevelRule[] => {
-    const convertRules = (rules: PermissionRule[], type: "allow" | "deny"): TriLevelRule[] => 
+    const convertRules = (rules: PermissionRule[], type: "allow" | "ask" | "deny"): TriLevelRule[] =>
       rules.map(rule => ({
         id: rule.id,
         value: rule.value,
@@ -31,11 +33,12 @@ export const PermissionsSettings: React.FC<PermissionsSettingsProps> = ({
 
     return [
       ...convertRules(allowRules, "allow"),
+      ...convertRules(askRules, "ask"),
       ...convertRules(denyRules, "deny")
     ];
   };
 
-  const handleAddRule = (type: "allow" | "deny", value: string) => {
+  const handleAddRule = (type: "allow" | "ask" | "deny", value: string) => {
     onAddRule(type);
   };
 
@@ -47,10 +50,13 @@ export const PermissionsSettings: React.FC<PermissionsSettingsProps> = ({
   const handleUpdateRule = (ruleId: string, value: string) => {
     // Find which type this rule belongs to
     const allowRule = allowRules.find(r => r.id === ruleId);
+    const askRule = askRules.find(r => r.id === ruleId);
     const denyRule = denyRules.find(r => r.id === ruleId);
-    
+
     if (allowRule) {
       onUpdateRule("allow", ruleId, value);
+    } else if (askRule) {
+      onUpdateRule("ask", ruleId, value);
     } else if (denyRule) {
       onUpdateRule("deny", ruleId, value);
     }
@@ -59,10 +65,13 @@ export const PermissionsSettings: React.FC<PermissionsSettingsProps> = ({
   const handleDeleteRule = (ruleId: string) => {
     // Find which type this rule belongs to
     const allowRule = allowRules.find(r => r.id === ruleId);
+    const askRule = askRules.find(r => r.id === ruleId);
     const denyRule = denyRules.find(r => r.id === ruleId);
-    
+
     if (allowRule) {
       onRemoveRule("allow", ruleId);
+    } else if (askRule) {
+      onRemoveRule("ask", ruleId);
     } else if (denyRule) {
       onRemoveRule("deny", ruleId);
     }

@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { api } from "@/lib/api";
+import { api, claudeApi } from "@/lib/api";
 import { logger } from '@/lib/logger';
 
 /**
@@ -8,10 +8,10 @@ import { logger } from '@/lib/logger';
 export interface TriLevelRule {
   id: string;
   value: string;
-  type: "allow" | "deny";
+  type: "allow" | "ask" | "deny";
   levels: {
     user: boolean;     // ~/.claude/settings.json
-    team: boolean;     // <project>/.claude/settings.json  
+    team: boolean;     // <project>/.claude/settings.json
     local: boolean;    // <project>/.claude/settings.local.json
   };
 }
@@ -22,6 +22,7 @@ export interface TriLevelRule {
 interface SettingsLevel {
   permissions?: {
     allow?: string[];
+    ask?: string[];
     deny?: string[];
   };
 }
@@ -36,7 +37,7 @@ export interface TriLevelSettingsState {
 
 export interface TriLevelSettingsActions {
   loadSettings: (projectPath: string) => Promise<void>;
-  addRule: (type: "allow" | "deny", value: string) => void;
+  addRule: (type: "allow" | "ask" | "deny", value: string) => void;
   toggleRuleLevel: (ruleId: string, level: "user" | "team" | "local") => Promise<void>;
   updateRuleValue: (ruleId: string, value: string) => void;
   deleteRule: (ruleId: string) => Promise<void>;
@@ -72,32 +73,35 @@ export const useTriLevelSettings = (
       // Load user settings (~/.claude/settings.json)
       let userSettings: SettingsLevel = {};
       try {
-        const userSettingsData = await api.getClaudeSettings();
-        userSettings = userSettingsData.data || {};
+        userSettings = await claudeApi.getClaudeSettings();
       } catch (err) {
         logger.log("User settings not found, using empty settings");
       }
       
       // Load team settings (<project>/.claude/settings.json)
       let teamSettings: SettingsLevel = {};
-      try {
-        const teamSettingsPath = `${projectPath}/.claude/settings.json`;
-        const teamContent = await api.readClaudeMdFile(teamSettingsPath);
-        teamSettings = JSON.parse(teamContent);
-        logger.log('Team settings loaded successfully from:', teamSettingsPath);
-      } catch (err) {
-        logger.log('Team settings not found, using empty settings. Error:', err);
+      if (projectPath && projectPath.trim()) {
+        try {
+          const teamSettingsPath = `${projectPath}/.claude/settings.json`;
+          const teamContent = await api.readClaudeMdFile(teamSettingsPath);
+          teamSettings = JSON.parse(teamContent);
+          logger.log('Team settings loaded successfully from:', teamSettingsPath);
+        } catch (err) {
+          logger.log('Team settings not found, using empty settings. Error:', err);
+        }
       }
-      
+
       // Load local settings (<project>/.claude/settings.local.json)
       let localSettings: SettingsLevel = {};
-      try {
-        const localSettingsPath = `${projectPath}/.claude/settings.local.json`;
-        const localContent = await api.readClaudeMdFile(localSettingsPath);
-        localSettings = JSON.parse(localContent);
-        logger.log('Local settings loaded successfully from:', localSettingsPath);
-      } catch (err) {
-        logger.log('Local settings not found, using empty settings. Error:', err);
+      if (projectPath && projectPath.trim()) {
+        try {
+          const localSettingsPath = `${projectPath}/.claude/settings.local.json`;
+          const localContent = await api.readClaudeMdFile(localSettingsPath);
+          localSettings = JSON.parse(localContent);
+          logger.log('Local settings loaded successfully from:', localSettingsPath);
+        } catch (err) {
+          logger.log('Local settings not found, using empty settings. Error:', err);
+        }
       }
       
       // Store settings for later saving
@@ -129,7 +133,7 @@ export const useTriLevelSettings = (
     const ruleMap = new Map<string, TriLevelRule>();
     
     // Helper to add rules to map
-    const addRules = (rules: string[], type: "allow" | "deny", level: "user" | "team" | "local") => {
+    const addRules = (rules: string[], type: "allow" | "ask" | "deny", level: "user" | "team" | "local") => {
       rules.forEach(rule => {
         const key = `${type}:${rule}`;
         if (ruleMap.has(key)) {
@@ -153,10 +157,13 @@ export const useTriLevelSettings = (
     
     // Process all rules from all levels
     if (user.permissions?.allow) addRules(user.permissions.allow, "allow", "user");
+    if (user.permissions?.ask) addRules(user.permissions.ask, "ask", "user");
     if (user.permissions?.deny) addRules(user.permissions.deny, "deny", "user");
     if (team.permissions?.allow) addRules(team.permissions.allow, "allow", "team");
+    if (team.permissions?.ask) addRules(team.permissions.ask, "ask", "team");
     if (team.permissions?.deny) addRules(team.permissions.deny, "deny", "team");
     if (local.permissions?.allow) addRules(local.permissions.allow, "allow", "local");
+    if (local.permissions?.ask) addRules(local.permissions.ask, "ask", "local");
     if (local.permissions?.deny) addRules(local.permissions.deny, "deny", "local");
     
     return Array.from(ruleMap.values());
@@ -165,7 +172,7 @@ export const useTriLevelSettings = (
   /**
    * Adds a new rule (initially with no levels active)
    */
-  const addRule = (type: "allow" | "deny", value: string) => {
+  const addRule = (type: "allow" | "ask" | "deny", value: string) => {
     const newRule: TriLevelRule = {
       id: `${type}-${value}-${Date.now()}-${Math.random()}`,
       value,
@@ -272,14 +279,19 @@ export const useTriLevelSettings = (
     const allowRules = rules
       .filter(rule => rule.type === "allow" && rule.levels[level] && rule.value.trim())
       .map(rule => rule.value);
-      
+
+    const askRules = rules
+      .filter(rule => rule.type === "ask" && rule.levels[level] && rule.value.trim())
+      .map(rule => rule.value);
+
     const denyRules = rules
       .filter(rule => rule.type === "deny" && rule.levels[level] && rule.value.trim())
       .map(rule => rule.value);
-    
+
     return {
       permissions: {
         allow: allowRules,
+        ask: askRules,
         deny: denyRules
       }
     };

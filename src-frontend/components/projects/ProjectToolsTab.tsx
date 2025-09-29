@@ -4,7 +4,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TriLevelPermissionsManager } from "@/components/common";
 import { useTriLevelSettings, useUnsavedChanges } from "@/hooks";
-import { api } from "@/lib/api";
 import { DebugLabel } from "@/components/ui/atoms";
 
 interface ProjectToolsTabProps {
@@ -18,7 +17,7 @@ export const ProjectToolsTab: React.FC<ProjectToolsTabProps> = ({
 }) => {
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
-  // Tri-level settings management
+  // Tri-level settings management with ask support
   const {
     loading,
     saving,
@@ -34,7 +33,7 @@ export const ProjectToolsTab: React.FC<ProjectToolsTabProps> = ({
   } = useTriLevelSettings((success, message) => {
     setToast({ message, type: success ? "success" : "error" });
   });
-  
+
   // Automatically sync unsaved changes state with the tab
   const { markAsSaved } = useUnsavedChanges(hasChanges);
 
@@ -61,7 +60,7 @@ export const ProjectToolsTab: React.FC<ProjectToolsTabProps> = ({
                 Manage tool permissions across user, team, and local project levels. Click toggles to enable/disable rules at each level.
               </p>
             </div>
-            
+
             <Button
               onClick={handleSaveAllLevels}
               disabled={loading || saving || !hasChanges}
@@ -82,7 +81,6 @@ export const ProjectToolsTab: React.FC<ProjectToolsTabProps> = ({
             </Button>
           </div>
 
-
           {/* Error Display */}
           {error && (
             <div className="p-3 bg-red-500/10 rounded-md border border-red-500/20">
@@ -90,7 +88,7 @@ export const ProjectToolsTab: React.FC<ProjectToolsTabProps> = ({
             </div>
           )}
 
-          {/* Tri-Level Permissions Manager */}
+          {/* Tri-Level Permissions Manager with Ask Support */}
           <TriLevelPermissionsManager
             rules={rules}
             onAddRule={addRule}
