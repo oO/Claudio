@@ -16,13 +16,13 @@ export interface HookMatcher {
 export interface HooksConfiguration {
   PreToolUse?: HookMatcher[];
   PostToolUse?: HookMatcher[];
-  Notification?: HookCommand[];
-  Stop?: HookCommand[];
-  SubagentStop?: HookCommand[];
-  UserPromptSubmit?: HookCommand[];
-  PreCompact?: HookCommand[];
-  SessionStart?: HookCommand[];
-  SessionEnd?: HookCommand[];
+  Notification?: HookMatcher[];
+  Stop?: HookMatcher[];
+  SubagentStop?: HookMatcher[];
+  UserPromptSubmit?: HookMatcher[];
+  PreCompact?: HookMatcher[];
+  SessionStart?: HookMatcher[];
+  SessionEnd?: HookMatcher[];
 }
 
 export type HookEvent = keyof HooksConfiguration;

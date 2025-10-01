@@ -1,38 +1,24 @@
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Loader2, Bot, FolderCode } from "lucide-react";
+import { motion } from "framer-motion";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { invoke } from "@tauri-apps/api/core";
-import { projectsApi } from "@/lib/api/projects";
-import { agentsApi } from "@/lib/api/agents";
-import { claudeApi } from "@/lib/api/claude";
 import { systemApi } from "@/lib/api/system";
-import type { Project } from "@/lib/types/projects";
-import type { Session } from "@/lib/types/sessions";
 import type { ClaudeMdFile } from "@/lib/types/claude";
-import type { Agent } from "@/lib/types/agents";
 import { TabProvider } from "@/contexts/TabContext";
 import { TodoProvider } from "@/contexts/TodoContext";
 import { UnifiedSettingsProvider } from "@/lib/settings";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { ProjectList, ProjectDetail } from "@/components/projects";
-import { RunningClaudeSessions } from "@/components/sessions/RunningClaudeSessions";
 import { Topbar, TabManager, TabContent, ThemeApplier } from "@/components/common";
 import { ClaudeFileEditor, ClaudeBinaryDialog } from "@/components/claude";
 import { logger } from "@/lib/logger";
-import { formatSessionIdCompact } from "@/lib/sessionUtils";
 import { Settings, AnalyticsConsentBanner } from "@/components/settings";
 import { UsageDashboard } from "@/components/dashboard";
 import { MCPManager } from "@/components/mcp";
 import { NFOCredits } from "@/components/common";
 import { Toast, ToastContainer } from "@/components/ui/toast";
 import { useTabState } from "@/hooks/useTabState";
-import { useAppLifecycle, useTrackEvent, useSessionCreation } from "@/hooks";
+import { useAppLifecycle } from "@/hooks";
 
 type View =
   | "welcome"
-  | "projects"
   | "claude-file-editor"
   | "settings"
   | "mcp"
@@ -45,7 +31,6 @@ type View =
 function AppContent() {
   const [view, setView] = useState<View>("tabs");
   const {
-    createSessionTab,
     createClaudeMdTab,
     createSettingsTab,
     createUsageTab,
@@ -53,24 +38,16 @@ function AppContent() {
     createAgentsTab,
     createProjectsTab,
   } = useTabState();
-  const { createClaudioSession } = useSessionCreation();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [editingClaudeFile, setEditingClaudeFile] =
     useState<ClaudeMdFile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [showNFO, setShowNFO] = useState(false);
   const [showClaudeBinaryDialog, setShowClaudeBinaryDialog] = useState(false);
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error" | "info";
   } | null>(null);
-  const [previousView] = useState<View>("welcome");
-
   // Initialize analytics lifecycle tracking
   useAppLifecycle();
-  const trackEvent = useTrackEvent();
 
 
 
@@ -143,31 +120,6 @@ function AppContent() {
     };
   }, []);
 
-  // Track user journey milestones
-  const [hasTrackedFirstChat] = useState(false);
-  // const [hasTrackedFirstAgent] = useState(false);
-
-  // Track when user reaches different journey stages
-  useEffect(() => {
-    if (view === "projects" && projects.length > 0 && !hasTrackedFirstChat) {
-      // User has projects - they're past onboarding
-      trackEvent.journeyMilestone({
-        journey_stage: "onboarding",
-        milestone_reached: "projects_created",
-        time_to_milestone_ms: Date.now() - performance.timing.navigationStart,
-      });
-    }
-  }, [view, projects.length, hasTrackedFirstChat, trackEvent]);
-
-  // Load projects on mount when in projects view
-  useEffect(() => {
-    if (view === "projects") {
-      loadProjects();
-    } else if (view === "welcome") {
-      // Reset loading state for welcome view
-      setLoading(false);
-    }
-  }, [view]);
 
   // Keyboard shortcuts for tab navigation
   useEffect(() => {
@@ -233,84 +185,6 @@ function AppContent() {
     };
   }, []);
 
-  /**
-   * Loads all projects from the ~/.claude/projects directory
-   */
-  const loadProjects = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const projectList = await projectsApi.listProjects();
-      setProjects(projectList);
-    } catch (err) {
-      logger.error("Failed to load projects:", err);
-      setError(
-        "Failed to load projects. Please ensure ~/.claude directory exists.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /**
-   * Handles project selection
-   */
-  const handleProjectClick = async (project: Project) => {
-    setSelectedProject(project);
-  };
-
-  /**
-   * Opens a new Claude Code session in the interactive UI
-   * Smart Backend + Dumb Frontend: Backend creates session first, then frontend gets told what to display
-   */
-  const handleNewSession = async () => {
-    try {
-      const claudioId = await systemApi.createClaudioSession("", {});
-      
-      // Switch to tabs view
-      handleViewChange("tabs");
-      
-      // Create a chat tab with the real session ID (Dumb Frontend just displays what backend tells it)
-      const sessionShort = formatSessionIdCompact(claudioId.replace('claudio-', ''));
-      const tabId = createSessionTab("", `Session:${sessionShort}`, claudioId);
-      logger.log("Chat tab created:", claudioId);
-    } catch (error) {
-      logger.error("Failed to create new session:", error);
-      setToast({ message: "Failed to create new session", type: "error" });
-    }
-  };
-
-  /**
-   * Opens a new Claudio session for a specific project
-   * Smart Backend + Dumb Frontend: Backend creates session first, then frontend gets told what to display
-   */
-  const handleNewClaudioSessionFromProject = async (projectPath: string) => {
-    try {
-      logger.log("Creating session for project:", projectPath);
-      
-      // Use shared session creation hook
-      const claudioId = await createClaudioSession({ projectPath });
-      
-      // Switch to tabs view
-      handleViewChange("tabs");
-      
-      // Create a chat tab with the real session ID (Dumb Frontend just displays what backend tells it)
-      const projectName = projectPath.split("/").pop() || "Project";
-      const sessionShort = formatSessionIdCompact(claudioId.replace('claudio-', ''));
-      const tabId = createSessionTab(projectPath, `${projectName}:${sessionShort}`, claudioId);
-      logger.log("Project chat tab created:", claudioId);
-    } catch (error) {
-      logger.error("Failed to create new session for project:", error);
-      setToast({ message: "Failed to create new session", type: "error" });
-    }
-  };
-
-  /**
-   * Returns to project list view
-   */
-  const handleBack = () => {
-    setSelectedProject(null);
-  };
 
   /**
    * Handles editing a CLAUDE.md file from a project
@@ -321,83 +195,18 @@ function AppContent() {
   };
 
   /**
-   * Returns from CLAUDE.md file editor to projects view
+   * Returns from CLAUDE.md file editor to tabs view
    */
   const handleBackFromClaudeFileEditor = () => {
     setEditingClaudeFile(null);
-    handleViewChange("projects");
+    handleViewChange("tabs");
   };
 
   /**
-   * Handles view changes with navigation protection
+   * Handles view changes
    */
   const handleViewChange = (newView: View) => {
-    // No need for navigation protection with tabs since sessions stay open
     setView(newView);
-  };
-
-  /**
-   * Handles project deletion
-   */
-  const handleProjectDeleted = (projectId: string) => {
-    setProjects((prev) => prev.filter((p) => p.id !== projectId));
-    setToast({ message: "Project deleted successfully", type: "success" });
-  };
-
-  /**
-   * Handles session deletion
-   */
-  const handleSessionDeleted = (sessionId: string) => {
-    setToast({ message: "Session deleted successfully", type: "success" });
-  };
-
-  /**
-   * Handles session click - TODO: Implement session navigation
-   */
-  const handleSessionClick = (session: Session) => {
-    logger.log("Session clicked:", session.id);
-    // TODO: Implement session navigation logic
-  };
-
-
-  /**
-   * Handles agent editing - TODO: Implement agent editing
-   */
-  const handleEditAgent = (agent: Agent) => {
-    logger.log("Edit agent:", agent.name);
-    // TODO: Implement agent editing logic
-  };
-
-  /**
-   * Handles agent export - TODO: Implement agent export
-   */
-  const handleExportAgent = (agent: Agent) => {
-    logger.log("Export agent:", agent.name);
-    // TODO: Implement agent export logic
-  };
-
-  /**
-   * Handles agent deletion - TODO: Implement agent deletion
-   */
-  const handleDeleteAgent = (agent: Agent) => {
-    logger.log("Delete agent:", agent.name);
-    // TODO: Implement agent deletion logic
-  };
-
-  /**
-   * Handles agent creation - TODO: Implement agent creation
-   */
-  const handleCreateAgent = () => {
-    logger.log("Create agent");
-    // TODO: Implement agent creation logic
-  };
-
-  /**
-   * Handles agent import - TODO: Implement agent import
-   */
-  const handleImportAgent = () => {
-    logger.log("Import agent");
-    // TODO: Implement agent import logic
   };
 
   const renderContent = () => {
@@ -422,26 +231,6 @@ function AppContent() {
                 </h1>
               </motion.div>
 
-              {/* Navigation Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
-
-                {/* Projects Card */}
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.5, delay: 0.2 }}
-                >
-                  <Card
-                    className="h-64 cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-lg border border-border/50 shimmer-hover trailing-border"
-                    onClick={() => handleViewChange("projects")}
-                  >
-                    <div className="h-full flex flex-col items-center justify-center p-8">
-                      <FolderCode className="h-16 w-16 mb-4 text-primary" />
-                      <h2 className="text-xl font-semibold">Projects</h2>
-                    </div>
-                  </Card>
-                </motion.div>
-              </div>
             </div>
           </div>
         );
@@ -451,130 +240,6 @@ function AppContent() {
         return (
           <div className="flex-1 flex flex-col" style={{ minHeight: 0 }}>
             <Settings onBack={() => handleViewChange("welcome")} />
-          </div>
-        );
-
-      case "projects":
-        return (
-          <div className="flex-1 overflow-y-auto">
-            <div className="container mx-auto p-6">
-              {/* Header with back button */}
-              <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="mb-6"
-              >
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleViewChange("welcome")}
-                  className="mb-4"
-                >
-                  ← Back to Home
-                </Button>
-                <div className="mb-4">
-                  <h1 className="text-3xl font-bold tracking-tight">
-                    Projects
-                  </h1>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Browse your Claude Code sessions
-                  </p>
-                </div>
-              </motion.div>
-
-              {/* Error display */}
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="mb-4 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-xs text-destructive max-w-2xl"
-                >
-                  {error}
-                </motion.div>
-              )}
-
-              {/* Loading state */}
-              {loading && (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              )}
-
-              {/* Content */}
-              {!loading && (
-                <AnimatePresence mode="wait">
-                  {selectedProject ? (
-                    <motion.div
-                      key="sessions"
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <ProjectDetail
-                        projectPath={selectedProject.path}
-                        projectId={selectedProject.id}
-                        onSessionClick={handleSessionClick}
-                        onEditClaudeFile={handleEditClaudeFile}
-                        onSessionDeleted={handleSessionDeleted}
-                        onProjectDeleted={handleProjectDeleted}
-                        onEditAgent={handleEditAgent}
-                        onExportAgent={handleExportAgent}
-                        onDeleteAgent={handleDeleteAgent}
-                        onCreateAgent={handleCreateAgent}
-                        onImportAgent={handleImportAgent}
-                        onStartNewClaudioSession={handleNewClaudioSessionFromProject}
-                      />
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      key="projects"
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 20 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      {/* New session button at the top */}
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5 }}
-                        className="mb-4"
-                      >
-                        <Button
-                          onClick={handleNewSession}
-                          size="default"
-                          className="w-full max-w-md"
-                        >
-                          <Plus className="mr-2 h-4 w-4" />
-                          New Claude Code session
-                        </Button>
-                      </motion.div>
-
-                      {/* Running Claude Sessions */}
-                      <RunningClaudeSessions />
-
-                      {/* Project list */}
-                      {projects.length > 0 ? (
-                        <ProjectList
-                          projects={projects}
-                          onProjectClick={handleProjectClick}
-                          loading={loading}
-                          className="animate-fade-in"
-                        />
-                      ) : (
-                        <div className="py-8 text-center">
-                          <p className="text-sm text-muted-foreground">
-                            No projects found in ~/.claude/projects
-                          </p>
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              )}
-            </div>
           </div>
         );
 
