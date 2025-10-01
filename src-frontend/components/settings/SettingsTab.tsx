@@ -18,7 +18,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ tab, isActive }) => {
   );
 
   return (
-    <div className="relative">
+    <div className="relative h-full">
       <DebugLabel label="SettingsTab" />
       <TabPageLayout
         title="Settings"

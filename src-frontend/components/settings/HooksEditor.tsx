@@ -1,45 +1,38 @@
-/**
- * HooksEditor component for managing Claude Code hooks configuration
- * Refactored using Atomic Design principles
- */
-
-import React, { useState, useEffect } from 'react';
-import { Plus, FileText, Save, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { LoadingSpinner, HookTypeSelector, DebugLabel } from '@/components/ui/atoms';
-import { StatusMessage, ValidationFeedback, HookMetadata } from '@/components/ui/molecules';
-import { 
-  HookMatcherEditor, 
-  DirectCommandEditor, 
-  TemplateSelector 
-} from '@/components/ui/organisms';
-import { cn } from '@/lib/utils';
-import { HooksManager } from '@/lib/hooksManager';
-import { api } from '@/lib/api';
+import React from "react";
 import {
-  HooksConfiguration,
-  HookEvent,
-  HookMatcher,
-  HookCommand,
-  HookTemplate,
-  COMMON_TOOL_MATCHERS,
-  HOOK_TEMPLATES,
-} from '@/types/hooks';
-import { logger } from '@/lib/logger';
+  Zap,
+  Activity,
+  Bell,
+  MessageSquare,
+  Square,
+  Layers,
+  Archive,
+  Play,
+  AlertTriangle,
+  Plus,
+  Trash2,
+  Edit3,
+  FileText,
+  Save,
+  ExternalLink,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { DebugLabel } from "@/components/ui/atoms";
+import { useUnifiedSettingsContext } from "@/lib/settings";
+import { logger } from "@/lib/logger";
+import { cn } from "@/lib/utils";
+import { HookInstallDialog } from "./HookInstallDialog";
+import { open } from "@tauri-apps/plugin-dialog";
+import { dirname, homeDir } from "@tauri-apps/api/path";
+import { open as shellOpen } from "@tauri-apps/plugin-shell";
 
-interface HooksEditorProps {
-  projectPath?: string;
-  scope: 'project' | 'local' | 'user';
-  readOnly?: boolean;
-  className?: string;
-  onChange?: (hasChanges: boolean, getHooks: () => HooksConfiguration) => void;
-  hideActions?: boolean;
-}
-
-export interface EditableHookCommand extends HookCommand {
+// Export types for other components that may need them
+export interface EditableHookCommand {
   id: string;
+  type: string;
+  command: string;
+  timeout?: number;
 }
 
 export interface EditableHookMatcher {
@@ -49,606 +42,577 @@ export interface EditableHookMatcher {
   expanded?: boolean;
 }
 
-const EVENT_INFO: Record<HookEvent, { label: string; description: string }> = {
-  PreToolUse: {
-    label: 'Pre Tool Use',
-    description: 'Runs before tool calls, can block and provide feedback'
+interface HooksEditorProps {
+  projectPath?: string;
+  scope: "project" | "local" | "user";
+  readOnly?: boolean;
+  className?: string;
+  onChange?: (hasChanges: boolean, getHooks: (() => any) | null) => void;
+  hideActions?: boolean;
+  containerHeight?: number;
+  onEditFile?: (filePath: string) => void;
+}
+
+// All available hook events from Claude Code with metadata
+export const HOOK_EVENTS = [
+  {
+    event: "SessionStart",
+    icon: Play,
+    title: "Session Start",
+    description: "Triggered when a new session begins",
   },
-  PostToolUse: {
-    label: 'Post Tool Use',
-    description: 'Runs after successful tool completion'
+  {
+    event: "SessionEnd",
+    icon: AlertTriangle,
+    title: "Session End",
+    description: "Runs when session terminates",
   },
-  Notification: {
-    label: 'Notification',
-    description: 'Customizes notifications when Claude needs attention'
+  {
+    event: "PreToolUse",
+    icon: Zap,
+    title: "Pre Tool Use",
+    description: "Runs before any tool is executed",
   },
-  Stop: {
-    label: 'Stop',
-    description: 'Runs when Claude finishes responding'
+  {
+    event: "PostToolUse",
+    icon: Activity,
+    title: "Post Tool Use",
+    description: "Runs after tool execution completes",
   },
-  SubagentStop: {
-    label: 'Subagent Stop',
-    description: 'Runs when a Claude subagent (Task) finishes'
-  }
-};
+  {
+    event: "Notification",
+    icon: Bell,
+    title: "Notification",
+    description: "Triggered for permission requests or idle periods",
+  },
+  {
+    event: "UserPromptSubmit",
+    icon: MessageSquare,
+    title: "User Prompt Submit",
+    description: "Runs when user submits a new prompt",
+  },
+  {
+    event: "Stop",
+    icon: Square,
+    title: "Stop",
+    description: "Runs when main agent finishes responding",
+  },
+  {
+    event: "SubagentStop",
+    icon: Layers,
+    title: "Subagent Stop",
+    description: "Runs when a subagent completes execution",
+  },
+  {
+    event: "PreCompact",
+    icon: Archive,
+    title: "Pre Compact",
+    description: "Runs before context compaction occurs",
+  },
+] as const;
+
+type HookEvent = (typeof HOOK_EVENTS)[number]["event"];
 
 export const HooksEditor: React.FC<HooksEditorProps> = ({
-  projectPath,
   scope,
-  readOnly = false,
-  className,
-  onChange,
-  hideActions = false
+  className = "",
+  containerHeight,
+  onEditFile,
 }) => {
-  const [selectedEvent, setSelectedEvent] = useState<HookEvent>('PreToolUse');
-  const [showTemplateDialog, setShowTemplateDialog] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
-  const isInitialMount = React.useRef(true);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [hooks, setHooks] = useState<HooksConfiguration>({});
-  
-  // Events with matchers (tool-related)
-  const matcherEvents = ['PreToolUse', 'PostToolUse'] as const;
-  // Events without matchers (non-tool-related)
-  const directEvents = ['Notification', 'Stop', 'SubagentStop'] as const;
-  
-  // Convert hooks to editable format with IDs
-  const [editableHooks, setEditableHooks] = useState<{
-    PreToolUse: EditableHookMatcher[];
-    PostToolUse: EditableHookMatcher[];
-    Notification: EditableHookCommand[];
-    Stop: EditableHookCommand[];
-    SubagentStop: EditableHookCommand[];
-  }>(() => {
-    const result = {
-      PreToolUse: [],
-      PostToolUse: [],
-      Notification: [],
-      Stop: [],
-      SubagentStop: []
-    } as any;
-    
-    // Initialize matcher events
-    matcherEvents.forEach(event => {
-      const matchers = hooks?.[event] as HookMatcher[] | undefined;
-      if (matchers && Array.isArray(matchers)) {
-        result[event] = matchers.map(matcher => ({
-          ...matcher,
-          id: HooksManager.generateId(),
-          expanded: false,
-          hooks: (matcher.hooks || []).map(hook => ({
-            ...hook,
-            id: HooksManager.generateId()
-          }))
-        }));
-      }
-    });
-    
-    // Initialize direct events
-    directEvents.forEach(event => {
-      const commands = hooks?.[event] as HookCommand[] | undefined;
-      if (commands && Array.isArray(commands)) {
-        result[event] = commands.map(hook => ({
-          ...hook,
-          id: HooksManager.generateId()
-        }));
-      }
-    });
-    
-    return result;
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+  const [scrollPosition, setScrollPosition] = React.useState({
+    start: 0,
+    end: 0,
   });
+  const [showInstallDialog, setShowInstallDialog] = React.useState(false);
+  const [editingHook, setEditingHook] = React.useState<{
+    event: string;
+    configIndex: number;
+    hookIndex: number;
+    command: string;
+    matcher?: string;
+  } | null>(null);
+  const editingRef = React.useRef<HTMLDivElement>(null);
 
-  // Load hooks when projectPath or scope changes
-  useEffect(() => {
-    // For user scope, we don't need a projectPath
-    if (scope === 'user' || projectPath) {
-      setIsLoading(true);
-      setLoadError(null);
-      
-      api.getHooksConfig(scope, projectPath)
-        .then((config) => {
-          setHooks(config || {});
-          setHasUnsavedChanges(false);
-        })
-        .catch((err) => {
-          logger.error("Failed to load hooks configuration:", err);
-          setLoadError(err instanceof Error ? err.message : "Failed to load hooks configuration");
-          setHooks({});
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
-    } else {
-      // No projectPath for project/local scopes
-      setHooks({});
-    }
-  }, [projectPath, scope]);
-
-  // Reset initial mount flag when hooks prop changes
-  useEffect(() => {
-    isInitialMount.current = true;
-    setHasUnsavedChanges(false); // Reset unsaved changes when hooks prop changes
-    
-    // Reinitialize editable hooks when hooks prop changes
-    const result = {
-      PreToolUse: [],
-      PostToolUse: [],
-      Notification: [],
-      Stop: [],
-      SubagentStop: []
-    } as any;
-    
-    // Initialize matcher events
-    matcherEvents.forEach(event => {
-      const matchers = hooks?.[event] as HookMatcher[] | undefined;
-      if (matchers && Array.isArray(matchers)) {
-        result[event] = matchers.map(matcher => ({
-          ...matcher,
-          id: HooksManager.generateId(),
-          expanded: false,
-          hooks: (matcher.hooks || []).map(hook => ({
-            ...hook,
-            id: HooksManager.generateId()
-          }))
-        }));
+  // Handle click outside to cancel editing
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        editingHook &&
+        editingRef.current &&
+        !editingRef.current.contains(event.target as Node)
+      ) {
+        setEditingHook(null);
       }
-    });
-    
-    // Initialize direct events
-    directEvents.forEach(event => {
-      const commands = hooks?.[event] as HookCommand[] | undefined;
-      if (commands && Array.isArray(commands)) {
-        result[event] = commands.map(hook => ({
-          ...hook,
-          id: HooksManager.generateId()
-        }));
-      }
-    });
-    
-    setEditableHooks(result);
-  }, [hooks]);
-
-  // Track changes when editable hooks change (but don't save automatically)
-  useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
-    
-    setHasUnsavedChanges(true);
-  }, [editableHooks]);
-
-  // Notify parent of changes
-  useEffect(() => {
-    if (onChange) {
-      const getHooks = () => {
-        const newHooks: HooksConfiguration = {};
-        
-        // Handle matcher events
-        matcherEvents.forEach(event => {
-          const matchers = editableHooks[event];
-          if (matchers.length > 0) {
-            newHooks[event] = matchers.map(({ id, expanded, ...matcher }) => ({
-              ...matcher,
-              hooks: matcher.hooks.map(({ id, ...hook }) => hook)
-            }));
-          }
-        });
-        
-        // Handle direct events
-        directEvents.forEach(event => {
-          const commands = editableHooks[event];
-          if (commands.length > 0) {
-            newHooks[event] = commands.map(({ id, ...hook }) => hook);
-          }
-        });
-        
-        return newHooks;
-      };
-      
-      onChange(hasUnsavedChanges, getHooks);
-    }
-  }, [hasUnsavedChanges, editableHooks, onChange]);
-
-  // Save function to be called explicitly
-  const handleSave = async () => {
-    if (scope !== 'user' && !projectPath) return;
-    
-    setIsSaving(true);
-    
-    const newHooks: HooksConfiguration = {};
-    
-    // Handle matcher events
-    matcherEvents.forEach(event => {
-      const matchers = editableHooks[event];
-      if (matchers.length > 0) {
-        newHooks[event] = matchers.map(({ id, expanded, ...matcher }) => ({
-          ...matcher,
-          hooks: matcher.hooks.map(({ id, ...hook }) => hook)
-        }));
-      }
-    });
-    
-    // Handle direct events
-    directEvents.forEach(event => {
-      const commands = editableHooks[event];
-      if (commands.length > 0) {
-        newHooks[event] = commands.map(({ id, ...hook }) => hook);
-      }
-    });
-    
-    try {
-      await api.updateHooksConfig(scope, newHooks, projectPath);
-      setHooks(newHooks);
-      setHasUnsavedChanges(false);
-    } catch (error) {
-      logger.error('Failed to save hooks:', error);
-      setLoadError(error instanceof Error ? error.message : 'Failed to save hooks');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const addMatcher = (event: HookEvent) => {
-    // Only for events with matchers
-    if (!matcherEvents.includes(event as any)) return;
-    
-    const newMatcher: EditableHookMatcher = {
-      id: HooksManager.generateId(),
-      matcher: '',
-      hooks: [],
-      expanded: true
     };
-    
-    setEditableHooks(prev => ({
-      ...prev,
-      [event]: [...(prev[event as 'PreToolUse' | 'PostToolUse'] as EditableHookMatcher[]), newMatcher]
-    }));
-  };
-  
-  const addDirectCommand = (event: HookEvent) => {
-    // Only for events without matchers
-    if (!directEvents.includes(event as any)) return;
-    
-    const newCommand: EditableHookCommand = {
-      id: HooksManager.generateId(),
-      type: 'command',
-      command: ''
-    };
-    
-    setEditableHooks(prev => ({
-      ...prev,
-      [event]: [...(prev[event as 'Notification' | 'Stop' | 'SubagentStop'] as EditableHookCommand[]), newCommand]
-    }));
-  };
 
-  const updateMatcher = (event: HookEvent, matcherId: string, updates: Partial<EditableHookMatcher>) => {
-    if (!matcherEvents.includes(event as any)) return;
-    
-    setEditableHooks(prev => ({
-      ...prev,
-      [event]: (prev[event as 'PreToolUse' | 'PostToolUse'] as EditableHookMatcher[]).map(matcher =>
-        matcher.id === matcherId ? { ...matcher, ...updates } : matcher
-      )
-    }));
-  };
-
-  const removeMatcher = (event: HookEvent, matcherId: string) => {
-    if (!matcherEvents.includes(event as any)) return;
-    
-    setEditableHooks(prev => ({
-      ...prev,
-      [event]: (prev[event as 'PreToolUse' | 'PostToolUse'] as EditableHookMatcher[]).filter(matcher => matcher.id !== matcherId)
-    }));
-  };
-  
-  const updateDirectCommand = (event: HookEvent, commandId: string, updates: Partial<EditableHookCommand>) => {
-    if (!directEvents.includes(event as any)) return;
-    
-    setEditableHooks(prev => ({
-      ...prev,
-      [event]: (prev[event as 'Notification' | 'Stop' | 'SubagentStop'] as EditableHookCommand[]).map(cmd =>
-        cmd.id === commandId ? { ...cmd, ...updates } : cmd
-      )
-    }));
-  };
-  
-  const removeDirectCommand = (event: HookEvent, commandId: string) => {
-    if (!directEvents.includes(event as any)) return;
-    
-    setEditableHooks(prev => ({
-      ...prev,
-      [event]: (prev[event as 'Notification' | 'Stop' | 'SubagentStop'] as EditableHookCommand[]).filter(cmd => cmd.id !== commandId)
-    }));
-  };
-
-  const applyTemplate = (template: HookTemplate) => {
-    if (matcherEvents.includes(template.event as any)) {
-      // For events with matchers
-      const newMatcher: EditableHookMatcher = {
-        id: HooksManager.generateId(),
-        matcher: template.matcher || '',
-        hooks: template.commands.map(cmd => ({
-          id: HooksManager.generateId(),
-          type: 'command' as const,
-          command: cmd
-        })),
-        expanded: true
-      };
-      
-      setEditableHooks(prev => ({
-        ...prev,
-        [template.event]: [...(prev[template.event as 'PreToolUse' | 'PostToolUse'] as EditableHookMatcher[]), newMatcher]
-      }));
-    } else {
-      // For direct events
-      const newCommands: EditableHookCommand[] = template.commands.map(cmd => ({
-        id: HooksManager.generateId(),
-        type: 'command' as const,
-        command: cmd
-      }));
-      
-      setEditableHooks(prev => ({
-        ...prev,
-        [template.event]: [...(prev[template.event as 'Notification' | 'Stop' | 'SubagentStop'] as EditableHookCommand[]), ...newCommands]
-      }));
+    if (editingHook) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
     }
-    
-    setSelectedEvent(template.event);
-    setShowTemplateDialog(false);
+  }, [editingHook]);
+
+  // Get data from unified settings
+  const { claudecodeSettings, claudecodeLoading, claudecodeError, updateClaudecodeSetting } =
+    useUnifiedSettingsContext();
+
+  const hooks = claudecodeSettings?.effective?.hooks || {};
+
+  const getHookCount = (eventName: string): number => {
+    const eventHooks = (hooks as any)[eventName];
+    if (!eventHooks || !Array.isArray(eventHooks)) return 0;
+
+    // Count total hooks across all matchers
+    return eventHooks.reduce((total, config) => {
+      return total + (config.hooks?.length || 0);
+    }, 0);
   };
 
-  const validateHooks = async () => {
-    if (!hooks) {
-      setValidationErrors([]);
-      setValidationWarnings([]);
-      return;
-    }
-    
-    const result = await HooksManager.validateConfig(hooks);
-    setValidationErrors(result.errors.map(e => e.message));
-    setValidationWarnings(result.warnings.map(w => `${w.message} in command: ${(w.command || '').substring(0, 50)}...`));
-  };
+  // Get visible hook sections (only those with hooks)
+  const visibleHookSections = HOOK_EVENTS.filter(
+    ({ event }) => getHookCount(event) > 0,
+  );
 
-  useEffect(() => {
-    validateHooks();
-  }, [hooks]);
+  // Handle scroll position changes
+  React.useEffect(() => {
+    const element = scrollContainerRef?.current;
+    if (!element) return;
 
-  const addCommand = (event: HookEvent, matcherId: string) => {
-    if (!matcherEvents.includes(event as any)) return;
-    
-    const newCommand: EditableHookCommand = {
-      id: HooksManager.generateId(),
-      type: 'command',
-      command: ''
+    const handleScroll = () => {
+      // Calculate approximate visible range (rough estimate)
+      const itemHeight = 120; // approximate height per hook section
+      const scrollTop = element.scrollTop;
+      const containerHeight = element.clientHeight;
+
+      const startIndex = Math.floor(scrollTop / itemHeight);
+      const endIndex = Math.min(
+        Math.ceil((scrollTop + containerHeight) / itemHeight),
+        visibleHookSections.length - 1,
+      );
+
+      const start = Math.max(1, startIndex + 1); // 1-based
+      const end = Math.min(endIndex + 1, visibleHookSections.length);
+      setScrollPosition({ start, end });
     };
-    
-    setEditableHooks(prev => ({
-      ...prev,
-      [event]: (prev[event as 'PreToolUse' | 'PostToolUse'] as EditableHookMatcher[]).map(matcher =>
-        matcher.id === matcherId
-          ? { ...matcher, hooks: [...matcher.hooks, newCommand] }
-          : matcher
-      )
-    }));
-  };
 
-  const updateCommand = (
-    event: HookEvent,
-    matcherId: string,
-    commandId: string,
-    updates: Partial<EditableHookCommand>
+    element.addEventListener("scroll", handleScroll);
+    handleScroll(); // Set initial position
+
+    return () => {
+      element.removeEventListener("scroll", handleScroll);
+    };
+  }, [visibleHookSections.length]);
+
+  const handleInstallHook = async (
+    event: string,
+    command: string,
+    matcher?: string,
   ) => {
-    if (!matcherEvents.includes(event as any)) return;
-    
-    setEditableHooks(prev => ({
-      ...prev,
-      [event]: (prev[event as 'PreToolUse' | 'PostToolUse'] as EditableHookMatcher[]).map(matcher =>
-        matcher.id === matcherId
-          ? {
-              ...matcher,
-              hooks: matcher.hooks.map(cmd =>
-                cmd.id === commandId ? { ...cmd, ...updates } : cmd
-              )
-            }
-          : matcher
-      )
-    }));
+    try {
+      logger.info("Installing hook:", { event, command, matcher, scope });
+
+      // Get current hooks or initialize empty object
+      const currentHooks = { ...hooks } as any;
+
+      // Initialize event array if it doesn't exist
+      if (!currentHooks[event]) {
+        currentHooks[event] = [];
+      }
+
+      // Find existing config with same matcher or create new one
+      let configIndex = -1;
+      if (matcher) {
+        configIndex = currentHooks[event].findIndex((config: any) => config.matcher === matcher);
+      } else {
+        configIndex = currentHooks[event].findIndex((config: any) => !config.matcher);
+      }
+
+      if (configIndex === -1) {
+        // Create new config
+        const newConfig: any = { hooks: [{ type: 'command', command }] };
+        if (matcher) {
+          newConfig.matcher = matcher;
+        }
+        currentHooks[event].push(newConfig);
+      } else {
+        // Add to existing config
+        currentHooks[event][configIndex].hooks.push({ type: 'command', command });
+      }
+
+      // Update settings
+      await updateClaudecodeSetting('hooks', currentHooks);
+
+      setShowInstallDialog(false);
+    } catch (error) {
+      logger.error("Failed to install hook:", error);
+    }
   };
 
-  const removeCommand = (event: HookEvent, matcherId: string, commandId: string) => {
-    if (!matcherEvents.includes(event as any)) return;
-    
-    setEditableHooks(prev => ({
-      ...prev,
-      [event]: (prev[event as 'PreToolUse' | 'PostToolUse'] as EditableHookMatcher[]).map(matcher =>
-        matcher.id === matcherId
-          ? { ...matcher, hooks: matcher.hooks.filter(cmd => cmd.id !== commandId) }
-          : matcher
-      )
-    }));
+  const handleEditHook = (
+    event: string,
+    configIndex: number,
+    hookIndex: number,
+    hook: any,
+    matcher?: string,
+  ) => {
+    setEditingHook({
+      event,
+      configIndex,
+      hookIndex,
+      command: hook.command,
+      matcher: matcher || "",
+    });
   };
 
-  const renderMatcher = (event: HookEvent, matcher: EditableHookMatcher) => (
-    <HookMatcherEditor
-      key={matcher.id}
-      event={event}
-      matcher={matcher}
-      onMatcherUpdate={(updates) => updateMatcher(event, matcher.id, updates)}
-      onCommandAdd={() => addCommand(event, matcher.id)}
-      onCommandUpdate={(commandId, updates) => updateCommand(event, matcher.id, commandId, updates)}
-      onCommandRemove={(commandId) => removeCommand(event, matcher.id, commandId)}
-      onMatcherRemove={() => removeMatcher(event, matcher.id)}
-      commonPatterns={COMMON_TOOL_MATCHERS}
-      readOnly={readOnly}
-    />
-  );
-  
-  const renderDirectCommand = (event: HookEvent, command: EditableHookCommand) => (
-    <DirectCommandEditor
-      key={command.id}
-      command={command}
-      onCommandUpdate={(updates) => updateDirectCommand(event, command.id, updates)}
-      onCommandRemove={() => removeDirectCommand(event, command.id)}
-      readOnly={readOnly}
-    />
-  );
+  const saveHookChanges = async (newCommand: string, newMatcher?: string) => {
+    if (!editingHook) return;
+
+    try {
+      // Get current hooks
+      const currentHooks = { ...hooks } as any;
+
+      // Update the specific hook
+      const { event, configIndex, hookIndex } = editingHook;
+
+      if (currentHooks[event] && currentHooks[event][configIndex] && currentHooks[event][configIndex].hooks[hookIndex]) {
+        // Update the hook command
+        currentHooks[event][configIndex].hooks[hookIndex].command = newCommand;
+
+        // Update matcher if this is a tool event
+        if (event === "PreToolUse" || event === "PostToolUse") {
+          if (newMatcher && newMatcher.trim() !== '') {
+            currentHooks[event][configIndex].matcher = newMatcher;
+          } else {
+            // Remove matcher if empty
+            delete currentHooks[event][configIndex].matcher;
+          }
+        }
+
+        // Update settings immediately
+        await updateClaudecodeSetting('hooks', currentHooks);
+      }
+    } catch (error) {
+      logger.error("Failed to save hook edit:", error);
+    }
+  };
+
+  const handleDeleteHook = async (
+    event: string,
+    configIndex: number,
+    hookIndex: number,
+  ) => {
+    try {
+      logger.info("Deleting hook:", { event, configIndex, hookIndex });
+
+      // Get current hooks
+      const currentHooks = { ...hooks } as any;
+
+      if (currentHooks[event] && currentHooks[event][configIndex] && currentHooks[event][configIndex].hooks) {
+        // Remove the specific hook
+        currentHooks[event][configIndex].hooks.splice(hookIndex, 1);
+
+        // If this config has no more hooks, remove the entire config
+        if (currentHooks[event][configIndex].hooks.length === 0) {
+          currentHooks[event].splice(configIndex, 1);
+        }
+
+        // If this event has no more configs, remove the entire event
+        if (currentHooks[event].length === 0) {
+          delete currentHooks[event];
+        }
+
+        // Update settings
+        await updateClaudecodeSetting('hooks', currentHooks);
+      }
+    } catch (error) {
+      logger.error("Failed to delete hook:", error);
+    }
+  };
+
+  const handleOpenFile = () => {
+    if (!editingHook || !editingHook.command || !onEditFile) return;
+
+    // Open the file in the embedded editor via callback
+    onEditFile(editingHook.command);
+    logger.info("Opening script file in editor:", editingHook.command);
+  };
+
+  const handleBrowse = async () => {
+    if (!editingHook) return;
+
+    try {
+      // Get the directory of the current command file, or default to home directory
+      const currentCommand = editingHook.command;
+      const home = await homeDir();
+      let defaultPath = home;
+
+      if (currentCommand && currentCommand.trim() !== "") {
+        try {
+          // Use proper path operations to get directory
+          defaultPath = await dirname(currentCommand);
+        } catch (error) {
+          // If dirname fails (e.g., for simple commands without paths), use home
+          logger.debug(
+            "Failed to get dirname for command:",
+            currentCommand,
+            error,
+          );
+        }
+      }
+
+      const selected = await open({
+        multiple: false,
+        defaultPath,
+        filters: [
+          {
+            name: "Scripts",
+            extensions: ["sh", "py", "js", "rb", "pl"],
+          },
+          {
+            name: "All Files",
+            extensions: ["*"],
+          },
+        ],
+      });
+
+      if (selected && typeof selected === "string") {
+        setEditingHook({ ...editingHook, command: selected });
+      }
+    } catch (error) {
+      logger.error("Failed to open file picker:", error);
+    }
+  };
+
+  if (claudecodeLoading) {
+    return (
+      <div className={cn("p-4 text-center", className)}>
+        <p className="text-sm text-muted-foreground">Loading hooks...</p>
+      </div>
+    );
+  }
+
+  if (claudecodeError) {
+    return (
+      <div
+        className={cn(
+          "p-4 border rounded-lg bg-red-50 dark:bg-red-950",
+          className,
+        )}
+      >
+        <p className="text-red-600 dark:text-red-400">
+          Error: {claudecodeError.message}
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div className={cn("space-y-6 relative", className)}>
+    <div className={cn("space-y-2 relative flex flex-col", className)}>
       <DebugLabel label="HooksEditor" />
-      {/* Loading State */}
-      {isLoading && (
-        <LoadingSpinner 
-          message="Loading hooks configuration..." 
-          className="p-8"
-        />
-      )}
-      
-      {/* Error State */}
-      {loadError && !isLoading && (
-        <StatusMessage
-          type="error"
-          message={loadError}
-        />
-      )}
-      
-      {/* Main Content */}
-      {!isLoading && (
-        <>
-          {/* Header */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Hooks Configuration</h3>
-              <div className="flex items-center gap-2">
-                <HookTypeSelector scope={scope} />
-                {!readOnly && (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowTemplateDialog(true)}
-                    >
-                      <FileText className="h-4 w-4 mr-2" />
-                      Templates
-                    </Button>
-                    {!hideActions && (
-                      <Button
-                        variant={hasUnsavedChanges ? "default" : "outline"}
-                        size="sm"
-                        onClick={handleSave}
-                        disabled={!hasUnsavedChanges || isSaving || !projectPath}
-                      >
-                        {isSaving ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Save className="h-4 w-4 mr-2" />
-                        )}
-                        {isSaving ? "Saving..." : "Save"}
-                      </Button>
-                    )}
-                  </>
-                )}
+
+      <div className="flex items-center justify-between flex-none">
+        {visibleHookSections.length > 0 && (
+          <div className="bg-muted px-3 py-1 rounded-lg text-xs text-muted-foreground">
+            {scrollPosition.start === scrollPosition.end
+              ? `${scrollPosition.start} of ${visibleHookSections.length}`
+              : `${scrollPosition.start}-${scrollPosition.end} of ${visibleHookSections.length}`}
+          </div>
+        )}
+
+        <Button
+          size="sm"
+          className="gap-2"
+          onClick={() => setShowInstallDialog(true)}
+        >
+          <Plus className="h-4 w-4" />
+          Install Hook
+        </Button>
+      </div>
+
+      <div
+        ref={scrollContainerRef}
+        className="space-y-3 overflow-auto"
+        style={
+          containerHeight
+            ? {
+                contain: "strict",
+                height: `${containerHeight}px`,
+              }
+            : {}
+        }
+      >
+        {HOOK_EVENTS.map(({ event, icon: Icon, title, description }) => {
+          const hookCount = getHookCount(event);
+
+          // Hide sections with 0 hooks
+          if (hookCount === 0) return null;
+
+          return (
+            <div key={event} className="border rounded-lg bg-card">
+              <div className="p-3 pb-1">
+                <div className="flex items-center gap-3">
+                  <Icon className="h-4 w-4 text-accent" />
+                  <div className="text-left">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{title}</span>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {description}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3 pt-2 border-t">
+                <div className="space-y-2">
+                  {(hooks as any)[event]?.map(
+                    (config: any, configIndex: number) => (
+                      <div key={configIndex} className="space-y-1">
+                        {config.hooks?.map((hook: any, hookIndex: number) => {
+                          const isEditing =
+                            editingHook &&
+                            editingHook.event === event &&
+                            editingHook.configIndex === configIndex &&
+                            editingHook.hookIndex === hookIndex;
+
+                          return (
+                            <div key={hookIndex}>
+                              {isEditing ? (
+                                <div ref={editingRef} className="space-y-2">
+                                  {(event === "PreToolUse" ||
+                                    event === "PostToolUse") && (
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs text-muted-foreground">
+                                        Matcher:
+                                      </span>
+                                      <Input
+                                        value={editingHook.matcher}
+                                        onChange={(e) => {
+                                          const newMatcher = e.target.value;
+                                          setEditingHook({
+                                            ...editingHook,
+                                            matcher: newMatcher,
+                                          });
+                                          // Auto-save on change
+                                          saveHookChanges(editingHook.command, newMatcher);
+                                        }}
+                                        placeholder="e.g., Write|Edit (leave empty for all tools)"
+                                        className="flex-1 h-8 text-xs"
+                                      />
+                                    </div>
+                                  )}
+                                  <div className="flex items-center gap-2">
+                                    <Input
+                                      value={editingHook.command}
+                                      onChange={(e) => {
+                                        const newCommand = e.target.value;
+                                        setEditingHook({
+                                          ...editingHook,
+                                          command: newCommand,
+                                        });
+                                        // Auto-save on change
+                                        saveHookChanges(newCommand, editingHook.matcher);
+                                      }}
+                                      className="flex-1 h-8 text-xs font-mono"
+                                    />
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={handleBrowse}
+                                      className="h-8 px-2"
+                                      title="Browse for script file"
+                                    >
+                                      <FileText className="h-3 w-3" />
+                                      <span>Browse</span>
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={handleOpenFile}
+                                      className="h-8 px-2"
+                                      disabled={!editingHook.command || editingHook.command.trim() === ''}
+                                      title="Open script in editor"
+                                    >
+                                      <Edit3 className="h-3 w-3" />
+                                      <span>Edit</span>
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        handleDeleteHook(
+                                          event,
+                                          configIndex,
+                                          hookIndex,
+                                        );
+                                        setEditingHook(null);
+                                      }}
+                                      className="h-8 px-2 text-destructive hover:text-destructive"
+                                      title="Remove hook (doesn't delete script file)"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div
+                                  className="flex items-center gap-2 cursor-pointer hover:bg-muted/30 p-1 rounded group"
+                                  onClick={() =>
+                                    handleEditHook(
+                                      event,
+                                      configIndex,
+                                      hookIndex,
+                                      hook,
+                                      config.matcher,
+                                    )
+                                  }
+                                >
+                                  <div className="flex-1">
+                                    {config.matcher && (
+                                      <span className="text-xs text-muted-foreground font-mono">
+                                        matcher: {config.matcher} →{" "}
+                                      </span>
+                                    )}
+                                    <span className="text-sm font-mono">
+                                      {hook.command}
+                                    </span>
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteHook(
+                                        event,
+                                        configIndex,
+                                        hookIndex,
+                                      );
+                                    }}
+                                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ),
+                  )}
+                </div>
               </div>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Configure shell commands to execute at various points in Claude Code's lifecycle.
-              {scope === 'local' && ' These settings are not committed to version control.'}
-            </p>
-            {hasUnsavedChanges && !readOnly && (
-              <p className="text-sm text-amber-600">
-                You have unsaved changes. Click Save to persist them.
-              </p>
-            )}
-          </div>
+          );
+        })}
+      </div>
 
-          {/* Validation Messages */}
-          <ValidationFeedback 
-            errors={validationErrors}
-            warnings={validationWarnings}
-          />
-
-          {/* Event Tabs */}
-          <Tabs value={selectedEvent} onValueChange={(v) => setSelectedEvent(v as HookEvent)}>
-            <TabsList className="w-full">
-              {(Object.keys(EVENT_INFO) as HookEvent[]).map(event => {
-                const isMatcherEvent = matcherEvents.includes(event as any);
-                const count = isMatcherEvent 
-                  ? (editableHooks[event as 'PreToolUse' | 'PostToolUse'] as EditableHookMatcher[]).length
-                  : (editableHooks[event as 'Notification' | 'Stop' | 'SubagentStop'] as EditableHookCommand[]).length;
-                
-                return (
-                  <TabsTrigger key={event} value={event} className="flex items-center gap-2">
-                    <HookMetadata
-                      event={event}
-                      count={count > 0 ? count : undefined}
-                    />
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
-
-            {(Object.keys(EVENT_INFO) as HookEvent[]).map(event => {
-              const isMatcherEvent = matcherEvents.includes(event as any);
-              const items = isMatcherEvent 
-                ? (editableHooks[event as 'PreToolUse' | 'PostToolUse'] as EditableHookMatcher[])
-                : (editableHooks[event as 'Notification' | 'Stop' | 'SubagentStop'] as EditableHookCommand[]);
-              
-              return (
-                <TabsContent key={event} value={event} className="space-y-4">
-                  <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">
-                      {EVENT_INFO[event].description}
-                    </p>
-                  </div>
-
-                  {items.length === 0 ? (
-                    <Card className="p-8 text-center">
-                      <p className="text-muted-foreground mb-4">No hooks configured for this event</p>
-                      {!readOnly && (
-                        <Button onClick={() => isMatcherEvent ? addMatcher(event) : addDirectCommand(event)}>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Hook
-                        </Button>
-                      )}
-                    </Card>
-                  ) : (
-                    <div className="space-y-4">
-                      {isMatcherEvent 
-                        ? (items as EditableHookMatcher[]).map(matcher => renderMatcher(event, matcher))
-                        : (items as EditableHookCommand[]).map(command => renderDirectCommand(event, command))
-                      }
-                      
-                      {!readOnly && (
-                        <Button
-                          variant="outline"
-                          onClick={() => isMatcherEvent ? addMatcher(event) : addDirectCommand(event)}
-                          className="w-full"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Another {isMatcherEvent ? 'Matcher' : 'Command'}
-                        </Button>
-                      )}
-                    </div>
-                  )}
-                </TabsContent>
-              );
-            })}
-          </Tabs>
-
-          {/* Template Dialog */}
-          <TemplateSelector
-            open={showTemplateDialog}
-            onOpenChange={setShowTemplateDialog}
-            templates={HOOK_TEMPLATES}
-            onTemplateSelect={applyTemplate}
-          />
-        </>
-      )}
+      <HookInstallDialog
+        open={showInstallDialog}
+        onOpenChange={setShowInstallDialog}
+        onInstall={handleInstallHook}
+      />
     </div>
   );
 };

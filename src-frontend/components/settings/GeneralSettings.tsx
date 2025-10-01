@@ -86,7 +86,7 @@ export const GeneralSettings: React.FC<GeneralSettingsProps> = ({
     <div className="space-y-6 relative">
       <DebugLabel label="GeneralSettings" />
       <div>
-        <h3 className="text-base font-semibold mb-4">General Settings</h3>
+        <h3 className="text-lg font-semibold text-accent mb-4">General Settings</h3>
         
         <div className="space-y-4">
           {/* Theme Selector */}

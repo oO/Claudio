@@ -71,12 +71,12 @@ export const Settings: React.FC<SettingsProps> = ({ className }) => {
   return (
     <div
       className={cn(
-        "flex flex-col h-full bg-background text-foreground relative",
+        "bg-background text-foreground relative",
         className,
       )}
     >
       <DebugLabel label="Settings" />
-      <div className="max-w-4xl mx-auto w-full flex flex-col h-full">
+      <div className="max-w-4xl mx-auto w-full">
         {/* Error message */}
         {error && (
           <div className="mx-4 mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/50 flex items-center gap-2 text-sm text-destructive">
@@ -91,7 +91,7 @@ export const Settings: React.FC<SettingsProps> = ({ className }) => {
             <LoadingSpinner size="lg" message="Loading settings..." />
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto">
+          <div>
             <Tabs
               value={activeTab}
               onValueChange={setActiveTab}

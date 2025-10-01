@@ -49,7 +49,7 @@ export const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
       <DebugLabel label="AdvancedSettings" />
 
       <div className="mb-6">
-        <h3 className="text-base font-semibold">Advanced Settings</h3>
+        <h3 className="text-lg font-semibold text-accent">Advanced Settings</h3>
         <p className="text-sm text-muted-foreground mt-1">
           Additional configuration options for advanced users
         </p>
