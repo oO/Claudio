@@ -13,9 +13,9 @@ import { api } from "@/lib/api";
 import { DebugLabel } from "@/components/ui/atoms";
 import { logger } from '@/lib/logger';
 import { useTabState } from '@/hooks/useTabState';
-import { 
+import {
   ProjectSessionTab,
-  ProjectMemoriesTab,
+  MemoriesManager,
   ProjectAgentsTab,
   ProjectToolsTab,
   ProjectDeleteDialog,
@@ -243,7 +243,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
 
         {/* Memories Tab */}
         <TabsContent value="memories" className="mt-2">
-          <ProjectMemoriesTab
+          <MemoriesManager
             projectPath={projectPath}
             onViewClaudeFile={(file) => onEditClaudeFile?.(file, activeTab)}
           />

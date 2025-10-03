@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Save, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { TriLevelPermissionsManager } from "@/components/common";
+import { ToolPermissionsManager } from "@/components/common";
 import { useTriLevelSettings, useUnsavedChanges } from "@/hooks";
 import { DebugLabel } from "@/components/ui/atoms";
 
@@ -88,8 +88,8 @@ export const ProjectToolsTab: React.FC<ProjectToolsTabProps> = ({
             </div>
           )}
 
-          {/* Tri-Level Permissions Manager with Ask Support */}
-          <TriLevelPermissionsManager
+          {/* Tool Permissions Manager with Ask Support */}
+          <ToolPermissionsManager
             rules={rules}
             onAddRule={addRule}
             onToggleLevel={toggleRuleLevel}

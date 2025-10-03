@@ -1,7 +1,7 @@
 // Settings-related components
 export { Settings } from './Settings';
 export { SettingsTab } from './SettingsTab';
-export { HooksEditor } from './HooksEditor';
+export { HooksManager } from './HooksManager';
 export { AnalyticsConsent, AnalyticsConsentBanner } from './AnalyticsConsent';
 export { ProxySettings } from './ProxySettings';
 export { StorageTab } from './StorageTab';

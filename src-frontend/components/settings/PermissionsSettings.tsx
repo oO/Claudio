@@ -1,5 +1,5 @@
 import React from "react";
-import { TriLevelPermissionsManager } from "@/components/common";
+import { ToolPermissionsManager } from "@/components/common";
 import type { PermissionRule } from "@/hooks/useSettingsState";
 import type { TriLevelRule } from "@/hooks/useTriLevelSettings";
 import { DebugLabel } from "@/components/ui/atoms";
@@ -80,7 +80,7 @@ export const PermissionsSettings: React.FC<PermissionsSettingsProps> = ({
   return (
     <div className="relative">
       <DebugLabel label="PermissionsSettings" />
-      <TriLevelPermissionsManager
+      <ToolPermissionsManager
         rules={convertToTriLevelRules()}
         onAddRule={handleAddRule}
         onToggleLevel={handleToggleLevel}

@@ -9,7 +9,7 @@ import { DebugLabel } from "@/components/ui/atoms";
 import { cn } from "@/lib/utils";
 import type { TriLevelRule } from "@/hooks/useTriLevelSettings";
 
-interface TriLevelPermissionsManagerProps {
+interface ToolPermissionsManagerProps {
   rules: TriLevelRule[];
   onAddRule: (type: "allow" | "ask" | "deny", value: string) => void;
   onToggleLevel: (ruleId: string, level: "user" | "team" | "local") => Promise<void>;
@@ -26,7 +26,7 @@ interface TriLevelPermissionsManagerProps {
 /**
  * Component for managing permission rules across all 3 Claude Code settings levels
  */
-export const TriLevelPermissionsManager: React.FC<TriLevelPermissionsManagerProps> = ({
+export const ToolPermissionsManager: React.FC<ToolPermissionsManagerProps> = ({
   rules,
   onAddRule,
   onToggleLevel,
@@ -180,7 +180,7 @@ export const TriLevelPermissionsManager: React.FC<TriLevelPermissionsManagerProp
 
   return (
     <div className="space-y-6 relative">
-      <DebugLabel label="TriLevelPermissionsManager" />
+      <DebugLabel label="ToolPermissionsManager" />
       
       {/* Allow Rules Section */}
       <div className="space-y-3">

@@ -27,15 +27,20 @@ import {
 } from "@/components/ui/dialog";
 import { FilePicker } from "@/components/common";
 import type { FileEntry } from "@/lib/api";
+import {
+  ManagerHeader,
+  ManagerLoadingState,
+  ManagerEmptyState,
+} from "@/components/managers/shared";
 
-interface ProjectMemoriesTabProps {
+interface MemoriesManagerProps {
   projectPath: string;
   onViewClaudeFile?: (file: ClaudeMdFile) => void;
   onCreateMemory?: () => void;
   className?: string;
 }
 
-export const ProjectMemoriesTab: React.FC<ProjectMemoriesTabProps> = ({
+export const MemoriesManager: React.FC<MemoriesManagerProps> = ({
   projectPath,
   onViewClaudeFile,
   onCreateMemory,
@@ -181,28 +186,22 @@ export const ProjectMemoriesTab: React.FC<ProjectMemoriesTabProps> = ({
 
   return (
     <Card className="relative">
-      <DebugLabel label="ProjectMemoriesTab" />
+      <DebugLabel label="MemoriesManager" />
       <CardContent className="p-6">
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold mb-2 text-accent">
-                Memories
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Manage CLAUDE.md files containing project context and memories.
-              </p>
-            </div>
-            <Button onClick={handleCreateMemory} size="sm" className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Memory
-            </Button>
-          </div>
+          <ManagerHeader
+            title="Memories"
+            description="Manage CLAUDE.md files containing project context and memories."
+            action={
+              <Button onClick={handleCreateMemory} size="sm" className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Memory
+              </Button>
+            }
+          />
 
           {claudeFilesLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
+            <ManagerLoadingState />
           ) : (
             <AnimatePresence mode="popLayout">
               {claudeFiles.length === 0 ? (
@@ -211,26 +210,22 @@ export const ProjectMemoriesTab: React.FC<ProjectMemoriesTabProps> = ({
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="text-center py-8"
                 >
-                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <>
-                    <h3 className="text-lg font-medium text-muted-foreground mb-2">
-                      No memories found
-                    </h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Create your first CLAUDE.md file to store project context
-                      and memories.
-                    </p>
-                    <Button
-                      onClick={handleCreateMemory}
-                      size="sm"
-                      className="gap-2"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Create First Memory
-                    </Button>
-                  </>
+                  <ManagerEmptyState
+                    icon={FileText}
+                    title="No memories found"
+                    description="Create your first CLAUDE.md file to store project context and memories."
+                    action={
+                      <Button
+                        onClick={handleCreateMemory}
+                        size="sm"
+                        className="gap-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Create First Memory
+                      </Button>
+                    }
+                  />
                 </motion.div>
               ) : (
                 <motion.div

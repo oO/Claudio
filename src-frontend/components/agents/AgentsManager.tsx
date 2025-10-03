@@ -7,7 +7,7 @@ import { AgentCard } from "./AgentCard";
 import { DebugLabel } from "@/components/ui/atoms";
 import { logger } from '@/lib/logger';
 
-interface AgentsContentProps {
+interface AgentsManagerProps {
   /**
    * Optional project path - if provided, loads project agents, otherwise loads personal agents
    */
@@ -39,10 +39,10 @@ interface AgentsContentProps {
 }
 
 /**
- * Shared AgentsContent component that displays the create/import buttons and agent cards
+ * Shared AgentsManager component that displays the create/import buttons and agent cards
  * Used both directly in Personal Agents and inside the collapsible wrapper for Project Agents
  */
-export const AgentsContent: React.FC<AgentsContentProps> = ({
+export const AgentsManager: React.FC<AgentsManagerProps> = ({
   projectPath,
   onEditAgent,
   onExportAgent,
@@ -88,7 +88,7 @@ export const AgentsContent: React.FC<AgentsContentProps> = ({
 
   return (
     <div className={cn("w-full relative", className)}>
-      <DebugLabel label="AgentsContent" />
+      <DebugLabel label="AgentsManager" />
       {/* Create and Import buttons */}
       {(onCreateAgent || onImportAgent) && (
         <div className="mb-2">

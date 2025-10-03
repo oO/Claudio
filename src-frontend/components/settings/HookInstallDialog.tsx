@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { logger } from "@/lib/logger";
-import { HOOK_EVENTS } from "./HooksEditor";
+import { HOOK_EVENTS } from "./HooksManager";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { homeDir } from "@tauri-apps/api/path";
 

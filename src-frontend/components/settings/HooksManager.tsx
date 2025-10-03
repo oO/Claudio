@@ -42,7 +42,7 @@ export interface EditableHookMatcher {
   expanded?: boolean;
 }
 
-interface HooksEditorProps {
+interface HooksManagerProps {
   projectPath?: string;
   scope: "project" | "local" | "user";
   readOnly?: boolean;
@@ -113,7 +113,7 @@ export const HOOK_EVENTS = [
 
 type HookEvent = (typeof HOOK_EVENTS)[number]["event"];
 
-export const HooksEditor: React.FC<HooksEditorProps> = ({
+export const HooksManager: React.FC<HooksManagerProps> = ({
   scope,
   className = "",
   containerHeight,
@@ -409,7 +409,7 @@ export const HooksEditor: React.FC<HooksEditorProps> = ({
 
   return (
     <div className={cn("space-y-2 relative flex flex-col", className)}>
-      <DebugLabel label="HooksEditor" />
+      <DebugLabel label="HooksManager" />
 
       <div className="flex items-center justify-between flex-none">
         {visibleHookSections.length > 0 && (

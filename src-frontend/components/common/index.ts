@@ -19,5 +19,5 @@ export { ExampleEditor, type Example } from './ExampleEditor';
 export { PreviewPromptDialog } from './PreviewPromptDialog';
 export { SlashCommandsManager } from './SlashCommandsManager';
 export { TokenCounter } from './TokenCounter';
-export { TriLevelPermissionsManager } from './TriLevelPermissionsManager';
+export { ToolPermissionsManager } from './ToolPermissionsManager';
 export { WebviewPreview } from './WebviewPreview';

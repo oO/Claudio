@@ -1,7 +1,7 @@
 import React from "react";
 import { Bot } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { AgentsContent } from "@/components/agents";
+import { AgentsManager } from "@/components/agents";
 import type { Agent } from "@/lib/api";
 import { DebugLabel } from "@/components/ui/atoms";
 
@@ -35,7 +35,7 @@ export const ProjectAgentsTab: React.FC<ProjectAgentsTabProps> = ({
               Manage agents specific to this project.
             </p>
           </div>
-          <AgentsContent
+          <AgentsManager
             projectPath={projectPath}
             onEditAgent={onEditAgent}
             onExportAgent={onExportAgent}

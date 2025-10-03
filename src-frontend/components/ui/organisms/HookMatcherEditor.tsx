@@ -15,7 +15,7 @@ import { HookEvent } from "@/types/hooks";
 import { HooksManager } from "@/lib/hooksManager";
 
 // Import types from main component
-import type { EditableHookCommand, EditableHookMatcher } from '../../settings/HooksEditor';
+import type { EditableHookCommand, EditableHookMatcher } from '../../settings/HooksManager';
 
 export interface HookMatcherEditorProps {
   event: HookEvent;

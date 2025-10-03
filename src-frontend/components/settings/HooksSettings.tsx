@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
-import { HooksEditor } from "@/components/settings/HooksEditor";
+import { HooksManager } from "@/components/settings/HooksManager";
 import { HooksCommandEditor } from "@/components/settings/HooksCommandEditor";
 import { DebugLabel } from "@/components/ui/atoms";
 
@@ -70,7 +70,7 @@ export const HooksSettings: React.FC<HooksSettingsProps> = ({
             containerHeight={containerHeight}
           />
         ) : (
-          <HooksEditor
+          <HooksManager
             key={activeTab}
             scope="user"
             className="border-0"
