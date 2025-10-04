@@ -4,13 +4,11 @@ import {
   MessageSquare,
   MessagesSquare,
   HardDrive,
-  Trash2,
   Activity,
   ListTodo,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { DebugLabel } from "@/components/ui/atoms";
+import { DebugLabel, DeleteButton } from "@/components/ui/atoms";
 import { useTodoContext } from "@/contexts/TodoContext";
 import { cn } from "@/lib/utils";
 import {
@@ -168,20 +166,13 @@ export const SessionCard: React.FC<SessionCardProps> = ({
             </div>
           )}
 
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button
-              variant="ghost"
-              size="icon"
-              disabled={session.live_session_type === SESSION_TYPES.NATIVE}
-              onClick={(e) => {
-                e.stopPropagation();
-                onSessionDelete?.(session);
-              }}
-              className="h-6 w-6 text-muted-foreground hover:text-destructive disabled:opacity-50"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
+          <DeleteButton
+            disabled={session.live_session_type === SESSION_TYPES.NATIVE}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSessionDelete?.(session);
+            }}
+          />
         </div>
       </div>
   );

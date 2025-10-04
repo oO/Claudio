@@ -184,7 +184,6 @@ export const ProjectAgentsDropdown: React.FC<ProjectAgentsDropdownProps> = ({
                         key={agent.id}
                         agent={agent}
                         onEdit={onEditAgent ? handleEditAgent : undefined}
-                        onExport={onExportAgent ? handleExportAgent : undefined}
                         onDelete={onDeleteAgent ? handleDeleteAgent : undefined}
                         animationDelay={index * 0.05}
                       />

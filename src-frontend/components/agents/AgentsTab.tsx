@@ -5,6 +5,8 @@ import { useTabState } from '@/hooks/useTabState';
 import { useScreenTracking } from '@/hooks/useAnalytics';
 import { Tab } from '@/contexts/TabContext';
 import { DebugLabel } from '@/components/ui/atoms';
+import { agentsApi } from '@/lib/api';
+import { logger } from '@/lib/logger';
 
 interface AgentsTabProps {
   tab: Tab;
@@ -62,8 +64,19 @@ export const AgentsTab: React.FC<AgentsTabProps> = ({ tab, isActive }) => {
           // Export functionality is handled by AgentsManager
           // Agent export will be handled
         }}
-        onDeleteAgent={(agent) => {
-          // Agent deletion will be handled
+        onDeleteAgent={async (agent) => {
+          if (!agent.id) {
+            logger.error("Cannot delete agent without ID");
+            return;
+          }
+          try {
+            await agentsApi.deleteAgent(agent.id);
+            logger.info("Agent deleted:", agent.name);
+            // Force refresh by updating tab timestamp
+            updateTab(tab.id, { lastActivityAt: Date.now() });
+          } catch (error) {
+            logger.error("Failed to delete agent:", error);
+          }
         }}
         onCreateAgent={() => {
           // Create agent in the same tab

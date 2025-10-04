@@ -17,13 +17,11 @@ import { homeDir } from "@tauri-apps/api/path";
 interface HooksCommandEditorProps {
   filePath: string;
   onBack: () => void;
-  containerHeight?: number;
 }
 
 export const HooksCommandEditor: React.FC<HooksCommandEditorProps> = ({
   filePath,
   onBack,
-  containerHeight,
 }) => {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const [content, setContent] = useState<string>("");
@@ -143,10 +141,7 @@ export const HooksCommandEditor: React.FC<HooksCommandEditorProps> = ({
       {/* Content */}
       <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-hidden"
-        style={containerHeight ? {
-          height: `${containerHeight}px`,
-        } : {}}
+        className="flex-1 min-h-0 overflow-hidden"
       >
         {loading ? (
           <div className="flex items-center justify-center h-full">

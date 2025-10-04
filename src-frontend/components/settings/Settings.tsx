@@ -91,11 +91,11 @@ export const Settings: React.FC<SettingsProps> = ({ className }) => {
             <LoadingSpinner size="lg" message="Loading settings..." />
           </div>
         ) : (
-          <div>
+          <div className="flex flex-col h-full">
             <Tabs
               value={activeTab}
               onValueChange={setActiveTab}
-              className="w-full"
+              className="w-full flex flex-col flex-1 min-h-0 gap-2"
             >
               <TabsList className="grid grid-cols-5 w-full">
                 <TabsTrigger value="general" className="gap-2 hover:bg-accent">
@@ -124,7 +124,7 @@ export const Settings: React.FC<SettingsProps> = ({ className }) => {
               </TabsList>
 
               {/* General Settings */}
-              <TabsContent value="general" className="space-y-6">
+              <TabsContent value="general" className="flex-1 min-h-0 space-y-6">
                 <Card className="p-6">
                   <GeneralSettings
                     settings={settings}
@@ -134,7 +134,7 @@ export const Settings: React.FC<SettingsProps> = ({ className }) => {
               </TabsContent>
 
               {/* Tools Settings */}
-              <TabsContent value="permissions" className="space-y-6">
+              <TabsContent value="permissions" className="flex-1 min-h-0 space-y-6">
                 <Card className="p-6">
                   <PermissionsSettings
                     allowRules={allowRules}
@@ -148,7 +148,7 @@ export const Settings: React.FC<SettingsProps> = ({ className }) => {
               </TabsContent>
 
               {/* Advanced Settings */}
-              <TabsContent value="advanced" className="space-y-6">
+              <TabsContent value="advanced" className="flex-1 min-h-0 space-y-6">
                 <Card className="p-6">
                   <AdvancedSettings
                     settings={settings}
@@ -163,7 +163,7 @@ export const Settings: React.FC<SettingsProps> = ({ className }) => {
               </TabsContent>
 
               {/* Hooks Settings */}
-              <TabsContent value="hooks" className="space-y-6">
+              <TabsContent value="hooks" className="flex-1 min-h-0 space-y-6">
                 <Card className="p-6">
                   <HooksSettings
                     onHooksChange={() => {}}
@@ -173,7 +173,7 @@ export const Settings: React.FC<SettingsProps> = ({ className }) => {
               </TabsContent>
 
               {/* Commands Tab */}
-              <TabsContent value="commands">
+              <TabsContent value="commands" className="flex-1 min-h-0">
                 <Card className="p-6">
                   <CommandsSettings />
                 </Card>

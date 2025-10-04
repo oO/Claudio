@@ -49,7 +49,6 @@ interface HooksManagerProps {
   className?: string;
   onChange?: (hasChanges: boolean, getHooks: (() => any) | null) => void;
   hideActions?: boolean;
-  containerHeight?: number;
   onEditFile?: (filePath: string) => void;
 }
 
@@ -116,7 +115,6 @@ type HookEvent = (typeof HOOK_EVENTS)[number]["event"];
 export const HooksManager: React.FC<HooksManagerProps> = ({
   scope,
   className = "",
-  containerHeight,
   onEditFile,
 }) => {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
@@ -408,10 +406,10 @@ export const HooksManager: React.FC<HooksManagerProps> = ({
   }
 
   return (
-    <div className={cn("space-y-2 relative flex flex-col", className)}>
+    <div className={cn("space-y-2 relative flex flex-col h-full", className)}>
       <DebugLabel label="HooksManager" />
 
-      <div className="flex items-center justify-between flex-none">
+      <div className="flex items-center justify-between flex-none flex-shrink-0">
         {visibleHookSections.length > 0 && (
           <div className="bg-muted px-3 py-1 rounded-lg text-xs text-muted-foreground">
             {scrollPosition.start === scrollPosition.end
@@ -432,15 +430,7 @@ export const HooksManager: React.FC<HooksManagerProps> = ({
 
       <div
         ref={scrollContainerRef}
-        className="space-y-3 overflow-auto"
-        style={
-          containerHeight
-            ? {
-                contain: "strict",
-                height: `${containerHeight}px`,
-              }
-            : {}
-        }
+        className="space-y-3 flex-1 min-h-0 overflow-auto"
       >
         {HOOK_EVENTS.map(({ event, icon: Icon, title, description }) => {
           const hookCount = getHookCount(event);

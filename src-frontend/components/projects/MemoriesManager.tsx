@@ -1,21 +1,14 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   FileText,
-  Clock,
-  HardDrive,
-  FolderOpen,
-  FileCode,
   Plus,
   Loader2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
-import { formatUnixTimestamp, truncateText } from "@/lib/date-utils";
 import type { ClaudeMdFile } from "@/lib/api";
-import { api } from "@/lib/api";
+import { api, claudeApi } from "@/lib/api";
 import { DebugLabel } from "@/components/ui/atoms";
 import {
   Dialog,
@@ -32,6 +25,7 @@ import {
   ManagerLoadingState,
   ManagerEmptyState,
 } from "@/components/managers/shared";
+import { MemoryCard } from "./MemoryCard";
 
 interface MemoriesManagerProps {
   projectPath: string;
@@ -98,6 +92,18 @@ export const MemoriesManager: React.FC<MemoriesManagerProps> = ({
   // Handle clicking on a memory card to view
   const handleCardClick = (file: ClaudeMdFile) => {
     onViewClaudeFile?.(file);
+  };
+
+  // Handle deleting a memory file
+  const handleDeleteFile = async (file: ClaudeMdFile) => {
+    try {
+      await claudeApi.deleteFile(file.absolute_path);
+      // Refresh the file list
+      await loadClaudeFiles();
+      logger.info("Memory file deleted:", file.relative_path);
+    } catch (error) {
+      logger.error("Failed to delete memory file:", error);
+    }
   };
 
   // Handle create memory button click
@@ -185,104 +191,58 @@ export const MemoriesManager: React.FC<MemoriesManagerProps> = ({
   };
 
   return (
-    <Card className="relative">
+    <Card className="relative flex flex-col h-full">
       <DebugLabel label="MemoriesManager" />
-      <CardContent className="p-6">
-        <div className="space-y-4">
-          <ManagerHeader
-            title="Memories"
-            description="Manage CLAUDE.md files containing project context and memories."
-            action={
-              <Button onClick={handleCreateMemory} size="sm" className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add Memory
-              </Button>
-            }
-          />
+      <CardContent className="p-0 pb-3 flex flex-col h-full min-h-0">
+        <div className="flex flex-col h-full gap-4">
+          <div className="px-6 pt-6">
+            <ManagerHeader
+              title="Memories"
+              description="Manage CLAUDE.md files containing project context and memories."
+              action={
+                <Button onClick={handleCreateMemory} size="sm" className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Memory
+                </Button>
+              }
+            />
+          </div>
 
           {claudeFilesLoading ? (
             <ManagerLoadingState />
           ) : (
-            <AnimatePresence mode="popLayout">
+            <div className="flex-1 min-h-0 overflow-auto px-6">
               {claudeFiles.length === 0 ? (
-                <motion.div
-                  key="no-files"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                >
-                  <ManagerEmptyState
-                    icon={FileText}
-                    title="No memories found"
-                    description="Create your first CLAUDE.md file to store project context and memories."
-                    action={
-                      <Button
-                        onClick={handleCreateMemory}
-                        size="sm"
-                        className="gap-2"
-                      >
-                        <Plus className="h-4 w-4" />
-                        Create First Memory
-                      </Button>
-                    }
-                  />
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="files-list"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="space-y-3"
-                >
-                  {claudeFiles.map((file, index) => (
-                    <motion.div
-                      key={file.absolute_path}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      onClick={() => handleCardClick(file)}
-                      className={cn(
-                        "group flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-card-hover hover:border-hover transition-colors cursor-pointer",
-                        className,
-                      )}
+                <ManagerEmptyState
+                  icon={FileText}
+                  title="No memories found"
+                  description="Create your first CLAUDE.md file to store project context and memories."
+                  action={
+                    <Button
+                      onClick={handleCreateMemory}
+                      size="sm"
+                      className="gap-2"
                     >
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="flex-shrink-0">
-                          <FileText className="h-4 w-4" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <p className="text-sm font-medium truncate">
-                              {file.relative_path.split("/").pop() ||
-                                file.relative_path}
-                            </p>
-                            {file.relative_path.includes("/") && (
-                              <span className="text-xs text-muted-foreground font-mono">
-                                {file.relative_path
-                                  .split("/")
-                                  .slice(0, -1)
-                                  .join("/")}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <div className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              <span>{formatUnixTimestamp(file.modified)}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <HardDrive className="h-3 w-3" />
-                              <span>{(file.size / 1024).toFixed(1)} KB</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
+                      <Plus className="h-4 w-4" />
+                      Create First Memory
+                    </Button>
+                  }
+                />
+              ) : (
+                <div className="space-y-3">
+                  {claudeFiles.map((file, index) => (
+                    <MemoryCard
+                      key={file.absolute_path}
+                      file={file}
+                      projectPath={projectPath}
+                      onClick={handleCardClick}
+                      onDelete={handleDeleteFile}
+                      animationDelay={index * 0.05}
+                    />
                   ))}
-                </motion.div>
+                </div>
               )}
-            </AnimatePresence>
+            </div>
           )}
         </div>
       </CardContent>

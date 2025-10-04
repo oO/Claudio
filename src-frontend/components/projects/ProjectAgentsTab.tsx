@@ -25,17 +25,18 @@ export const ProjectAgentsTab: React.FC<ProjectAgentsTabProps> = ({
   className,
 }) => {
   return (
-    <Card className="relative">
+    <Card className="relative flex flex-col h-full">
       <DebugLabel label="ProjectAgentsTab" />
-      <CardContent className="p-6">
-        <div className="space-y-4">
-          <div>
+      <CardContent className="p-0 pb-3 flex flex-col h-full min-h-0">
+        <div className="flex flex-col h-full gap-4">
+          <div className="px-6 pt-6">
             <h3 className="text-lg font-semibold mb-2 text-accent">Project Agents</h3>
-            <p className="text-sm text-muted-foreground mb-4">
+            <p className="text-sm text-muted-foreground">
               Manage agents specific to this project.
             </p>
           </div>
           <AgentsManager
+            className="flex-1 min-h-0"
             projectPath={projectPath}
             onEditAgent={onEditAgent}
             onExportAgent={onExportAgent}

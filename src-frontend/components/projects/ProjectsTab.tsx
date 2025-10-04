@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Loader2, Plus, MoreVertical, Trash2, Settings, Activity, FolderOpen } from "lucide-react";
-import { api, type Project, type Session, type ClaudeMdFile } from "@/lib/api";
+import { api, agentsApi, type Project, type Session, type ClaudeMdFile } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { prettifyProjectName } from "@/lib/utils";
 import { formatSessionIdCompact } from "@/lib/sessionUtils";
@@ -641,8 +641,8 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
           ) : undefined
         }
       >
-        <div className="h-full overflow-y-auto">
-          <div className="container mx-auto p-6">
+        <div className="h-full flex flex-col">
+          <div className="container mx-auto p-6 flex-1 min-h-0 flex flex-col">
             {/* Error display */}
             {error && (
               <motion.div
@@ -655,16 +655,9 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
             )}
 
             {/* Content - always show, loading handled inside components */}
-            <AnimatePresence mode="wait">
                 {selectedProject ? (
-                  <motion.div
-                    key="sessions"
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.3 }}
-                  >
                     <ProjectDetail
+                      className="flex-1 min-h-0"
                       projectPath={selectedProject.path}
                       projectId={selectedProject.id}
                       initialActiveTab={activeProjectTab}
@@ -759,10 +752,19 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                         // Agent export will be handled
                         // TODO: Implement proper export dialog
                       }}
-                      onDeleteAgent={(agent) => {
-                        // Delete agent and refresh agents list
-                        // This would need to be implemented properly with confirmation dialog
-                        // Agent deletion will be handled
+                      onDeleteAgent={async (agent) => {
+                        if (!agent.id) {
+                          logger.error("Cannot delete agent without ID");
+                          return;
+                        }
+                        try {
+                          await agentsApi.deleteAgent(agent.id);
+                          logger.info("Agent deleted:", agent.name);
+                          // Force refresh by updating tab timestamp
+                          updateTab(tab.id, { lastActivityAt: Date.now() });
+                        } catch (error) {
+                          logger.error("Failed to delete agent:", error);
+                        }
                       }}
                       onCreateAgent={() => {
                         // Open create agent tab for project agents
@@ -798,22 +800,10 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                       onUpdateTab={updateTab}
                       onStartNewClaudioSession={handleNewClaudioSession}
                     />
-                  </motion.div>
                 ) : (
-                  <motion.div
-                    key="projects"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
-                    transition={{ duration: 0.3 }}
-                  >
+                  <>
                     {/* New session button at the top */}
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5 }}
-                      className="mb-4 flex gap-2 justify-end"
-                    >
+                    <div className="mb-4 flex gap-2 justify-end">
                       <Button
                         onClick={() => handleNewClaudioSession()}
                         size="default"
@@ -822,7 +812,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                         <Plus className="mr-2 h-4 w-4" />
                         New Session
                       </Button>
-                    </motion.div>
+                    </div>
 
                     {/* Running Claude Sessions */}
                     <RunningClaudeSessions />
@@ -850,9 +840,8 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                         className="animate-fade-in"
                       />
                     ) : null}
-                  </motion.div>
+                  </>
                 )}
-              </AnimatePresence>
           </div>
         </div>
 

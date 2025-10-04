@@ -119,8 +119,8 @@ export const MCPManager: React.FC<MCPManagerProps> = ({
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto p-4">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <div className="flex-1 min-h-0 p-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full gap-6">
               <TabsList className="grid w-full max-w-md grid-cols-3">
                 <TabsTrigger value="servers" className="gap-2">
                   <Network className="h-4 w-4 text-blue-500" />
@@ -137,7 +137,7 @@ export const MCPManager: React.FC<MCPManagerProps> = ({
               </TabsList>
 
               {/* Servers Tab */}
-              <TabsContent value="servers" className="mt-6">
+              <TabsContent value="servers" className="flex-1 min-h-0">
                 <Card>
                   <MCPServerList
                     servers={servers}
@@ -149,7 +149,7 @@ export const MCPManager: React.FC<MCPManagerProps> = ({
               </TabsContent>
 
               {/* Add Server Tab */}
-              <TabsContent value="add" className="mt-6">
+              <TabsContent value="add" className="flex-1 min-h-0">
                 <Card>
                   <MCPAddServer
                     onServerAdded={handleServerAdded}
@@ -159,7 +159,7 @@ export const MCPManager: React.FC<MCPManagerProps> = ({
               </TabsContent>
 
               {/* Import/Export Tab */}
-              <TabsContent value="import" className="mt-6">
+              <TabsContent value="import" className="flex-1 min-h-0">
                 <Card className="overflow-hidden">
                   <MCPImportExport
                     onImportCompleted={handleImportCompleted}

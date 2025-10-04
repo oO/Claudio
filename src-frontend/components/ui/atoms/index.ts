@@ -26,6 +26,7 @@ export { SyntaxHighlighter } from './SyntaxHighlighter';
 
 // Debug components
 export { DebugLabel } from './DebugLabel';
+export { DeleteButton } from './DeleteButton';
 
 export type { DatabaseStatusIndicatorProps } from "./DatabaseStatusIndicator";
 export type { TableStatusBadgeProps } from "./TableStatusBadge";

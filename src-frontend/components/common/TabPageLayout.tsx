@@ -57,10 +57,10 @@ export const TabPageLayout: React.FC<TabPageLayoutProps> = ({
   return (
     <div
       id="TabPageLayout"
-      className={cn("h-full flex flex-col bg-background relative", className)}
+      className={cn("flex-1 min-h-0 flex flex-col bg-background relative", className)}
     >
       <DebugLabel label="TabPageLayout" />
-      <div className="max-w-4xl mx-auto w-full flex flex-col h-full">
+      <div className="max-w-4xl mx-auto w-full flex flex-col flex-1 min-h-0">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -108,7 +108,7 @@ export const TabPageLayout: React.FC<TabPageLayoutProps> = ({
         {/* Content */}
         <div
           id="TabContent"
-          className={cn("flex-1 overflow-auto", contentPadding && "p-6")}
+          className={cn("flex-1 min-h-0", contentPadding && "p-6")}
         >
           {children}
         </div>

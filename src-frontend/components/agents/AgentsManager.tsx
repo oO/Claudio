@@ -87,11 +87,11 @@ export const AgentsManager: React.FC<AgentsManagerProps> = ({
   };
 
   return (
-    <div className={cn("w-full relative", className)}>
+    <div className={cn("w-full relative flex flex-col h-full", className)}>
       <DebugLabel label="AgentsManager" />
       {/* Create and Import buttons */}
       {(onCreateAgent || onImportAgent) && (
-        <div className="mb-2">
+        <div className="px-6 pb-2 flex-shrink-0">
           <div className="flex gap-2">
             {onCreateAgent && (
               <Button
@@ -133,17 +133,18 @@ export const AgentsManager: React.FC<AgentsManagerProps> = ({
             : "No personal agents found"}
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="flex-1 min-h-0 overflow-auto px-6">
+          <div className="space-y-3">
           {agents.map((agent, index) => (
             <AgentCard
               key={agent.id}
               agent={agent}
               onEdit={onEditAgent ? handleEditAgent : undefined}
-              onExport={onExportAgent ? handleExportAgent : undefined}
               onDelete={onDeleteAgent ? handleDeleteAgent : undefined}
               animationDelay={index * 0.05}
             />
           ))}
+          </div>
         </div>
       )}
     </div>

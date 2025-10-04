@@ -136,10 +136,7 @@ const TabsContent = React.forwardRef<
     <div
       ref={ref}
       role="tabpanel"
-      className={cn(
-        "mt-2 flex-1",
-        className
-      )}
+      className={className}
       {...props}
     />
   );

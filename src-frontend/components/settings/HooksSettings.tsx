@@ -12,44 +12,10 @@ export const HooksSettings: React.FC<HooksSettingsProps> = ({
   onHooksChange,
   activeTab,
 }) => {
-  const heightCalculationRef = useRef<HTMLDivElement>(null); // For height calculation
-  const [containerHeight, setContainerHeight] = useState(400);
   const [editingFile, setEditingFile] = useState<string | null>(null);
 
-  // Calculate container height based on actual position - same as ProjectSessionTab
-  useEffect(() => {
-    const calculateHeight = () => {
-      if (!heightCalculationRef.current) {
-        // Retry if ref not ready yet
-        setTimeout(calculateHeight, 50);
-        return;
-      }
-
-      const rect = heightCalculationRef.current.getBoundingClientRect();
-      const viewportHeight = window.innerHeight;
-      const availableHeight = viewportHeight - rect.top - 150; // 150px padding from bottom
-
-      setContainerHeight(Math.max(200, availableHeight)); // Minimum 200px
-    };
-
-    calculateHeight();
-    window.addEventListener("resize", calculateHeight);
-
-    // Recalculate when component mounts
-    const timeout1 = setTimeout(calculateHeight, 10);
-    const timeout2 = setTimeout(calculateHeight, 100);
-    const timeout3 = setTimeout(calculateHeight, 300);
-
-    return () => {
-      window.removeEventListener("resize", calculateHeight);
-      clearTimeout(timeout1);
-      clearTimeout(timeout2);
-      clearTimeout(timeout3);
-    };
-  }, []);
-
   return (
-    <div className="space-y-4 relative">
+    <div className="flex flex-col gap-4 relative h-full">
       <DebugLabel label="HooksSettings" />
 
       {/* Header - fixed content */}
@@ -62,12 +28,11 @@ export const HooksSettings: React.FC<HooksSettingsProps> = ({
       </div>
 
       {/* Conditional content - either hooks list or file editor */}
-      <div ref={heightCalculationRef}>
+      <div className="flex-1 min-h-0">
         {editingFile ? (
           <HooksCommandEditor
             filePath={editingFile}
             onBack={() => setEditingFile(null)}
-            containerHeight={containerHeight}
           />
         ) : (
           <HooksManager
@@ -76,7 +41,6 @@ export const HooksSettings: React.FC<HooksSettingsProps> = ({
             className="border-0"
             hideActions={true}
             onChange={onHooksChange}
-            containerHeight={containerHeight}
             onEditFile={setEditingFile}
           />
         )}
