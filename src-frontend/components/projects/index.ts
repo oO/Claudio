@@ -1,5 +1,6 @@
 // Project-related components
 export { ProjectList } from './ProjectList';
+export { ProjectCard } from './ProjectCard';
 export { ProjectAgentsDropdown } from './ProjectAgentsDropdown';
 export { ProjectsTab } from './ProjectsTab';
 

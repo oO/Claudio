@@ -45,172 +45,176 @@ export const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
   setToast,
 }) => {
   return (
-    <div className="relative">
+    <div className="relative flex flex-col h-full">
       <DebugLabel label="AdvancedSettings" />
 
-      <div className="mb-6">
+      {/* Fixed header */}
+      <div className="p-6 pb-4">
         <h3 className="text-lg font-semibold text-accent">Advanced Settings</h3>
         <p className="text-sm text-muted-foreground mt-1">
           Additional configuration options for advanced users
         </p>
       </div>
 
-      <div className="max-h-[600px] overflow-y-auto space-y-8 pr-2">
-        {/* Core Advanced Settings Section */}
-        <section className="space-y-6">
-          <div className="border-b pb-2">
-            <h4 className="text-sm font-medium text-foreground">Core Settings</h4>
-          </div>
-
-          {/* Debug Mode Toggle */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <Label htmlFor="debugMode">Debug Mode</Label>
-                <p className="text-xs text-muted-foreground">
-                  Show component labels for debugging UI issues
-                </p>
-              </div>
-              <DebugModeToggle />
-            </div>
-          </div>
-
-          {/* API Key Helper */}
-          <div className="space-y-2">
-            <Label htmlFor="apiKeyHelper">API Key Helper Script</Label>
-            <Input
-              id="apiKeyHelper"
-              placeholder="/path/to/generate_api_key.sh"
-              value={settings?.apiKeyHelper || ""}
-              onChange={(e) =>
-                onUpdateSetting("apiKeyHelper", e.target.value || undefined)
-              }
-            />
-            <p className="text-xs text-muted-foreground">
-              Custom script to generate auth values for API requests
-            </p>
-          </div>
-        </section>
-
-        {/* Environment Variables Section */}
-        <section className="space-y-6">
-          <div className="border-b pb-2">
-            <h4 className="text-sm font-medium text-foreground">Environment Variables</h4>
-            <p className="text-xs text-muted-foreground mt-1">
-              Environment variables applied to every Claude Code session
-            </p>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              {envVars.length === 0 ? "No environment variables configured" : `${envVars.length} variable${envVars.length !== 1 ? 's' : ''} configured`}
-            </p>
-            <Button
-              onClick={onAddEnvVar}
-              size="sm"
-              className="gap-2"
-            >
-              <Plus className="h-3 w-3" />
-              Add Variable
-            </Button>
-          </div>
-
-          {envVars.length > 0 && (
-            <div className="space-y-4">
-              {envVars.map((envVar) => (
-                <motion.div
-                  key={envVar.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="flex items-center gap-2"
-                >
-                  <div className="flex-1">
-                    <Input
-                      placeholder="Variable name (e.g., API_KEY)"
-                      value={envVar.key}
-                      onChange={(e) => onUpdateEnvVar(envVar.id, "key", e.target.value)}
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <Input
-                      placeholder="Variable value"
-                      value={envVar.value}
-                      onChange={(e) => onUpdateEnvVar(envVar.id, "value", e.target.value)}
-                    />
-                  </div>
-                  <Button
-                    onClick={() => onRemoveEnvVar(envVar.id)}
-                    size="sm"
-                    variant="ghost"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Proxy Settings Section */}
-        <section className="space-y-6">
-          <div className="border-b pb-2">
-            <h4 className="text-sm font-medium text-foreground">Proxy Settings</h4>
-            <p className="text-xs text-muted-foreground mt-1">
-              Configure proxy settings for network requests
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="proxyUrl">Proxy URL</Label>
-              <Input
-                id="proxyUrl"
-                placeholder="http://proxy.example.com:8080"
-                value={settings?.proxyUrl || ""}
-                onChange={(e) =>
-                  onUpdateSetting("proxyUrl", e.target.value || undefined)
-                }
-              />
-              <p className="text-xs text-muted-foreground">
-                HTTP/HTTPS proxy server URL
-              </p>
+      {/* Scrollable content */}
+      <div className="flex-1 min-h-0 overflow-auto px-6 pb-6">
+        <div className="space-y-8">
+          {/* Core Advanced Settings Section */}
+          <section className="space-y-6">
+            <div className="border-b pb-2">
+              <h4 className="text-sm font-medium text-foreground">Core Settings</h4>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="proxyAuth">Proxy Authentication</Label>
-              <Input
-                id="proxyAuth"
-                placeholder="username:password"
-                value={settings?.proxyAuth || ""}
-                onChange={(e) =>
-                  onUpdateSetting("proxyAuth", e.target.value || undefined)
-                }
-              />
-              <p className="text-xs text-muted-foreground">
-                Optional authentication credentials for proxy
-              </p>
-            </div>
-
+            {/* Debug Mode Toggle */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                  <Label htmlFor="proxyEnabled">Enable Proxy</Label>
+                  <Label htmlFor="debugMode">Debug Mode</Label>
                   <p className="text-xs text-muted-foreground">
-                    Use proxy for all network requests
+                    Show component labels for debugging UI issues
                   </p>
                 </div>
-                <Switch
-                  id="proxyEnabled"
-                  checked={settings?.proxyEnabled || false}
-                  onCheckedChange={(checked) =>
-                    onUpdateSetting("proxyEnabled", checked)
-                  }
-                />
+                <DebugModeToggle />
               </div>
             </div>
-          </div>
-        </section>
+
+            {/* API Key Helper */}
+            <div className="space-y-2">
+              <Label htmlFor="apiKeyHelper">API Key Helper Script</Label>
+              <Input
+                id="apiKeyHelper"
+                placeholder="/path/to/generate_api_key.sh"
+                value={settings?.apiKeyHelper || ""}
+                onChange={(e) =>
+                  onUpdateSetting("apiKeyHelper", e.target.value || undefined)
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Custom script to generate auth values for API requests
+              </p>
+            </div>
+          </section>
+
+          {/* Environment Variables Section */}
+          <section className="space-y-6">
+            <div className="border-b pb-2">
+              <h4 className="text-sm font-medium text-foreground">Environment Variables</h4>
+              <p className="text-xs text-muted-foreground mt-1">
+                Environment variables applied to every Claude Code session
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                {envVars.length === 0 ? "No environment variables configured" : `${envVars.length} variable${envVars.length !== 1 ? 's' : ''} configured`}
+              </p>
+              <Button
+                onClick={onAddEnvVar}
+                size="sm"
+                className="gap-2"
+              >
+                <Plus className="h-3 w-3" />
+                Add Variable
+              </Button>
+            </div>
+
+            {envVars.length > 0 && (
+              <div className="space-y-4">
+                {envVars.map((envVar) => (
+                  <motion.div
+                    key={envVar.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="flex items-center gap-2"
+                  >
+                    <div className="flex-1">
+                      <Input
+                        placeholder="Variable name (e.g., API_KEY)"
+                        value={envVar.key}
+                        onChange={(e) => onUpdateEnvVar(envVar.id, "key", e.target.value)}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <Input
+                        placeholder="Variable value"
+                        value={envVar.value}
+                        onChange={(e) => onUpdateEnvVar(envVar.id, "value", e.target.value)}
+                      />
+                    </div>
+                    <Button
+                      onClick={() => onRemoveEnvVar(envVar.id)}
+                      size="sm"
+                      variant="ghost"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Proxy Settings Section */}
+          <section className="space-y-6">
+            <div className="border-b pb-2">
+              <h4 className="text-sm font-medium text-foreground">Proxy Settings</h4>
+              <p className="text-xs text-muted-foreground mt-1">
+                Configure proxy settings for network requests
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="proxyUrl">Proxy URL</Label>
+                <Input
+                  id="proxyUrl"
+                  placeholder="http://proxy.example.com:8080"
+                  value={settings?.proxyUrl || ""}
+                  onChange={(e) =>
+                    onUpdateSetting("proxyUrl", e.target.value || undefined)
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  HTTP/HTTPS proxy server URL
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="proxyAuth">Proxy Authentication</Label>
+                <Input
+                  id="proxyAuth"
+                  placeholder="username:password"
+                  value={settings?.proxyAuth || ""}
+                  onChange={(e) =>
+                    onUpdateSetting("proxyAuth", e.target.value || undefined)
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Optional authentication credentials for proxy
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label htmlFor="proxyEnabled">Enable Proxy</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Use proxy for all network requests
+                    </p>
+                  </div>
+                  <Switch
+                    id="proxyEnabled"
+                    checked={settings?.proxyEnabled || false}
+                    onCheckedChange={(checked) =>
+                      onUpdateSetting("proxyEnabled", checked)
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );

@@ -195,6 +195,10 @@ fn main() {
                         log::error!("Failed to initialize Claudio session cache: {}", e);
                     }
 
+                    // Initialize projects cache (discover all projects and mappings)
+                    if let Err(e) = commands::claudio_storage::get_projects().await {
+                        log::error!("Failed to initialize projects cache: {}", e);
+                    }
 
                     let proxy_settings = match commands::claudio_app_settings::get_proxy_settings().await {
                         Ok(settings) => {

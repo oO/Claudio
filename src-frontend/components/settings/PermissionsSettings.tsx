@@ -78,17 +78,29 @@ export const PermissionsSettings: React.FC<PermissionsSettingsProps> = ({
   };
 
   return (
-    <div className="relative">
+    <div className="relative flex flex-col h-full">
       <DebugLabel label="PermissionsSettings" />
-      <ToolPermissionsManager
-        rules={convertToTriLevelRules()}
-        onAddRule={handleAddRule}
-        onToggleLevel={handleToggleLevel}
-        onUpdateRule={handleUpdateRule}
-        onDeleteRule={handleDeleteRule}
-        userOnly={true}
-        loading={false}
-      />
+
+      {/* Fixed header */}
+      <div className="p-6 pb-4">
+        <h3 className="text-lg font-semibold text-accent">Tool Permissions</h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          Configure which tools Claude can use without asking for permission
+        </p>
+      </div>
+
+      {/* Scrollable content */}
+      <div className="flex-1 min-h-0 overflow-auto px-6 pb-6">
+        <ToolPermissionsManager
+          rules={convertToTriLevelRules()}
+          onAddRule={handleAddRule}
+          onToggleLevel={handleToggleLevel}
+          onUpdateRule={handleUpdateRule}
+          onDeleteRule={handleDeleteRule}
+          userOnly={true}
+          loading={false}
+        />
+      </div>
     </div>
   );
 };

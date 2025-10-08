@@ -1,10 +1,9 @@
 use super::types::*;
 use std::fs;
 use std::path::PathBuf;
-use std::time::SystemTime;
 use tauri::command;
 use serde::{Deserialize, Serialize};
-use crate::paths::{CLAUDE_SETTINGS_FILE, CLAUDE_SETTINGS_LOCAL_FILE, CLAUDE_MD_FILE, claude_project_dir, claude_project_agents_dir, AGENT_FILE_EXTENSION, SESSION_FILE_EXTENSION};
+use crate::paths::{CLAUDE_SETTINGS_FILE, CLAUDE_SETTINGS_LOCAL_FILE, CLAUDE_MD_FILE, claude_project_dir, claude_project_agents_dir, AGENT_FILE_EXTENSION};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ProjectDeletionOptions {
@@ -63,135 +62,24 @@ pub fn delete_session_dependencies(claude_dir: &PathBuf, project_dir: &PathBuf, 
     (todos_deleted, timelines_deleted)
 }
 
-/// Count local agents in a project's .claude/agents directory
-fn count_project_agents(project_path: &str) -> Option<u32> {
-    let agents_dir = claude_project_agents_dir(&std::path::PathBuf::from(project_path));
-    
-    if !agents_dir.exists() {
-        return None;
-    }
-    
-    match fs::read_dir(&agents_dir) {
-        Ok(entries) => {
-            let count = entries
-                .flatten()
-                .filter(|entry| {
-                    entry.path().is_file() && 
-                    entry.path().extension().and_then(|s| s.to_str()) == Some(AGENT_FILE_EXTENSION)
-                })
-                .count() as u32;
-            
-            if count > 0 { Some(count) } else { None }
-        }
-        Err(_) => None,
-    }
-}
-
 /// Lists all Claude projects from ~/.claude/projects directory
+/// Reads from in-memory cache, refreshes cache if empty
 #[command]
 pub async fn list_projects() -> Result<Vec<Project>, String> {
-    log::info!("Listing projects from ~/.claude/projects");
+    use crate::commands::claudio_storage::{PROJECTS_CACHE, get_projects};
 
-    let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
-    let projects_dir = claude_dir.join("projects");
-
-    if !projects_dir.exists() {
-        log::warn!("Projects directory does not exist: {:?}", projects_dir);
-        return Ok(Vec::new());
-    }
-
-    let mut projects = Vec::new();
-
-    // Read all directories in the projects folder
-    let entries = fs::read_dir(&projects_dir)
-        .map_err(|e| format!("Failed to read projects directory: {}", e))?;
-
-    for entry in entries {
-        let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
-        let path = entry.path();
-
-        if path.is_dir() {
-            let dir_name = path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .ok_or_else(|| "Invalid directory name".to_string())?;
-
-            // Skip hidden directories (starting with .)
-            if dir_name.starts_with('.') {
-                continue;
-            }
-
-            // Get directory creation time
-            let metadata = fs::metadata(&path)
-                .map_err(|e| format!("Failed to read directory metadata: {}", e))?;
-
-            let created_at = metadata
-                .created()
-                .or_else(|_| metadata.modified())
-                .unwrap_or(SystemTime::UNIX_EPOCH)
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs();
-
-            // Get the actual project path from JSONL files
-            let project_path = match get_project_path_from_sessions(&path) {
-                Ok(path) => path,
-                Err(e) => {
-                    log::warn!("Failed to get project path from sessions for {}: {}, falling back to decode", dir_name, e);
-                    decode_project_path(dir_name)
-                }
-            };
-
-            // Count JSONL files (sessions) and collect basic metadata
-            let mut session_count = 0usize;
-            let mut project_total_size = 0u64;
-            let mut project_last_active = created_at;
-            
-            if let Ok(session_entries) = fs::read_dir(&path) {
-                for session_entry in session_entries.flatten() {
-                    let session_path = session_entry.path();
-                    if session_path.is_file()
-                        && session_path.extension().and_then(|s| s.to_str()) == Some(SESSION_FILE_EXTENSION)
-                    {
-                        session_count += 1;
-                        
-                        // Add file size and update last activity time
-                        if let Ok(metadata) = fs::metadata(&session_path) {
-                            project_total_size += metadata.len();
-                            
-                            // Update last activity time
-                            let file_time = metadata
-                                .modified()
-                                .or_else(|_| metadata.created())
-                                .unwrap_or(SystemTime::UNIX_EPOCH)
-                                .duration_since(SystemTime::UNIX_EPOCH)
-                                .unwrap_or_default()
-                                .as_secs();
-                            
-                            if file_time > project_last_active {
-                                project_last_active = file_time;
-                            }
-                        }
-                    }
-                }
-            }
-
-            projects.push(Project {
-                id: dir_name.to_string(),
-                path: project_path.clone(),
-                session_count,
-                created_at,
-                total_size_bytes: if project_total_size > 0 { Some(project_total_size) } else { None },
-                last_active: if project_last_active > created_at { Some(project_last_active) } else { None },
-                agent_count: count_project_agents(&project_path),
-            });
+    // Check cache first
+    {
+        let projects_cache = PROJECTS_CACHE.read().await;
+        if !projects_cache.is_empty() {
+            log::debug!("Returning {} projects from cache", projects_cache.len());
+            return Ok(projects_cache.clone());
         }
     }
 
-    // Sort projects by last activity time (most recent first)
-    projects.sort_by(|a, b| b.last_active.cmp(&a.last_active));
-
-    log::info!("Found {} projects", projects.len());
+    // Cache is empty - refresh it
+    log::info!("Projects cache empty, refreshing from disk");
+    let (_, projects) = get_projects().await?;
     Ok(projects)
 }
 

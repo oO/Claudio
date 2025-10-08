@@ -796,7 +796,7 @@ async fn find_claudio_metadata_for_session(
     use crate::commands::claudio_storage::{get_project_claudio_dir, get_claudio_session};
 
     // Get the claudio directory for this project
-    let claudio_project_dir = match get_project_claudio_dir(project_path) {
+    let claudio_project_dir = match get_project_claudio_dir(project_path).await {
         Ok(dir) => dir,
         Err(e) => {
             log::debug!("Failed to get claudio project dir for {}: {}", project_path, e);

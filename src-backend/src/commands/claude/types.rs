@@ -231,31 +231,6 @@ pub fn count_todos_by_status(todos: &[serde_json::Value]) -> TodoCounts {
     TodoCounts { open: open_count, completed: completed_count, total: total_count }
 }
 
-/// Count local agents in a project's .claude/agents directory
-#[allow(dead_code)]
-pub fn count_project_agents(project_path: &str) -> Option<u32> {
-    let agents_dir = PathBuf::from(project_path).join(".claude").join("agents");
-    
-    if !agents_dir.exists() {
-        return None;
-    }
-    
-    match fs::read_dir(&agents_dir) {
-        Ok(entries) => {
-            let count = entries
-                .flatten()
-                .filter(|entry| {
-                    entry.path().is_file() && 
-                    entry.path().extension().and_then(|s| s.to_str()) == Some("md")
-                })
-                .count() as u32;
-            
-            if count > 0 { Some(count) } else { None }
-        }
-        Err(_) => None,
-    }
-}
-
 /// Aggregate todo counts from all agent executions for a session
 pub fn aggregate_session_todos(claude_dir: &PathBuf, session_id: &str) -> Option<TodoCounts> {
     let todos_dir = claude_dir.join("todos");
@@ -342,9 +317,23 @@ pub fn get_project_path_from_sessions(project_dir: &PathBuf) -> Result<String, S
 }
 
 pub fn decode_project_path(encoded: &str) -> String {
-    // This is a fallback - the encoding isn't reversible when paths contain hyphens
+    // Try to use discovered project mappings first
+    // This is much more reliable than string replacement
+    use crate::commands::claudio_app_settings::get_claudio_app_setting_sync;
+    use std::collections::HashMap;
+
+    if let Ok(mappings_value) = get_claudio_app_setting_sync("projects") {
+        if let Ok(mappings) = serde_json::from_value::<HashMap<String, String>>(mappings_value) {
+            if let Some(project_path) = mappings.get(encoded) {
+                return project_path.clone();
+            }
+        }
+    }
+
+    // Fallback - the encoding isn't reversible when paths contain hyphens
     // For example: -Users-mufeedvh-dev-jsonl-viewer could be /Users/mufeedvh/dev/jsonl-viewer
     // or /Users/mufeedvh/dev/jsonl/viewer
+    log::warn!("Using fallback decode for project_id: {}", encoded);
     encoded.replace('-', "/")
 }
 

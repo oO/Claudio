@@ -10,6 +10,7 @@ import { ProjectList, ProjectDetail } from "@/components/projects";
 import { RunningClaudeSessions } from "@/components/sessions/RunningClaudeSessions";
 import { SessionDetail } from "@/components/sessions/SessionDetail";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { ActionButton } from "@/components/ui/atoms/ActionButton";
 import { LoadingSpinner } from "@/components/ui/atoms/LoadingSpinner";
 import { DebugLabel } from "@/components/ui/atoms";
@@ -65,6 +66,9 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   const [activeProjectTab, setActiveProjectTab] = useState<string>("sessions");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Position tracking for project list
+  const [projectListPosition, setProjectListPosition] = useState({ start: 1, end: 0, total: 0 });
   
   // Session viewing state - to render SessionDetail directly
   const [viewingSession, setViewingSession] = useState<{
@@ -642,7 +646,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
         }
       >
         <div className="h-full flex flex-col">
-          <div className="container mx-auto p-6 flex-1 min-h-0 flex flex-col">
+          <div className="container mx-auto py-6 flex-1 min-h-0 flex flex-col">
             {/* Error display */}
             {error && (
               <motion.div
@@ -802,18 +806,6 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                     />
                 ) : (
                   <>
-                    {/* New session button at the top */}
-                    <div className="mb-4 flex gap-2 justify-end">
-                      <Button
-                        onClick={() => handleNewClaudioSession()}
-                        size="default"
-                        className="accent-button"
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        New Session
-                      </Button>
-                    </div>
-
                     {/* Running Claude Sessions */}
                     <RunningClaudeSessions />
 
@@ -833,12 +825,42 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                         </Button>
                       </div>
                     ) : projects.length > 0 ? (
-                      <ProjectList
-                        projects={projects}
-                        onProjectClick={handleProjectClick}
-                        loading={loading}
-                        className="animate-fade-in"
-                      />
+                      <Card className="relative flex flex-col h-full animate-fade-in">
+                        <CardContent className="p-0 pb-3 flex flex-col h-full min-h-0">
+                          <div className="flex flex-col h-full gap-4">
+                            {/* Header with button and position label */}
+                            <div className="px-6 pt-6">
+                              <div className="flex items-center justify-end mb-3">
+                                <Button onClick={() => handleNewClaudioSession()} size="sm" className="gap-2">
+                                  <Plus className="h-4 w-4" />
+                                  New Session
+                                </Button>
+                              </div>
+
+                              {/* Position label */}
+                              <div className="flex items-center justify-end">
+                                <div className="bg-muted px-3 py-1 rounded-lg text-xs text-muted-foreground">
+                                  {projectListPosition.start === projectListPosition.end
+                                    ? `${projectListPosition.start} of ${projectListPosition.total}`
+                                    : `${projectListPosition.start}-${projectListPosition.end} of ${projectListPosition.total}`}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Project list */}
+                            <div className="flex-1 min-h-0 overflow-auto px-6">
+                              <ProjectList
+                                projects={projects}
+                                onProjectClick={handleProjectClick}
+                                loading={loading}
+                                onPositionChange={(start, end, total) =>
+                                  setProjectListPosition({ start, end, total })
+                                }
+                              />
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
                     ) : null}
                   </>
                 )}

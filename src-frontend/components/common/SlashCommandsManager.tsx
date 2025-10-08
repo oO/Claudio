@@ -303,63 +303,80 @@ export const SlashCommandsManager: React.FC<SlashCommandsManagerProps> = ({
   }, {} as Record<string, SlashCommand[]>);
 
   return (
-    <div className={cn("space-y-4 relative", className)}>
+    <div className={cn("flex flex-col relative h-full", className)}>
       <DebugLabel label="SlashCommandsManager" />
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-accent">
-            {scopeFilter === 'project' ? 'Project Slash Commands' : 'Slash Commands'}
-          </h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            {scopeFilter === 'project' 
-              ? 'Create custom commands for this project' 
-              : 'Create custom commands to streamline your workflow'}
-          </p>
-        </div>
-        <Button onClick={handleCreateNew} size="sm" className="gap-2">
-          <Plus className="h-4 w-4" />
-          New Command
-        </Button>
-      </div>
 
-      {/* Filters */}
-      <div className="flex items-center gap-4">
-        <div className="flex-1">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search commands..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
+      {/* Fixed header and filters */}
+      <div className="space-y-4">
+        {/* Header - only show when scopeFilter is set (project context) */}
+        {scopeFilter !== 'all' && (
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-accent">
+                {scopeFilter === 'project' ? 'Project Slash Commands' : 'Slash Commands'}
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                {scopeFilter === 'project'
+                  ? 'Create custom commands for this project'
+                  : 'Create custom commands to streamline your workflow'}
+              </p>
+            </div>
+            <Button onClick={handleCreateNew} size="sm" className="gap-2">
+              <Plus className="h-4 w-4" />
+              New Command
+            </Button>
           </div>
-        </div>
+        )}
+
+        {/* Actions for settings context (no header) */}
         {scopeFilter === 'all' && (
-          <Select value={selectedScope} onValueChange={(value: any) => setSelectedScope(value)}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Commands</SelectItem>
-              <SelectItem value="project">Project</SelectItem>
-              <SelectItem value="user">User</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex justify-end">
+            <Button onClick={handleCreateNew} size="sm" className="gap-2">
+              <Plus className="h-4 w-4" />
+              New Command
+            </Button>
+          </div>
+        )}
+
+        {/* Filters */}
+        <div className="flex items-center gap-4">
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search commands..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </div>
+          {scopeFilter === 'all' && (
+            <Select value={selectedScope} onValueChange={(value: any) => setSelectedScope(value)}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Commands</SelectItem>
+                <SelectItem value="project">Project</SelectItem>
+                <SelectItem value="user">User</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive">
+            <AlertCircle className="h-4 w-4" />
+            <span className="text-sm">{error}</span>
+          </div>
         )}
       </div>
 
-      {/* Error Message */}
-      {error && (
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive">
-          <AlertCircle className="h-4 w-4" />
-          <span className="text-sm">{error}</span>
-        </div>
-      )}
-
-      {/* Commands List */}
-      {loading ? (
+      {/* Scrollable Commands List */}
+      <div className="flex-1 min-h-0 overflow-auto mt-4">
+        {loading ? (
         <div className="flex items-center justify-center py-8">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
@@ -506,6 +523,7 @@ export const SlashCommandsManager: React.FC<SlashCommandsManagerProps> = ({
           ))}
         </div>
       )}
+      </div>
 
       {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>

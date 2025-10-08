@@ -15,6 +15,225 @@ use crate::paths::{claudio_home_dir, CLAUDIO_SETTINGS_FILE, CLAUDE_PROJECTS_DIR,
 pub static CLAUDIO_SESSIONS: Lazy<Arc<RwLock<HashMap<String, ClaudioSession>>>> =
     Lazy::new(|| Arc::new(RwLock::new(HashMap::new())));
 
+/// Global in-memory store for project mappings
+/// Key: project_id (Claude Code's encoding), Value: project_path (real filesystem path)
+pub static PROJECT_MAPPINGS: Lazy<Arc<RwLock<HashMap<String, String>>>> =
+    Lazy::new(|| Arc::new(RwLock::new(HashMap::new())));
+
+/// Global in-memory cache for projects list
+pub static PROJECTS_CACHE: Lazy<Arc<RwLock<Vec<crate::commands::claude::Project>>>> =
+    Lazy::new(|| Arc::new(RwLock::new(Vec::new())));
+
+// ============================================================================
+// PROJECT DISCOVERY SYSTEM
+// ============================================================================
+// Discovers projects by scanning ~/.claude/projects/* directories.
+// Projects only exist if they have at least one session file (.jsonl).
+//
+// For each project:
+// - Extracts project_id from directory name (Claude Code's encoding)
+// - Extracts project_path from session files (real filesystem path)
+// - Caches both the mappings and project metadata in memory
+// ============================================================================
+
+/// Scans ~/.claude/projects/ and returns both project mappings and project list
+/// Only includes projects that have at least one session file
+/// Returns: (mappings, projects)
+pub async fn get_projects() -> Result<(HashMap<String, String>, Vec<crate::commands::claude::Project>), String> {
+    use crate::commands::claude::{get_claude_dir, Project};
+    use std::time::SystemTime;
+
+    let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
+    let projects_dir = claude_dir.join("projects");
+
+    if !projects_dir.exists() {
+        log::debug!("No Claude projects directory found");
+        return Ok((HashMap::new(), Vec::new()));
+    }
+
+    let mut mappings = HashMap::new();
+    let mut projects = Vec::new();
+
+    let mut entries = fs::read_dir(&projects_dir).await
+        .map_err(|e| format!("Failed to read projects directory: {}", e))?;
+
+    while let Some(entry) = entries.next_entry().await
+        .map_err(|e| format!("Failed to read directory entry: {}", e))?
+    {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+
+        let project_id = match path.file_name().and_then(|n| n.to_str()) {
+            Some(id) => id.to_string(),
+            None => continue,
+        };
+
+        // Skip hidden directories
+        if project_id.starts_with('.') {
+            continue;
+        }
+
+        // Get directory creation time
+        let metadata = match tokio::fs::metadata(&path).await {
+            Ok(m) => m,
+            Err(_) => continue,
+        };
+
+        let created_at = metadata
+            .created()
+            .or_else(|_| metadata.modified())
+            .unwrap_or(SystemTime::UNIX_EPOCH)
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+
+        // Extract project_path from first .jsonl file found
+        let project_path = match extract_project_path_from_directory_new(&path).await {
+            Ok(path) => path,
+            Err(_) => {
+                // No sessions found - skip this directory
+                continue;
+            }
+        };
+
+        // Count sessions and gather metadata
+        let mut session_count = 0usize;
+        let mut project_total_size = 0u64;
+        let mut project_last_active = created_at;
+
+        let mut session_entries = fs::read_dir(&path).await
+            .map_err(|e| format!("Failed to read project directory: {}", e))?;
+
+        while let Some(session_entry) = session_entries.next_entry().await
+            .map_err(|e| format!("Failed to read session entry: {}", e))?
+        {
+            let session_path = session_entry.path();
+            if session_path.is_file()
+                && session_path.extension().and_then(|s| s.to_str()) == Some("jsonl")
+            {
+                session_count += 1;
+
+                // Add file size and update last activity time
+                if let Ok(session_metadata) = tokio::fs::metadata(&session_path).await {
+                    project_total_size += session_metadata.len();
+
+                    let file_time = session_metadata
+                        .modified()
+                        .or_else(|_| session_metadata.created())
+                        .unwrap_or(SystemTime::UNIX_EPOCH)
+                        .duration_since(SystemTime::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs();
+
+                    if file_time > project_last_active {
+                        project_last_active = file_time;
+                    }
+                }
+            }
+        }
+
+        // Only add project if it has sessions
+        if session_count > 0 {
+            // Add to mappings
+            mappings.insert(project_id.clone(), project_path.clone());
+
+            // Add to projects list
+            projects.push(Project {
+                id: project_id,
+                path: project_path,
+                session_count,
+                created_at,
+                total_size_bytes: if project_total_size > 0 { Some(project_total_size) } else { None },
+                last_active: if project_last_active > created_at { Some(project_last_active) } else { None },
+                agent_count: None, // No longer counting agents
+            });
+        }
+    }
+
+    // Sort projects by last activity (most recent first)
+    projects.sort_by(|a, b| b.last_active.cmp(&a.last_active));
+
+    // Update in-memory caches
+    {
+        let mut mappings_cache = PROJECT_MAPPINGS.write().await;
+        *mappings_cache = mappings.clone();
+    }
+    {
+        let mut projects_cache = PROJECTS_CACHE.write().await;
+        *projects_cache = projects.clone();
+    }
+
+    log::info!("Found {} projects with sessions", projects.len());
+    Ok((mappings, projects))
+}
+
+/// Extract project_path from any .jsonl file in the given directory (for get_projects)
+async fn extract_project_path_from_directory_new(dir: &std::path::Path) -> Result<String, String> {
+    let mut entries = fs::read_dir(dir).await
+        .map_err(|e| format!("Failed to read directory: {}", e))?;
+
+    while let Some(entry) = entries.next_entry().await
+        .map_err(|e| format!("Failed to read entry: {}", e))?
+    {
+        let path = entry.path();
+        if !path.is_file() || path.extension().and_then(|e| e.to_str()) != Some("jsonl") {
+            continue;
+        }
+
+        // Try to extract project_path from first line of this .jsonl file
+        if let Ok(project_path) = extract_project_path_from_jsonl_new(&path).await {
+            return Ok(project_path);
+        }
+    }
+
+    Err("No valid .jsonl files found in directory".to_string())
+}
+
+/// Extract project_path from a .jsonl file by reading the first message (for get_projects)
+async fn extract_project_path_from_jsonl_new(jsonl_path: &std::path::Path) -> Result<String, String> {
+    let file = tokio::fs::File::open(jsonl_path).await
+        .map_err(|e| format!("Failed to open .jsonl file: {}", e))?;
+
+    let reader = BufReader::new(file);
+    let mut lines = reader.lines();
+
+    // Read first few lines to find a message with project_path or cwd
+    for _ in 0..10 {
+        let line = match lines.next_line().await {
+            Ok(Some(line)) => line,
+            Ok(None) => break,
+            Err(_) => continue,
+        };
+
+        if line.trim().is_empty() {
+            continue;
+        }
+
+        match serde_json::from_str::<serde_json::Value>(&line) {
+            Ok(json) => {
+                // Try to find project_path or cwd in the message
+                if let Some(project_path) = json.get("project_path").and_then(|v| v.as_str()) {
+                    return Ok(project_path.to_string());
+                }
+                if let Some(cwd) = json.get("cwd").and_then(|v| v.as_str()) {
+                    return Ok(cwd.to_string());
+                }
+                // For sessionInfo messages
+                if let Some(metadata) = json.get("metadata").and_then(|m| m.as_object()) {
+                    if let Some(cwd) = metadata.get("cwd").and_then(|v| v.as_str()) {
+                        return Ok(cwd.to_string());
+                    }
+                }
+            }
+            Err(_) => continue,
+        }
+    }
+
+    Err("No project_path or cwd found in .jsonl file".to_string())
+}
+
 /// Individual session information (current or historical)
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct SessionInfo {
@@ -66,17 +285,47 @@ pub fn get_claudio_dir() -> Result<PathBuf, String> {
 }
 
 /// Get project-specific claudio directory
-pub fn get_project_claudio_dir(project_path: &str) -> Result<PathBuf, String> {
+/// Uses discovered project mappings to find the correct directory
+/// Will automatically discover and cache new project mappings if not found
+pub async fn get_project_claudio_dir(project_path: &str) -> Result<PathBuf, String> {
     let claudio_dir = get_claudio_dir()?;
-    // Encode project path to match Claude Code's format: replace "/" and spaces with "-"
-    let project_encoded = project_path.replace("/", "-").replace("\\", "-").replace(" ", "-");
-    Ok(claudio_dir.join(CLAUDE_PROJECTS_DIR).join(project_encoded))
+
+    // Use async version which will auto-discover if mapping not found
+    let project_id = get_project_id_for_path(project_path).await?;
+
+    Ok(claudio_dir.join(CLAUDE_PROJECTS_DIR).join(project_id))
 }
 
 /// Get the path to Claudio's global settings file
 pub fn get_claudio_settings_file() -> Result<PathBuf, String> {
     let claudio_dir = get_claudio_dir()?;
     Ok(claudio_dir.join(CLAUDIO_SETTINGS_FILE))
+}
+
+/// Get project_id for a given project_path (forward lookup)
+/// Uses in-memory cache, calls get_projects() if cache is empty
+pub async fn get_project_id_for_path(project_path: &str) -> Result<String, String> {
+    // Check cache first
+    {
+        let mappings = PROJECT_MAPPINGS.read().await;
+        for (project_id, mapped_path) in mappings.iter() {
+            if mapped_path == project_path {
+                return Ok(project_id.clone());
+            }
+        }
+    }
+
+    // Cache miss - call get_projects() to populate cache
+    let (mappings, _) = get_projects().await?;
+
+    // Try again with fresh mappings
+    for (project_id, mapped_path) in mappings.iter() {
+        if mapped_path == project_path {
+            return Ok(project_id.clone());
+        }
+    }
+
+    Err(format!("Could not find or discover project_id for path: {}", project_path))
 }
 
 /// Ensure the claudio directory structure exists
@@ -276,7 +525,7 @@ async fn persist_session_to_disk(
 ) -> Result<(), String> {
     ensure_claudio_dirs().await?;
 
-    let project_dir = get_project_claudio_dir(project_path)?;
+    let project_dir = get_project_claudio_dir(project_path).await?;
     fs::create_dir_all(&project_dir).await
         .map_err(|e| format!("Failed to create project directory: {}", e))?;
 
@@ -398,7 +647,7 @@ pub async fn delete_claudio_session(
     }
 
     // 2. Remove the Claudio metadata file from disk
-    let project_dir = get_project_claudio_dir(&project_path)?;
+    let project_dir = get_project_claudio_dir(&project_path).await?;
     let session_file = project_dir.join(format!("{}.json", claudio_session_id));
 
     if !session_file.exists() {
@@ -452,7 +701,7 @@ pub async fn cleanup_session_files(
     }
 
     // 2. Find and delete any Claudio sessions that reference this Claude session
-    let project_claudio_dir = match get_project_claudio_dir(project_path) {
+    let project_claudio_dir = match get_project_claudio_dir(project_path).await {
         Ok(dir) => dir,
         Err(_) => return Ok((claude_files_deleted, claudio_files_deleted)), // No claudio dir = nothing to clean
     };
@@ -623,7 +872,7 @@ async fn cleanup_project_orphans(
     let decoded_project_path = crate::commands::claude::decode_project_path(project_id);
 
     // 1. Cleanup orphaned Claudio sessions
-    if let Ok(claudio_dir) = get_project_claudio_dir(&decoded_project_path) {
+    if let Ok(claudio_dir) = get_project_claudio_dir(&decoded_project_path).await {
         if claudio_dir.exists() {
             if let Ok(entries) = std::fs::read_dir(&claudio_dir) {
                 for entry in entries.flatten() {

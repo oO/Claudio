@@ -71,117 +71,107 @@ export const Settings: React.FC<SettingsProps> = ({ className }) => {
   return (
     <div
       className={cn(
-        "bg-background text-foreground relative",
+        "bg-background text-foreground relative h-full flex flex-col",
         className,
       )}
     >
       <DebugLabel label="Settings" />
-      <div className="max-w-4xl mx-auto w-full">
-        {/* Error message */}
-        {error && (
-          <div className="mx-4 mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/50 flex items-center gap-2 text-sm text-destructive">
-            <AlertCircle className="h-4 w-4" />
-            {String(error)}
-          </div>
-        )}
+      {/* Error message */}
+      {error && (
+        <div className="mx-4 mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/50 flex items-center gap-2 text-sm text-destructive">
+          <AlertCircle className="h-4 w-4" />
+          {String(error)}
+        </div>
+      )}
 
-        {/* Content */}
-        {loading ? (
-          <div className="flex-1 flex items-center justify-center">
-            <LoadingSpinner size="lg" message="Loading settings..." />
-          </div>
-        ) : (
-          <div className="flex flex-col h-full">
-            <Tabs
-              value={activeTab}
-              onValueChange={setActiveTab}
-              className="w-full flex flex-col flex-1 min-h-0 gap-2"
-            >
-              <TabsList className="grid grid-cols-5 w-full">
-                <TabsTrigger value="general" className="gap-2 hover:bg-accent">
-                  <SettingsIcon className="h-4 w-4" />
-                  General
-                </TabsTrigger>
-                <TabsTrigger
-                  value="permissions"
-                  className="gap-2 hover:bg-accent"
-                >
-                  <Shield className="h-4 w-4" />
-                  Tools
-                </TabsTrigger>
-                <TabsTrigger value="hooks" className="gap-2 hover:bg-accent">
-                  <Webhook className="h-4 w-4" />
-                  Hooks
-                </TabsTrigger>
-                <TabsTrigger value="commands" className="gap-2 hover:bg-accent">
-                  <Command className="h-4 w-4" />
-                  Commands
-                </TabsTrigger>
-                <TabsTrigger value="advanced" className="gap-2 hover:bg-accent">
-                  <SettingsIcon className="h-4 w-4" />
-                  Advanced
-                </TabsTrigger>
-              </TabsList>
+      {/* Content */}
+      {loading ? (
+        <div className="flex-1 flex items-center justify-center">
+          <LoadingSpinner size="lg" message="Loading settings..." />
+        </div>
+      ) : (
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="w-full flex flex-col flex-1 min-h-0 gap-2"
+        >
+          <TabsList className="grid grid-cols-5 w-full">
+            <TabsTrigger value="general" className="gap-2 hover:bg-accent">
+              <SettingsIcon className="h-4 w-4" />
+              General
+            </TabsTrigger>
+            <TabsTrigger value="permissions" className="gap-2 hover:bg-accent">
+              <Shield className="h-4 w-4" />
+              Tools
+            </TabsTrigger>
+            <TabsTrigger value="hooks" className="gap-2 hover:bg-accent">
+              <Webhook className="h-4 w-4" />
+              Hooks
+            </TabsTrigger>
+            <TabsTrigger value="commands" className="gap-2 hover:bg-accent">
+              <Command className="h-4 w-4" />
+              Commands
+            </TabsTrigger>
+            <TabsTrigger value="advanced" className="gap-2 hover:bg-accent">
+              <SettingsIcon className="h-4 w-4" />
+              Advanced
+            </TabsTrigger>
+          </TabsList>
 
-              {/* General Settings */}
-              <TabsContent value="general" className="flex-1 min-h-0 space-y-6">
-                <Card className="p-6">
-                  <GeneralSettings
-                    settings={settings}
-                    onUpdateSetting={updateSetting}
-                  />
-                </Card>
-              </TabsContent>
+          {/* General Settings */}
+          <TabsContent value="general" className="flex-1 min-h-0">
+            <Card className="flex flex-col h-full pb-3">
+              <GeneralSettings
+                settings={settings}
+                onUpdateSetting={updateSetting}
+              />
+            </Card>
+          </TabsContent>
 
-              {/* Tools Settings */}
-              <TabsContent value="permissions" className="flex-1 min-h-0 space-y-6">
-                <Card className="p-6">
-                  <PermissionsSettings
-                    allowRules={allowRules}
-                    askRules={askRules}
-                    denyRules={denyRules}
-                    onAddRule={addPermissionRule}
-                    onUpdateRule={updatePermissionRule}
-                    onRemoveRule={removePermissionRule}
-                  />
-                </Card>
-              </TabsContent>
+          {/* Tools Settings */}
+          <TabsContent value="permissions" className="flex-1 min-h-0">
+            <Card className="flex flex-col h-full pb-3">
+              <PermissionsSettings
+                allowRules={allowRules}
+                askRules={askRules}
+                denyRules={denyRules}
+                onAddRule={addPermissionRule}
+                onUpdateRule={updatePermissionRule}
+                onRemoveRule={removePermissionRule}
+              />
+            </Card>
+          </TabsContent>
 
-              {/* Advanced Settings */}
-              <TabsContent value="advanced" className="flex-1 min-h-0 space-y-6">
-                <Card className="p-6">
-                  <AdvancedSettings
-                    settings={settings}
-                    onUpdateSetting={updateSetting}
-                    envVars={envVars}
-                    onAddEnvVar={addEnvVar}
-                    onUpdateEnvVar={updateEnvVar}
-                    onRemoveEnvVar={removeEnvVar}
-                    setToast={() => {}}
-                  />
-                </Card>
-              </TabsContent>
+          {/* Advanced Settings */}
+          <TabsContent value="advanced" className="flex-1 min-h-0">
+            <Card className="flex flex-col h-full pb-3">
+              <AdvancedSettings
+                settings={settings}
+                onUpdateSetting={updateSetting}
+                envVars={envVars}
+                onAddEnvVar={addEnvVar}
+                onUpdateEnvVar={updateEnvVar}
+                onRemoveEnvVar={removeEnvVar}
+                setToast={() => {}}
+              />
+            </Card>
+          </TabsContent>
 
-              {/* Hooks Settings */}
-              <TabsContent value="hooks" className="flex-1 min-h-0 space-y-6">
-                <Card className="p-6">
-                  <HooksSettings
-                    onHooksChange={() => {}}
-                    activeTab={activeTab}
-                  />
-                </Card>
-              </TabsContent>
+          {/* Hooks Settings */}
+          <TabsContent value="hooks" className="flex-1 min-h-0">
+            <Card className="flex flex-col h-full">
+              <HooksSettings onHooksChange={() => {}} activeTab={activeTab} />
+            </Card>
+          </TabsContent>
 
-              {/* Commands Tab */}
-              <TabsContent value="commands" className="flex-1 min-h-0">
-                <Card className="p-6">
-                  <CommandsSettings />
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </div>
-        )}
-      </div>
+          {/* Commands Tab */}
+          <TabsContent value="commands" className="flex-1 min-h-0">
+            <Card className="flex flex-col h-full pb-3">
+              <CommandsSettings />
+            </Card>
+          </TabsContent>
+        </Tabs>
+      )}
 
       {/* Success/error indicators are now handled by individual AutoSave inputs */}
     </div>

@@ -15,20 +15,20 @@ export const HooksSettings: React.FC<HooksSettingsProps> = ({
   const [editingFile, setEditingFile] = useState<string | null>(null);
 
   return (
-    <div className="flex flex-col gap-4 relative h-full">
+    <div className="flex flex-col relative h-full">
       <DebugLabel label="HooksSettings" />
 
       {/* Header - fixed content */}
-      <div>
+      <div className="p-6 pb-4">
         <h3 className="text-lg font-semibold text-accent mb-2">User Hooks</h3>
-        <p className="text-sm text-muted-foreground mb-4">
+        <p className="text-sm text-muted-foreground">
           Configure hooks that apply to all Claude Code sessions for your user account.
           These are stored in <code className="mx-1 px-2 py-1 bg-muted rounded text-xs">~/.claude/settings.json</code>
         </p>
       </div>
 
       {/* Conditional content - either hooks list or file editor */}
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 px-6 pb-6">
         {editingFile ? (
           <HooksCommandEditor
             filePath={editingFile}
