@@ -13,14 +13,14 @@ import { api } from "@/lib/api";
 import { DebugLabel } from "@/components/ui/atoms";
 import { logger } from '@/lib/logger';
 import { useTabState } from '@/hooks/useTabState';
-import { 
+import {
   ProjectSessionTab,
-  ProjectMemoriesTab,
+  MemoriesManager,
   ProjectAgentsTab,
   ProjectToolsTab,
+  ProjectCommandsTab,
   ProjectDeleteDialog,
 } from "@/components/projects";
-import { SlashCommandsManager } from "@/components/common";
 
 interface ProjectDetailProps {
   /**
@@ -189,12 +189,12 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
 
 
   return (
-    <div className={cn("flex flex-col h-full relative", className)}>
+    <div className={cn("flex flex-col relative", className)}>
       <DebugLabel label="ProjectDetail" />
       <Tabs value={activeTab} onValueChange={(value) => {
         setActiveTab(value);
         onActiveTabChange?.(value);
-      }} className="w-full flex flex-col flex-1">
+      }} className="w-full flex flex-col flex-1 min-h-0 gap-2">
         <TabsList className="grid w-full max-w-2xl grid-cols-5">
           <TabsTrigger value="sessions" className="gap-2 hover:bg-accent">
             <MessagesSquare className="h-4 w-4" />
@@ -219,8 +219,9 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
         </TabsList>
 
         {/* Sessions Tab */}
-        <TabsContent value="sessions" className="mt-2 flex-1 flex flex-col">
+        <TabsContent value="sessions" className="flex-1 min-h-0 flex flex-col">
           <ProjectSessionTab
+            className="flex-1 min-h-0"
             projectId={projectId}
             projectName={projectPath.split("/").pop() || "Project"}
             onSessionClick={onSessionClick}
@@ -242,15 +243,15 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
         </TabsContent>
 
         {/* Memories Tab */}
-        <TabsContent value="memories" className="mt-2">
-          <ProjectMemoriesTab
+        <TabsContent value="memories" className="flex-1 min-h-0">
+          <MemoriesManager
             projectPath={projectPath}
             onViewClaudeFile={(file) => onEditClaudeFile?.(file, activeTab)}
           />
         </TabsContent>
 
         {/* Agents Tab */}
-        <TabsContent value="agents" className="mt-2">
+        <TabsContent value="agents" className="flex-1 min-h-0">
           <ProjectAgentsTab
             projectPath={projectPath}
             onEditAgent={(agent) => onEditAgent?.(agent, activeTab)}
@@ -262,21 +263,13 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
         </TabsContent>
 
         {/* Tools Tab */}
-        <TabsContent value="tools" className="mt-2">
+        <TabsContent value="tools" className="flex-1 min-h-0">
           <ProjectToolsTab projectPath={projectPath} />
         </TabsContent>
 
         {/* Commands Tab */}
-        <TabsContent value="commands" className="mt-2">
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Slash Commands</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Manage project-specific slash commands for this project.
-              </p>
-            </div>
-            <SlashCommandsManager projectPath={projectPath} />
-          </div>
+        <TabsContent value="commands" className="flex-1 min-h-0">
+          <ProjectCommandsTab projectPath={projectPath} />
         </TabsContent>
       </Tabs>
 

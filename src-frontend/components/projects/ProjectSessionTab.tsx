@@ -50,12 +50,10 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [scrollPosition, setScrollPosition] = useState({ start: 0, end: 0 });
 
-
   // Internal session management - no prop drilling!
   const [sessions, setSessions] = useState<DecoratedSession[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
-  const [containerHeight, setContainerHeight] = useState(600);
 
   // Watch for session list changes and manage our own sessions
   useSessionListWatcher(
@@ -67,14 +65,18 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
         setSessions(projectSessions);
         onSessionsRefresh?.(); // Notify parent for flash animation
       } catch (error) {
-        logger.error("ProjectSessionTab: Failed to load sessions for project:", projectId, error);
+        logger.error(
+          "ProjectSessionTab: Failed to load sessions for project:",
+          projectId,
+          error,
+        );
         onToast?.("Failed to load sessions for this project", "error");
       } finally {
         setSessionsLoading(false);
         setHasLoadedOnce(true);
       }
     },
-    true // Always enabled when this component is mounted
+    true, // Always enabled when this component is mounted
   );
   const [showSessionDeleteDialog, setShowSessionDeleteDialog] = useState(false);
 
@@ -86,8 +88,6 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
   const [showRegularSessions, setShowRegularSessions] = useState(false);
   const [showNativeSessions, setShowNativeSessions] = useState(true);
   const [showClaudioSessions, setShowClaudioSessions] = useState(true);
-
-
 
   // Filter sessions based on type toggles
   const filteredSessions = sessions.filter((session) => {
@@ -105,39 +105,6 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
       return false; // Claudio sessions
     return true;
   });
-
-  // Calculate container height based on actual position
-  useEffect(() => {
-    const calculateHeight = () => {
-      if (!scrollContainerRef.current) {
-        // Retry if ref not ready yet
-        setTimeout(calculateHeight, 50);
-        return;
-      }
-
-      const rect = scrollContainerRef.current.getBoundingClientRect();
-      const viewportHeight = window.innerHeight;
-      const availableHeight = viewportHeight - rect.top - 20; // 20px padding from bottom
-
-      setContainerHeight(Math.max(200, availableHeight)); // Minimum 200px
-    };
-
-    calculateHeight();
-    window.addEventListener("resize", calculateHeight);
-
-    // Recalculate when component mounts or sessions change
-    const timeout1 = setTimeout(calculateHeight, 10);
-    const timeout2 = setTimeout(calculateHeight, 100);
-    const timeout3 = setTimeout(calculateHeight, 300);
-
-    return () => {
-      // Cleanup height calculation listeners
-      window.removeEventListener("resize", calculateHeight);
-      clearTimeout(timeout1);
-      clearTimeout(timeout2);
-      clearTimeout(timeout3);
-    };
-  }, [sessions.length]);
 
   // Handle scroll position changes
   useEffect(() => {
@@ -193,12 +160,12 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
   // Always show the UI - no full-page loading spinner
 
   return (
-    <Card className="relative flex flex-col h-full">
+    <Card className={cn("relative flex flex-col", className)}>
       <DebugLabel label="ProjectSessionTab" />
 
-      <CardContent className="p-0 flex flex-col flex-1 gap-1">
+      <CardContent className="p-0 pb-3 flex flex-col flex-1 min-h-0 gap-1">
         {/* Header */}
-        <div className="p-6 pb-0">
+        <div className="p-6 pb-2">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold mb-2 text-accent">
@@ -311,11 +278,7 @@ export const ProjectSessionTab: React.FC<ProjectSessionTabProps> = ({
 
         <div
           ref={scrollContainerRef}
-          className="overflow-auto p-6 pt-1"
-          style={{
-            contain: "strict",
-            height: `${containerHeight}px`,
-          }}
+          className="flex-1 min-h-0 overflow-auto px-6"
         >
           <div className="space-y-3">
             {sessionsLoading && sessions.length === 0 ? (

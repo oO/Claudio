@@ -88,25 +88,26 @@ pub async fn find_claude_md_files(project_path: String) -> Result<Vec<ClaudeMdFi
     Ok(files)
 }
 
-/// Reads a CLAUDE.md file
+/// Reads a text file
 #[command]
-pub async fn read_claude_md_file(file_path: String) -> Result<String, String> {
-    log::info!("Reading CLAUDE.md file: {}", file_path);
+pub async fn read_text_file(file_path: String) -> Result<String, String> {
+    log::info!("Reading text file: {}", file_path);
     
     fs::read_to_string(&file_path)
         .map_err(|e| format!("Failed to read file {}: {}", file_path, e))
 }
 
-/// Saves content to a CLAUDE.md file
+/// Saves content to a text file
 #[command]
-pub async fn save_claude_md_file(file_path: String, content: String) -> Result<String, String> {
-    log::info!("Saving CLAUDE.md file: {}", file_path);
+pub async fn write_text_file(file_path: String, content: String) -> Result<String, String> {
+    log::info!("Writing text file: {}", file_path);
     
     fs::write(&file_path, content)
         .map_err(|e| format!("Failed to write file {}: {}", file_path, e))?;
     
     Ok("File saved successfully".to_string())
 }
+
 
 
 /// Deletes a file from the filesystem

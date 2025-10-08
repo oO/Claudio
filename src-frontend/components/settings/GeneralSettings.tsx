@@ -83,11 +83,19 @@ export const GeneralSettings: React.FC<GeneralSettingsProps> = ({
   } = useClaudeBinaryConfig(onBinaryPathChanged);
 
   return (
-    <div className="space-y-6 relative">
+    <div className="relative flex flex-col h-full">
       <DebugLabel label="GeneralSettings" />
-      <div>
-        <h3 className="text-base font-semibold mb-4">General Settings</h3>
-        
+
+      {/* Fixed header */}
+      <div className="p-6 pb-4">
+        <h3 className="text-lg font-semibold text-accent">General Settings</h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          Configure your Claudio experience
+        </p>
+      </div>
+
+      {/* Scrollable content (even though not needed, for consistency) */}
+      <div className="flex-1 min-h-0 overflow-auto px-6 pb-6">
         <div className="space-y-4">
           {/* Theme Selector */}
           <div className="space-y-2">
@@ -111,7 +119,7 @@ export const GeneralSettings: React.FC<GeneralSettingsProps> = ({
               Choose your preferred color theme for the interface
             </p>
           </div>
-          
+
           {/* Custom Background Color Picker */}
           {theme === 'custom' && (
             <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
@@ -139,10 +147,10 @@ export const GeneralSettings: React.FC<GeneralSettingsProps> = ({
               </p>
             </div>
           )}
-          
+
           {/* Panel Minimum Width */}
           <PanelMinWidthSetting />
-          
+
           {/* Claude Binary Path Selector */}
           <div className="space-y-4">
             <div>

@@ -20,6 +20,7 @@ export interface SettingsState {
   saving: boolean;
   error: string | null;
   allowRules: PermissionRule[];
+  askRules: PermissionRule[];
   denyRules: PermissionRule[];
   envVars: EnvironmentVariable[];
   hasChanges: boolean;
@@ -29,9 +30,9 @@ export interface SettingsActions {
   loadSettings: () => Promise<void>;
   saveSettings: () => Promise<void>;
   updateSetting: (key: string, value: any) => void;
-  addPermissionRule: (type: "allow" | "deny") => void;
-  updatePermissionRule: (type: "allow" | "deny", id: string, value: string) => void;
-  removePermissionRule: (type: "allow" | "deny", id: string) => void;
+  addPermissionRule: (type: "allow" | "ask" | "deny") => void;
+  updatePermissionRule: (type: "allow" | "ask" | "deny", id: string, value: string) => void;
+  removePermissionRule: (type: "allow" | "ask" | "deny", id: string) => void;
   addEnvVar: () => void;
   updateEnvVar: (id: string, field: "key" | "value", value: string) => void;
   removeEnvVar: (id: string) => void;
@@ -49,12 +50,14 @@ export const useSettingsState = (
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [allowRules, setAllowRules] = useState<PermissionRule[]>([]);
+  const [askRules, setAskRules] = useState<PermissionRule[]>([]);
   const [denyRules, setDenyRules] = useState<PermissionRule[]>([]);
   const [envVars, setEnvVars] = useState<EnvironmentVariable[]>([]);
-  
+
   // Track original values to detect changes
   const [originalSettings, setOriginalSettings] = useState<ClaudeSettings | null>(null);
   const [originalAllowRules, setOriginalAllowRules] = useState<PermissionRule[]>([]);
+  const [originalAskRules, setOriginalAskRules] = useState<PermissionRule[]>([]);
   const [originalDenyRules, setOriginalDenyRules] = useState<PermissionRule[]>([]);
   const [originalEnvVars, setOriginalEnvVars] = useState<EnvironmentVariable[]>([]);
 
@@ -88,6 +91,7 @@ export const useSettingsState = (
 
       // Parse permissions
       let parsedAllowRules: PermissionRule[] = [];
+      let parsedAskRules: PermissionRule[] = [];
       let parsedDenyRules: PermissionRule[] = [];
       if (loadedSettings.permissions && typeof loadedSettings.permissions === 'object') {
         if (Array.isArray(loadedSettings.permissions.allow)) {
@@ -97,6 +101,14 @@ export const useSettingsState = (
           }));
           setAllowRules(parsedAllowRules);
           setOriginalAllowRules(parsedAllowRules);
+        }
+        if (Array.isArray(loadedSettings.permissions.ask)) {
+          parsedAskRules = loadedSettings.permissions.ask.map((rule: string, index: number) => ({
+            id: `ask-${index}`,
+            value: rule,
+          }));
+          setAskRules(parsedAskRules);
+          setOriginalAskRules(parsedAskRules);
         }
         if (Array.isArray(loadedSettings.permissions.deny)) {
           parsedDenyRules = loadedSettings.permissions.deny.map((rule: string, index: number) => ({
@@ -141,6 +153,7 @@ export const useSettingsState = (
         ...settings,
         permissions: {
           allow: allowRules.map(rule => rule.value).filter(v => v && String(v).trim()),
+          ask: askRules.map(rule => rule.value).filter(v => v && String(v).trim()),
           deny: denyRules.map(rule => rule.value).filter(v => v && String(v).trim()),
         },
         env: envVars.reduce((acc, { key, value }) => {
@@ -155,6 +168,7 @@ export const useSettingsState = (
       setSettings(updatedSettings);
       setOriginalSettings(updatedSettings);
       setOriginalAllowRules([...allowRules]);
+      setOriginalAskRules([...askRules]);
       setOriginalDenyRules([...denyRules]);
       setOriginalEnvVars([...envVars]);
 
@@ -199,14 +213,16 @@ export const useSettingsState = (
   /**
    * Adds a new permission rule
    */
-  const addPermissionRule = (type: "allow" | "deny") => {
+  const addPermissionRule = (type: "allow" | "ask" | "deny") => {
     const newRule: PermissionRule = {
       id: `${type}-${Date.now()}`,
       value: "",
     };
-    
+
     if (type === "allow") {
       setAllowRules(prev => [...prev, newRule]);
+    } else if (type === "ask") {
+      setAskRules(prev => [...prev, newRule]);
     } else {
       setDenyRules(prev => [...prev, newRule]);
     }
@@ -215,13 +231,17 @@ export const useSettingsState = (
   /**
    * Updates a permission rule
    */
-  const updatePermissionRule = (type: "allow" | "deny", id: string, value: string) => {
+  const updatePermissionRule = (type: "allow" | "ask" | "deny", id: string, value: string) => {
     if (type === "allow") {
-      setAllowRules(prev => prev.map(rule => 
+      setAllowRules(prev => prev.map(rule =>
+        rule.id === id ? { ...rule, value } : rule
+      ));
+    } else if (type === "ask") {
+      setAskRules(prev => prev.map(rule =>
         rule.id === id ? { ...rule, value } : rule
       ));
     } else {
-      setDenyRules(prev => prev.map(rule => 
+      setDenyRules(prev => prev.map(rule =>
         rule.id === id ? { ...rule, value } : rule
       ));
     }
@@ -230,9 +250,11 @@ export const useSettingsState = (
   /**
    * Removes a permission rule
    */
-  const removePermissionRule = (type: "allow" | "deny", id: string) => {
+  const removePermissionRule = (type: "allow" | "ask" | "deny", id: string) => {
     if (type === "allow") {
       setAllowRules(prev => prev.filter(rule => rule.id !== id));
+    } else if (type === "ask") {
+      setAskRules(prev => prev.filter(rule => rule.id !== id));
     } else {
       setDenyRules(prev => prev.filter(rule => rule.id !== id));
     }
@@ -305,15 +327,16 @@ export const useSettingsState = (
     
     // Check permission rules changes
     const allowRulesChanged = JSON.stringify(allowRules) !== JSON.stringify(originalAllowRules);
+    const askRulesChanged = JSON.stringify(askRules) !== JSON.stringify(originalAskRules);
     const denyRulesChanged = JSON.stringify(denyRules) !== JSON.stringify(originalDenyRules);
-    
+
     // Check environment variables changes
     const envVarsChanged = JSON.stringify(envVars) !== JSON.stringify(originalEnvVars);
-    
+
     // Also check external components
-    return settingsChanged || allowRulesChanged || denyRulesChanged || envVarsChanged || 
+    return settingsChanged || allowRulesChanged || askRulesChanged || denyRulesChanged || envVarsChanged ||
            userHooksChanged || proxySettingsChanged || binaryPathChanged;
-  }, [settings, originalSettings, allowRules, originalAllowRules, denyRules, originalDenyRules,
+  }, [settings, originalSettings, allowRules, originalAllowRules, askRules, originalAskRules, denyRules, originalDenyRules,
       envVars, originalEnvVars, userHooksChanged, proxySettingsChanged, binaryPathChanged, loading]);
 
   return {
@@ -323,6 +346,7 @@ export const useSettingsState = (
     saving,
     error,
     allowRules,
+    askRules,
     denyRules,
     envVars,
     hasChanges,

@@ -6,6 +6,7 @@ export interface ContextUsage {
   breakdown: {
     systemPrompt: { tokens: number; percentage: number };
     systemTools: { tokens: number; percentage: number };
+    reserved: { tokens: number; percentage: number };
     customAgents: { tokens: number; percentage: number };
     memoryFiles: { tokens: number; percentage: number };
     messages: { tokens: number; percentage: number };
@@ -37,19 +38,28 @@ export function parseContextOutput(output: string): ContextUsage | null {
   const cleanOutput = output.replace(/\u001b\[[0-9;]*m/g, '');
   const lines = cleanOutput.split('\n');
 
-  // Get usage line
-  const usageLine = lines.find(line => line.includes('•') && line.includes('tokens'));
+  // Get usage line - handle both old format (with •) and new format (without •)
+  const usageLine = lines.find(line => line.includes('tokens') && (line.includes('•') || line.includes('Context Usage')));
   if (!usageLine) {
     return null;
   }
 
-  const parts = usageLine.split('•');
-  if (parts.length < 2) {
-    return null;
-  }
+  let model = '';
+  let tokenPart = '';
 
-  const model = parts[0].trim().replace(/[⛁⛀⛶⛵]/g, '').trim();
-  const tokenPart = parts[1];
+  // Try new format first (v2.0+): "Context Usage 64k/200k tokens (32%)"
+  if (usageLine.includes('Context Usage')) {
+    model = 'Context Usage'; // or extract model from elsewhere if available
+    tokenPart = usageLine;
+  } else {
+    // Old format: "Model • 64k/200k tokens (32%)"
+    const parts = usageLine.split('•');
+    if (parts.length < 2) {
+      return null;
+    }
+    model = parts[0].trim().replace(/[⛁⛀⛶⛵]/g, '').trim();
+    tokenPart = parts[1];
+  }
 
   const tokenMatch = tokenPart.match(/(\d+(?:\.\d+)?k?)\/(\d+(?:\.\d+)?k?)/);
   const percentageMatch = tokenPart.match(/\((\d+)%\)/);
@@ -65,6 +75,7 @@ export function parseContextOutput(output: string): ContextUsage | null {
   const breakdown = {
     systemPrompt: { tokens: 0, percentage: 0 },
     systemTools: { tokens: 0, percentage: 0 },
+    reserved: { tokens: 0, percentage: 0 }, // v2.0+ includes reserved space for autocompact + output
     customAgents: { tokens: 0, percentage: 0 },
     memoryFiles: { tokens: 0, percentage: 0 },
     messages: { tokens: 0, percentage: 0 },
@@ -105,6 +116,12 @@ export function parseContextOutput(output: string): ContextUsage | null {
       if (match) {
         breakdown.memoryFiles.tokens = parseTokens(match[1]);
         breakdown.memoryFiles.percentage = parseFloat(match[2]);
+      }
+    } else if (line.includes('⛝ Reserved:')) {
+      const match = line.match(/(\d+(?:\.\d+)?k?) tokens \((\d+(?:\.\d+)?%)\)/);
+      if (match) {
+        breakdown.reserved.tokens = parseTokens(match[1]);
+        breakdown.reserved.percentage = parseFloat(match[2]);
       }
     } else if (line.includes('⛁ Messages:')) {
       const match = line.match(/(\d+(?:\.\d+)?k?) tokens \((\d+(?:\.\d+)?%)\)/);

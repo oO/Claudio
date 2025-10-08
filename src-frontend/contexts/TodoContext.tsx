@@ -46,10 +46,72 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
           // Handle todo-specific events
           if (eventData.type === 'TodoCreated' || eventData.type === 'TodoModified') {
             const { session_id, agent_id, todo_counts } = eventData.data;
-            
-            // Trigger fresh load to get complete todo data instead of just updating counts
+
+            // Update local todo state for reactive UI updates
+            setTodosBySession(prev => {
+              const newMap = new Map(prev);
+              const existing = newMap.get(session_id);
+
+              if (existing) {
+                // Update existing session todo data
+                const updatedAgentTodos = existing.agent_todos.map(agent =>
+                  agent.agent_id === agent_id
+                    ? { ...agent, counts: todo_counts }
+                    : agent
+                );
+
+                // If agent not found, this is a new agent for this session
+                if (!updatedAgentTodos.find(a => a.agent_id === agent_id)) {
+                  updatedAgentTodos.push({
+                    agent_id,
+                    file_path: eventData.data.file_path,
+                    todos: [], // We'll fetch full todos on demand
+                    counts: todo_counts
+                  });
+                }
+
+                // Recalculate total counts
+                const total_counts = updatedAgentTodos.reduce(
+                  (acc, agent) => ({
+                    pending: acc.pending + agent.counts.pending,
+                    in_progress: acc.in_progress + agent.counts.in_progress,
+                    completed: acc.completed + agent.counts.completed,
+                    total: acc.total + agent.counts.total,
+                    open: acc.open + agent.counts.open
+                  }),
+                  { pending: 0, in_progress: 0, completed: 0, total: 0, open: 0 }
+                );
+
+                const updated: SessionTodoData = {
+                  ...existing,
+                  agent_todos: updatedAgentTodos,
+                  total_counts,
+                  agent_count: updatedAgentTodos.length
+                };
+
+                newMap.set(session_id, updated);
+              } else {
+                // Create new session todo data
+                const newSessionData: SessionTodoData = {
+                  session_id,
+                  agent_todos: [{
+                    agent_id,
+                    file_path: eventData.data.file_path,
+                    todos: [], // We'll fetch full todos on demand
+                    counts: todo_counts
+                  }],
+                  total_counts: todo_counts,
+                  agent_count: 1
+                };
+
+                newMap.set(session_id, newSessionData);
+              }
+
+              return newMap;
+            });
+
+            // Also trigger fresh load to get complete todo data
             loadSessionTodos(session_id);
-            return;
           } else if (eventData.type === 'TodoRemoved') {
             const { session_id, agent_id } = eventData.data;
             setTodosBySession(prev => {

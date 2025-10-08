@@ -2,9 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Save, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { TriLevelPermissionsManager } from "@/components/common";
+import { ToolPermissionsManager } from "@/components/common";
 import { useTriLevelSettings, useUnsavedChanges } from "@/hooks";
-import { api } from "@/lib/api";
 import { DebugLabel } from "@/components/ui/atoms";
 
 interface ProjectToolsTabProps {
@@ -18,7 +17,7 @@ export const ProjectToolsTab: React.FC<ProjectToolsTabProps> = ({
 }) => {
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
-  // Tri-level settings management
+  // Tri-level settings management with ask support
   const {
     loading,
     saving,
@@ -34,7 +33,7 @@ export const ProjectToolsTab: React.FC<ProjectToolsTabProps> = ({
   } = useTriLevelSettings((success, message) => {
     setToast({ message, type: success ? "success" : "error" });
   });
-  
+
   // Automatically sync unsaved changes state with the tab
   const { markAsSaved } = useUnsavedChanges(hasChanges);
 
@@ -49,56 +48,59 @@ export const ProjectToolsTab: React.FC<ProjectToolsTabProps> = ({
   };
 
   return (
-    <Card className="relative">
+    <Card className="relative flex flex-col h-full">
       <DebugLabel label="ProjectToolsTab" />
-      <CardContent className="p-6">
-        <div className="space-y-4">
+      <CardContent className="p-0 pb-3 flex flex-col h-full min-h-0">
+        <div className="flex flex-col h-full gap-4">
           {/* Header with Save Button */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold mb-2 text-accent">Tool Permissions</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Manage tool permissions across user, team, and local project levels. Click toggles to enable/disable rules at each level.
-              </p>
+          <div className="px-6 pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold mb-2 text-accent">Tool Permissions</h3>
+                <p className="text-sm text-muted-foreground">
+                  Manage tool permissions across user, team, and local project levels. Click toggles to enable/disable rules at each level.
+                </p>
+              </div>
+
+              <Button
+                onClick={handleSaveAllLevels}
+                disabled={loading || saving || !hasChanges}
+                size="sm"
+                className="gap-2"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-3 w-3" />
+                    Save Rules
+                  </>
+                )}
+              </Button>
             </div>
-            
-            <Button
-              onClick={handleSaveAllLevels}
-              disabled={loading || saving || !hasChanges}
-              size="sm"
-              className="gap-2"
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="h-3 w-3" />
-                  Save Rules
-                </>
-              )}
-            </Button>
+
+            {/* Error Display */}
+            {error && (
+              <div className="p-3 mt-4 bg-red-500/10 rounded-md border border-red-500/20">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
           </div>
 
-
-          {/* Error Display */}
-          {error && (
-            <div className="p-3 bg-red-500/10 rounded-md border border-red-500/20">
-              <p className="text-sm text-red-600">{error}</p>
-            </div>
-          )}
-
-          {/* Tri-Level Permissions Manager */}
-          <TriLevelPermissionsManager
-            rules={rules}
-            onAddRule={addRule}
-            onToggleLevel={toggleRuleLevel}
-            onUpdateRule={updateRuleValue}
-            onDeleteRule={deleteRule}
-            loading={loading || saving}
-          />
+          {/* Tool Permissions Manager with Ask Support */}
+          <div className="flex-1 min-h-0 overflow-auto px-6">
+            <ToolPermissionsManager
+              rules={rules}
+              onAddRule={addRule}
+              onToggleLevel={toggleRuleLevel}
+              onUpdateRule={updateRuleValue}
+              onDeleteRule={deleteRule}
+              loading={loading || saving}
+            />
+          </div>
 
           {/* Toast Notification */}
           {toast && (

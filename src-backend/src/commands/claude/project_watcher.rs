@@ -122,7 +122,14 @@ impl ProjectWatcherManager {
         event_sender: &broadcast::Sender<ProjectFileEvent>,
         app_handle: &AppHandle,
     ) -> Result<(), String> {
+        use crate::commands::claudio_storage::get_projects;
+
         log::debug!("Project file system event: {:?}", event);
+
+        // Refresh project cache on any event
+        if let Err(e) = get_projects().await {
+            log::warn!("Failed to refresh projects cache: {}", e);
+        }
 
         for path in event.paths {
             // Only handle directory events in the projects folder

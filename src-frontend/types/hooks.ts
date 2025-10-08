@@ -16,9 +16,13 @@ export interface HookMatcher {
 export interface HooksConfiguration {
   PreToolUse?: HookMatcher[];
   PostToolUse?: HookMatcher[];
-  Notification?: HookCommand[];
-  Stop?: HookCommand[];
-  SubagentStop?: HookCommand[];
+  Notification?: HookMatcher[];
+  Stop?: HookMatcher[];
+  SubagentStop?: HookMatcher[];
+  UserPromptSubmit?: HookMatcher[];
+  PreCompact?: HookMatcher[];
+  SessionStart?: HookMatcher[];
+  SessionEnd?: HookMatcher[];
 }
 
 export type HookEvent = keyof HooksConfiguration;
@@ -80,6 +84,81 @@ export interface HookTemplate {
   commands: string[];
 }
 
+// Hook registry for metadata and configuration
+export interface HookMetadata {
+  label: string;
+  description: string;
+  color: 'blue' | 'green' | 'yellow' | 'red' | 'purple' | 'orange' | 'gray';
+  hasMatchers: boolean;
+  icon: string;
+}
+
+export const HOOK_REGISTRY: Record<HookEvent, HookMetadata> = {
+  PreToolUse: {
+    label: 'Pre Tool Use',
+    description: 'Runs before tool calls, can block and provide feedback',
+    color: 'blue',
+    hasMatchers: true,
+    icon: 'Zap'
+  },
+  PostToolUse: {
+    label: 'Post Tool Use',
+    description: 'Runs after successful tool completion',
+    color: 'green',
+    hasMatchers: true,
+    icon: 'CheckCircle'
+  },
+  UserPromptSubmit: {
+    label: 'User Prompt Submit',
+    description: 'Modify or validate prompts before submission',
+    color: 'purple',
+    hasMatchers: false,
+    icon: 'Edit3'
+  },
+  Notification: {
+    label: 'Notification',
+    description: 'Customizes notifications when Claude needs attention',
+    color: 'yellow',
+    hasMatchers: false,
+    icon: 'Bell'
+  },
+  Stop: {
+    label: 'Stop',
+    description: 'Runs when Claude finishes responding',
+    color: 'orange',
+    hasMatchers: false,
+    icon: 'Square'
+  },
+  SubagentStop: {
+    label: 'Subagent Stop',
+    description: 'Runs when a Claude subagent (Task) finishes',
+    color: 'red',
+    hasMatchers: false,
+    icon: 'Bot'
+  },
+  PreCompact: {
+    label: 'Pre Compact',
+    description: 'Runs before conversation history is compacted',
+    color: 'gray',
+    hasMatchers: false,
+    icon: 'Archive'
+  },
+  SessionStart: {
+    label: 'Session Start',
+    description: 'Runs when a new session begins',
+    color: 'blue',
+    hasMatchers: false,
+    icon: 'Play'
+  },
+  SessionEnd: {
+    label: 'Session End',
+    description: 'Runs when a session concludes',
+    color: 'gray',
+    hasMatchers: false,
+    icon: 'StopCircle'
+  }
+};
+
 export const HOOK_TEMPLATES: HookTemplate[] = [
   {
     id: 'log-bash-commands',
@@ -121,5 +200,34 @@ export const HOOK_TEMPLATES: HookTemplate[] = [
     description: 'Automatically continue when tests pass',
     event: 'Stop',
     commands: ['if grep -q "All tests passed" "$( jq -r .transcript_path )"; then echo \'{"decision": "block", "reason": "All tests passed. Continue with next task."}\'; fi']
+  },
+  // New templates for missing hooks
+  {
+    id: 'prompt-context-injection',
+    name: 'Add Context to Prompts',
+    description: 'Automatically inject project context into user prompts',
+    event: 'UserPromptSubmit',
+    commands: ['echo "Adding project context: $(pwd | xargs basename) - $(git branch --show-current 2>/dev/null || echo "no git")"']
+  },
+  {
+    id: 'archive-conversation',
+    name: 'Archive Before Compact',
+    description: 'Save conversation history before it gets compacted',
+    event: 'PreCompact',
+    commands: ['cp "$( jq -r .session_path )" ~/.claude/archives/session-$(date +%Y%m%d-%H%M%S).jsonl']
+  },
+  {
+    id: 'session-start-log',
+    name: 'Log Session Start',
+    description: 'Log when new sessions begin with project info',
+    event: 'SessionStart',
+    commands: ['echo "$(date): New session started in $(pwd)" >> ~/.claude/session-log.txt']
+  },
+  {
+    id: 'session-end-cleanup',
+    name: 'Session Cleanup',
+    description: 'Clean up temporary files when session ends',
+    event: 'SessionEnd',
+    commands: ['find /tmp -name "claude-*" -type f -mtime +1 -delete 2>/dev/null || true']
   }
 ]; 

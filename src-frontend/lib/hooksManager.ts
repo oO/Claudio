@@ -23,11 +23,17 @@ export class HooksManager {
   ): HooksConfiguration {
     const merged: HooksConfiguration = {};
     
-    // Events with matchers (tool-related)
-    const matcherEvents: (keyof HooksConfiguration)[] = ['PreToolUse', 'PostToolUse'];
-    
+    // Events with matchers (tool-related and Claude Code 2.0+)
+    const matcherEvents: (keyof HooksConfiguration)[] = [
+      'PreToolUse',
+      'PostToolUse',
+      'SessionStart',
+      'SessionEnd',
+      'PreCompact'
+    ];
+
     // Events without matchers (non-tool-related)
-    const directEvents: (keyof HooksConfiguration)[] = ['Notification', 'Stop', 'SubagentStop'];
+    const directEvents: (keyof HooksConfiguration)[] = ['Notification', 'Stop', 'SubagentStop', 'UserPromptSubmit'];
 
     // Merge events with matchers
     for (const event of matcherEvents) {
@@ -49,28 +55,28 @@ export class HooksManager {
       }
     }
     
-    // Merge events without matchers
+    // Merge events without matchers (but still use HookMatcher[] structure)
     for (const event of directEvents) {
       // Combine all hooks from all levels (local takes precedence)
-      const hooks: HookCommand[] = [];
-      
+      const matchers: HookMatcher[] = [];
+
       // Add user hooks
       if (user[event]) {
-        hooks.push(...(user[event] as HookCommand[]));
+        matchers.push(...(user[event] as HookMatcher[]));
       }
-      
+
       // Add project hooks
       if (project[event]) {
-        hooks.push(...(project[event] as HookCommand[]));
+        matchers.push(...(project[event] as HookMatcher[]));
       }
-      
+
       // Add local hooks (highest priority)
       if (local[event]) {
-        hooks.push(...(local[event] as HookCommand[]));
+        matchers.push(...(local[event] as HookMatcher[]));
       }
-      
-      if (hooks.length > 0) {
-        (merged as any)[event] = hooks;
+
+      if (matchers.length > 0) {
+        (merged as any)[event] = matchers;
       }
     }
     
@@ -115,11 +121,11 @@ export class HooksManager {
       return { valid: true, errors, warnings };
     }
 
-    // Events with matchers
-    const matcherEvents = ['PreToolUse', 'PostToolUse'] as const;
-    
-    // Events without matchers
-    const directEvents = ['Notification', 'Stop', 'SubagentStop'] as const;
+    // Events with matchers (tool-related and Claude Code 2.0+)
+    const matcherEvents = ['PreToolUse', 'PostToolUse', 'SessionStart', 'SessionEnd', 'PreCompact'] as const;
+
+    // Events without matchers (non-tool-related)
+    const directEvents = ['Notification', 'Stop', 'SubagentStop', 'UserPromptSubmit'] as const;
 
     // Validate events with matchers
     for (const event of matcherEvents) {
@@ -164,26 +170,39 @@ export class HooksManager {
       }
     }
 
-    // Validate events without matchers
+    // Validate events without matchers (but still use HookMatcher[] structure)
     for (const event of directEvents) {
-      const directHooks = hooks[event];
-      if (!directHooks || !Array.isArray(directHooks)) continue;
+      const matchers = hooks[event] as HookMatcher[] | undefined;
+      if (!matchers || !Array.isArray(matchers)) continue;
 
-      for (const hook of directHooks) {
-        if (!hook.command || !hook.command.trim()) {
+      for (const matcher of matchers) {
+        if (!matcher.hooks || !Array.isArray(matcher.hooks)) {
           errors.push({
             event,
-            message: 'Empty command'
+            matcher: matcher.matcher,
+            message: 'Invalid hooks array'
           });
+          continue;
         }
 
-        // Check for dangerous patterns
-        const dangers = this.checkDangerousPatterns(hook.command || '');
-        warnings.push(...dangers.map(d => ({
-          event,
-          command: hook.command || '',
-          message: d
-        })));
+        for (const hook of matcher.hooks) {
+          if (!hook.command || !hook.command.trim()) {
+            errors.push({
+              event,
+              matcher: matcher.matcher,
+              message: 'Empty command'
+            });
+          }
+
+          // Check for dangerous patterns
+          const dangers = this.checkDangerousPatterns(hook.command || '');
+          warnings.push(...dangers.map(d => ({
+            event,
+            matcher: matcher.matcher,
+            command: hook.command || '',
+            message: d
+          })));
+        }
       }
     }
 

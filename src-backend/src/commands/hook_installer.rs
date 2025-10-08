@@ -57,17 +57,31 @@ pub async fn check_hooks_installed() -> Result<bool, String> {
     let settings: Value = serde_json::from_str(&content)
         .map_err(|e| format!("Failed to parse settings file: {}", e))?;
     
-    // Check if hooks section exists and has our hooks
+    // Check if hooks section exists and has our hooks in the new format
     if let Some(hooks) = settings.get("hooks").and_then(|h| h.as_object()) {
         let required_hooks = ["SessionStart", "UserPromptSubmit", "Stop", "SessionEnd"];
         for hook_name in &required_hooks {
-            if !hooks.contains_key(*hook_name) {
+            // Check if the hook exists and has the new matcher-based format
+            if let Some(hook_configs) = hooks.get(*hook_name).and_then(|h| h.as_array()) {
+                // Verify it's not empty and has the expected structure
+                if hook_configs.is_empty() {
+                    return Ok(false);
+                }
+                // Check first config has the new format with matcher property
+                if let Some(first_config) = hook_configs.get(0).and_then(|c| c.as_object()) {
+                    if !first_config.contains_key("matcher") {
+                        return Ok(false);
+                    }
+                } else {
+                    return Ok(false);
+                }
+            } else {
                 return Ok(false);
             }
         }
         return Ok(true);
     }
-    
+
     Ok(false)
 }
 
@@ -170,6 +184,7 @@ async fn update_claude_settings(settings_file: &Path) -> Result<(), String> {
     settings["hooks"] = json!({
         "SessionStart": [
             {
+                "matcher": "*",
                 "hooks": [
                     {
                         "type": "command",
@@ -180,6 +195,7 @@ async fn update_claude_settings(settings_file: &Path) -> Result<(), String> {
         ],
         "UserPromptSubmit": [
             {
+                "matcher": "",
                 "hooks": [
                     {
                         "type": "command",
@@ -190,6 +206,7 @@ async fn update_claude_settings(settings_file: &Path) -> Result<(), String> {
         ],
         "Stop": [
             {
+                "matcher": "",
                 "hooks": [
                     {
                         "type": "command",
@@ -200,6 +217,7 @@ async fn update_claude_settings(settings_file: &Path) -> Result<(), String> {
         ],
         "SessionEnd": [
             {
+                "matcher": "*",
                 "hooks": [
                     {
                         "type": "command",

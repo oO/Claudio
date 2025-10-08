@@ -7,7 +7,7 @@ import { AgentCard } from "./AgentCard";
 import { DebugLabel } from "@/components/ui/atoms";
 import { logger } from '@/lib/logger';
 
-interface AgentsContentProps {
+interface AgentsManagerProps {
   /**
    * Optional project path - if provided, loads project agents, otherwise loads personal agents
    */
@@ -39,10 +39,10 @@ interface AgentsContentProps {
 }
 
 /**
- * Shared AgentsContent component that displays the create/import buttons and agent cards
+ * Shared AgentsManager component that displays the create/import buttons and agent cards
  * Used both directly in Personal Agents and inside the collapsible wrapper for Project Agents
  */
-export const AgentsContent: React.FC<AgentsContentProps> = ({
+export const AgentsManager: React.FC<AgentsManagerProps> = ({
   projectPath,
   onEditAgent,
   onExportAgent,
@@ -87,11 +87,11 @@ export const AgentsContent: React.FC<AgentsContentProps> = ({
   };
 
   return (
-    <div className={cn("w-full relative", className)}>
-      <DebugLabel label="AgentsContent" />
+    <div className={cn("w-full relative flex flex-col h-full", className)}>
+      <DebugLabel label="AgentsManager" />
       {/* Create and Import buttons */}
       {(onCreateAgent || onImportAgent) && (
-        <div className="mb-2">
+        <div className="px-6 pb-2 flex-shrink-0">
           <div className="flex gap-2">
             {onCreateAgent && (
               <Button
@@ -133,17 +133,18 @@ export const AgentsContent: React.FC<AgentsContentProps> = ({
             : "No personal agents found"}
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="flex-1 min-h-0 overflow-auto px-6">
+          <div className="space-y-3">
           {agents.map((agent, index) => (
             <AgentCard
               key={agent.id}
               agent={agent}
               onEdit={onEditAgent ? handleEditAgent : undefined}
-              onExport={onExportAgent ? handleExportAgent : undefined}
               onDelete={onDeleteAgent ? handleDeleteAgent : undefined}
               animationDelay={index * 0.05}
             />
           ))}
+          </div>
         </div>
       )}
     </div>

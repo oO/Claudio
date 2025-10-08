@@ -124,7 +124,7 @@ const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
       transition={{ duration: 0.2 }}
-      className={`h-full w-full ${panelVisibilityClass}`}
+      className={`h-full w-full flex flex-col ${panelVisibilityClass}`}
     >
       <Suspense
         fallback={

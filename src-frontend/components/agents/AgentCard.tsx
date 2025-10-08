@@ -1,49 +1,43 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Edit, Trash2, Upload } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Clock, HardDrive } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Agent } from "@/lib/types/agents";
-import { getAgentColor, type AgentColorName } from "@/lib/agentColors";
+import { getAgentColor } from "@/lib/agentColors";
 import { ICON_MAP } from "@/components/common";
-import { DebugLabel } from "@/components/ui/atoms";
-
-// Agent colors now use centralized CSS classes
+import { DebugLabel, DeleteButton } from "@/components/ui/atoms";
 
 interface AgentCardProps {
   agent: Agent;
   onEdit?: (agent: Agent) => void;
   onDelete?: (agent: Agent) => void;
-  onExport?: (agent: Agent) => void;
   className?: string;
   animationDelay?: number;
 }
 
 /**
  * Shared AgentCard component for displaying agents in both personal and project contexts
- * 
+ * Click card to edit, hover to reveal delete button
+ *
  * @example
  * <AgentCard
  *   agent={agent}
  *   onEdit={handleEdit}
  *   onDelete={handleDelete}
- *   onExport={handleExport}
  * />
  */
 export const AgentCard: React.FC<AgentCardProps> = ({
   agent,
   onEdit,
   onDelete,
-  onExport,
   className,
   animationDelay = 0,
 }) => {
   const renderIcon = (iconName: string) => {
     const Icon = ICON_MAP[iconName as keyof typeof ICON_MAP] || ICON_MAP.bot;
-    return <Icon className="h-8 w-8" />;
+    return <Icon className="h-5 w-5" />;
   };
-  
+
   const getColorClass = (color?: string) => {
     if (!color) return getAgentColor('grey').cssClass;
     return getAgentColor(color).cssClass;
@@ -53,15 +47,19 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ delay: animationDelay }}
-      className={cn("relative", className)}
+      onClick={() => onEdit?.(agent)}
+      className={cn(
+        "group relative flex items-center justify-between gap-2 px-3 py-2 rounded-lg border bg-card hover:bg-card-hover hover:border-hover transition-colors cursor-pointer",
+        className
+      )}
     >
       <DebugLabel label="AgentCard" />
-      <Card className="hover:bg-card-hover hover:border-hover transition-all duration-200">
-        <CardContent className="p-3 flex items-center gap-3">
-          <div 
+      <div className="flex items-center gap-3 min-w-0 flex-1">
+        <div className="flex-shrink-0 p-2">
+          <div
             className={cn(
               "p-2 rounded-full flex-shrink-0",
               colorClass
@@ -69,59 +67,40 @@ export const AgentCard: React.FC<AgentCardProps> = ({
           >
             {renderIcon(agent.icon)}
           </div>
-          <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-medium truncate">
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <p className="text-sm font-medium truncate flex-1">
               {agent.name}
-            </h4>
-            <p className="text-xs text-muted-foreground">
-              Created: {new Date(agent.created_at).toLocaleDateString()}
             </p>
-            {agent.description && (
-              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                {agent.description}
-              </p>
-            )}
           </div>
-        </CardContent>
-        <CardFooter className="p-2 pt-0 flex justify-end gap-1">
-          {onEdit && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => onEdit(agent)}
-              className="h-7 px-2 text-xs"
-              title="Edit agent"
-            >
-              <Edit className="h-3 w-3 mr-1" />
-              Edit
-            </Button>
+          {agent.description && (
+            <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
+              {agent.description}
+            </p>
           )}
-          {onExport && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => onExport(agent)}
-              className="h-7 px-2 text-xs"
-              title="Export agent to .claudia.json"
-            >
-              <Upload className="h-3 w-3 mr-1" />
-              Export
-            </Button>
-          )}
-          {onDelete && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => onDelete(agent)}
-              className="h-7 px-2 text-xs text-destructive hover:text-destructive"
-              title="Delete agent"
-            >
-              <Trash2 className="h-3 w-3 mr-1" />
-              Delete
-            </Button>
-          )}
-        </CardFooter>
-      </Card>
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              <span>{new Date(agent.created_at).toLocaleDateString()}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <HardDrive className="h-3 w-3" />
+              <span>{(agent.system_prompt.length / 1024).toFixed(1)} KB</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        {onDelete && (
+          <DeleteButton
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(agent);
+            }}
+          />
+        )}
+      </div>
     </motion.div>
   );
 }; 

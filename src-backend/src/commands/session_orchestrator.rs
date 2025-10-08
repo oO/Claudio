@@ -239,10 +239,10 @@ impl SessionHandle {
         use std::io::{BufRead, BufReader};
 
         let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
-        let project_encoded = self.project_path.replace("/", "-");
+        let project_id = crate::commands::claudio_storage::get_project_id_for_path(&self.project_path).await?;
         let session_file_path = claude_dir
             .join("projects")
-            .join(project_encoded)
+            .join(project_id)
             .join(format!("{}.jsonl", session_id));
 
         if !session_file_path.exists() {
@@ -273,7 +273,7 @@ impl SessionHandle {
     /// Start streaming messages from this session's file
     pub async fn start_message_streaming(&self, session_watcher_state: &SessionWatcherState) -> Result<(), String> {
         // Get project ID from path
-        let project_id = self.project_path.replace("/", "-");
+        let project_id = crate::commands::claudio_storage::get_project_id_for_path(&self.project_path).await?;
 
         // Get the session watcher manager and subscribe to events
         let receiver = {
@@ -550,8 +550,8 @@ impl SessionHandle {
         use std::fs;
 
         let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
-        let project_encoded = project_path.replace("/", "-");
-        let project_sessions_dir = claude_dir.join("projects").join(&project_encoded);
+        let project_id = crate::commands::claudio_storage::get_project_id_for_path(&project_path).await?;
+        let project_sessions_dir = claude_dir.join("projects").join(&project_id);
 
         if !project_sessions_dir.exists() {
             return Ok(()); // No sessions yet
@@ -615,7 +615,7 @@ impl SessionOrchestrator {
     /// Determine if a session ID has wrapper files (Native) or is archived
     async fn determine_session_type_for_id(&self, session_id: &str, project_path: &str) -> SessionType {
         // Check if there's a claude-{session_id}.json file in ~/.claudio
-        if let Ok(claudio_dir) = crate::commands::claudio_storage::get_project_claudio_dir(project_path) {
+        if let Ok(claudio_dir) = crate::commands::claudio_storage::get_project_claudio_dir(project_path).await {
             let native_wrapper = claudio_dir.join(format!("claude-{}.json", session_id));
             if native_wrapper.exists() {
                 log::debug!("Found native wrapper for session {}", session_id);
@@ -773,7 +773,13 @@ impl SessionOrchestrator {
             // Use the actual Claude home directory, not project-local .claude
             match crate::commands::claude::get_claude_dir() {
                 Ok(claude_dir) => {
-                    let project_id = project_path.replace("/", "-");
+                    let project_id = match crate::commands::claudio_storage::get_project_id_for_path(&project_path).await {
+                        Ok(id) => id,
+                        Err(e) => {
+                            log::warn!("Could not get project_id for path {}: {}", project_path, e);
+                            return Err(format!("Project mapping not found: {}", e));
+                        }
+                    };
                     let session_file_path = claude_dir
                         .join("projects")
                         .join(project_id)
@@ -786,8 +792,8 @@ impl SessionOrchestrator {
             None
         };
 
-        // Encode project path to project ID (one-way function)
-        let project_id = project_path.replace('/', "-").replace(' ', "-");
+        // Get project ID using discovered mappings
+        let project_id = crate::commands::claudio_storage::get_project_id_for_path(&project_path).await?;
 
         // Get permission mode from Claudio session if it's a claudio session
         let permission_mode = if handle_id.starts_with("claudio-") {

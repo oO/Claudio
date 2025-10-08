@@ -21,8 +21,8 @@ use commands::claude::{
     get_session_todos,
     get_system_prompt,
     list_directory_contents, list_projects, list_running_claude_sessions, load_session_history,
-    open_new_session, read_claude_md_file, resume_claude_code,
-    save_claude_md_file, save_claude_settings, save_system_prompt, search_files, start_settings_watcher, delete_file,
+    open_new_session, read_text_file, resume_claude_code,
+    write_text_file, save_claude_settings, save_system_prompt, search_files, start_settings_watcher, delete_file,
     get_hooks_config, update_hooks_config, validate_hook_command,
     delete_claude_project, delete_session, prune_old_sessions, check_project_settings,
     preview_session_deletion_by_age, delete_sessions_by_age, get_session_age_range,
@@ -195,6 +195,10 @@ fn main() {
                         log::error!("Failed to initialize Claudio session cache: {}", e);
                     }
 
+                    // Initialize projects cache (discover all projects and mappings)
+                    if let Err(e) = commands::claudio_storage::get_projects().await {
+                        log::error!("Failed to initialize projects cache: {}", e);
+                    }
 
                     let proxy_settings = match commands::claudio_app_settings::get_proxy_settings().await {
                         Ok(settings) => {
@@ -313,8 +317,8 @@ fn main() {
             save_claude_settings,
             start_settings_watcher,
             find_claude_md_files,
-            read_claude_md_file,
-            save_claude_md_file,
+            read_text_file,
+            write_text_file,
             delete_file,
             load_session_history,
             execute_claude_code,

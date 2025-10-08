@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Loader2, Plus, MoreVertical, Trash2, Settings, Activity, FolderOpen } from "lucide-react";
-import { api, type Project, type Session, type ClaudeMdFile } from "@/lib/api";
+import { api, agentsApi, type Project, type Session, type ClaudeMdFile } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { prettifyProjectName } from "@/lib/utils";
 import { formatSessionIdCompact } from "@/lib/sessionUtils";
@@ -10,6 +10,7 @@ import { ProjectList, ProjectDetail } from "@/components/projects";
 import { RunningClaudeSessions } from "@/components/sessions/RunningClaudeSessions";
 import { SessionDetail } from "@/components/sessions/SessionDetail";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { ActionButton } from "@/components/ui/atoms/ActionButton";
 import { LoadingSpinner } from "@/components/ui/atoms/LoadingSpinner";
 import { DebugLabel } from "@/components/ui/atoms";
@@ -65,6 +66,9 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
   const [activeProjectTab, setActiveProjectTab] = useState<string>("sessions");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Position tracking for project list
+  const [projectListPosition, setProjectListPosition] = useState({ start: 1, end: 0, total: 0 });
   
   // Session viewing state - to render SessionDetail directly
   const [viewingSession, setViewingSession] = useState<{
@@ -641,8 +645,8 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
           ) : undefined
         }
       >
-        <div className="h-full overflow-y-auto">
-          <div className="container mx-auto p-6">
+        <div className="h-full flex flex-col">
+          <div className="container mx-auto py-6 flex-1 min-h-0 flex flex-col">
             {/* Error display */}
             {error && (
               <motion.div
@@ -655,16 +659,9 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
             )}
 
             {/* Content - always show, loading handled inside components */}
-            <AnimatePresence mode="wait">
                 {selectedProject ? (
-                  <motion.div
-                    key="sessions"
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.3 }}
-                  >
                     <ProjectDetail
+                      className="flex-1 min-h-0"
                       projectPath={selectedProject.path}
                       projectId={selectedProject.id}
                       initialActiveTab={activeProjectTab}
@@ -759,10 +756,19 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                         // Agent export will be handled
                         // TODO: Implement proper export dialog
                       }}
-                      onDeleteAgent={(agent) => {
-                        // Delete agent and refresh agents list
-                        // This would need to be implemented properly with confirmation dialog
-                        // Agent deletion will be handled
+                      onDeleteAgent={async (agent) => {
+                        if (!agent.id) {
+                          logger.error("Cannot delete agent without ID");
+                          return;
+                        }
+                        try {
+                          await agentsApi.deleteAgent(agent.id);
+                          logger.info("Agent deleted:", agent.name);
+                          // Force refresh by updating tab timestamp
+                          updateTab(tab.id, { lastActivityAt: Date.now() });
+                        } catch (error) {
+                          logger.error("Failed to delete agent:", error);
+                        }
                       }}
                       onCreateAgent={() => {
                         // Open create agent tab for project agents
@@ -798,32 +804,8 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                       onUpdateTab={updateTab}
                       onStartNewClaudioSession={handleNewClaudioSession}
                     />
-                  </motion.div>
                 ) : (
-                  <motion.div
-                    key="projects"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    {/* New session button at the top */}
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5 }}
-                      className="mb-4 flex gap-2 justify-end"
-                    >
-                      <Button
-                        onClick={() => handleNewClaudioSession()}
-                        size="default"
-                        className="accent-button"
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        New Session
-                      </Button>
-                    </motion.div>
-
+                  <>
                     {/* Running Claude Sessions */}
                     <RunningClaudeSessions />
 
@@ -843,16 +825,45 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                         </Button>
                       </div>
                     ) : projects.length > 0 ? (
-                      <ProjectList
-                        projects={projects}
-                        onProjectClick={handleProjectClick}
-                        loading={loading}
-                        className="animate-fade-in"
-                      />
+                      <Card className="relative flex flex-col h-full animate-fade-in">
+                        <CardContent className="p-0 pb-3 flex flex-col h-full min-h-0">
+                          <div className="flex flex-col h-full gap-4">
+                            {/* Header with button and position label */}
+                            <div className="px-6 pt-6">
+                              <div className="flex items-center justify-end mb-3">
+                                <Button onClick={() => handleNewClaudioSession()} size="sm" className="gap-2">
+                                  <Plus className="h-4 w-4" />
+                                  New Session
+                                </Button>
+                              </div>
+
+                              {/* Position label */}
+                              <div className="flex items-center justify-end">
+                                <div className="bg-muted px-3 py-1 rounded-lg text-xs text-muted-foreground">
+                                  {projectListPosition.start === projectListPosition.end
+                                    ? `${projectListPosition.start} of ${projectListPosition.total}`
+                                    : `${projectListPosition.start}-${projectListPosition.end} of ${projectListPosition.total}`}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Project list */}
+                            <div className="flex-1 min-h-0 overflow-auto px-6">
+                              <ProjectList
+                                projects={projects}
+                                onProjectClick={handleProjectClick}
+                                loading={loading}
+                                onPositionChange={(start, end, total) =>
+                                  setProjectListPosition({ start, end, total })
+                                }
+                              />
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
                     ) : null}
-                  </motion.div>
+                  </>
                 )}
-              </AnimatePresence>
           </div>
         </div>
 

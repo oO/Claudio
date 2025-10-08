@@ -63,7 +63,7 @@ export const AnalyticsSettings: React.FC<AnalyticsSettingsProps> = ({
       <div>
         <div className="flex items-center gap-3 mb-4">
           <BarChart3 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-          <h3 className="text-base font-semibold">Analytics Settings</h3>
+          <h3 className="text-lg font-semibold text-accent">Analytics Settings</h3>
         </div>
         
         <div className="space-y-6">

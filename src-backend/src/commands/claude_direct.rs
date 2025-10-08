@@ -572,10 +572,10 @@ async fn extract_and_store_last_message_uuid_from_claudio_session(
     
     // Get the Claude session file path for the session being tracked
     let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
-    let project_encoded = project_path.replace("/", "-");
+    let project_id = crate::commands::claudio_storage::get_project_id_for_path(&project_path).await?;
     let session_file_path = claude_dir
         .join("projects")
-        .join(project_encoded)
+        .join(project_id)
         .join(format!("{}.jsonl", claude_session_id));
 
     if !session_file_path.exists() {

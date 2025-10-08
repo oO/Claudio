@@ -4,7 +4,7 @@ import { CodeEditorToolbar, ValidationFeedback } from "@/components/ui/molecules
 import { CodeSyntaxHighlight } from "@/components/ui/atoms";
 import { cn } from "@/lib/utils";
 import { HooksManager } from "@/lib/hooksManager";
-import type { EditableHookCommand } from '../../settings/HooksEditor';
+import type { EditableHookCommand } from '../../settings/HooksManager';
 
 export interface DirectCommandEditorProps {
   command: EditableHookCommand;

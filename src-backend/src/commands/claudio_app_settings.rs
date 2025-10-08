@@ -266,6 +266,27 @@ pub async fn save_claudio_app_setting(key: String, value: serde_json::Value) -> 
     Ok(())
 }
 
+// ============================================================================
+// SYNCHRONOUS HELPERS
+// ============================================================================
+
+/// Get a setting value (synchronous version) - for use in non-async contexts
+/// Note: This assumes cache is already loaded. If not, it will return an error.
+pub fn get_claudio_app_setting_sync(key: &str) -> Result<serde_json::Value, String> {
+    let cache_guard = SETTINGS_CACHE.read()
+        .map_err(|e| format!("Failed to acquire cache lock: {}", e))?;
+
+    if let Some(ref cache) = *cache_guard {
+        if let Some(value) = cache.data.get(key) {
+            Ok(value.clone())
+        } else {
+            Err(format!("Setting key not found: {}", key))
+        }
+    } else {
+        Err("Settings cache not initialized".to_string())
+    }
+}
+
 /// Apply proxy settings as environment variables
 pub fn apply_proxy_settings(settings: &ProxySettings) {
     log::info!("Applying proxy settings: enabled={}", settings.enabled);

@@ -9,9 +9,9 @@ import { DebugLabel } from "@/components/ui/atoms";
 import { cn } from "@/lib/utils";
 import type { TriLevelRule } from "@/hooks/useTriLevelSettings";
 
-interface TriLevelPermissionsManagerProps {
+interface ToolPermissionsManagerProps {
   rules: TriLevelRule[];
-  onAddRule: (type: "allow" | "deny", value: string) => void;
+  onAddRule: (type: "allow" | "ask" | "deny", value: string) => void;
   onToggleLevel: (ruleId: string, level: "user" | "team" | "local") => Promise<void>;
   onUpdateRule: (ruleId: string, value: string) => void;
   onDeleteRule: (ruleId: string) => void;
@@ -26,7 +26,7 @@ interface TriLevelPermissionsManagerProps {
 /**
  * Component for managing permission rules across all 3 Claude Code settings levels
  */
-export const TriLevelPermissionsManager: React.FC<TriLevelPermissionsManagerProps> = ({
+export const ToolPermissionsManager: React.FC<ToolPermissionsManagerProps> = ({
   rules,
   onAddRule,
   onToggleLevel,
@@ -37,6 +37,9 @@ export const TriLevelPermissionsManager: React.FC<TriLevelPermissionsManagerProp
 }) => {
   const allowRules = rules
     .filter(rule => rule.type === "allow" && (userOnly ? rule.levels.user : true))
+    .sort((a, b) => a.value.localeCompare(b.value));
+  const askRules = rules
+    .filter(rule => rule.type === "ask" && (userOnly ? rule.levels.user : true))
     .sort((a, b) => a.value.localeCompare(b.value));
   const denyRules = rules
     .filter(rule => rule.type === "deny" && (userOnly ? rule.levels.user : true))
@@ -57,10 +60,10 @@ export const TriLevelPermissionsManager: React.FC<TriLevelPermissionsManagerProp
     }
   }, [rules, lastCreatedRuleId, onToggleLevel, userOnly]);
 
-  const handleAddRule = (type: "allow" | "deny") => {
+  const handleAddRule = (type: "allow" | "ask" | "deny") => {
     // Create the rule with empty value
     onAddRule(type, "");
-    
+
     // Find the newly created rule (it will have empty value and current timestamp in ID)
     setTimeout(() => {
       const newRule = rules.find(r => r.type === type && r.value === "" && !r.levels.user && !r.levels.team && !r.levels.local);
@@ -111,8 +114,9 @@ export const TriLevelPermissionsManager: React.FC<TriLevelPermissionsManagerProp
     );
   };
 
-  const RuleItem: React.FC<{ rule: TriLevelRule; type: "allow" | "deny" }> = ({ rule, type }) => {
+  const RuleItem: React.FC<{ rule: TriLevelRule; type: "allow" | "ask" | "deny" }> = ({ rule, type }) => {
     const isAllow = type === "allow";
+    const isAsk = type === "ask";
     const hasAnyLevel = rule.levels.user || rule.levels.team || rule.levels.local;
     
     return (
@@ -128,7 +132,7 @@ export const TriLevelPermissionsManager: React.FC<TriLevelPermissionsManagerProp
         {/* Rule Input */}
         <div className="flex-1">
           <Input
-            placeholder={`e.g., Bash(${isAllow ? 'git diff:*' : 'rm:*'})`}
+            placeholder={`e.g., Bash(${isAllow ? 'git diff:*' : isAsk ? 'npm install:*' : 'rm:*'})`}
             value={rule.value}
             onChange={(e) => onUpdateRule(rule.id, e.target.value)}
             className="text-sm h-8 font-mono bg-input"
@@ -176,7 +180,7 @@ export const TriLevelPermissionsManager: React.FC<TriLevelPermissionsManagerProp
 
   return (
     <div className="space-y-6 relative">
-      <DebugLabel label="TriLevelPermissionsManager" />
+      <DebugLabel label="ToolPermissionsManager" />
       
       {/* Allow Rules Section */}
       <div className="space-y-3">
@@ -206,7 +210,36 @@ export const TriLevelPermissionsManager: React.FC<TriLevelPermissionsManagerProp
           </div>
         </div>
       </div>
-      
+
+      {/* Ask Rules Section */}
+      <div className="space-y-3">
+        <h3 className="text-lg font-semibold text-yellow-500">Ask Rules</h3>
+
+        <div className="rounded-lg border bg-card">
+          {askRules.length === 0 ? (
+            <div className="p-3 text-xs text-muted-foreground">
+              No ask rules configured. Tools will not prompt for confirmation.
+            </div>
+          ) : (
+            askRules.map((rule) => (
+              <RuleItem key={rule.id} rule={rule} type="ask" />
+            ))
+          )}
+          <div className="p-3 border-t border-border/50">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleAddRule("ask")}
+              disabled={loading}
+              className="gap-2 hover:border-yellow-500/50 hover:text-yellow-500 h-8 w-full"
+            >
+              <Plus className="h-3 w-3" />
+              Add Ask Rule
+            </Button>
+          </div>
+        </div>
+      </div>
+
       {/* Deny Rules Section */}
       <div className="space-y-3">
         <h3 className="text-lg font-semibold text-red-500">Deny Rules</h3>
@@ -266,6 +299,8 @@ export const TriLevelPermissionsManager: React.FC<TriLevelPermissionsManagerProp
             <li>• <code className="px-1 py-0.5 rounded bg-green-500/10 text-green-600 dark:text-green-400">Bash</code> - Allow all bash commands</li>
             <li>• <code className="px-1 py-0.5 rounded bg-green-500/10 text-green-600 dark:text-green-400">Bash(npm run build)</code> - Allow exact command</li>
             <li>• <code className="px-1 py-0.5 rounded bg-green-500/10 text-green-600 dark:text-green-400">Bash(git diff:*)</code> - Allow git diff with any args</li>
+            <li>• <code className="px-1 py-0.5 rounded bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">Bash(npm install:*)</code> - Ask before npm installs</li>
+            <li>• <code className="px-1 py-0.5 rounded bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">WebFetch</code> - Ask before web requests</li>
             <li>• <code className="px-1 py-0.5 rounded bg-red-500/10 text-red-600 dark:text-red-400">Bash(rm:*)</code> - Deny all rm commands</li>
           </ul>
         </div>

@@ -2,7 +2,7 @@ import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { EventIcon } from "@/components/ui/atoms";
 import { cn } from "@/lib/utils";
-import { HookEvent } from "@/types/hooks";
+import { HookEvent, HOOK_REGISTRY } from "@/types/hooks";
 
 export interface HookMetadataProps {
   event: HookEvent;
@@ -12,29 +12,6 @@ export interface HookMetadataProps {
   className?: string;
 }
 
-const EVENT_INFO: Record<HookEvent, { label: string; description: string }> = {
-  PreToolUse: {
-    label: 'Pre Tool Use',
-    description: 'Runs before tool calls, can block and provide feedback'
-  },
-  PostToolUse: {
-    label: 'Post Tool Use',
-    description: 'Runs after successful tool completion'
-  },
-  Notification: {
-    label: 'Notification',
-    description: 'Customizes notifications when Claude needs attention'
-  },
-  Stop: {
-    label: 'Stop',
-    description: 'Runs when Claude finishes responding'
-  },
-  SubagentStop: {
-    label: 'Subagent Stop',
-    description: 'Runs when a Claude subagent (Task) finishes'
-  }
-};
-
 export const HookMetadata: React.FC<HookMetadataProps> = ({
   event,
   count,
@@ -42,7 +19,7 @@ export const HookMetadata: React.FC<HookMetadataProps> = ({
   description,
   className
 }) => {
-  const eventInfo = EVENT_INFO[event];
+  const eventInfo = HOOK_REGISTRY[event];
   const displayLabel = label || eventInfo.label;
   const displayDescription = description || eventInfo.description;
 

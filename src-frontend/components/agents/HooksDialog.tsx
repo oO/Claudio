@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { HooksEditor } from "@/components/settings/HooksEditor";
+import { HooksManager } from "@/components/settings/HooksManager";
 
 interface HooksDialogProps {
   isOpen: boolean;
@@ -43,10 +43,10 @@ export const HooksDialog: React.FC<HooksDialogProps> = ({
           <TabsContent value="project" className="flex-1 overflow-auto">
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Project hooks are stored in <code className="bg-muted px-1 py-0.5 rounded">.claude/settings.json</code> and 
+                Project hooks are stored in <code className="bg-muted px-1 py-0.5 rounded">.claude/settings.json</code> and
                 are committed to version control.
               </p>
-              <HooksEditor
+              <HooksManager
                 projectPath={projectPath}
                 scope="project"
                 className="border-0"
@@ -57,10 +57,10 @@ export const HooksDialog: React.FC<HooksDialogProps> = ({
           <TabsContent value="local" className="flex-1 overflow-auto">
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Local hooks are stored in <code className="bg-muted px-1 py-0.5 rounded">.claude/settings.local.json</code> and 
+                Local hooks are stored in <code className="bg-muted px-1 py-0.5 rounded">.claude/settings.local.json</code> and
                 are not committed to version control.
               </p>
-              <HooksEditor
+              <HooksManager
                 projectPath={projectPath}
                 scope="local"
                 className="border-0"

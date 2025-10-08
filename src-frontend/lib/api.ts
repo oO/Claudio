@@ -97,7 +97,7 @@ export const api = {
 
   async readClaudeMdFile(filePath: string): Promise<string> {
     try {
-      return await invoke<string>("read_claude_md_file", { filePath });
+      return await invoke<string>("read_text_file", { filePath });
     } catch (error) {
       logger.error("Failed to read CLAUDE.md file:", error);
       throw error;
@@ -106,7 +106,7 @@ export const api = {
 
   async saveClaudeMdFile(filePath: string, content: string): Promise<void> {
     try {
-      return await invoke("save_claude_md_file", { filePath, content });
+      return await invoke("write_text_file", { filePath, content });
     } catch (error) {
       logger.error("Failed to save CLAUDE.md file:", error);
       throw error;

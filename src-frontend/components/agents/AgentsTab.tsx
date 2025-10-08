@@ -1,10 +1,12 @@
 import React from 'react';
 import { TabPageLayout } from '@/components/common';
-import { AgentsContent, CreateAgent } from '@/components/agents';
+import { AgentsManager, CreateAgent } from '@/components/agents';
 import { useTabState } from '@/hooks/useTabState';
 import { useScreenTracking } from '@/hooks/useAnalytics';
 import { Tab } from '@/contexts/TabContext';
 import { DebugLabel } from '@/components/ui/atoms';
+import { agentsApi } from '@/lib/api';
+import { logger } from '@/lib/logger';
 
 interface AgentsTabProps {
   tab: Tab;
@@ -50,7 +52,7 @@ export const AgentsTab: React.FC<AgentsTabProps> = ({ tab, isActive }) => {
       title="Personal Agents"
       subtitle="Manage your personal Claude Code agents"
     >
-      <AgentsContent
+      <AgentsManager
         onEditAgent={(agent) => {
           // Edit in the same tab by updating tab data
           updateTab(tab.id, {
@@ -59,11 +61,22 @@ export const AgentsTab: React.FC<AgentsTabProps> = ({ tab, isActive }) => {
           });
         }}
         onExportAgent={async (agent) => {
-          // Export functionality is handled by AgentsContent
+          // Export functionality is handled by AgentsManager
           // Agent export will be handled
         }}
-        onDeleteAgent={(agent) => {
-          // Agent deletion will be handled
+        onDeleteAgent={async (agent) => {
+          if (!agent.id) {
+            logger.error("Cannot delete agent without ID");
+            return;
+          }
+          try {
+            await agentsApi.deleteAgent(agent.id);
+            logger.info("Agent deleted:", agent.name);
+            // Force refresh by updating tab timestamp
+            updateTab(tab.id, { lastActivityAt: Date.now() });
+          } catch (error) {
+            logger.error("Failed to delete agent:", error);
+          }
         }}
         onCreateAgent={() => {
           // Create agent in the same tab
@@ -73,7 +86,7 @@ export const AgentsTab: React.FC<AgentsTabProps> = ({ tab, isActive }) => {
           });
         }}
         onImportAgent={() => {
-          // AgentsContent handles import internally
+          // AgentsManager handles import internally
         }}
         className="h-full"
       />
