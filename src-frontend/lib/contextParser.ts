@@ -22,12 +22,15 @@ export interface ContextUsage {
       tokens: number;
     }>;
   }>;
+  parseWarnings?: string[];
 }
 
 export function parseContextOutput(output: string): ContextUsage | null {
   const parseTokens = (str: string): number => {
     return str.includes('k') ? Math.round(parseFloat(str) * 1000) : parseInt(str);
   };
+
+  const warnings: string[] = [];
 
   // Handle empty or invalid input
   if (!output || typeof output !== 'string') {
@@ -38,38 +41,64 @@ export function parseContextOutput(output: string): ContextUsage | null {
   const cleanOutput = output.replace(/\u001b\[[0-9;]*m/g, '');
   const lines = cleanOutput.split('\n');
 
-  // Get usage line - handle both old format (with •) and new format (without •)
-  const usageLine = lines.find(line => line.includes('tokens') && (line.includes('•') || line.includes('Context Usage')));
-  if (!usageLine) {
-    return null;
-  }
+  // Find the usage line - v2.0+ has "Context Usage" as header, then model + tokens on next line
+  const contextHeaderIndex = lines.findIndex(line => line.trim() === 'Context Usage');
+  let usageLine: string | undefined;
 
-  let model = '';
-  let tokenPart = '';
-
-  // Try new format first (v2.0+): "Context Usage 64k/200k tokens (32%)"
-  if (usageLine.includes('Context Usage')) {
-    model = 'Context Usage'; // or extract model from elsewhere if available
-    tokenPart = usageLine;
+  if (contextHeaderIndex !== -1 && contextHeaderIndex + 1 < lines.length) {
+    // v2.0+ format: "Context Usage" header, then next line has model and tokens
+    usageLine = lines[contextHeaderIndex + 1];
   } else {
-    // Old format: "Model • 64k/200k tokens (32%)"
-    const parts = usageLine.split('•');
-    if (parts.length < 2) {
-      return null;
+    // Old format or single-line v2.0: find line with tokens and either • or Context Usage
+    usageLine = lines.find(line => line.includes('tokens') && (line.includes('•') || line.includes('Context Usage')));
+  }
+
+  if (!usageLine || !usageLine.includes('tokens')) {
+    warnings.push('Could not find usage summary line');
+  }
+
+  let model = 'Unknown';
+  let tokenPart = '';
+  let totalTokens = 0;
+  let maxTokens = 200000; // Default fallback
+  let percentage = 0;
+
+  if (usageLine && usageLine.includes('tokens')) {
+    // v2.0+ multi-line format: "⛁ ⛀ ... model-name · 149k/200k tokens (75%)"
+    // Extract model name (everything before the · bullet)
+    const modelMatch = usageLine.match(/([a-z0-9-]+)\s+·\s+(\d+(?:\.\d+)?k?)\/(\d+(?:\.\d+)?k?)\s+tokens/);
+
+    if (modelMatch) {
+      model = modelMatch[1];
+      tokenPart = usageLine;
+    } else if (usageLine.includes('Context Usage')) {
+      // Single-line v2.0 format
+      model = 'Context Usage';
+      tokenPart = usageLine;
+    } else {
+      // Old format: "Model • 64k/200k tokens (32%)"
+      const parts = usageLine.split('•');
+      if (parts.length >= 2) {
+        model = parts[0].trim().replace(/[⛁⛀⛶⛵⛝]/g, '').trim();
+        tokenPart = parts[1];
+      } else {
+        warnings.push('Could not parse model name from usage line');
+        tokenPart = usageLine;
+      }
     }
-    model = parts[0].trim().replace(/[⛁⛀⛶⛵]/g, '').trim();
-    tokenPart = parts[1];
+
+    const tokenMatch = tokenPart.match(/(\d+(?:\.\d+)?k?)\/(\d+(?:\.\d+)?k?)\s+tokens/);
+    const percentageMatch = tokenPart.match(/\((\d+)%\)/);
+
+    if (tokenMatch && percentageMatch) {
+      const [, totalStr, maxStr] = tokenMatch;
+      totalTokens = parseTokens(totalStr);
+      maxTokens = parseTokens(maxStr);
+      percentage = parseInt(percentageMatch[1]);
+    } else {
+      warnings.push('Could not parse token counts from usage line');
+    }
   }
-
-  const tokenMatch = tokenPart.match(/(\d+(?:\.\d+)?k?)\/(\d+(?:\.\d+)?k?)/);
-  const percentageMatch = tokenPart.match(/\((\d+)%\)/);
-
-  if (!tokenMatch || !percentageMatch) {
-    return null;
-  }
-
-  const [, totalStr, maxStr] = tokenMatch;
-  const percentage = parseInt(percentageMatch[1]);
 
   // Parse breakdown from the detail lines
   const breakdown = {
@@ -117,7 +146,7 @@ export function parseContextOutput(output: string): ContextUsage | null {
         breakdown.memoryFiles.tokens = parseTokens(match[1]);
         breakdown.memoryFiles.percentage = parseFloat(match[2]);
       }
-    } else if (line.includes('⛝ Reserved:')) {
+    } else if (line.includes('⛝') && (line.includes('Reserved:') || line.includes('Autocompact buffer:'))) {
       const match = line.match(/(\d+(?:\.\d+)?k?) tokens \((\d+(?:\.\d+)?%)\)/);
       if (match) {
         breakdown.reserved.tokens = parseTokens(match[1]);
@@ -163,32 +192,42 @@ export function parseContextOutput(output: string): ContextUsage | null {
 
     // Parse section items
     if (currentSection && line.includes('└')) {
-      if (currentSection.title === 'Custom agents') {
-        const match = line.match(/└ (.+?) \((.+?)\): (\d+) tokens/);
-        if (match) {
-          currentSection.items.push({
-            name: match[1],
-            scope: match[2],
-            tokens: parseInt(match[3])
-          });
+      try {
+        if (currentSection.title === 'Custom agents') {
+          const match = line.match(/└ (.+?) \((.+?)\): (\d+) tokens/);
+          if (match) {
+            currentSection.items.push({
+              name: match[1],
+              scope: match[2],
+              tokens: parseInt(match[3])
+            });
+          } else {
+            warnings.push(`Could not parse custom agent line: ${line.trim()}`);
+          }
+        } else if (currentSection.title === 'Memory files') {
+          const match = line.match(/└ (.+?) \((.+?)\): (\d+(?:\.\d+)?k?) tokens/);
+          if (match) {
+            currentSection.items.push({
+              name: match[1],
+              path: match[2],
+              tokens: parseTokens(match[3])
+            });
+          } else {
+            warnings.push(`Could not parse memory file line: ${line.trim()}`);
+          }
+        } else if (currentSection.title === 'SlashCommand Tool') {
+          const match = line.match(/└ (.+?): (\d+(?:\.\d+)?k?) tokens/);
+          if (match) {
+            currentSection.items.push({
+              name: match[1],
+              tokens: parseTokens(match[2])
+            });
+          } else {
+            warnings.push(`Could not parse slash command line: ${line.trim()}`);
+          }
         }
-      } else if (currentSection.title === 'Memory files') {
-        const match = line.match(/└ (.+?) \((.+?)\): (\d+(?:\.\d+)?k?) tokens/);
-        if (match) {
-          currentSection.items.push({
-            name: match[1],
-            path: match[2],
-            tokens: parseTokens(match[3])
-          });
-        }
-      } else if (currentSection.title === 'SlashCommand Tool') {
-        const match = line.match(/└ (.+?): (\d+) tokens/);
-        if (match) {
-          currentSection.items.push({
-            name: match[1],
-            tokens: parseInt(match[2])
-          });
-        }
+      } catch (error) {
+        warnings.push(`Error parsing item in ${currentSection.title}: ${error instanceof Error ? error.message : 'unknown error'}`);
       }
     }
   }
@@ -198,12 +237,18 @@ export function parseContextOutput(output: string): ContextUsage | null {
     sections.push(currentSection);
   }
 
+  // Only return null if we have absolutely no useful data
+  if (!usageLine && sections.length === 0) {
+    return null;
+  }
+
   return {
     model,
-    totalTokens: parseTokens(totalStr),
-    maxTokens: parseTokens(maxStr),
+    totalTokens,
+    maxTokens,
     percentage,
     breakdown,
-    sections
+    sections,
+    parseWarnings: warnings.length > 0 ? warnings : undefined
   };
 }
