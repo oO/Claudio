@@ -33,6 +33,7 @@ export const CreateAgentTabWrapper: React.FC<CreateAgentTabWrapperProps> = ({ ta
       agent={tab.agentData} // Pass agent data for editing if available
       onAgentCreated={handleAgentCreated}
       onBack={handleBack}
+      projectPath={tab.initialProjectPath} // Pass project path if agent is project-level
     />
   );
 };

@@ -243,4 +243,24 @@ export const agentsApi = {
       throw error;
     }
   },
+
+  /**
+   * Move an agent from project level to user level
+   * @param agentName - The name of the agent to move
+   * @param projectPath - The project path where the agent currently resides
+   * @param overwrite - Whether to overwrite if agent exists at user level
+   * @returns Promise resolving when the move is complete
+   */
+  async moveAgentToUserLevel(agentName: string, projectPath: string, overwrite: boolean = false): Promise<void> {
+    try {
+      return await invoke<void>('move_agent_to_user_level', {
+        agentName,
+        projectPath,
+        overwrite
+      });
+    } catch (error) {
+      logger.error("Failed to move agent to user level:", error);
+      throw error;
+    }
+  },
 };

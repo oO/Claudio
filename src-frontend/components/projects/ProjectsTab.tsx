@@ -599,11 +599,8 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
         title={
           selectedProject ? getProjectName(selectedProject.path) : "Projects"
         }
-        subtitle={
-          selectedProject
-            ? selectedProject.path
-            : "Browse your Claude Code sessions"
-        }
+        path={selectedProject ? selectedProject.path : undefined}
+        subtitle={!selectedProject ? "Browse your Claude Code sessions" : undefined}
         onBack={selectedProject ? handleBack : undefined}
         contentPadding={false}
         actions={
@@ -749,6 +746,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                           type: "create-agent",
                           title: `Edit ${agent.name}`,
                           agentData: agent,
+                          initialProjectPath: selectedProject?.path,
                         });
                       }}
                       onExportAgent={(agent) => {

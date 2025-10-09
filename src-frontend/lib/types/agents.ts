@@ -49,6 +49,7 @@ export interface Agent {
   description?: string;
   tools?: string;
   color?: string;
+  file_path?: string; // Absolute file path of the agent
 }
 
 /**

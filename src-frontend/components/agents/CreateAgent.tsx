@@ -1,36 +1,42 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Save, ChevronDown } from "lucide-react";
+import { Save, MoreVertical, Bot, FileText, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Toast, ToastContainer } from "@/components/ui/toast";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Card } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { TabPageLayout } from "@/components/common";
 import { agentsApi, type Agent } from "@/lib/api";
 import { AGENT_COLORS, AGENT_COLOR_OPTIONS, getAgentColor, type AgentColorName } from "@/lib/agentColors";
 import { cn } from "@/lib/utils";
 import { ThemedMDEditor } from "@/components/ui";
-import { ExampleEditor, type Example } from "@/components/common";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import { logger } from '@/lib/logger';
 
 // Atomic Design System imports
-import { 
-  ActionButton,
-  LoadingSpinner,
-  AgentIcon,
+import {
   ColorSwatch,
   RadioOption,
-  DebugLabel
+  DebugLabel,
+  ActionButton
 } from "@/components/ui/atoms";
 import { 
   StatusMessage,
   ActionButtonGroup,
   DropdownSelector
 } from "@/components/ui/molecules";
-import { 
+import {
   ConfirmationDialog,
   ColorPickerDialog,
-  ToolPickerDialog,
   type ColorOption,
   type ToolCategory,
   type Tool
@@ -82,6 +88,10 @@ interface CreateAgentProps {
    * Optional className for styling
    */
   className?: string;
+  /**
+   * Optional project path (indicates this is a project-level agent)
+   */
+  projectPath?: string;
 }
 
 /**
@@ -95,6 +105,7 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
   onBack,
   onAgentCreated,
   className,
+  projectPath,
 }) => {
   const [name, setName] = useState(agent?.name || "");
   const [description, setDescription] = useState(agent?.description || "");
@@ -129,9 +140,9 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [showColorPicker, setShowColorPicker] = useState(false);
-  const [showToolPicker, setShowToolPicker] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
-  const [, setExamples] = useState<Example[]>([]);
+  const [showOverwriteDialog, setShowOverwriteDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState("properties");
   
   // Tool selection state - initialize from agent data
   const initialTools = agent?.tools ? new Set(agent.tools.split(',').map(t => t.trim())) : new Set<string>();
@@ -179,7 +190,15 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
   }, [description]);
 
   const isEditMode = !!agent;
-  
+
+  // Helper to transform agent name from "agent-builder" to "Agent Builder"
+  const formatAgentName = (agentName: string) => {
+    return agentName
+      .split('-')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
   // Helper to get tools as string
   const getToolsString = () => {
     return Array.from(selectedTools).sort().join(', ');
@@ -379,203 +398,420 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
     setShowUnsavedDialog(false);
   };
 
-  return (
-    <div className={cn("flex flex-col h-full bg-background relative", className)}>
-      <DebugLabel label="CreateAgent" />
-      <div className="w-full max-w-5xl mx-auto flex flex-col h-full">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="flex items-center justify-between p-4 border-b border-border"
+  const handleMoveToUserLevel = async (overwrite: boolean = false) => {
+    if (!agent?.name || !agent?.file_path) return;
+
+    // Extract project path from file_path
+    // e.g., /Users/olivier/Projects/claudio/.claude/agents/commit-expert.md -> /Users/olivier/Projects/claudio
+    const projectPathMatch = agent.file_path.match(/^(.*)\/\.claude\/agents\//);
+    if (!projectPathMatch) {
+      setError("Could not determine project path from agent file location");
+      return;
+    }
+    const extractedProjectPath = projectPathMatch[1];
+
+    try {
+      setSaving(true);
+      await agentsApi.moveAgentToUserLevel(agent.name, extractedProjectPath, overwrite);
+      setToast({ message: "Agent moved to user level successfully!", type: "success" });
+      setTimeout(() => {
+        onAgentCreated(); // Refresh the list
+      }, 500);
+    } catch (error) {
+      logger.error("Failed to move agent:", error);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+
+      // Check if error is about agent already existing
+      if (errorMsg.includes('AGENT_EXISTS:')) {
+        setShowOverwriteDialog(true);
+      } else {
+        setError(errorMsg.replace('AGENT_EXISTS:', ''));
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Check if this is a project-level agent (not in user's ~/.claude/agents/)
+  // User-level agents are ONLY in /Users/<username>/.claude/agents/
+  // Everything else (any other path with /.claude/agents/) is a project agent
+  const isUserLevelAgent = agent?.file_path?.match(/^\/Users\/[^/]+\/\.claude\/agents\//);
+  const isProjectLevelAgent = agent?.file_path && !isUserLevelAgent;
+
+  const renderActions = () => (
+    <div className="flex items-center gap-2">
+      <Button
+        onClick={handleSave}
+        disabled={saving || !name.trim() || !systemPrompt.trim() || (isEditMode && !hasChanges)}
+        size="sm"
+        className="h-8"
+      >
+        {saving ? (
+          <>
+            <Save className="mr-2 h-4 w-4 animate-spin" />
+            Saving...
+          </>
+        ) : (
+          <>
+            <Save className="mr-2 h-4 w-4" />
+            Save
+          </>
+        )}
+      </Button>
+
+      <DropdownMenu
+        onOpenChange={(open) => {
+          // Dropdown state change handled by component
+        }}
+      >
+        <DropdownMenuTrigger asChild>
+          <ActionButton
+            icon={MoreVertical}
+            label="More options"
+            variant="ghost"
+            size="icon"
+            showLabel={false}
+            className="h-8 w-8"
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="end"
+          onCloseAutoFocus={(e) => {
+            // Menu close focus handled by component
+          }}
         >
-          <div className="flex items-center space-x-3">
-            <ActionButton
-              icon={ArrowLeft}
-              label="Back"
-              showLabel={false}
-              variant="ghost"
-              size="icon"
-              onClick={handleBack}
-              className="h-8 w-8"
-            />
-            <div>
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                {isEditMode ? (
-                  <>
-                    Edit the{' '}
-                    <span className={cn(
-                      "px-2 py-1 rounded text-white text-sm",
-                      getAgentColor(color || "blue").solidClass
-                    )}>
-                      {name || agent?.name}
-                    </span>
-                    {' '}Agent
-                  </>
-                ) : (
-                  "Create Personal Agent"
-                )}
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                {isEditMode ? "Update your Claude Code agent" : "Create a new Claude Code agent"}
-              </p>
+          {isEditMode && isProjectLevelAgent && (
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleMoveToUserLevel();
+              }}
+            >
+              Move to User Level
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              logger.info('Export clicked');
+            }}
+          >
+            Export Agent
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              logger.info('Duplicate clicked');
+            }}
+          >
+            Duplicate Agent
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+
+  // Get the agent file path
+  const getAgentFilePath = () => {
+    if (!agent?.file_path) return '';
+
+    // Replace /Users/<username> with ~ for cleaner display
+    const homeDir = agent.file_path.match(/^\/Users\/[^/]+/)?.[0];
+    const displayPath = homeDir ? agent.file_path.replace(homeDir, '~') : agent.file_path;
+    return displayPath;
+  };
+
+  return (
+    <div className={cn("relative h-full flex flex-col", className)}>
+      <DebugLabel label="CreateAgent" />
+      <TabPageLayout
+        title={isEditMode
+          ? formatAgentName(name || agent?.name || '')
+          : "Create Personal Agent"
+        }
+        path={isEditMode ? getAgentFilePath() : undefined}
+        subtitle={!isEditMode ? "Create a new Claude Code agent" : undefined}
+        onBack={handleBack}
+        actions={renderActions()}
+        contentPadding={false}
+      >
+        <div className="h-full flex flex-col">
+          <div className="container mx-auto py-6 flex-1 min-h-0 flex flex-col">
+            <div className="bg-background text-foreground relative h-full flex flex-col">
+              {/* Error display */}
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="mx-4 mt-4"
+                >
+                  <StatusMessage
+                    type="error"
+                    message={error}
+                    onDismiss={() => setError(null)}
+                  />
+                </motion.div>
+              )}
+
+              {/* Tabbed Form */}
+              <Tabs
+                value={activeTab}
+                onValueChange={setActiveTab}
+                className="w-full flex flex-col flex-1 min-h-0 gap-2"
+              >
+          <TabsList className="grid grid-cols-3 w-full">
+            <TabsTrigger value="properties" className="gap-2 hover:bg-accent">
+              <Bot className="h-4 w-4" />
+              Agent Properties
+            </TabsTrigger>
+            <TabsTrigger value="prompt" className="gap-2 hover:bg-accent">
+              <FileText className="h-4 w-4" />
+              System Prompt
+            </TabsTrigger>
+            <TabsTrigger value="tools" className="gap-2 hover:bg-accent">
+              <Shield className="h-4 w-4" />
+              Tool Permissions
+            </TabsTrigger>
+          </TabsList>
+
+            <TabsContent value="properties" className="flex-1 min-h-0">
+              <Card className="flex flex-col h-full pb-3">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.1 }}
+                  className="relative flex flex-col h-full"
+                >
+                  {/* Fixed header */}
+                  <div className="p-6 pb-3">
+                    <h3 className="text-lg font-semibold text-accent">Agent Properties</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Configure your agent's basic settings and behavior
+                    </p>
+                  </div>
+
+                  {/* Scrollable content */}
+                  <div className="flex-1 min-h-0 overflow-auto px-6">
+                    <div className="space-y-4">
+                    {/* Name and Color */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="name">Agent Name</Label>
+                        <Input
+                          id="name"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          placeholder="e.g., code-assistant"
+                          required
+                          className="w-full"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Use kebab-case (e.g., agent-builder)
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Agent Color</Label>
+                        <DropdownSelector
+                          label="Agent Color"
+                          value={getAgentColor(color).name}
+                          onClick={() => setShowColorPicker(true)}
+                        >
+                          <ColorSwatch
+                            color={getAgentColor(color).name}
+                            bgClass={getAgentColor(color).solidClass}
+                            size="sm"
+                          />
+                        </DropdownSelector>
+                        <p className="text-xs text-muted-foreground">
+                          Visual identifier for your agent
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Description */}
+                    <div className="space-y-2">
+                      <Label htmlFor="description">Description</Label>
+                      <Textarea
+                        id="description"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        placeholder="Use this agent when..."
+                        rows={8}
+                        className="w-full resize-none block"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Describe when and how to use this agent. This helps Claude delegate tasks automatically.
+                      </p>
+                    </div>
+
+                    {/* Model Selection */}
+                    <div className="space-y-2">
+                      <Label>Model</Label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <RadioOption
+                          id="inherit"
+                          label="Inherit"
+                          description="Use Claude Code's default"
+                          selected={model === "inherit"}
+                          onClick={() => setModel("inherit")}
+                        />
+
+                        <RadioOption
+                          id="opus"
+                          label="Opus"
+                          description="Most capable, best for complex tasks"
+                          selected={model === "opus"}
+                          onClick={() => setModel("opus")}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <RadioOption
+                          id="sonnet"
+                          label="Sonnet"
+                          description="Fast, efficient for most tasks"
+                          selected={model === "sonnet"}
+                          onClick={() => setModel("sonnet")}
+                        />
+
+                        <RadioOption
+                          id="haiku"
+                          label="Haiku"
+                          description="Fastest, lightweight for simple tasks"
+                          selected={model === "haiku"}
+                          onClick={() => setModel("haiku")}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Select the AI model for this agent
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                </motion.div>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="prompt" className="flex-1 min-h-0">
+              <Card className="flex flex-col h-full pb-3">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.1 }}
+                  className="h-full flex flex-col"
+                >
+                  {/* Fixed header */}
+                  <div className="p-6 pb-3">
+                    <h3 className="text-lg font-semibold text-accent">System Prompt</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Define the behavior and capabilities of your agent
+                    </p>
+                  </div>
+
+                  {/* Editor content */}
+                  <div className="flex-1 min-h-0 px-6">
+                    <ThemedMDEditor
+                      value={systemPrompt}
+                      onChange={(val) => setSystemPrompt(val || "")}
+                    />
+                  </div>
+                </motion.div>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="tools" className="flex-1 min-h-0">
+              <Card className="flex flex-col h-full pb-3">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.1 }}
+                  className="relative flex flex-col h-full"
+                >
+                  {/* Fixed header */}
+                  <div className="p-6 pb-3">
+                    <h3 className="text-lg font-semibold text-accent">Tool Permissions</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Choose which Claude Code tools this agent can access
+                    </p>
+                  </div>
+
+                  {/* Scrollable content */}
+                  <div className="flex-1 min-h-0 overflow-auto px-6">
+                    <div className="space-y-4">
+                      {/* Tool Categories */}
+                      <div>
+                        <h4 className="text-sm font-medium mb-3">Tool Categories</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {TOOL_CATEGORIES.map((category) => (
+                            <button
+                              key={category.value}
+                              onClick={() => handleCategoryToggle(category.value)}
+                              className={cn(
+                                "flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-card-hover hover:border-hover transition-colors text-left",
+                                selectedCategories.has(category.value) ? "text-accent" : ""
+                              )}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selectedCategories.has(category.value)}
+                                onChange={() => {}} // Handled by button onClick
+                                className="w-4 h-4 rounded border-border pointer-events-none"
+                              />
+                              <div>
+                                <div className="text-sm font-medium">{category.name}</div>
+                                <div className="text-xs opacity-70">{category.description}</div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Separator */}
+                      <hr className="border-border" />
+
+                      {/* Individual Tools */}
+                      <div>
+                        <h4 className="text-sm font-medium mb-3">Individual Tools</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {INDIVIDUAL_TOOLS.map((tool) => (
+                            <button
+                              key={tool.name}
+                              onClick={() => handleToolToggle(tool.name)}
+                              className={cn(
+                                "flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-card-hover hover:border-hover transition-colors text-left",
+                                selectedTools.has(tool.name) ? "text-accent" : ""
+                              )}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selectedTools.has(tool.name)}
+                                onChange={() => {}} // Handled by button onClick
+                                className="w-4 h-4 rounded border-border pointer-events-none"
+                              />
+                              <div>
+                                <div className="text-sm font-medium">{tool.name}</div>
+                                <div className="text-xs opacity-70">{tool.description}</div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              </Card>
+            </TabsContent>
+              </Tabs>
             </div>
           </div>
-          
-          <ActionButton
-            icon={Save}
-            label={saving ? "Saving..." : "Save"}
-            onClick={handleSave}
-            disabled={saving || !name.trim() || !systemPrompt.trim() || (isEditMode && !hasChanges)}
-            size="sm"
-            isLoading={saving}
-          />
-        </motion.div>
-        
-        {/* Error display */}
-        {error && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="mx-4 mt-4"
-          >
-            <StatusMessage
-              type="error"
-              message={error}
-              onDismiss={() => setError(null)}
-            />
-          </motion.div>
-        )}
-        
-        {/* Form */}
-        <div className="flex-1 overflow-y-auto px-4 py-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.1 }}
-            className="space-y-6"
-          >
-                {/* Basic Information */}
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-sm font-medium mb-4">Basic Information</h3>
-                  </div>
-              
-              {/* Name and Color */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Agent Name</Label>
-                  <Input
-                    id="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g., Code Assistant"
-                    required
-                    className="w-full"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Agent Color</Label>
-                  <DropdownSelector
-                    label="Agent Color"
-                    value={getAgentColor(color).name}
-                    onClick={() => setShowColorPicker(true)}
-                  >
-                    <ColorSwatch
-                      color={getAgentColor(color).name}
-                      bgClass={getAgentColor(color).solidClass}
-                      size="sm"
-                    />
-                  </DropdownSelector>
-                </div>
-              </div>
-
-              {/* Description and Examples */}
-              <div className="space-y-2">
-                <ExampleEditor
-                  description={description}
-                  onDescriptionChange={setDescription}
-                  onExamplesChange={setExamples}
-                />
-              </div>
-
-              {/* Tools */}
-              <div className="space-y-2">
-                <Label>Tools</Label>
-                <DropdownSelector
-                  label="Tools"
-                  value={selectedTools.size === 0 
-                    ? "" 
-                    : selectedCategories.has('all')
-                      ? "All tools"
-                      : Array.from(selectedTools).sort().join(', ')
-                  }
-                  placeholder="Select tools..."
-                  onClick={() => setShowToolPicker(true)}
-                />
-              </div>
-
-
-              {/* Model Selection */}
-              <div className="space-y-2">
-                <Label>Model</Label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <RadioOption
-                    id="inherit"
-                    label="Inherit"
-                    description="Use Claude Code's default"
-                    selected={model === "inherit"}
-                    onClick={() => setModel("inherit")}
-                  />
-                  
-                  <RadioOption
-                    id="opus"
-                    label="Opus"
-                    description="Most capable, best for complex tasks"
-                    selected={model === "opus"}
-                    onClick={() => setModel("opus")}
-                  />
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <RadioOption
-                    id="sonnet"
-                    label="Sonnet"
-                    description="Fast, efficient for most tasks"
-                    selected={model === "sonnet"}
-                    onClick={() => setModel("sonnet")}
-                  />
-                  
-                  <RadioOption
-                    id="haiku"
-                    label="Haiku"
-                    description="Fastest, lightweight for simple tasks"
-                    selected={model === "haiku"}
-                    onClick={() => setModel("haiku")}
-                  />
-                </div>
-              </div>
-
-              {/* System Prompt Editor */}
-              <div className="space-y-2">
-                <Label>System Prompt</Label>
-                <p className="text-xs text-muted-foreground mb-2">
-                  Define the behavior and capabilities of your CC Agent
-                </p>
-                <ThemedMDEditor
-                  value={systemPrompt}
-                  onChange={(val) => setSystemPrompt(val || "")}
-                  height={400}
-                />
-              </div>
-            </div>
-          </motion.div>
         </div>
-      </div>
-  
-  {/* Toast Notification */}
+      </TabPageLayout>
+
+      {/* Toast Notification */}
   <ToastContainer>
     {toast && (
       <Toast
@@ -596,19 +832,6 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
     title="Choose Agent Color"
   />
 
-  {/* Tool Picker Dialog */}
-  <ToolPickerDialog
-    isOpen={showToolPicker}
-    selectedCategories={selectedCategories}
-    selectedTools={selectedTools}
-    categories={TOOL_CATEGORIES}
-    tools={INDIVIDUAL_TOOLS}
-    onCategoryToggle={handleCategoryToggle}
-    onToolToggle={handleToolToggle}
-    onClose={() => setShowToolPicker(false)}
-    title="Choose Agent Tools"
-  />
-
   {/* Unsaved Changes Dialog */}
   <ConfirmationDialog
     isOpen={showUnsavedDialog}
@@ -618,6 +841,21 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
     cancelText="Stay"
     onConfirm={handleConfirmLeave}
     onCancel={handleCancelLeave}
+    variant="destructive"
+  />
+
+  {/* Overwrite Agent Dialog */}
+  <ConfirmationDialog
+    isOpen={showOverwriteDialog}
+    title="Agent Already Exists"
+    description={`An agent named "${agent?.name}" already exists at the user level. Do you want to overwrite it with this project-level agent?`}
+    confirmText="Overwrite"
+    cancelText="Cancel"
+    onConfirm={() => {
+      setShowOverwriteDialog(false);
+      handleMoveToUserLevel(true); // Call with overwrite=true
+    }}
+    onCancel={() => setShowOverwriteDialog(false)}
     variant="destructive"
   />
 </div>

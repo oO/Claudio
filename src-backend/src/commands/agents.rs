@@ -33,6 +33,7 @@ pub struct Agent {
     pub description: Option<String>, // Agent description from frontmatter
     pub tools: Option<String>,       // Comma-separated list of tools
     pub color: Option<String>,       // Agent color for UI
+    pub file_path: Option<String>,   // Absolute file path of the agent
 }
 
 /// Agent metadata from YAML frontmatter
@@ -157,6 +158,7 @@ impl AgentParser {
             description: frontmatter.description,
             tools: frontmatter.tools,
             color: normalized_color,
+            file_path: None, // Will be set by list_agents when reading from disk
         })
     }
 
@@ -296,6 +298,9 @@ pub async fn list_agents(project_path: String) -> Result<Vec<Agent>, String> {
                     Ok(content) => {
                         match AgentParser::parse_file(&content) {
                             Ok(mut agent) => {
+                                // Set the absolute file path
+                                agent.file_path = path.to_str().map(|s| s.to_string());
+
                                 // Get file metadata for timestamps
                                 if let Ok(metadata) = fs::metadata(&path) {
                                     if let Ok(created) = metadata.created() {
@@ -384,6 +389,7 @@ pub async fn create_agent(
         description,
         tools,
         color,
+        file_path: Some(file_path.to_string_lossy().to_string()),
     };
 
     let markdown_content = AgentParser::generate_markdown(&agent);
@@ -447,6 +453,7 @@ pub async fn update_agent(
         description,
         tools,
         color,
+        file_path: Some(file_path.to_string_lossy().to_string()),
     };
 
     let markdown_content = AgentParser::generate_markdown(&agent);
@@ -473,6 +480,39 @@ pub async fn delete_agent(project_path: Option<String>, name: String) -> Result<
         .map_err(|e| format!("Failed to delete agent file: {}", e))?;
 
     // info!("Deleted agent '{}' from {}", name, file_path.display());
+    Ok(())
+}
+
+/// Move an agent from project level to user level
+#[tauri::command]
+pub async fn move_agent_to_user_level(agent_name: String, project_path: String, overwrite: bool) -> Result<(), String> {
+    // Get the project-level agent file path
+    let project_agents_dir = AgentParser::get_agents_directory(Some(&project_path))?;
+    let filename = AgentParser::name_to_filename(&agent_name);
+    let source_path = project_agents_dir.join(&filename);
+
+    if !source_path.exists() {
+        return Err(format!("Agent '{}' not found in project", agent_name));
+    }
+
+    // Get the user-level agents directory
+    let user_agents_dir = AgentParser::get_agents_directory(None)?;
+    let dest_path = user_agents_dir.join(&filename);
+
+    // Check if agent already exists at user level
+    if dest_path.exists() && !overwrite {
+        return Err(format!("AGENT_EXISTS:Agent '{}' already exists at user level", agent_name));
+    }
+
+    // Copy the file to user level (will overwrite if exists and overwrite=true)
+    fs::copy(&source_path, &dest_path)
+        .map_err(|e| format!("Failed to copy agent file: {}", e))?;
+
+    // Delete the project-level file
+    fs::remove_file(&source_path)
+        .map_err(|e| format!("Failed to remove project-level agent file: {}", e))?;
+
+    log::info!("Moved agent '{}' from project to user level{}", agent_name, if overwrite { " (overwrote existing)" } else { "" });
     Ok(())
 }
 

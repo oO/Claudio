@@ -13,7 +13,7 @@ use commands::agents::{
     get_claude_binary_path, import_agent,
     import_agent_from_file, import_agent_from_github, init_database,
     list_agents, list_claude_installations,
-    load_agent_session_history, set_claude_binary_path, update_agent, AgentDb,
+    load_agent_session_history, move_agent_to_user_level, set_claude_binary_path, update_agent, AgentDb,
 };
 use commands::claude::{
     cancel_claude_execution, check_claude_version, execute_claude_code,
@@ -345,6 +345,7 @@ fn main() {
             create_agent,
             update_agent,
             delete_agent,
+            move_agent_to_user_level,
             get_agent,
             load_agent_session_history,
             get_claude_binary_path,

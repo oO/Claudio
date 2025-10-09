@@ -11,9 +11,13 @@ interface TabPageLayoutProps {
    */
   title: string;
   /**
-   * Optional subtitle/description
+   * Optional subtitle/description text
    */
   subtitle?: string;
+  /**
+   * Optional file path (displayed in monospace font)
+   */
+  path?: string;
   /**
    * Page content
    */
@@ -47,6 +51,7 @@ interface TabPageLayoutProps {
 export const TabPageLayout: React.FC<TabPageLayoutProps> = ({
   title,
   subtitle,
+  path,
   children,
   className,
   contentPadding = true,
@@ -82,6 +87,11 @@ export const TabPageLayout: React.FC<TabPageLayoutProps> = ({
               )}
               <div className="min-w-0 flex-1">
                 <h1 className="text-3xl font-bold tracking-tight text-accent">{title}</h1>
+                {path && (
+                  <p className="mt-1 text-sm text-muted-foreground font-mono">
+                    {path}
+                  </p>
+                )}
                 {subtitle && (
                   <p className="mt-1 text-sm text-muted-foreground">
                     {subtitle}
@@ -108,7 +118,7 @@ export const TabPageLayout: React.FC<TabPageLayoutProps> = ({
         {/* Content */}
         <div
           id="TabContent"
-          className={cn("flex-1 min-h-0 overflow-auto", contentPadding && "p-6")}
+          className={cn("flex-1 min-h-0 flex flex-col overflow-auto", contentPadding && "p-6")}
         >
           {children}
         </div>
