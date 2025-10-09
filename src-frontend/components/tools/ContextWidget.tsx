@@ -101,13 +101,6 @@ export const ContextWidget: React.FC<ContextWidgetProps> = ({ output }) => {
                   title={`System tools: ${contextData.breakdown.systemTools.percentage}%`}
                 />
                 <div
-                  className="bg-slate-600 dark:bg-slate-400 h-full transition-all duration-300"
-                  style={{
-                    width: `${contextData.breakdown.reserved.percentage}%`,
-                  }}
-                  title={`Reserved: ${contextData.breakdown.reserved.percentage}%`}
-                />
-                <div
                   className="bg-emerald-600 dark:bg-emerald-400 h-full transition-all duration-300"
                   style={{
                     width: `${contextData.breakdown.customAgents.percentage}%`,
@@ -127,6 +120,13 @@ export const ContextWidget: React.FC<ContextWidgetProps> = ({ output }) => {
                     width: `${contextData.breakdown.messages.percentage}%`,
                   }}
                   title={`Messages: ${contextData.breakdown.messages.percentage}%`}
+                />
+                <div
+                  className="bg-card h-full transition-all duration-300"
+                  style={{
+                    width: `${contextData.breakdown.reserved.percentage}%`,
+                  }}
+                  title={`Autocompact buffer: ${contextData.breakdown.reserved.percentage}%`}
                 />
               </div>
             </div>
@@ -170,18 +170,6 @@ export const ContextWidget: React.FC<ContextWidgetProps> = ({ output }) => {
                   </tr>
                   <tr className="bg-card">
                     <td className="px-2 py-1 flex items-center gap-2">
-                      <div className="w-3 h-3 rounded bg-slate-600 dark:bg-slate-400"></div>
-                      <span>Reserved</span>
-                    </td>
-                    <td className="px-2 py-1 text-right text-muted-foreground">
-                      {contextData.breakdown.reserved.percentage}%
-                    </td>
-                    <td className="px-2 py-1 text-right font-medium">
-                      {formatTokens(contextData.breakdown.reserved.tokens)}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="px-2 py-1 flex items-center gap-2">
                       <div className="w-3 h-3 rounded bg-emerald-600 dark:bg-emerald-400"></div>
                       <span>Custom agents</span>
                     </td>
@@ -192,7 +180,7 @@ export const ContextWidget: React.FC<ContextWidgetProps> = ({ output }) => {
                       {formatTokens(contextData.breakdown.customAgents.tokens)}
                     </td>
                   </tr>
-                  <tr className="bg-card">
+                  <tr>
                     <td className="px-2 py-1 flex items-center gap-2">
                       <div className="w-3 h-3 rounded bg-amber-600 dark:bg-amber-400"></div>
                       <span>Memory files</span>
@@ -204,7 +192,7 @@ export const ContextWidget: React.FC<ContextWidgetProps> = ({ output }) => {
                       {formatTokens(contextData.breakdown.memoryFiles.tokens)}
                     </td>
                   </tr>
-                  <tr>
+                  <tr className="bg-card">
                     <td className="px-2 py-1 flex items-center gap-2">
                       <div className="w-3 h-3 rounded bg-rose-600 dark:bg-rose-400"></div>
                       <span>Messages</span>
@@ -214,6 +202,18 @@ export const ContextWidget: React.FC<ContextWidgetProps> = ({ output }) => {
                     </td>
                     <td className="px-2 py-1 text-right font-medium">
                       {formatTokens(contextData.breakdown.messages.tokens)}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 flex items-center gap-2">
+                      <div className="w-3 h-3 rounded bg-card"></div>
+                      <span>Autocompact buffer</span>
+                    </td>
+                    <td className="px-2 py-1 text-right text-muted-foreground">
+                      {contextData.breakdown.reserved.percentage}%
+                    </td>
+                    <td className="px-2 py-1 text-right font-medium">
+                      {formatTokens(contextData.breakdown.reserved.tokens)}
                     </td>
                   </tr>
                   <tr className="bg-card">
