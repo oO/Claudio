@@ -356,15 +356,23 @@ impl SessionHandle {
                             // (memory is the single source of truth)
                             let current_session = if handle_id.starts_with(CLAUDIO_SESSION_PREFIX) {
                                 // Claudio session - read fresh Claude session ID from memory cache
-                                let project_path = project_id.replace("-", "/");
-                                match crate::commands::claudio_storage::get_claudio_session(handle_id.clone(), project_path).await {
-                                    Ok(claudio_session) => {
-                                        log::debug!("Found Claudio session in cache: claudio_id={}, claude_session_id={:?}", handle_id, claudio_session.current_session.as_ref().map(|s| &s.session_id));
-                                        claudio_session.current_session.map(|s| s.session_id)
+                                // Use reverse lookup to get proper project_path from project_id
+                                match crate::commands::claudio_storage::get_project_path_for_id(&project_id).await {
+                                    Ok(project_path) => {
+                                        match crate::commands::claudio_storage::get_claudio_session(handle_id.clone(), project_path).await {
+                                            Ok(claudio_session) => {
+                                                log::debug!("Found Claudio session in cache: claudio_id={}, claude_session_id={:?}", handle_id, claudio_session.current_session.as_ref().map(|s| &s.session_id));
+                                                claudio_session.current_session.map(|s| s.session_id)
+                                            },
+                                            Err(e) => {
+                                                log::debug!("Failed to get Claudio session from cache: claudio_id={}, error={}", handle_id, e);
+                                                None // Session might not exist yet
+                                            }
+                                        }
                                     },
                                     Err(e) => {
-                                        log::debug!("Failed to get Claudio session from cache: claudio_id={}, error={}", handle_id, e);
-                                        None // Session might not exist yet
+                                        log::warn!("Failed to resolve project_id to project_path: {}", e);
+                                        None
                                     }
                                 }
                             } else {
@@ -452,33 +460,50 @@ impl SessionHandle {
         // For native sessions, we use the simple message count approach
         let new_messages: Vec<&serde_json::Value> = if handle_id.starts_with(CLAUDIO_SESSION_PREFIX) {
             // Get the last_message_uuid from the Claudio session metadata
-            let project_path = project_id.replace("-", "/");
-            match crate::commands::claudio_storage::get_claudio_session(handle_id.to_string(), project_path).await {
-                Ok(claudio_session) => {
-                    if let Some(last_session) = claudio_session.session_history.last() {
-                        let last_uuid = &last_session.last_message_uuid;
-                        // Find the index of the last processed message
-                        let mut start_index = 0;
-                        for (i, message) in all_messages.iter().enumerate() {
-                            if let Some(msg_uuid) = message.get("uuid").and_then(|v| v.as_str()) {
-                                if msg_uuid == last_uuid {
-                                    start_index = i + 1; // Start AFTER the last processed message
-                                    break;
+            // Use reverse lookup to get proper project_path from project_id
+            match crate::commands::claudio_storage::get_project_path_for_id(project_id).await {
+                Ok(project_path) => {
+                    match crate::commands::claudio_storage::get_claudio_session(handle_id.to_string(), project_path).await {
+                        Ok(claudio_session) => {
+                            if let Some(last_session) = claudio_session.session_history.last() {
+                                let last_uuid = &last_session.last_message_uuid;
+                                // Find the index of the last processed message
+                                let mut start_index = 0;
+                                for (i, message) in all_messages.iter().enumerate() {
+                                    if let Some(msg_uuid) = message.get("uuid").and_then(|v| v.as_str()) {
+                                        if msg_uuid == last_uuid {
+                                            start_index = i + 1; // Start AFTER the last processed message
+                                            break;
+                                        }
+                                    }
                                 }
+
+                                if start_index < all_messages.len() {
+                                    all_messages[start_index..].iter().collect()
+                                } else {
+                                    Vec::new()
+                                }
+                            } else {
+                                // No last UUID means this is the first turn - emit all messages
+                                all_messages.iter().collect()
+                            }
+                        },
+                        Err(_) => {
+                            // Fall back to count-based approach
+                            let last_count = {
+                                let guard = last_processed_count.read().await;
+                                *guard
+                            };
+                            if all_messages.len() > last_count {
+                                all_messages[last_count..].iter().collect()
+                            } else {
+                                Vec::new()
                             }
                         }
-
-                        if start_index < all_messages.len() {
-                            all_messages[start_index..].iter().collect()
-                        } else {
-                            Vec::new()
-                        }
-                    } else {
-                        // No last UUID means this is the first turn - emit all messages
-                        all_messages.iter().collect()
                     }
                 },
-                Err(_) => {
+                Err(e) => {
+                    log::warn!("Failed to resolve project_id to project_path for handle {}: {}", handle_id, e);
                     // Fall back to count-based approach
                     let last_count = {
                         let guard = last_processed_count.read().await;

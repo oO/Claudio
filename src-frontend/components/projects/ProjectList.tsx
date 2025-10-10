@@ -63,7 +63,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     const displayStart = startIndex + 1;
     const displayEnd = Math.min(endIndex, projects.length);
     onPositionChange?.(displayStart, displayEnd, projects.length);
-  }, [startIndex, endIndex, projects.length, onPositionChange]);
+  }, [startIndex, endIndex, projects.length]); // onPositionChange intentionally omitted - it's just a callback
 
   return (
     <div className={cn("space-y-3 relative", className)}>

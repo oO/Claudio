@@ -29,16 +29,21 @@ pub async fn get_project_sessions(project_id: String) -> Result<Vec<DecoratedSes
         return Err(format!("Project directory not found: {}", project_id));
     }
 
-    // Get the actual project path from JSONL files
-    let project_path = match get_project_path_from_sessions(&project_dir) {
+    // Get the actual project path from discovered mappings
+    let project_path = match crate::commands::claudio_storage::get_project_path_for_id(&project_id).await {
         Ok(path) => path,
         Err(e) => {
-            log::warn!(
-                "Failed to get project path from sessions for {}: {}, falling back to decode",
-                project_id,
-                e
-            );
-            decode_project_path(&project_id)
+            // Try getting from JSONL files as fallback
+            match get_project_path_from_sessions(&project_dir) {
+                Ok(path) => path,
+                Err(e2) => {
+                    log::error!(
+                        "Failed to get project path for {}: mapping error: {}, jsonl error: {}",
+                        project_id, e, e2
+                    );
+                    return Err(format!("Could not resolve project_id {} to project_path", project_id));
+                }
+            }
         }
     };
 
@@ -224,14 +229,15 @@ async fn get_project_path_from_claudio_session(session_id: &str, project_id: &st
                     if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some(JSON_EXTENSION) {
                         // Try to load the Claudio session by its claudio_id
                         if let Some(file_stem) = path.file_stem().and_then(|s| s.to_str()) {
-                            // Decode project_id to get project_path for get_claudio_session call
-                            let fallback_project_path = decode_project_path(project_id);
-                            if let Ok(claudio_session) = get_claudio_session(file_stem.to_string(), fallback_project_path).await {
-                                // Check if this Claudio session tracks the Claude session we're looking for
-                                if let Some(ref current_session) = claudio_session.current_session {
-                                    if current_session.session_id == session_id {
-                                        log::debug!("Found project path from Claudio session: {}", claudio_session.project_path);
-                                        return Ok(claudio_session.project_path);
+                            // Get project_path using proper mapping lookup
+                            if let Ok(project_path) = crate::commands::claudio_storage::get_project_path_for_id(project_id).await {
+                                if let Ok(claudio_session) = get_claudio_session(file_stem.to_string(), project_path).await {
+                                    // Check if this Claudio session tracks the Claude session we're looking for
+                                    if let Some(ref current_session) = claudio_session.current_session {
+                                        if current_session.session_id == session_id {
+                                            log::debug!("Found project path from Claudio session: {}", claudio_session.project_path);
+                                            return Ok(claudio_session.project_path);
+                                        }
                                     }
                                 }
                             }
@@ -268,12 +274,18 @@ async fn build_session_metadata(session_path: &std::path::Path, session_id: &str
 
     let file_size = metadata.len();
 
-    // Get project path from Claudio session file instead of parsing Claude's JSONL files
-    let project_path = match get_project_path_from_claudio_session(&session_id, &project_id).await {
+    // Get project path from discovered mappings
+    let project_path = match crate::commands::claudio_storage::get_project_path_for_id(project_id).await {
         Ok(path) => path,
         Err(e) => {
-            log::warn!("Failed to get project path from Claudio session for {}: {}, falling back to decode", session_id, e);
-            decode_project_path(project_id)
+            // Try getting from Claudio session file as fallback
+            match get_project_path_from_claudio_session(&session_id, &project_id).await {
+                Ok(path) => path,
+                Err(e2) => {
+                    log::error!("Failed to get project path for {}: mapping error: {}, claudio error: {}", project_id, e, e2);
+                    return Err(format!("Could not resolve project_id {} to project_path", project_id));
+                }
+            }
         }
     };
 
@@ -376,20 +388,21 @@ pub async fn delete_session(project_id: String, session_id: String) -> Result<se
     let file_size = fs::metadata(&session_file)
         .map_err(|e| format!("Failed to get session file metadata: {}", e))?
         .len();
-    
-    // Decode project path for unified cleanup
-    let decoded_project_path = crate::commands::claude::decode_project_path(&project_id);
-    
+
+    // Get project path for unified cleanup
+    let project_path = crate::commands::claudio_storage::get_project_path_for_id(&project_id).await
+        .map_err(|e| format!("Failed to resolve project_id to project_path: {}", e))?;
+
     // Use unified DRY cleanup function (this handles both Claude and Claudio files)
-    let (_claude_files_deleted, mut claudio_files_deleted) = crate::commands::claudio_storage::cleanup_session_files(&decoded_project_path, &actual_session_id).await
+    let (_claude_files_deleted, mut claudio_files_deleted) = crate::commands::claudio_storage::cleanup_session_files(&project_path, &actual_session_id).await
         .unwrap_or((0, 0));
 
     // Check if this Claude session is the current_session of any Claudio session
     // If so, delete the Claudio session file as well
-    match crate::commands::claudio_storage::find_claudio_session_by_current_session(&decoded_project_path, &actual_session_id).await {
+    match crate::commands::claudio_storage::find_claudio_session_by_current_session(&project_path, &actual_session_id).await {
         Ok(Some(claudio_session)) => {
             log::info!("Claude session '{}' is current session of Claudio session '{}', deleting Claudio session", actual_session_id, claudio_session.claudio_id);
-            match crate::commands::claudio_storage::delete_claudio_session(claudio_session.claudio_id, decoded_project_path.clone()).await {
+            match crate::commands::claudio_storage::delete_claudio_session(claudio_session.claudio_id, project_path.clone()).await {
                 Ok(_) => {
                     claudio_files_deleted += 1;
                     log::info!("Successfully deleted Claudio session");
@@ -650,14 +663,15 @@ pub async fn delete_sessions_by_age(
     let mut claudio_sessions_deleted = 0;
     let mut todos_deleted = 0;
     let mut timelines_deleted = 0;
-    
-    // Decode project path for unified cleanup
-    let decoded_project_path = crate::commands::claude::decode_project_path(&project_id);
+
+    // Get project path for unified cleanup
+    let project_path = crate::commands::claudio_storage::get_project_path_for_id(&project_id).await
+        .map_err(|e| format!("Failed to resolve project_id to project_path: {}", e))?;
     
     // Delete each session and its dependencies
     for session in &preview.sessions_to_delete {
         // Use unified DRY cleanup function (handles both Claude and Claudio files)
-        let (claude_files, claudio_files) = crate::commands::claudio_storage::cleanup_session_files(&decoded_project_path, &session.id).await
+        let (claude_files, claudio_files) = crate::commands::claudio_storage::cleanup_session_files(&project_path, &session.id).await
             .unwrap_or((0, 0));
         
         if claude_files > 0 {

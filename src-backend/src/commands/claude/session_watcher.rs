@@ -463,9 +463,15 @@ impl SessionWatcherManager {
             }
         }
         
-        // Reconstruct project path from project_id
-        let project_path = project_id.replace("-", "/");
-        
+        // Get proper project path from project_id using reverse lookup
+        let project_path = match crate::commands::claudio_storage::get_project_path_for_id(&project_id).await {
+            Ok(path) => path,
+            Err(e) => {
+                log::warn!("Failed to resolve project_id to project_path: {}", e);
+                return Ok(()); // Skip cleanup if we can't resolve the path
+            }
+        };
+
         // Find claudio sessions for this project
         let claudio_sessions = list_claudio_sessions(project_path.clone()).await?;
         

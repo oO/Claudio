@@ -328,6 +328,26 @@ pub async fn get_project_id_for_path(project_path: &str) -> Result<String, Strin
     Err(format!("Could not find or discover project_id for path: {}", project_path))
 }
 
+/// Get project_path for a given project_id (reverse lookup)
+/// Uses in-memory cache, calls get_projects() if cache is empty
+pub async fn get_project_path_for_id(project_id: &str) -> Result<String, String> {
+    // Check cache first
+    {
+        let mappings = PROJECT_MAPPINGS.read().await;
+        if let Some(project_path) = mappings.get(project_id) {
+            return Ok(project_path.clone());
+        }
+    }
+
+    // Cache miss - call get_projects() to populate cache
+    let (mappings, _) = get_projects().await?;
+
+    // Try again with fresh mappings
+    mappings.get(project_id)
+        .cloned()
+        .ok_or_else(|| format!("Could not find or discover project_path for id: {}", project_id))
+}
+
 /// Ensure the claudio directory structure exists
 pub async fn ensure_claudio_dirs() -> Result<(), String> {
     let claudio_dir = get_claudio_dir()?;
@@ -687,7 +707,7 @@ pub async fn cleanup_session_files(
 
     // 1. Delete Claude session file (.claude/projects/*/session_id.jsonl)
     let claude_dir = crate::commands::claude::get_claude_dir().map_err(|e| e.to_string())?;
-    let project_id = project_path.replace("/", "-");
+    let project_id = get_project_id_for_path(project_path).await?;
     let claude_session_file = claude_dir
         .join("projects")
         .join(&project_id)
@@ -868,11 +888,17 @@ async fn cleanup_project_orphans(
     let mut stats = OrphanCleanupStats::default();
     stats.projects_processed = 1;
 
-    // Decode project path for claudio directory lookup
-    let decoded_project_path = crate::commands::claude::decode_project_path(project_id);
+    // Get real project source path for claudio directory lookup
+    let real_project_path = match get_project_path_for_id(project_id).await {
+        Ok(path) => path,
+        Err(e) => {
+            log::warn!("Failed to resolve project_id {} to project_path: {}, skipping cleanup", project_id, e);
+            return Ok(stats); // Return empty stats if we can't resolve the path
+        }
+    };
 
     // 1. Cleanup orphaned Claudio sessions
-    if let Ok(claudio_dir) = get_project_claudio_dir(&decoded_project_path).await {
+    if let Ok(claudio_dir) = get_project_claudio_dir(&real_project_path).await {
         if claudio_dir.exists() {
             if let Ok(entries) = std::fs::read_dir(&claudio_dir) {
                 for entry in entries.flatten() {
@@ -966,12 +992,12 @@ async fn get_last_message_info(
     let claude_dir = crate::commands::claude::get_claude_dir()
         .map_err(|e| format!("Failed to get Claude directory: {}", e.to_string()))?;
 
-    // Encode project path to match Claude Code's format: replace "/" and spaces with "-"
-    let project_encoded = project_path.replace("/", "-").replace("\\", "-").replace(" ", "-");
+    // Use proper project_id lookup instead of making encoding assumptions
+    let project_id = get_project_id_for_path(project_path).await?;
 
     let session_file_path = claude_dir
         .join("projects")
-        .join(project_encoded)
+        .join(project_id)
         .join(format!("{}.jsonl", session_id));
 
     if !session_file_path.exists() {

@@ -1,6 +1,6 @@
 # Purpose
 
-Your name is **Claudio**   (they/them ) and you are  an expert  development.
+Expert development assistance for the **Claudio** project - a Claude Code Native Agent Manager built on Tauri.
 
 ## MANDATORY Commit Message Format
 

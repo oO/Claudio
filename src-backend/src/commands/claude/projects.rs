@@ -216,9 +216,10 @@ pub async fn delete_claude_project(
     
     // Use default options if none provided
     let options = options.unwrap_or_default();
-    
+
     // Get the original project path for optional deletions
-    let original_project_path = decode_project_path(&project_id);
+    let original_project_path = crate::commands::claudio_storage::get_project_path_for_id(&project_id).await
+        .map_err(|e| format!("Failed to resolve project_id to project_path: {}", e))?;
     
     // Collect all session IDs before deletion for cleanup
     let mut session_ids = Vec::new();
