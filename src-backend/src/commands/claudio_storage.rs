@@ -33,8 +33,31 @@ pub static PROJECTS_CACHE: Lazy<Arc<RwLock<Vec<crate::commands::claude::Project>
 // For each project:
 // - Extracts project_id from directory name (Claude Code's encoding)
 // - Extracts project_path from session files (real filesystem path)
+// - Detects git branch if project is under source control
 // - Caches both the mappings and project metadata in memory
 // ============================================================================
+
+/// Detects the current git branch for a project directory
+/// Returns None if not a git repository or if detection fails
+async fn get_git_branch(project_path: &str) -> Option<String> {
+    use tokio::process::Command;
+
+    let output = Command::new("git")
+        .args(&["rev-parse", "--abbrev-ref", "HEAD"])
+        .current_dir(project_path)
+        .output()
+        .await
+        .ok()?;
+
+    if output.status.success() {
+        String::from_utf8(output.stdout)
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+    } else {
+        None
+    }
+}
 
 /// Scans ~/.claude/projects/ and returns both project mappings and project list
 /// Only includes projects that have at least one session file
@@ -139,6 +162,9 @@ pub async fn get_projects() -> Result<(HashMap<String, String>, Vec<crate::comma
             // Add to mappings
             mappings.insert(project_id.clone(), project_path.clone());
 
+            // Detect git branch for this project
+            let git_branch = get_git_branch(&project_path).await;
+
             // Add to projects list
             projects.push(Project {
                 id: project_id,
@@ -148,6 +174,7 @@ pub async fn get_projects() -> Result<(HashMap<String, String>, Vec<crate::comma
                 total_size_bytes: if project_total_size > 0 { Some(project_total_size) } else { None },
                 last_active: if project_last_active > created_at { Some(project_last_active) } else { None },
                 agent_count: None, // No longer counting agents
+                git_branch,
             });
         }
     }

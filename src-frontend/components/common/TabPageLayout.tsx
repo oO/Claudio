@@ -11,9 +11,9 @@ interface TabPageLayoutProps {
    */
   title: string;
   /**
-   * Optional subtitle/description text
+   * Optional subtitle/description text or element
    */
-  subtitle?: string;
+  subtitle?: React.ReactNode;
   /**
    * Optional file path (displayed in monospace font)
    */

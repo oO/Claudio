@@ -49,6 +49,8 @@ pub struct Project {
     pub last_active: Option<u64>,
     /// Number of local project agents in .claude/agents/
     pub agent_count: Option<u32>,
+    /// Current git branch name (if project is under git source control)
+    pub git_branch: Option<String>,
 }
 
 /// Represents a session with its metadata

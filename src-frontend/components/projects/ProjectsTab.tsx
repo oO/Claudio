@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Loader2, Plus, MoreVertical, Trash2, Settings, Activity, FolderOpen } from "lucide-react";
+import { Loader2, Plus, MoreVertical, Trash2, Settings, Activity, FolderOpen, GitBranch } from "lucide-react";
 import { api, agentsApi, type Project, type Session, type ClaudeMdFile } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { prettifyProjectName } from "@/lib/utils";
@@ -116,13 +116,14 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
     onProjectListChanged: async () => {
       // Always trigger flash animation
             updateTab(tab.id, { lastActivityAt: Date.now() });
-      
+
       // Only refresh data if tab is visible and in project list mode
       if (isActive && tab.type === "projects" && !selectedProject) {
                 await loadProjects();
       }
     },
-    enabled: tab.type === "projects", // Watch even when tab is not active so it can flash
+    // Keep watcher running for both list view and detail view
+    enabled: tab.type === "projects" || tab.type === "project",
   });
 
 
@@ -600,7 +601,18 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
           selectedProject ? getProjectName(selectedProject.path) : "Projects"
         }
         path={selectedProject ? selectedProject.path : undefined}
-        subtitle={!selectedProject ? "Browse your Claude Code sessions" : undefined}
+        subtitle={
+          selectedProject
+            ? selectedProject.git_branch
+              ? (
+                  <span className="flex items-center gap-1">
+                    <GitBranch className="h-3 w-3" />
+                    <span className="font-mono">{selectedProject.git_branch}</span>
+                  </span>
+                )
+              : undefined
+            : "Browse your Claude Code sessions"
+        }
         onBack={selectedProject ? handleBack : undefined}
         contentPadding={false}
         actions={

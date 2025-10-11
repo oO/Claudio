@@ -18,6 +18,8 @@ export interface Project {
   total_size_bytes?: number;
   /** Last activity timestamp (most recent session) */
   last_active?: number;
+  /** Current git branch name (if project is under git source control) */
+  git_branch?: string;
 }
 
 /**

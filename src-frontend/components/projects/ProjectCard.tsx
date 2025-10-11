@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Folder, MessagesSquare, HardDrive, Clock } from "lucide-react";
+import { Folder, MessagesSquare, HardDrive, Clock, GitBranch } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { DebugLabel } from "@/components/ui/atoms";
 import { type Project } from "@/lib/api";
@@ -42,10 +42,16 @@ export function ProjectCard({ project, onClick, className, animationDelay = 0 }:
           <p className="text-sm font-medium truncate mb-1">
             {prettifyProjectName(project.path)}
           </p>
-          <p className="text-xs text-muted-foreground font-mono truncate mb-2">
+          <p className="text-xs text-muted-foreground font-mono truncate">
             {project.path}
           </p>
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          {project.git_branch && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1 mb-2">
+              <GitBranch className="h-3 w-3" />
+              <span className="font-mono">{project.git_branch}</span>
+            </div>
+          )}
+          <div className={cn("flex items-center gap-4 text-xs text-muted-foreground", project.git_branch ? "mt-0" : "mt-2")}>
             <div className="flex items-center gap-1">
               <HardDrive className="h-3 w-3" />
               <span>{formatFileSize(project.total_size_bytes || 0)}</span>
