@@ -318,27 +318,6 @@ pub fn get_project_path_from_sessions(project_dir: &PathBuf) -> Result<String, S
     Err("Could not determine project path from session files".to_string())
 }
 
-pub fn decode_project_path(encoded: &str) -> String {
-    // Try to use discovered project mappings first
-    // This is much more reliable than string replacement
-    use crate::commands::claudio_app_settings::get_claudio_app_setting_sync;
-    use std::collections::HashMap;
-
-    if let Ok(mappings_value) = get_claudio_app_setting_sync("projects") {
-        if let Ok(mappings) = serde_json::from_value::<HashMap<String, String>>(mappings_value) {
-            if let Some(project_path) = mappings.get(encoded) {
-                return project_path.clone();
-            }
-        }
-    }
-
-    // Fallback - the encoding isn't reversible when paths contain hyphens
-    // For example: -Users-mufeedvh-dev-jsonl-viewer could be /Users/mufeedvh/dev/jsonl-viewer
-    // or /Users/mufeedvh/dev/jsonl/viewer
-    log::warn!("Using fallback decode for project_id: {}", encoded);
-    encoded.replace('-', "/")
-}
-
 /// Extracts text content from a message content value (handles both string and array formats)
 fn extract_text_from_content(content: &serde_json::Value) -> Option<String> {
     match content {

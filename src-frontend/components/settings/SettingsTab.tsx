@@ -26,7 +26,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ tab, isActive }) => {
         contentPadding={false}
       >
         <div className="h-full flex flex-col">
-          <div className="container mx-auto py-6 flex-1 min-h-0 flex flex-col">
+          <div className="py-6 flex-1 min-h-0 flex flex-col">
             <Settings onBack={() => {}} />
           </div>
         </div>

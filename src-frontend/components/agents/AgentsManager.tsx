@@ -33,6 +33,10 @@ interface AgentsManagerProps {
    */
   onImportAgent?: () => void;
   /**
+   * Callback to report visible range for position label
+   */
+  onPositionChange?: (start: number, end: number, total: number) => void;
+  /**
    * Optional className for styling
    */
   className?: string;
@@ -49,6 +53,7 @@ export const AgentsManager: React.FC<AgentsManagerProps> = ({
   onDeleteAgent,
   onCreateAgent,
   onImportAgent,
+  onPositionChange,
   className,
 }) => {
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -59,6 +64,17 @@ export const AgentsManager: React.FC<AgentsManagerProps> = ({
   useEffect(() => {
     loadAgents();
   }, [projectPath]);
+
+  // Report position changes to parent
+  useEffect(() => {
+    // For now, we show all agents (no pagination), so it's just 1 to total
+    const total = agents.length;
+    if (total > 0) {
+      onPositionChange?.(1, total, total);
+    } else {
+      onPositionChange?.(0, 0, 0);
+    }
+  }, [agents.length]); // onPositionChange intentionally omitted - it's just a callback
 
   const loadAgents = async () => {
     try {

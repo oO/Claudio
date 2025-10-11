@@ -202,15 +202,15 @@ export const Topbar: React.FC<TopbarProps> = ({
             onClick={onAgentsClick}
           />
         )}
-        
-        <ActionButton
+
+        {/* <ActionButton
           icon={BarChart3}
           label="Dashboard"
           variant="ghost"
           size="sm"
           onClick={onUsageClick}
-        />
-        
+        /> */}
+
         <ActionButton
           icon={FileText}
           label="CLAUDE.md"
