@@ -22,6 +22,7 @@ export default {
         'muted-foreground': 'var(--color-muted-foreground)',
         accent: 'var(--color-accent)',
         'accent-foreground': 'var(--color-accent-foreground)',
+        'accent-muted': 'var(--color-accent-muted)',
         destructive: 'var(--color-destructive)',
         'destructive-foreground': 'var(--color-destructive-foreground)',
         border: 'var(--color-border)',

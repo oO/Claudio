@@ -70,8 +70,8 @@
 
 .w-md-editor-text-pre .token.code,
 .w-md-editor-text-input .token.code {
-    background-color: var(--color-muted) !important;
-    color: var(--color-foreground) !important;
+    background-color: var(--color-accent) !important;
+    color: var(--color-accent-foreground) !important;
     border-radius: 3px !important;
     padding: 2px 4px !important;
 }
@@ -103,7 +103,7 @@
 .wmde-markdown h4,
 .wmde-markdown h5,
 .wmde-markdown h6 {
-    color: var(--color-foreground) !important;
+    color: var(--color-muted-foreground) !important;
     border-color: var(--color-border) !important;
 }
 
@@ -124,8 +124,8 @@
 }
 
 .wmde-markdown code {
-    background-color: var(--color-muted) !important;
-    color: var(--color-foreground) !important;
+    background-color: var(--color-accent) !important;
+    color: var(--color-accent-foreground) !important;
     border: 1px solid var(--color-border) !important;
 }
 
@@ -229,7 +229,7 @@
 .prose h4,
 .prose h5,
 .prose h6 {
-    color: var(--color-foreground);
+    color: var(--color-muted-foreground);
     margin-top: 0;
     margin-bottom: 0.8888889em;
     font-weight: 600;
@@ -298,8 +298,8 @@
 }
 
 .prose code {
-    color: var(--color-foreground);
-    background-color: var(--color-muted);
+    color: var(--color-accent-foreground);
+    background-color: var(--color-accent);
     font-weight: 600;
     font-size: 0.875em;
     padding: 0.125em 0.375em;

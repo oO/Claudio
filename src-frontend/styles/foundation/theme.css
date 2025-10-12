@@ -49,6 +49,7 @@
     --color-muted-foreground: rgba(255, 255, 255, 0.6);
     --color-accent: rgba(255, 149, 0, 0.3);
     --color-accent-foreground: rgba(255, 149, 0, 1);
+    --color-accent-muted: rgba(255, 149, 0, 0.125);
     --color-border: rgba(255, 255, 255, 0.1);
     --color-input: rgba(255, 255, 255, 0.06);
     --color-ring: rgba(255, 255, 255, 0.2);
@@ -82,6 +83,7 @@
     --color-muted-foreground: rgba(0, 0, 0, 0.55);
     --color-accent: rgba(255, 149, 0, 0.2);
     --color-accent-foreground: rgba(255, 127, 0, 1);
+    --color-accent-muted: rgba(255, 149, 0, 0.125);
     --color-border: rgba(0, 0, 0, 0.1);
     --color-input: rgba(0, 0, 0, 0.04);
     --color-ring: rgba(0, 0, 0, 0.15);

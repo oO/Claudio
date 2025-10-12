@@ -37,7 +37,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
       }
       
       return (
-        <code className={cn("font-mono text-sm px-1 py-0.5 bg-muted rounded", className)} {...props}>
+        <code className={cn("font-mono text-sm px-1 py-0.5 bg-accent text-accent-foreground rounded", className)} {...props}>
           {children}
         </code>
       );
