@@ -23,7 +23,7 @@ export const useAgentStyling = (message: ClaudeStreamMessage): AgentStyling => {
   // Get agent info for display
   const agentName = message.agentName || "Assistant";
 
-  // Load agent metadata for project/personal agents
+  // Load agent metadata for project/global agents
   const effectiveSubagentType =
     message.agentType === "subagent"
       ? message.subagentType || message.agentName
@@ -39,7 +39,7 @@ export const useAgentStyling = (message: ClaudeStreamMessage): AgentStyling => {
         return getGeneralPurposeColorClass();
       }
 
-      // All other subagents are project/personal agents with metadata
+      // All other subagents are project/global agents with metadata
       if (agentMetadata?.color) {
         // Use existing color system but get background-only class
         const agentColor = getAgentColor(agentMetadata.color);

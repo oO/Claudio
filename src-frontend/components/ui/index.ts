@@ -18,6 +18,7 @@ export * from './textarea';
 export * from './toast';
 export * from './tooltip';
 export * from './ThemedMDEditor';
+export * from './MarkdownEditor';
 
 // Atomic Design Components
 export * from './atoms';

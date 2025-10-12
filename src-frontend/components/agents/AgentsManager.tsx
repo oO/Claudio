@@ -9,7 +9,7 @@ import { logger } from '@/lib/logger';
 
 interface AgentsManagerProps {
   /**
-   * Optional project path - if provided, loads project agents, otherwise loads personal agents
+   * Optional project path - if provided, loads project agents, otherwise loads global agents
    */
   projectPath?: string;
   /**
@@ -44,7 +44,7 @@ interface AgentsManagerProps {
 
 /**
  * Shared AgentsManager component that displays the create/import buttons and agent cards
- * Used both directly in Personal Agents and inside the collapsible wrapper for Project Agents
+ * Used both directly in Global Agents and inside the collapsible wrapper for Project Agents
  */
 export const AgentsManager: React.FC<AgentsManagerProps> = ({
   projectPath,
@@ -146,7 +146,7 @@ export const AgentsManager: React.FC<AgentsManagerProps> = ({
         <div className="py-8 text-sm text-muted-foreground text-center">
           {projectPath
             ? "No project agents found in .claude/agents/"
-            : "No personal agents found"}
+            : "No global agents found"}
         </div>
       ) : (
         <div className="flex-1 min-h-0 overflow-auto px-6">

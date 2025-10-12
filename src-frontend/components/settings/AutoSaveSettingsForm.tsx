@@ -108,9 +108,9 @@ export function AutoSaveSettingsForm({
     <div className={cn("space-y-6", className)} data-testid={testId}>
       {title && (
         <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
-          <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+          <h1 className="text-lg font-medium text-accent">
             {title}
-          </h2>
+          </h1>
         </div>
       )}
 

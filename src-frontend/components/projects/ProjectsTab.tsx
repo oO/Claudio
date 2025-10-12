@@ -762,7 +762,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ tab, isActive }) => {
                         });
                       }}
                       onExportAgent={(agent) => {
-                        // Export project agent (same logic as personal agents)
+                        // Export project agent (same logic as global agents)
                         // Agent export will be handled
                         // TODO: Implement proper export dialog
                       }}

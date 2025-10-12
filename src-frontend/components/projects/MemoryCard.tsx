@@ -43,16 +43,24 @@ export const MemoryCard: React.FC<MemoryCardProps> = ({
         <div className="flex-shrink-0 p-2">
           <FileText className="h-4 w-4" />
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <p className="text-sm font-medium truncate">
-              {file.relative_path.split("/").pop() || file.relative_path}
-            </p>
-            {file.relative_path.includes("/") && (
-              <span className="text-xs text-muted-foreground font-mono">
-                {file.relative_path.split("/").slice(0, -1).join("/")}
-              </span>
-            )}
+        <div className="flex-1 min-h-0">
+          <div className="mb-1">
+            {(() => {
+              const parts = file.relative_path.split("/");
+              const filename = parts.pop();
+              const directory = parts.join("/");
+
+              return (
+                <>
+                  <p className="text-sm font-mono font-bold truncate">
+                    ./{directory ? `${directory}/` : ''}
+                  </p>
+                  <p className="text-sm font-mono font-normal text-muted-foreground">
+                    {filename}
+                  </p>
+                </>
+              );
+            })()}
           </div>
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <div className="flex items-center gap-1">

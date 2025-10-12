@@ -530,7 +530,7 @@ export const CreateAgent: React.FC<CreateAgentProps> = ({
       <TabPageLayout
         title={isEditMode
           ? formatAgentName(name || agent?.name || '')
-          : "Create Personal Agent"
+          : "Create Global Agent"
         }
         path={isEditMode ? getAgentFilePath() : undefined}
         subtitle={!isEditMode ? "Create a new Claude Code agent" : undefined}

@@ -34,14 +34,14 @@ export const AgentsTab: React.FC<AgentsTabProps> = ({ tab, isActive }) => {
           // Clear agent data and return to agents list
           updateTab(tab.id, {
             agentData: undefined,
-            title: 'Personal Agents'
+            title: 'Global Agents'
           });
         }}
         onBack={() => {
           // Clear agent data and return to agents list
           updateTab(tab.id, {
             agentData: undefined,
-            title: 'Personal Agents'
+            title: 'Global Agents'
           });
         }}
       />
@@ -53,8 +53,8 @@ export const AgentsTab: React.FC<AgentsTabProps> = ({ tab, isActive }) => {
     <>
       <DebugLabel label="AgentsTab" />
       <TabPageLayout
-        title="Personal Agents"
-        subtitle="Manage your personal Claude Code agents"
+        title="Global Agents"
+        subtitle="Manage your global Claude Code agents"
         contentPadding={false}
       >
         <div className="h-full flex flex-col">

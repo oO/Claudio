@@ -177,7 +177,7 @@ export const useTabState = (): UseTabStateReturn => {
 
     return addTab({
       type: 'claude-md',
-      title: 'CLAUDE.md',
+      title: 'Memory',
       status: 'idle',
       hasUnsavedChanges: false,
       icon: 'file-text',
@@ -194,7 +194,7 @@ export const useTabState = (): UseTabStateReturn => {
 
     return addTab({
       type: 'agents',
-      title: 'Personal Agents',
+      title: 'Agents',
       status: 'idle',
       hasUnsavedChanges: false,
       icon: 'robot',

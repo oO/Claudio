@@ -197,7 +197,7 @@ export const MemoriesManager: React.FC<MemoriesManagerProps> = ({
         <div className="flex flex-col h-full gap-4">
           <div className="px-6 pt-6">
             <ManagerHeader
-              title="Memories"
+              title="Project Memories"
               description="Manage CLAUDE.md files containing project context and memories."
               action={
                 <Button onClick={handleCreateMemory} size="sm" className="gap-2">

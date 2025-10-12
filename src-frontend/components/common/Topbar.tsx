@@ -12,7 +12,7 @@ import { logger } from '@/lib/logger';
 
 interface TopbarProps {
   /**
-   * Callback when CLAUDE.md is clicked
+   * Callback when Memory is clicked
    */
   onClaudeClick: () => void;
   /**
@@ -213,7 +213,7 @@ export const Topbar: React.FC<TopbarProps> = ({
 
         <ActionButton
           icon={FileText}
-          label="CLAUDE.md"
+          label="Memory"
           variant="ghost"
           size="sm"
           onClick={onClaudeClick}
