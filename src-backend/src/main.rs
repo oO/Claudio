@@ -259,15 +259,8 @@ fn main() {
             // Start settings cache flush task
             start_settings_flush_task();
 
-            // Run orphan cleanup on startup to ensure data integrity
-            tauri::async_runtime::spawn(async move {
-                match cleanup_orphaned_files().await {
-                    Ok(_result) => {}
-                    Err(e) => {
-                        log::warn!("Failed to run startup cleanup: {}", e);
-                    }
-                }
-            });
+            // Note: Orphan cleanup now runs automatically inside get_projects()
+            // to reuse already-loaded native sessions data
 
             // Auto-install Claude Code hooks for session tracking if not already installed
             tauri::async_runtime::spawn(async move {

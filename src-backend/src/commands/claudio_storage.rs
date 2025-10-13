@@ -59,6 +59,29 @@ async fn get_git_branch(project_path: &str) -> Option<String> {
     }
 }
 
+/// Counts active sessions for a project from pre-loaded caches
+/// Returns (native_count, claudio_count)
+///
+/// Native sessions store project_id in their project_path field for matching
+fn count_active_sessions_for_project(
+    project_id: &str,
+    project_path: &str,
+    claudio_cache: &HashMap<String, ClaudioSession>,
+    native_sessions: &[crate::commands::claude_session_tracking::LiveClaudeSession],
+) -> (u32, u32) {
+    // Count active Claudio sessions from cache (matches by real project_path)
+    let claudio_count = claudio_cache.values()
+        .filter(|session| session.project_path == project_path)
+        .count() as u32;
+
+    // Count active native Claude sessions (matches by project_id)
+    let native_count = native_sessions.iter()
+        .filter(|session| session.project_path == project_id)
+        .count() as u32;
+
+    (native_count, claudio_count)
+}
+
 /// Scans ~/.claude/projects/ and returns both project mappings and project list
 /// Only includes projects that have at least one session file
 /// Returns: (mappings, projects)
@@ -76,6 +99,12 @@ pub async fn get_projects() -> Result<(HashMap<String, String>, Vec<crate::comma
 
     let mut mappings = HashMap::new();
     let mut projects = Vec::new();
+
+    // Load active sessions ONCE before processing projects
+    let claudio_cache = CLAUDIO_SESSIONS.read().await.clone();
+    let native_sessions = crate::commands::claude_session_tracking::get_live_claude_sessions()
+        .await
+        .unwrap_or_default();
 
     let mut entries = fs::read_dir(&projects_dir).await
         .map_err(|e| format!("Failed to read projects directory: {}", e))?;
@@ -165,6 +194,14 @@ pub async fn get_projects() -> Result<(HashMap<String, String>, Vec<crate::comma
             // Detect git branch for this project
             let git_branch = get_git_branch(&project_path).await;
 
+            // Count active sessions for this project using pre-loaded data
+            let (active_native, active_claudio) = count_active_sessions_for_project(
+                &project_id,
+                &project_path,
+                &claudio_cache,
+                &native_sessions,
+            );
+
             // Add to projects list
             projects.push(Project {
                 id: project_id,
@@ -175,6 +212,8 @@ pub async fn get_projects() -> Result<(HashMap<String, String>, Vec<crate::comma
                 last_active: if project_last_active > created_at { Some(project_last_active) } else { None },
                 agent_count: None, // No longer counting agents
                 git_branch,
+                active_native_sessions: if active_native > 0 { Some(active_native) } else { None },
+                active_claudio_sessions: if active_claudio > 0 { Some(active_claudio) } else { None },
             });
         }
     }
@@ -182,7 +221,7 @@ pub async fn get_projects() -> Result<(HashMap<String, String>, Vec<crate::comma
     // Sort projects by last activity (most recent first)
     projects.sort_by(|a, b| b.last_active.cmp(&a.last_active));
 
-    // Update in-memory caches
+    // Update in-memory caches BEFORE cleanup so lookups work
     {
         let mut mappings_cache = PROJECT_MAPPINGS.write().await;
         *mappings_cache = mappings.clone();
@@ -193,6 +232,15 @@ pub async fn get_projects() -> Result<(HashMap<String, String>, Vec<crate::comma
     }
 
     log::info!("Found {} projects with sessions", projects.len());
+
+    // Run orphan cleanup in background with already-loaded data
+    let native_sessions_clone = native_sessions.clone();
+    tokio::spawn(async move {
+        if let Err(e) = cleanup_orphaned_files_with_sessions(&native_sessions_clone).await {
+            log::warn!("Cleanup failed: {}", e);
+        }
+    });
+
     Ok((mappings, projects))
 }
 
@@ -781,10 +829,23 @@ pub async fn cleanup_session_files(
 
 /// Cleanup orphaned files across the entire system
 /// This should be called on app startup to ensure data integrity
+/// Accepts optional pre-loaded native sessions to avoid duplicate scanning
 #[command]
 pub async fn cleanup_orphaned_files() -> Result<serde_json::Value, String> {
-    log::info!("Starting orphaned files cleanup...");
+    log::info!("Starting orphaned files cleanup");
 
+    // Get native sessions once (will reuse from cache if available)
+    let native_sessions = crate::commands::claude_session_tracking::get_live_claude_sessions()
+        .await
+        .unwrap_or_default();
+
+    cleanup_orphaned_files_with_sessions(&native_sessions).await
+}
+
+/// Internal cleanup function that accepts pre-loaded native sessions
+pub async fn cleanup_orphaned_files_with_sessions(
+    native_sessions: &[crate::commands::claude_session_tracking::LiveClaudeSession],
+) -> Result<serde_json::Value, String> {
     let mut stats = OrphanCleanupStats::default();
 
     // Get all projects
@@ -795,25 +856,11 @@ pub async fn cleanup_orphaned_files() -> Result<serde_json::Value, String> {
         return Ok(stats.to_json());
     }
 
-    // Build global list of existing sessions first
-    let mut all_existing_sessions = std::collections::HashSet::new();
-    if let Ok(project_entries) = std::fs::read_dir(&projects_dir) {
-        for project_entry in project_entries.flatten() {
-            let project_path = project_entry.path();
-            if project_path.is_dir() {
-                if let Ok(entries) = std::fs::read_dir(&project_path) {
-                    for entry in entries.flatten() {
-                        let path = entry.path();
-                        if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("jsonl") {
-                            if let Some(session_id) = path.file_stem().and_then(|s| s.to_str()) {
-                                all_existing_sessions.insert(session_id.to_string());
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
+    // Build existing sessions set from pre-loaded native sessions (no filesystem scan!)
+    let all_existing_sessions: std::collections::HashSet<String> = native_sessions
+        .iter()
+        .map(|s| s.session_id.clone())
+        .collect();
 
     // Clean up orphaned todos ONCE globally
     stats.orphaned_todos = cleanup_global_orphaned_todos(&claude_dir, &all_existing_sessions)?;
@@ -915,17 +962,21 @@ async fn cleanup_project_orphans(
     let mut stats = OrphanCleanupStats::default();
     stats.projects_processed = 1;
 
-    // Get real project source path for claudio directory lookup
-    let real_project_path = match get_project_path_for_id(project_id).await {
-        Ok(path) => path,
-        Err(e) => {
-            log::warn!("Failed to resolve project_id {} to project_path: {}, skipping cleanup", project_id, e);
-            return Ok(stats); // Return empty stats if we can't resolve the path
+    // Check if project exists in cache (ensures project is valid)
+    {
+        let mappings = PROJECT_MAPPINGS.read().await;
+        if !mappings.contains_key(project_id) {
+            log::debug!("Project {} not in cache, skipping cleanup", project_id);
+            return Ok(stats); // Skip if not in cache
         }
-    };
+    }
 
     // 1. Cleanup orphaned Claudio sessions
-    if let Ok(claudio_dir) = get_project_claudio_dir(&real_project_path).await {
+    // Construct claudio dir directly from project_id to avoid recursion
+    let claudio_dir = get_claudio_dir().ok()
+        .map(|dir| dir.join(CLAUDE_PROJECTS_DIR).join(project_id));
+
+    if let Some(claudio_dir) = claudio_dir {
         if claudio_dir.exists() {
             if let Ok(entries) = std::fs::read_dir(&claudio_dir) {
                 for entry in entries.flatten() {

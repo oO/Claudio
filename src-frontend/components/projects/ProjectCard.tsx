@@ -62,10 +62,28 @@ export function ProjectCard({ project, onClick, className, animationDelay = 0 }:
                 <span>{formatTimeAgo(project.last_active * 1000)}</span>
               </div>
             )}
+            {/* Active session indicators */}
+            {project.active_native_sessions && project.active_native_sessions > 0 && (
+              <Badge
+                variant="outline"
+                className="flex items-center gap-1 text-accent border-accent text-xs"
+              >
+                native {project.active_native_sessions}
+              </Badge>
+            )}
+            {project.active_claudio_sessions && project.active_claudio_sessions > 0 && (
+              <Badge
+                variant="outline"
+                className="flex items-center gap-1 text-accent border-accent text-xs"
+              >
+                claudio {project.active_claudio_sessions}
+              </Badge>
+            )}
           </div>
         </div>
       </div>
       <div className="flex items-center gap-2">
+        {/* Total session count */}
         <Badge
           variant="secondary"
           className="flex items-center gap-1 bg-accent"

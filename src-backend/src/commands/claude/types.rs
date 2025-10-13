@@ -51,6 +51,10 @@ pub struct Project {
     pub agent_count: Option<u32>,
     /// Current git branch name (if project is under git source control)
     pub git_branch: Option<String>,
+    /// Number of active native Claude sessions for this project
+    pub active_native_sessions: Option<u32>,
+    /// Number of active Claudio sessions for this project
+    pub active_claudio_sessions: Option<u32>,
 }
 
 /// Represents a session with its metadata

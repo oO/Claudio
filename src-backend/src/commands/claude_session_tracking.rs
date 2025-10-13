@@ -75,51 +75,62 @@ pub async fn end_claude_thinking(
 }
 
 /// Get all live Claude sessions by scanning claude-*.json files
+/// Returns sessions with project_id (directory name), not project_path
 #[command]
 pub async fn get_live_claude_sessions() -> Result<Vec<LiveClaudeSession>, String> {
-    log::debug!("Scanning for live Claude sessions");
-    
     let claudio_projects_dir = claudio_home_dir()?.join(CLAUDE_PROJECTS_DIR);
-    
+    log::info!("Scanning for live Claude sessions in: {}", claudio_projects_dir.display());
+
     if !claudio_projects_dir.exists() {
+        log::warn!("Claude projects directory does not exist: {}", claudio_projects_dir.display());
         return Ok(vec![]);
     }
-    
+
     let mut live_sessions = Vec::new();
-    
+
     // Read all project directories
     let mut project_dirs = fs::read_dir(&claudio_projects_dir).await
         .map_err(|e| format!("Failed to read claudio projects directory: {}", e))?;
-    
+
     while let Some(entry) = project_dirs.next_entry().await
         .map_err(|e| format!("Failed to read directory entry: {}", e))? {
-        
+
         if !entry.file_type().await.map_err(|e| format!("Failed to get file type: {}", e))?.is_dir() {
             continue;
         }
-        
+
         let project_dir = entry.path();
-        
+
+        // Get project_id from directory name (e.g., "-Users-olivier-Projects-claudio")
+        let project_id = match project_dir.file_name().and_then(|n| n.to_str()) {
+            Some(id) => id.to_string(),
+            None => continue,
+        };
+
         // Read files in this project directory
         let mut files = fs::read_dir(&project_dir).await
             .map_err(|e| format!("Failed to read project directory: {}", e))?;
-        
+
         while let Some(file_entry) = files.next_entry().await
             .map_err(|e| format!("Failed to read file entry: {}", e))? {
-            
+
             let filename = file_entry.file_name();
             let filename_str = filename.to_string_lossy();
-            
+
             // Look for claude-*.json files (not claudio-*.json)
-            if filename_str.starts_with(CLAUDE_SESSION_PREFIX) && filename_str.ends_with(&format!(".{}", JSON_EXTENSION)) {
-                if let Ok(session) = read_claude_session_file(&file_entry.path()).await {
+            if filename_str.starts_with(CLAUDE_SESSION_PREFIX) && filename_str.ends_with(JSON_EXTENSION) {
+                // Read session and use project_id as the identifier
+                if let Ok(mut session) = read_claude_session_file(&file_entry.path()).await {
+                    session.project_path = project_id.clone(); // Store project_id, not real path
                     live_sessions.push(session);
+                } else {
+                    log::warn!("Failed to parse Claude session file: {}", file_entry.path().display());
                 }
             }
         }
     }
-    
-    log::info!("📈 Found {} live Claude sessions", live_sessions.len());
+
+    log::info!("Found {} live Claude sessions", live_sessions.len());
     Ok(live_sessions)
 }
 

@@ -20,6 +20,10 @@ export interface Project {
   last_active?: number;
   /** Current git branch name (if project is under git source control) */
   git_branch?: string;
+  /** Number of active native Claude sessions for this project */
+  active_native_sessions?: number;
+  /** Number of active Claudio sessions for this project */
+  active_claudio_sessions?: number;
 }
 
 /**
