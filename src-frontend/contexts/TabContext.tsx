@@ -6,13 +6,14 @@ import { logger } from '@/lib/logger';
 
 export interface Tab {
   id: string;
-  type: 'chat' | 'agents' | 'projects' | 'project' | 'project-session' | 'usage' | 'mcp' | 'settings' | 'claude-md' | 'claude-file' | 'create-agent' | 'import-agent';
+  type: 'chat' | 'agents' | 'projects' | 'project' | 'project-session' | 'usage' | 'mcp' | 'settings' | 'claude-md' | 'claude-file' | 'create-agent' | 'import-agent' | 'output-styles';
   title: string;
   displayId?: string; // For session tabs - shows session ID that never truncates
   sessionId?: string;  // for chat tabs
   sessionData?: any; // for chat tabs - stores full session object
   claudeSession?: any; // legacy field - stores claudio session metadata
   agentData?: any; // for agent-execution tabs
+  outputStyleData?: any; // for output-styles tabs
   claudeFileId?: string; // for claude-file tabs
   sourceContext?: string; // context about where the file was opened from (e.g., "memories", "agents")
   initialProjectPath?: string; // for chat tabs

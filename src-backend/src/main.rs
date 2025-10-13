@@ -70,6 +70,10 @@ use commands::settings::{
     create_settings_handle, get_settings_for_handle, update_setting_for_handle, destroy_settings_handle,
     initialize_claude_code_settings_manager,
 };
+use commands::output_styles::{
+    list_output_styles, create_output_style, update_output_style, delete_output_style,
+    get_output_style, move_output_style_to_user_level, export_output_style_to_file,
+};
 use process::ProcessRegistryState;
 use tauri::Manager;
 use std::io::Write;
@@ -467,7 +471,16 @@ fn main() {
             install_claude_session_hooks,
             check_hooks_installed,
             uninstall_claude_session_hooks,
-            
+
+            // Output Styles Management
+            list_output_styles,
+            create_output_style,
+            update_output_style,
+            delete_output_style,
+            get_output_style,
+            move_output_style_to_user_level,
+            export_output_style_to_file,
+
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

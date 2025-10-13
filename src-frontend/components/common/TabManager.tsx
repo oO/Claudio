@@ -14,6 +14,7 @@ import {
   Server,
   Settings,
   FileText,
+  Palette,
 } from "lucide-react";
 import { useTabState } from "@/hooks/useTabState";
 import { Tab, useTabContext } from "@/contexts/TabContext";
@@ -79,6 +80,8 @@ const TabItem: React.FC<TabItemProps> = ({
         return Plus;
       case "import-agent":
         return Plus;
+      case "output-styles":
+        return Palette;
       default:
         return MessageSquare;
     }

@@ -14,3 +14,4 @@ pub mod claude_direct;
 pub mod claudio_storage;
 pub mod session_orchestrator;
 pub mod settings;
+pub mod output_styles;

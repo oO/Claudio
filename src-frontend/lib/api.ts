@@ -12,6 +12,7 @@ export { mcpApi } from './api/mcp';
 export { usageApi } from './api/usage';
 export { storageApi } from './api/storage';
 export { systemApi } from './api/system';
+export { outputStylesApi } from './api/output_styles';
 
 // Export all types from the organized type modules
 export type * from './types/agents';
@@ -22,6 +23,7 @@ export type * from './types/mcp';
 export type * from './types/usage';
 export type * from './types/storage';
 export type * from './types/system';
+export type * from './types/output_styles';
 
 // Import required dependencies for remaining methods
 import { invoke } from "@tauri-apps/api/core";

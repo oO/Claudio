@@ -10,6 +10,7 @@ export { ProjectSessionTab } from './ProjectSessionTab';
 export { MemoriesManager } from './MemoriesManager';
 export { MemoryCard } from './MemoryCard';
 export { ProjectAgentsTab } from './ProjectAgentsTab';
+export { ProjectOutputStylesTab } from './ProjectOutputStylesTab';
 export { ProjectToolsTab } from './ProjectToolsTab';
 export { ProjectCommandsTab } from './ProjectCommandsTab';
 export { ProjectDeleteDialog } from './ProjectDeleteDialog';

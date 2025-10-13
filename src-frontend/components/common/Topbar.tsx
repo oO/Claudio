@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Circle, FileText, Settings, ExternalLink, BarChart3, Network, Bot, FolderOpen } from "lucide-react";
+import { Circle, FileText, Settings, ExternalLink, BarChart3, Network, Bot, FolderOpen, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover } from "@/components/ui/popover";
 import { ActionButton } from "@/components/ui/atoms/ActionButton";
@@ -36,6 +36,10 @@ interface TopbarProps {
    */
   onProjectsClick?: () => void;
   /**
+   * Callback when Output Styles is clicked
+   */
+  onOutputStylesClick?: () => void;
+  /**
    * Optional className for styling
    */
   className?: string;
@@ -59,6 +63,7 @@ export const Topbar: React.FC<TopbarProps> = ({
   onMCPClick,
   onAgentsClick,
   onProjectsClick,
+  onOutputStylesClick,
   className,
 }) => {
   const [versionStatus, setVersionStatus] = useState<ClaudeVersionStatus | null>(null);
@@ -200,6 +205,16 @@ export const Topbar: React.FC<TopbarProps> = ({
             variant="ghost"
             size="sm"
             onClick={onAgentsClick}
+          />
+        )}
+
+        {onOutputStylesClick && (
+          <ActionButton
+            icon={Palette}
+            label="Styles"
+            variant="ghost"
+            size="sm"
+            onClick={onOutputStylesClick}
           />
         )}
 

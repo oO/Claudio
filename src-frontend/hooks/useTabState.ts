@@ -25,6 +25,7 @@ interface UseTabStateReturn {
   createSettingsTab: () => string | null;
   createClaudeMdTab: () => string | null;
   createAgentsTab: () => string | null;
+  createOutputStylesTab: () => string | null;
   createClaudeFileTab: (filePath: string, fileName: string) => string;
   createCreateAgentTab: () => string;
   createImportAgentTab: () => string;
@@ -198,6 +199,23 @@ export const useTabState = (): UseTabStateReturn => {
       status: 'idle',
       hasUnsavedChanges: false,
       icon: 'robot',
+    });
+  }, [addTab, tabs, setActiveTab]);
+
+  const createOutputStylesTab = useCallback((): string | null => {
+    // Check if output-styles tab already exists (singleton)
+    const existingTab = tabs.find(tab => tab.type === 'output-styles');
+    if (existingTab) {
+      setActiveTab(existingTab.id);
+      return existingTab.id;
+    }
+
+    return addTab({
+      type: 'output-styles',
+      title: 'Output Styles',
+      status: 'idle',
+      hasUnsavedChanges: false,
+      icon: 'palette',
     });
   }, [addTab, tabs, setActiveTab]);
 
@@ -385,6 +403,7 @@ export const useTabState = (): UseTabStateReturn => {
     createSettingsTab,
     createClaudeMdTab,
     createAgentsTab,
+    createOutputStylesTab,
     createClaudeFileTab,
     createCreateAgentTab,
     createImportAgentTab,

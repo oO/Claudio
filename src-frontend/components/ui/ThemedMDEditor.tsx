@@ -59,11 +59,14 @@ export const ThemedMDEditor: React.FC<ThemedMDEditorProps> = ({
   const isDarkTheme = theme === 'custom' ? true : (getThemeById(theme)?.isDark ?? true);
 
   return (
-    <div 
+    <div
       className={cn(
-        "h-full rounded-lg border border-border overflow-hidden shadow-sm",
+        "rounded-lg border border-border overflow-hidden shadow-sm",
+        // Ensure proper height handling for all preview modes
+        typeof height === 'string' && height.includes('%') ? 'h-full' : '',
         containerClassName
-      )} 
+      )}
+      style={typeof height === 'number' ? { height: `${height}px` } : undefined}
       data-color-mode={isDarkTheme ? "dark" : "light"}
     >
       <MDEditor

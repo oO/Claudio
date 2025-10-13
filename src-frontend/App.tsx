@@ -37,6 +37,7 @@ function AppContent() {
     createMCPTab,
     createAgentsTab,
     createProjectsTab,
+    createOutputStylesTab,
   } = useTabState();
   const [editingClaudeFile, setEditingClaudeFile] =
     useState<ClaudeMdFile | null>(null);
@@ -278,6 +279,7 @@ function AppContent() {
       <Topbar
         onProjectsClick={() => createProjectsTab()}
         onAgentsClick={() => createAgentsTab()}
+        onOutputStylesClick={() => createOutputStylesTab()}
         onUsageClick={() => createUsageTab()}
         onClaudeClick={() => createClaudeMdTab()}
         onMCPClick={() => createMCPTab()}

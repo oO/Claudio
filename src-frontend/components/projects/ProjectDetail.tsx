@@ -5,6 +5,7 @@ import {
   Bot,
   Shield,
   Command,
+  Palette,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,7 @@ import {
   ProjectSessionTab,
   MemoriesManager,
   ProjectAgentsTab,
+  ProjectOutputStylesTab,
   ProjectToolsTab,
   ProjectCommandsTab,
   ProjectDeleteDialog,
@@ -195,7 +197,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
         setActiveTab(value);
         onActiveTabChange?.(value);
       }} className="w-full flex flex-col flex-1 min-h-0 gap-2">
-        <TabsList className="grid w-full max-w-2xl grid-cols-5">
+        <TabsList className="grid w-full max-w-3xl grid-cols-6">
           <TabsTrigger value="sessions" className="gap-2 hover:bg-accent">
             <MessagesSquare className="h-4 w-4" />
             Sessions
@@ -207,6 +209,10 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
           <TabsTrigger value="agents" className="gap-2 hover:bg-accent">
             <Bot className="h-4 w-4" />
             Agents
+          </TabsTrigger>
+          <TabsTrigger value="styles" className="gap-2 hover:bg-accent">
+            <Palette className="h-4 w-4" />
+            Styles
           </TabsTrigger>
           <TabsTrigger value="tools" className="gap-2 hover:bg-accent">
             <Shield className="h-4 w-4" />
@@ -260,6 +266,11 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
             onCreateAgent={onCreateAgent}
             onImportAgent={onImportAgent}
           />
+        </TabsContent>
+
+        {/* Styles Tab */}
+        <TabsContent value="styles" className="flex-1 min-h-0">
+          <ProjectOutputStylesTab projectPath={projectPath} />
         </TabsContent>
 
         {/* Tools Tab */}
