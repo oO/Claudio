@@ -262,27 +262,17 @@ fn main() {
             // Note: Orphan cleanup now runs automatically inside get_projects()
             // to reuse already-loaded native sessions data
 
-            // Auto-install Claude Code hooks for session tracking if not already installed
+            // Auto-install/update Claude Code hooks on every startup to ensure they're current
             tauri::async_runtime::spawn(async move {
-                match commands::hook_installer::check_hooks_installed().await {
-                    Ok(false) => {
-                        log::info!("Claude Code hooks not detected, auto-installing...");
-                        match commands::hook_installer::install_claude_session_hooks().await {
-                            Ok(_) => {
-                                log::info!("Claude Code session tracking hooks auto-installed successfully");
-                            }
-                            Err(e) => {
-                                log::warn!("Failed to auto-install Claude Code hooks: {}", e);
-                                log::warn!("   Native Claude sessions won't be tracked in Claudio UI");
-                                log::warn!("   You can manually install hooks later via the settings");
-                            }
-                        }
-                    }
-                    Ok(true) => {
-                        // Hooks already installed, no action needed
+                log::info!("Installing/updating Claude Code session tracking hooks...");
+                match commands::hook_installer::install_claude_session_hooks().await {
+                    Ok(_) => {
+                        log::info!("Claude Code session tracking hooks installed successfully");
                     }
                     Err(e) => {
-                        log::warn!("Failed to check hook installation status: {}", e);
+                        log::warn!("Failed to install Claude Code hooks: {}", e);
+                        log::warn!("   Native Claude sessions won't be tracked in Claudio UI");
+                        log::warn!("   You can manually install hooks later via the settings");
                     }
                 }
             });

@@ -345,9 +345,9 @@ impl SessionWatcherManager {
     /// Handle native Claude session status changes and emit thinking events
     async fn handle_native_session_status_change(app_handle: &AppHandle, session_id: &str, file_path: &str) {
         use crate::commands::claude_session_tracking::ClaudeThinkingEvent;
-        
+
         log::debug!("Handling native session status change for {}", session_id);
-        
+
         // Read the JSON status file
         match tokio::fs::read_to_string(file_path).await {
             Ok(content) => {
@@ -358,9 +358,21 @@ impl SessionWatcherManager {
                                 .and_then(|p| p.as_str())
                                 .unwrap_or("")
                                 .to_string();
-                            
-                            log::debug!("Native session {} status: {} at path {}", session_id, status, project_path);
-                            
+
+                            // Extract hook data if present
+                            let hook_data = json.get("hook").cloned();
+
+                            // Log hook_event_name if present for debugging
+                            if let Some(ref hook) = hook_data {
+                                if let Some(hook_event_name) = hook.get("hook_event_name").and_then(|v| v.as_str()) {
+                                    log::info!("Native session {} hook event: {} (status: {})", session_id, hook_event_name, status);
+                                } else {
+                                    log::debug!("Native session {} status: {} at path {} (no hook_event_name)", session_id, status, project_path);
+                                }
+                            } else {
+                                log::debug!("Native session {} status: {} at path {} (no hook data)", session_id, status, project_path);
+                            }
+
                             // Emit thinking event based on status
                             let event_data = match status {
                                 "active" => {
@@ -372,6 +384,7 @@ impl SessionWatcherManager {
                                         status: "active".to_string(),
                                         title: Some(thinking_title),
                                         message: Some(thinking_message),
+                                        hook: hook_data, // Pass hook data to frontend
                                     })
                                 }
                                 "idle" => {
@@ -381,6 +394,7 @@ impl SessionWatcherManager {
                                         status: "idle".to_string(),
                                         title: None,
                                         message: None,
+                                        hook: hook_data, // Pass hook data even for idle
                                     })
                                 }
                                 _ => {
@@ -388,13 +402,14 @@ impl SessionWatcherManager {
                                     None
                                 }
                             };
-                            
+
                             // Emit the thinking event if we have one
                             if let Some(event) = event_data {
                                 if let Err(e) = app_handle.emit("claude-session-thinking", &event) {
                                     log::error!("Failed to emit claude-session-thinking event: {}", e);
                                 } else {
-                                    log::debug!("Emitted claude-session-thinking event: {} -> {}", session_id, event.status);
+                                    log::debug!("Emitted claude-session-thinking event: {} -> {} (hook: {})",
+                                               session_id, event.status, event.hook.is_some());
                                 }
                             }
                         }

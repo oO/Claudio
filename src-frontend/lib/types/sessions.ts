@@ -56,9 +56,9 @@ export interface SessionWithContent {
 }
 
 /**
- * Session status for Claudio-managed sessions
+ * Session status for Claudio-managed sessions - binary operational state
  */
-export type ClaudioSessionStatus = 'Active' | 'Idle' | 'Completed' | 'Notification' | 'Compact';
+export type SessionStatus = 'active' | 'idle';
 
 /**
  * Session info structure
@@ -80,8 +80,10 @@ export interface ClaudioSession {
   created_at: number;
   updated_at: number;
   current_session?: SessionInfo;
-  /** Session status */
-  status: ClaudioSessionStatus;
+  /** Session status - binary operational state */
+  status: SessionStatus;
+  /** Latest hook event data (raw JSON from hook scripts) */
+  hook?: Record<string, any> | null;
   last_message_uuid?: string;
   session_history: SessionInfo[];
 }

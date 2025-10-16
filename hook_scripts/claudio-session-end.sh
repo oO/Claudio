@@ -4,6 +4,14 @@
 INPUT=$(cat)
 
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty')
+
+# Log all hook input data for debugging (session-specific log file)
+if [ -n "$SESSION_ID" ]; then
+    LOG_FILE="$HOME/.claudio/claudio-hooks-$SESSION_ID.log"
+    echo "=== SessionEnd Hook $(date -u +"%Y-%m-%dT%H:%M:%SZ") ===" >> "$LOG_FILE"
+    echo "$INPUT" | jq '.' >> "$LOG_FILE"
+    echo "" >> "$LOG_FILE"
+fi
 TRANSCRIPT_PATH=$(echo "$INPUT" | jq -r '.transcript_path // empty')
 
 # Skip Claudio-managed sessions  

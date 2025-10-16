@@ -1,9 +1,17 @@
 #!/bin/bash
 
-# Claudio Stop Hook - Updates status to idle
+# Claudio Stop Hook - Sets status to idle and clears any transient events
 INPUT=$(cat)
 
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty')
+
+# Log all hook input data for debugging (session-specific log file)
+if [ -n "$SESSION_ID" ]; then
+    LOG_FILE="$HOME/.claudio/claudio-hooks-$SESSION_ID.log"
+    echo "=== Stop Hook $(date -u +"%Y-%m-%dT%H:%M:%SZ") ===" >> "$LOG_FILE"
+    echo "$INPUT" | jq '.' >> "$LOG_FILE"
+    echo "" >> "$LOG_FILE"
+fi
 TRANSCRIPT_PATH=$(echo "$INPUT" | jq -r '.transcript_path // empty')
 
 # Skip Claudio-managed sessions
@@ -20,6 +28,13 @@ PROJECT_ID=$(echo "$TRANSCRIPT_PATH" | sed -n 's/.*\/projects\/\([^\/]*\)\/.*/\1
 if [ -n "$PROJECT_ID" ]; then
     SESSION_FILE="$HOME/.claudio/projects/$PROJECT_ID/claude-$SESSION_ID.json"
     if [ -f "$SESSION_FILE" ]; then
-        sed -i '' 's/"status": "[^"]*"/"status": "idle"/' "$SESSION_FILE"
+        # Set status to "idle" and update hook with full payload
+        TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        jq --arg ts "$TIMESTAMP" --argjson input "$INPUT" \
+           '.status = "idle" | .hook = ($input + {timestamp: $ts})' \
+           "$SESSION_FILE" > "$SESSION_FILE.tmp" && mv "$SESSION_FILE.tmp" "$SESSION_FILE"
     fi
 fi
+
+# Output space to make hook appear in .jsonl
+echo " "

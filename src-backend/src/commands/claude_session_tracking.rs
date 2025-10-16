@@ -11,6 +11,9 @@ pub struct LiveClaudeSession {
     pub status: String, // "idle", "active"
     #[serde(rename = "type")]
     pub session_type: String,
+    /// Latest hook event data (raw JSON from hook scripts)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hook: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -20,6 +23,9 @@ pub struct ClaudeThinkingEvent {
     pub status: String, // "active" or "idle"
     pub title: Option<String>,
     pub message: Option<String>,
+    /// Hook data from the session file (includes hook_event_name, etc.)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hook: Option<serde_json::Value>,
 }
 
 /// Start thinking status for a native Claude session
@@ -41,6 +47,7 @@ pub async fn start_claude_thinking(
         status: "active".to_string(),
         title: Some(thinking_title),
         message: Some(thinking_message),
+        hook: None, // No hook data for manual thinking events
     };
     
     app.emit("claude-session-thinking", &event_data)
@@ -65,6 +72,7 @@ pub async fn end_claude_thinking(
         status: "idle".to_string(),
         title: None,
         message: None,
+        hook: None, // No hook data for end events
     };
     
     app.emit("claude-session-thinking", &event_data)

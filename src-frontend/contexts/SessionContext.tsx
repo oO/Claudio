@@ -1,5 +1,5 @@
 import React, { createContext, useContext } from 'react';
-import type { Session } from '@/lib/types/sessions';
+import type { Session, SessionStatus } from '@/lib/types/sessions';
 import type { SessionTypeValue } from '@/lib/sessionHandleApi';
 
 export interface UserMessageItem {
@@ -45,6 +45,8 @@ interface SessionContextValue {
   sessionData?: Session;
   liveSessionType?: SessionTypeValue | null;
   isStreaming?: boolean;
+  sessionHook?: Record<string, any> | null;
+  sessionStatus?: SessionStatus;
   userMessages?: UserMessageItem[];
   toolMessages?: ToolMessageItem[];
   assistantMessages?: AssistantMessageItem[];
@@ -68,6 +70,8 @@ interface SessionProviderProps {
   sessionData?: Session;
   liveSessionType?: SessionTypeValue | null;
   isStreaming?: boolean;
+  sessionHook?: Record<string, any> | null;
+  sessionStatus?: SessionStatus;
   userMessages?: UserMessageItem[];
   toolMessages?: ToolMessageItem[];
   assistantMessages?: AssistantMessageItem[];
@@ -97,6 +101,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
   sessionData,
   liveSessionType,
   isStreaming = false,
+  sessionHook,
+  sessionStatus,
   userMessages = [],
   toolMessages = [],
   assistantMessages = [],
@@ -118,6 +124,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
     sessionData,
     liveSessionType,
     isStreaming,
+    sessionHook,
+    sessionStatus,
     userMessages,
     toolMessages,
     assistantMessages,

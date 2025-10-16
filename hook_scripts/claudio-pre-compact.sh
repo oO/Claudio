@@ -1,9 +1,17 @@
 #!/bin/bash
 
-# Claudio PreCompact Hook - Updates status to compact
+# Claudio PreCompact Hook - Sets compact event with metadata
 INPUT=$(cat)
 
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty')
+
+# Log all hook input data for debugging (session-specific log file)
+if [ -n "$SESSION_ID" ]; then
+    LOG_FILE="$HOME/.claudio/claudio-hooks-$SESSION_ID.log"
+    echo "=== PreCompact Hook $(date -u +"%Y-%m-%dT%H:%M:%SZ") ===" >> "$LOG_FILE"
+    echo "$INPUT" | jq '.' >> "$LOG_FILE"
+    echo "" >> "$LOG_FILE"
+fi
 TRANSCRIPT_PATH=$(echo "$INPUT" | jq -r '.transcript_path // empty')
 
 # Skip Claudio-managed sessions
@@ -15,12 +23,16 @@ if [ -z "$SESSION_ID" ] || [ -z "$TRANSCRIPT_PATH" ]; then
     exit 0
 fi
 
-# Extract project_id and update status
+# Extract project_id and update with rich event
 PROJECT_ID=$(echo "$TRANSCRIPT_PATH" | sed -n 's/.*\/projects\/\([^\/]*\)\/.*/\1/p')
 if [ -n "$PROJECT_ID" ]; then
     SESSION_FILE="$HOME/.claudio/projects/$PROJECT_ID/claude-$SESSION_ID.json"
     if [ -f "$SESSION_FILE" ]; then
-        sed -i '' 's/"status": "[^"]*"/"status": "compact"/' "$SESSION_FILE"
+        # Update hook with full payload and set status to active
+        TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        jq --arg ts "$TIMESTAMP" --argjson input "$INPUT" \
+           '.status = "active" | .hook = ($input + {timestamp: $ts})' \
+           "$SESSION_FILE" > "$SESSION_FILE.tmp" && mv "$SESSION_FILE.tmp" "$SESSION_FILE"
     fi
 fi
 

@@ -153,6 +153,7 @@ pub async fn start_claude_direct_session(
                 project_path: project_path.clone(),
                 current_session: None, // Will be populated when turn completes
                 status: SessionStatus::Active,
+                hook: None, // No hook data initially
                 session_history: Vec::new(),
                 permission_mode: options.permission_mode.clone().unwrap_or_else(|| "default".to_string()),
             };
@@ -173,13 +174,14 @@ pub async fn start_claude_direct_session(
                 project_path: project_path.clone(),
                 current_session: None, // Will be populated when turn completes
                 status: SessionStatus::Active,
+                hook: None, // No hook data initially
                 session_history: Vec::new(),
                 permission_mode: options.permission_mode.clone().unwrap_or_else(|| "default".to_string()),
             };
-            
+
             update_claudio_session(new_claudio_id.clone(), project_path.clone(), new_session).await
                 .map_err(|e| format!("Failed to create Claudio session: {}", e))?;
-                
+
             (new_claudio_id, true) // Use --resume
         },
         
@@ -659,6 +661,7 @@ async fn emit_claudio_session_status(
         } else {
             None
         },
+        hook: None, // Claudio sessions don't use hook data (they manage state directly)
     };
     
     // Emit the same event that native sessions emit

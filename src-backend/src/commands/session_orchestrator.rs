@@ -962,6 +962,7 @@ async fn emit_claudio_thinking_event(
         } else {
             None
         },
+        hook: None, // Claudio sessions don't use hook data (they manage state directly)
     };
 
     // Emit the same event that native sessions emit

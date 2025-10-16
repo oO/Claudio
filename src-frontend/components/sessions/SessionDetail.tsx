@@ -17,11 +17,11 @@ import { useMessageProcessing } from "@/hooks/useMessageProcessing";
 import { useStreamingState } from "@/hooks/useStreamingState";
 import { useSessionNavigation } from "@/hooks/useSessionNavigation";
 import { useThinkingScrollSync } from "@/hooks/useThinkingScrollSync";
-import type { Session } from "@/lib/api";
+import type { DecoratedSession } from "@/lib/api";
 import type { PermissionMode } from "@/components/prompt/PermissionModeSelector";
 
 interface SessionDetailProps {
-  session: Session;
+  session: DecoratedSession;
   projectPath: string;
   onBack: () => void;
   onSessionsDeleted?: () => void;
@@ -49,7 +49,7 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
 }) => {
 
   // Native Claude session thinking state hook
-  const { isSessionThinking, queryInitialSessionState } = useNativeClaudeSessions();
+  const { isSessionThinking, queryInitialSessionState, getSessionThinkingEvent } = useNativeClaudeSessions();
 
   // Navigation and UI state management
   const navigation = useSessionNavigation();
@@ -97,7 +97,7 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
   const messageData = useMessageProcessing(sessionData.messages);
 
   // Streaming state management
-  const streamingData = useStreamingState(sessionData.sessionState, isSessionThinking, queryInitialSessionState);
+  const streamingData = useStreamingState(sessionData.sessionState, isSessionThinking, queryInitialSessionState, getSessionThinkingEvent);
 
   // Session file watcher - ensures backend watches this project for file changes
   const projectId = sessionData.sessionState?.project_id;
@@ -165,7 +165,7 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
   // Get computed values from hooks (must be before early returns for hook order)
   const { isReadOnly } = sessionData;
   const { displayableMessages, collapsedMessageUuids, totalTokens, userMessages, toolMessages, assistantMessages, systemMessages, cwdChanges, lastInTurnCount } = messageData;
-  const { effectiveIsStreaming, thinkingContent } = streamingData;
+  const { effectiveIsStreaming, thinkingContent, nativeSessionHook } = streamingData;
 
   // Sync scroll position when thinking state changes (must be before early returns)
   useThinkingScrollSync({
@@ -197,6 +197,8 @@ export const SessionDetail: React.FC<SessionDetailProps> = ({
       sessionData={session}
       liveSessionType={sessionData.sessionState?.session_type.type}
       isStreaming={effectiveIsStreaming}
+      sessionHook={session.claudio?.hook || nativeSessionHook || null}
+      sessionStatus={session.claudio?.status}
       userMessages={userMessages}
       toolMessages={toolMessages}
       assistantMessages={assistantMessages}

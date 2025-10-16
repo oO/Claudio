@@ -5,6 +5,14 @@ INPUT=$(cat)
 
 # Parse session data
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty')
+
+# Log all hook input data for debugging (session-specific log file)
+if [ -n "$SESSION_ID" ]; then
+    LOG_FILE="$HOME/.claudio/claudio-hooks-$SESSION_ID.log"
+    echo "=== SessionStart Hook $(date -u +"%Y-%m-%dT%H:%M:%SZ") ===" >> "$LOG_FILE"
+    echo "$INPUT" | jq '.' >> "$LOG_FILE"
+    echo "" >> "$LOG_FILE"
+fi
 TRANSCRIPT_PATH=$(echo "$INPUT" | jq -r '.transcript_path // empty')
 CWD=$(echo "$INPUT" | jq -r '.cwd // empty')
 
@@ -34,6 +42,13 @@ cat > "$SESSION_FILE" << JSONEOF
   "session_id": "$SESSION_ID",
   "project_path": "$CWD",
   "status": "idle",
-  "type": "claude_session"
+  "type": "claude_session",
+  "hook": null
 }
 JSONEOF
+
+# Update hook property with SessionStart payload
+TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+jq --arg ts "$TIMESTAMP" --argjson input "$INPUT" \
+   '.hook = ($input + {timestamp: $ts})' \
+   "$SESSION_FILE" > "$SESSION_FILE.tmp" && mv "$SESSION_FILE.tmp" "$SESSION_FILE"

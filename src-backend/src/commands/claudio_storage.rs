@@ -330,8 +330,11 @@ pub struct ClaudioSession {
     /// Current active session (None if no session is active)
     #[serde(default)]
     pub current_session: Option<SessionInfo>,
-    /// Session status
+    /// Session status - binary operational state
     pub status: SessionStatus,
+    /// Latest hook event data (raw JSON from hook scripts)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hook: Option<serde_json::Value>,
     /// History of previous sessions (newest first)
     #[serde(default)]
     pub session_history: Vec<SessionInfo>,
@@ -340,13 +343,12 @@ pub struct ClaudioSession {
     pub permission_mode: String,
 }
 
+/// Session status - binary operational state
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum SessionStatus {
     Active,
     Idle,
-    Completed,
-    Notification,
-    Compact,
 }
 
 /// Default permission mode for new sessions
@@ -562,6 +564,7 @@ pub async fn create_claudio_session(
         } else {
             SessionStatus::Active // New sessions start as Active (turn will begin immediately)
         },
+        hook: None, // No hook data initially
         session_history: Vec::new(), // Fresh wrapper, empty history for both new and resumed
         permission_mode: default_permission_mode(),
     };
@@ -1139,6 +1142,7 @@ mod tests {
                 last_message_timestamp: chrono::Utc::now(),
             }),
             status: SessionStatus::Active,
+            hook: None,
             session_history: vec![],
             permission_mode: "default".to_string(),
         }
@@ -1325,13 +1329,10 @@ mod tests {
 
     #[tokio_test]
     async fn test_session_status_variants() {
-        // Test all session status variants can be serialized/deserialized
+        // Test binary session status variants can be serialized/deserialized
         let statuses = vec![
             SessionStatus::Active,
             SessionStatus::Idle,
-            SessionStatus::Completed,
-            SessionStatus::Notification,
-            SessionStatus::Compact,
         ];
 
         for status in statuses {
@@ -1432,7 +1433,7 @@ mod tests {
         // Update session with new data
         let mut updated_session = create_test_session(claudio_id, project_path);
         updated_session.permission_mode = "custom".to_string();
-        updated_session.status = SessionStatus::Completed;
+        updated_session.status = SessionStatus::Idle;
 
         // This would normally call update_claudio_session, but we'll simulate the cache update
         {
@@ -1445,7 +1446,7 @@ mod tests {
         assert!(result.is_ok());
         let session = result.unwrap();
         assert_eq!(session.permission_mode, "custom");
-        assert_eq!(format!("{:?}", session.status), format!("{:?}", SessionStatus::Completed));
+        assert_eq!(format!("{:?}", session.status), format!("{:?}", SessionStatus::Idle));
     }
 
     #[tokio_test]

@@ -22,13 +22,14 @@ export interface ClaudeThinkingEvent {
   status: string; // "active" or "idle"
   title?: string;    // Still sent by backend but we ignore it
   message?: string;  // Still sent by backend but we ignore it
+  hook?: Record<string, any> | null; // Hook data with hook_event_name, etc.
 }
 
 /**
- * Thinking state for individual sessions (boolean only)
+ * Thinking state for individual sessions (stores full event data now, not just boolean)
  */
 interface ThinkingState {
-  [sessionId: string]: boolean;
+  [sessionId: string]: ClaudeThinkingEvent;
 }
 
 /**
@@ -79,15 +80,21 @@ export const useNativeClaudeSessions = () => {
     const setupThinkingListener = async () => {
       try {
         unsubscribe = await eventManager.subscribe<ClaudeThinkingEvent>('claude-session-thinking', (thinkingEvent) => {
-          const { session_id, status } = thinkingEvent;
-          
-          logger.info(`Claude thinking event received:`, { session_id, status });
-          
+          const { session_id, status, hook } = thinkingEvent;
+
+          // Log hook_event_name if present for debugging
+          const hookEventName = hook?.hook_event_name;
+          logger.info(`Claude thinking event received:`, {
+            session_id,
+            status,
+            hook_event_name: hookEventName || 'none'
+          });
+
           if (status === 'active') {
-            // Set thinking state to true
+            // Store full event data (includes hook)
             setThinkingSessions(prev => ({
               ...prev,
-              [session_id]: true
+              [session_id]: thinkingEvent
             }));
           } else {
             // Remove thinking state
@@ -98,7 +105,7 @@ export const useNativeClaudeSessions = () => {
             });
           }
         });
-        
+
       } catch (err) {
         logger.error('Failed to setup Claude thinking listener:', err);
       }
@@ -125,7 +132,12 @@ export const useNativeClaudeSessions = () => {
 
   // Check if session is thinking
   const isSessionThinking = useCallback((sessionId: string): boolean => {
-    return thinkingSessions[sessionId] || false;
+    return !!thinkingSessions[sessionId];
+  }, [thinkingSessions]);
+
+  // Get the full thinking event for a session (includes hook data)
+  const getSessionThinkingEvent = useCallback((sessionId: string): ClaudeThinkingEvent | null => {
+    return thinkingSessions[sessionId] || null;
   }, [thinkingSessions]);
   
   // Query initial state for a session (async version)
@@ -138,10 +150,16 @@ export const useNativeClaudeSessions = () => {
     try {
       const sessionStatus = await getSessionStatus(sessionId);
       if (sessionStatus && sessionStatus.status === "active") {
-        // Update thinking state for this session
+        // Create a minimal thinking event from the session status
+        const thinkingEvent: ClaudeThinkingEvent = {
+          session_id: sessionId,
+          project_path: sessionStatus.project_path,
+          status: "active",
+          hook: null // No hook data from initial query, will be updated by real events
+        };
         setThinkingSessions(prev => ({
           ...prev,
-          [sessionId]: true
+          [sessionId]: thinkingEvent
         }));
         logger.info(`Initial query: Session ${sessionId} is active (thinking)`);
       } else {
@@ -158,16 +176,17 @@ export const useNativeClaudeSessions = () => {
     thinkingSessions,
     isLoading,
     error,
-    
+
     // Actions
     refreshLiveSessions,
     getSessionStatus,
     queryInitialSessionState,
-    
+
     // Helpers
     getAllLiveSessions,
     isSessionThinking,
-    
+    getSessionThinkingEvent, // New: get full event data with hook
+
     // Stats
     totalSessions: liveSessions.length,
     thinkingCount: Object.keys(thinkingSessions).length,

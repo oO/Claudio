@@ -34,6 +34,8 @@ pub const HOOK_SESSION_START: &str = "claudio-session-start.sh";
 pub const HOOK_SESSION_ACTIVE: &str = "claudio-session-active.sh";
 pub const HOOK_SESSION_IDLE: &str = "claudio-session-idle.sh";
 pub const HOOK_SESSION_END: &str = "claudio-session-end.sh";
+pub const HOOK_PRE_COMPACT: &str = "claudio-pre-compact.sh";
+pub const HOOK_NOTIFICATION: &str = "claudio-notification.sh";
 
 // ===== Session Prefixes =====
 pub const CLAUDE_SESSION_PREFIX: &str = "claude-";

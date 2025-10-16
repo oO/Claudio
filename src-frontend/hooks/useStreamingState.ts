@@ -12,12 +12,14 @@ interface UseStreamingStateReturn {
   thinkingContent: { title: string; message: string };
   isStreaming: boolean;
   setIsStreaming: (value: boolean) => void;
+  nativeSessionHook: Record<string, any> | null; // Hook data from thinking events
 }
 
 export const useStreamingState = (
   sessionState: SessionState | null,
   isSessionThinking: (sessionId: string) => boolean,
-  queryInitialSessionState?: (sessionId: string) => Promise<void>
+  queryInitialSessionState?: (sessionId: string) => Promise<void>,
+  getSessionThinkingEvent?: (sessionId: string) => { hook?: Record<string, any> | null } | null
 ): UseStreamingStateReturn => {
   const [isStreaming, setIsStreaming] = useState(false);
   
@@ -27,12 +29,30 @@ export const useStreamingState = (
     message: "Code flows like water — Through circuits of thought and dream — Beauty takes its form",
   });
 
+  // Extract hook data from thinking events for native sessions
+  const nativeSessionHook = useMemo((): Record<string, any> | null => {
+    if (!getSessionThinkingEvent || !sessionState) return null;
+
+    if (sessionState.session_type.type === SESSION_TYPES.NATIVE) {
+      const claudeSessionId = sessionState.current_claude_session_id;
+      if (claudeSessionId) {
+        const thinkingEvent = getSessionThinkingEvent(claudeSessionId);
+        return thinkingEvent?.hook || null;
+      }
+    }
+    return null;
+  }, [
+    sessionState?.session_type.type,
+    sessionState?.current_claude_session_id,
+    getSessionThinkingEvent,
+  ]);
+
   // Compute effective streaming state - for native and Claudio sessions, use thinking state
   const effectiveIsStreaming = useMemo((): boolean => {
     if (sessionState?.session_type.type === SESSION_TYPES.NATIVE) {
       const claudeSessionId = sessionState.current_claude_session_id;
       const isThinking = claudeSessionId ? isSessionThinking(claudeSessionId) : false;
-      
+
       return Boolean(isThinking);
     } else if (sessionState?.session_type.type === SESSION_TYPES.CLAUDIO) {
       // For Claudio sessions, use the claudio_id to check thinking state
@@ -41,7 +61,7 @@ export const useStreamingState = (
       // Check both the current Claude session and the Claudio wrapper ID
       const isThinkingClaude = claudeSessionId ? isSessionThinking(claudeSessionId) : false;
       const isThinkingClaudio = claudiaId ? isSessionThinking(claudiaId) : false;
-      
+
       return Boolean(isThinkingClaude || isThinkingClaudio);
     }
     return Boolean(isStreaming);
@@ -114,5 +134,6 @@ export const useStreamingState = (
     thinkingContent,
     isStreaming,
     setIsStreaming,
+    nativeSessionHook, // Hook data from thinking events (for native sessions)
   };
 };

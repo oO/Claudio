@@ -3,6 +3,7 @@ import { Brain } from "lucide-react";
 import { DebugLabel } from "@/components/ui/atoms";
 import { useSessionContext } from "@/contexts/SessionContext";
 import { SESSION_TYPES } from "@/lib/sessionHandleApi";
+import { logger } from "@/lib/logger";
 
 interface ThinkingIndicatorProps {
   content: {
@@ -19,12 +20,25 @@ interface ThinkingIndicatorProps {
 export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
   content,
 }) => {
-  const { isStreaming, liveSessionType } = useSessionContext();
+  const { isStreaming, liveSessionType, sessionHook } = useSessionContext();
 
   // Only show for native or Claudio sessions that are currently streaming
   if (!isStreaming || (liveSessionType !== SESSION_TYPES.NATIVE && liveSessionType !== SESSION_TYPES.CLAUDIO)) {
     return null;
   }
+
+  // Check if we're in compacting state based on hook data
+  const isCompacting = sessionHook?.hook_event_name === 'PreCompact';
+
+  // Log hook data for debugging
+  logger.info('ThinkingIndicator sessionHook:', {
+    hook_event_name: sessionHook?.hook_event_name || 'none',
+    isCompacting,
+    hasHookData: !!sessionHook
+  });
+
+  // Use different title based on state
+  const title = isCompacting ? 'compacting context' : content.title;
 
   return (
     <div className="px-4 pb-4 relative">
@@ -41,7 +55,7 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
             <div className="flex-1 min-w-0">
               {/* Title */}
               <span className="font-semibold text-foreground">
-                Claude is {content.title}...
+                Claude is {title}...
               </span>
 
               {/* Haiku content */}

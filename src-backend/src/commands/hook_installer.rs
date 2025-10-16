@@ -2,7 +2,7 @@ use serde_json::{json, Value};
 use std::path::Path;
 use tauri::command;
 use tokio::fs;
-use crate::paths::{claude_home_dir, CLAUDE_SETTINGS_FILE, CLAUDE_HOOKS_DIR, HOOK_SESSION_START, HOOK_SESSION_ACTIVE, HOOK_SESSION_IDLE, HOOK_SESSION_END};
+use crate::paths::{claude_home_dir, CLAUDE_SETTINGS_FILE, CLAUDE_HOOKS_DIR, HOOK_SESSION_START, HOOK_SESSION_ACTIVE, HOOK_SESSION_IDLE, HOOK_SESSION_END, HOOK_PRE_COMPACT, HOOK_NOTIFICATION};
 
 /// Install Claude Code hooks for native session tracking
 #[command]
@@ -24,6 +24,8 @@ pub async fn install_claude_session_hooks() -> Result<String, String> {
     install_hook_script(&hooks_dir, HOOK_SESSION_ACTIVE).await?;
     install_hook_script(&hooks_dir, HOOK_SESSION_IDLE).await?;
     install_hook_script(&hooks_dir, HOOK_SESSION_END).await?;
+    install_hook_script(&hooks_dir, HOOK_PRE_COMPACT).await?;
+    install_hook_script(&hooks_dir, HOOK_NOTIFICATION).await?;
     
     // Update settings.json with hook configuration
     update_claude_settings(&settings_file).await?;
@@ -40,7 +42,7 @@ pub async fn check_hooks_installed() -> Result<bool, String> {
     let settings_file = claude_dir.join(CLAUDE_SETTINGS_FILE);
     
     // Check if hook scripts exist
-    let scripts = [HOOK_SESSION_START, HOOK_SESSION_ACTIVE, HOOK_SESSION_IDLE, HOOK_SESSION_END];
+    let scripts = [HOOK_SESSION_START, HOOK_SESSION_ACTIVE, HOOK_SESSION_IDLE, HOOK_SESSION_END, HOOK_PRE_COMPACT, HOOK_NOTIFICATION];
     for script in &scripts {
         if !hooks_dir.join(script).exists() {
             return Ok(false);
@@ -59,7 +61,7 @@ pub async fn check_hooks_installed() -> Result<bool, String> {
     
     // Check if hooks section exists and has our hooks in the new format
     if let Some(hooks) = settings.get("hooks").and_then(|h| h.as_object()) {
-        let required_hooks = ["SessionStart", "UserPromptSubmit", "Stop", "SessionEnd"];
+        let required_hooks = ["SessionStart", "UserPromptSubmit", "Stop", "SessionEnd", "PreCompact", "Notification"];
         for hook_name in &required_hooks {
             // Check if the hook exists and has the new matcher-based format
             if let Some(hook_configs) = hooks.get(*hook_name).and_then(|h| h.as_array()) {
@@ -95,7 +97,7 @@ pub async fn uninstall_claude_session_hooks() -> Result<String, String> {
     let settings_file = claude_dir.join(CLAUDE_SETTINGS_FILE);
     
     // Remove hook scripts
-    let scripts = [HOOK_SESSION_START, HOOK_SESSION_ACTIVE, HOOK_SESSION_IDLE, HOOK_SESSION_END];
+    let scripts = [HOOK_SESSION_START, HOOK_SESSION_ACTIVE, HOOK_SESSION_IDLE, HOOK_SESSION_END, HOOK_PRE_COMPACT, HOOK_NOTIFICATION];
     for script in &scripts {
         let script_path = hooks_dir.join(script);
         if script_path.exists() {
@@ -118,7 +120,9 @@ pub async fn uninstall_claude_session_hooks() -> Result<String, String> {
             hooks.remove("UserPromptSubmit");
             hooks.remove("Stop");
             hooks.remove("SessionEnd");
-            
+            hooks.remove("PreCompact");
+            hooks.remove("Notification");
+
             // If hooks section is now empty, remove it entirely
             if hooks.is_empty() {
                 settings.as_object_mut().unwrap().remove("hooks");
@@ -145,6 +149,8 @@ async fn install_hook_script(hooks_dir: &Path, script_name: &str) -> Result<(), 
         HOOK_SESSION_ACTIVE => include_str!("../../../hook_scripts/claudio-session-active.sh"),
         HOOK_SESSION_IDLE => include_str!("../../../hook_scripts/claudio-session-idle.sh"),
         HOOK_SESSION_END => include_str!("../../../hook_scripts/claudio-session-end.sh"),
+        HOOK_PRE_COMPACT => include_str!("../../../hook_scripts/claudio-pre-compact.sh"),
+        HOOK_NOTIFICATION => include_str!("../../../hook_scripts/claudio-notification.sh"),
         _ => return Err(format!("Unknown hook script: {}", script_name)),
     };
     
@@ -222,6 +228,28 @@ async fn update_claude_settings(settings_file: &Path) -> Result<(), String> {
                     {
                         "type": "command",
                         "command": "~/.claude/hooks/claudio-session-end.sh"
+                    }
+                ]
+            }
+        ],
+        "PreCompact": [
+            {
+                "matcher": "*",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "~/.claude/hooks/claudio-pre-compact.sh"
+                    }
+                ]
+            }
+        ],
+        "Notification": [
+            {
+                "matcher": "*",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "~/.claude/hooks/claudio-notification.sh"
                     }
                 ]
             }
